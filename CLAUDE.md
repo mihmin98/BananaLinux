@@ -9,6 +9,13 @@ fork's own customizations, which upstream does not have. Do customization work o
 `main` as a clean mirror of upstream, and bring upstream changes in by updating `main` and merging it into `kiwami`.
 When comparing against "upstream" behaviour, `main` is the reference.
 
+`docs/FORK.md` is the fork's workflow; follow it for any customization. In short: the fork's code goes in its own
+files (`kiwami/` for Buildroot packages, defconfig/kernel fragments, the rootfs overlay and post-build; `ui/src/kiwami/`
+for banana-ui), never in `ui/rnds/`, `ui/assets/rnds/`, `ui/assets/overrides/` or the ROCKNIX-synced files in
+`buildroot/board/rgds/`. An upstream file changes only for a hook, a call into the fork's code in as few lines as
+possible, marked with a `kiwami:` comment, with no reformatting around it. Changed behaviour sits behind a setting
+whose default is upstream's.
+
 ## Git: the user commits, not Claude
 
 Never commit, amend, merge, rebase, cherry-pick, reset, checkout/switch branches, stash, tag, push, or otherwise

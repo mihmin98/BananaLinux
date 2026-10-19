@@ -13,7 +13,8 @@
  *     only changes them when the power state changes (power_supply uevents, and the battery poll).
  *   - Brightness and volume are kept across reboots (/data/banana/backlight, /data/banana/asound.state).
  *   - Sound goes where it should with no sound server: the RG DS has one card (the rk817 codec, its playback mux set
- *     to HP, which drives the speaker amplifier and the jack, as ROCKNIX sets it); the RG DS Plus has two (the
+ *     to HP, which drives the speaker amplifier and the jack, as ROCKNIX sets it; the amplifier is switched off
+ *     while headphones are in, its "Internal Speakers Switch"); the RG DS Plus has two (the
  *     aw88166 speaker amplifiers, and the rk817 for the headphones and the microphone). Playback goes to the
  *     speakers, or to the rk817 while headphones are in (the jack's switch event); recording always comes from the
  *     rk817. The route is ALSA's default device, written to /run/banana/asound.conf (/etc/asound.conf points
@@ -72,6 +73,7 @@ static void audio_route(void);
 static void undim(void);
 static int headphones;
 static int fn_held, power_down, lid_closed;
+static int lid_retry_off;	/* a suspend failed with the lid shut: no retry until it opens */
 static double power_since, last_input, ignore_power_until;
 
 static volatile sig_atomic_t reload;
@@ -428,6 +430,7 @@ static void suspend_now(const char *why)
 			if (sleep_fallback < 2 && failures <= 2) { sleep_fallback++; sleep_mode(); usleep(200000); continue; }
 			woke = "failed";
 			if (lid_closed) backlights_power(0);	/* can't sleep: at least dark until the lid opens */
+			lid_retry_off = 1;	/* ...and not tried again every 5 s with the lid still shut */
 			break;
 		}
 		asleep += (b1.tv_sec - b0.tv_sec) + (b1.tv_nsec - b0.tv_nsec) / 1e9;
@@ -450,7 +453,9 @@ static void suspend_now(const char *why)
 	}
 	/* awake: the game and the menu first */
 	double t_wake = mono();
-	if (dark) backlights_power(!lid_closed);
+	/* the panels on when the lid is open: dark while charging, or dark from a lid shut with lid_sleep off before a
+	 * power-button sleep (the lid-open event that would light them is drained below) */
+	if (dark || !lid_closed) backlights_power(!lid_closed);
 	if (pg > 0) kill(-pg, SIGCONT);
 	pid_t ui = ui_pid();
 	if (ui && !game) kill(ui, SIGUSR1);	/* draws both panels again (the clock and the battery moved on) */
@@ -519,6 +524,14 @@ static void audio_find_cards(void)
 static void audio_route(void)
 {
 	card_play = card_speaker >= 0 && !headphones ? card_speaker : card_codec;
+	/* the RG DS: one card, whose HP output feeds both the jack and the speaker amplifier; the amplifier is the card's
+	 * "Internal Speakers Switch" (a pin switch), off while headphones are in, or the speakers play along (#13) */
+	if (card_speaker < 0 && card_codec >= 0) {
+		char c[16];
+		snprintf(c, sizeof c, "%d", card_codec);
+		char *argv[] = { "amixer", "-q", "-c", c, "cset", "name=Internal Speakers Switch", headphones ? "off" : "on", NULL };
+		run(argv);
+	}
 	/* The RG DS Plus's aw88166 amplifiers play 48 kHz whatever rate the I2S is set to (measured: 44.1 kHz audio is
 	 * taken at 48,150 samples a second, 9% fast and pitched up; 48 kHz at 48,080), so their stream is always opened
 	 * at 48 kHz and ALSA converts. Without it DraStic's 44.1 kHz ran its audio ring dry (stutter, crackles). */
@@ -546,6 +559,14 @@ static void audio_route(void)
 		fclose(f);
 		rename("/run/banana/mixer.new", "/run/banana/mixer");
 	}
+	/* a running RetroArch game panel (banana-ui's command pipe to it) opens its sound again where it plays now: alsa-lib
+	 * reads its configuration once per process (Banana's RetroArch patch forgets it on AUDIO_REINIT). The other
+	 * players watch the file themselves (banana-ui's sound, SuperDrastic, BananaDS). */
+	int rc = open("/run/banana/retroarch.cmd", O_WRONLY | O_NONBLOCK | O_CLOEXEC);
+	if (rc >= 0) {
+		if (write(rc, "AUDIO_REINIT\n", 13) < 0) {}
+		close(rc);
+	}
 	say("sound: playback on card %d (%s), recording on card %d", card_play,
 	    card_play == card_speaker ? "speakers" : headphones ? "headphones" : "codec", card_codec);
 }
@@ -567,11 +588,11 @@ static void volume(int dir)
 	/* the volume script changes the control /run/banana/mixer names, the aw88166's as an attenuation (see it) */
 	char step[16];
 	snprintf(step, sizeof step, "%d", cfg.volume_step);
-	char *argv[] = { "/usr/libexec/banana/volume", dir > 0 ? "up" : "down", step, NULL };
-	run(argv);
+	char cmd[96];
+	snprintf(cmd, sizeof cmd, "/usr/libexec/banana/volume %s %s 2>/dev/null", dir > 0 ? "up" : "down", step);
 	save_volume_at = mono() + 2;
 	int pct = -1;
-	FILE *p = popen("/usr/libexec/banana/volume get 2>/dev/null", "r");
+	FILE *p = popen(cmd, "r");	/* (it prints the new level) */
 	if (p) {
 		if (fscanf(p, "%d", &pct) != 1) pct = -1;
 		pclose(p);
@@ -895,6 +916,15 @@ static void load_drivers_present(void)
 	closedir(d);
 }
 
+/* the second SD card: mounted, and its games offered to the library, to match the slot (/usr/libexec/banana/sd2).
+ * In the background (a slow card's mount mustn't hold up the power button or sleep), one scan at a time: a card
+ * going in sends several uevents */
+static void sd2_scan(void)
+{
+	char *argv[] = { "/bin/sh", "-c", "flock /run/banana/sd2.lock /usr/libexec/banana/sd2 scan </dev/null >/dev/null 2>&1 &", NULL };
+	run(argv);
+}
+
 /* the kernel's uevents: true when one was about the battery or the charger; a device added gets its driver */
 static int uevent_read(int fd)
 {
@@ -904,13 +934,16 @@ static int uevent_read(int fd)
 	while ((n = recv(fd, buf, sizeof buf - 1, 0)) > 0) {
 		buf[n] = 0;
 		const char *alias = NULL;
-		int add = 0;
+		int add = 0, block = 0, mmc = 0;
 		for (char *p = buf; p < buf + n; p += strlen(p) + 1) {
 			if (!strcmp(p, "SUBSYSTEM=power_supply")) hit = 1;
+			else if (!strcmp(p, "SUBSYSTEM=block")) block = 1;
+			else if (!strncmp(p, "DEVNAME=mmcblk", 14)) mmc = 1;
 			else if (!strcmp(p, "ACTION=add")) add = 1;
 			else if (!strncmp(p, "MODALIAS=", 9)) alias = p + 9;
 		}
 		if (add && alias) load_driver(alias);
+		if (block && mmc) sd2_scan();	/* a card in or out of the second slot (the script looks at what's there) */
 	}
 	return hit;
 }
@@ -928,6 +961,12 @@ static void open_inputs(void)
 		snprintf(path, sizeof path, "/dev/input/%s", e->d_name);
 		int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
 		if (fd < 0) continue;
+		/* only keys and switches reach us (handle() reads nothing else): the touchscreens' and the sticks' motion during
+		 * a game woke bananad 60-200 times a second for nothing. The kernel drops a report left empty, so no wake;
+		 * EV_SYN stays, its report is what wakes us for the rest (no EVIOCSMASK, an old kernel: everything, as before) */
+		unsigned long types = (1ul << EV_SYN) | (1ul << EV_KEY) | (1ul << EV_SW);
+		struct input_mask m = { .type = 0, .codes_size = sizeof types, .codes_ptr = (uint64_t)(uintptr_t)&types };
+		ioctl(fd, EVIOCSMASK, &m);
 		devfd[ndev++] = fd;
 	}
 	closedir(d);
@@ -940,7 +979,7 @@ static void handle(const struct input_event *e)
 	if (e->type == EV_KEY) { last_input = now; undim(); }
 	if (e->type == EV_SW && e->code == SW_LID) {
 		lid_closed = e->value;
-		if (!lid_closed) undim();
+		if (!lid_closed) { undim(); lid_retry_off = 0; }
 		if (lid_closed && cfg.lid_sleep) suspend_now("lid closed");
 		else if (!lid_closed || !cfg.lid_sleep) { backlights_power(!lid_closed); if (!lid_closed) panel_off_again(); }	/* no sleep: at least the panels go dark */
 		return;
@@ -949,7 +988,14 @@ static void handle(const struct input_event *e)
 		if (headphones != e->value) { headphones = e->value; audio_route(); }
 		return;
 	}
-	if (e->type != EV_KEY || e->value == 2) return;
+	if (e->type != EV_KEY) return;
+	/* a volume key held down: the kernel's autorepeat (gpio-keys-volume's), a step every 150 ms so the level card keeps
+	 * up; every other key's repeats mean nothing here */
+	if (e->value == 2) {
+		static double last_repeat;
+		if ((e->code != KEY_VOLUMEUP && e->code != KEY_VOLUMEDOWN) || now - last_repeat < 0.15) return;
+		last_repeat = now;
+	}
 	switch (e->code) {
 	case BTN_MODE: fn_held = e->value; break;
 	case KEY_POWER:
@@ -965,6 +1011,9 @@ static void handle(const struct input_event *e)
 /* percent, or -1 when there is no battery or it is charging */
 static int battery_discharging_pct(void)
 {
+	/* (the rk817's gauge says "Discharging" while a charger charges it, see charger_online: plugged in at 2% must not
+	 * shut down) */
+	if (charger_online()) return -1;
 	DIR *d = opendir("/sys/class/power_supply");
 	if (!d) return -1;
 	struct dirent *e;
@@ -1005,9 +1054,12 @@ int main(int argc, char **argv)
 	if (ino >= 0) inotify_add_watch(ino, "/dev/input", IN_CREATE | IN_DELETE);
 	open_inputs();
 	headphones = headphones_in();
-	audio_setup();
+	/* the saved volumes first, then the route: the restore also brings back the speakers' switch as it was last
+	 * saved (off if headphones were in then), and the route sets it from the jack as it is now */
 	restore_settings();
+	audio_setup();
 	int uev = uevent_open();
+	sd2_scan();	/* a card already in the second slot at boot */
 	load_drivers_present();
 	leds_update();
 	last_input = mono();
@@ -1030,11 +1082,14 @@ int main(int argc, char **argv)
 		 * at again every 5 s, so the idle sleep comes once it is over */
 		int awake = pid_of("/run/banana/awake.pid") != 0;
 		if (awake && wait > 5) wait = 5;
+		/* (only deadlines still ahead: one already passed was acted on after the last poll, or is held back by what
+		 * the action checks (the charger, the lid, no backlight) and a uevent or an input event brings it back; counted
+		 * here it spun this loop every 20 ms, on the charger for as long as the menu sat idle) */
 		if (!game) {
-			if (cfg.autosleep_min > 0 && !awake) { double d = cfg.autosleep_min * 60.0 - (tnow - last_input); if (d < wait) wait = d; }
-			if (cfg.dim_min > 0 && !dimmed) { double d = cfg.dim_min * 60.0 - (tnow - last_input); if (d < wait) wait = d; }
+			if (cfg.autosleep_min > 0 && !awake) { double d = cfg.autosleep_min * 60.0 - (tnow - last_input); if (d > 0 && d < wait) wait = d; }
+			if (cfg.dim_min > 0 && !dimmed) { double d = cfg.dim_min * 60.0 - (tnow - last_input); if (d > 0 && d < wait) wait = d; }
 		}
-		if (lid_closed && cfg.lid_sleep) { double d = 5.0 - (tnow - last_input); if (d < wait) wait = d; }
+		if (lid_closed && cfg.lid_sleep && !lid_retry_off) { double d = 5.0 - (tnow - last_input); if (d > 0 && d < wait) wait = d; }
 		if ((save_volume_at > 0 || save_backlight_at > 0) && wait > 0.5) wait = 0.5;
 		if (power_down && wait > 0.1) wait = 0.1;
 		int timeout = wait <= 0 ? 20 : (int)(wait * 1000) + 20;
@@ -1077,7 +1132,7 @@ int main(int argc, char **argv)
 		    !pid_of("/run/banana/awake.pid"))
 			suspend_now("idle");
 		/* started or woken with the lid shut */
-		if (lid_closed && cfg.lid_sleep && now - last_input > 5) suspend_now("lid still closed");
+		if (lid_closed && cfg.lid_sleep && !lid_retry_off && now - last_input > 5) suspend_now("lid still closed");
 
 		if (now >= next_battery) {
 			next_battery = now + 60;

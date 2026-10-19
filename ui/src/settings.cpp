@@ -1,5 +1,6 @@
 #include <ctime>
 #include "settings.h"
+#include "theme.h"
 #include <algorithm>
 #include <dlfcn.h>
 #include <thread>
@@ -17,6 +18,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/statvfs.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -49,6 +51,8 @@ namespace banana
 	void setConfValue(const std::string& path, const std::string& key, const std::string& value, const char* sep)
 	{
 		std::ifstream f(path);
+		// a file that is there but can't be read (a card error): left alone, not replaced by one with only this key
+		if (!f && access(path.c_str(), F_OK) == 0) return;
 		std::string ln, out;
 		bool done = false;
 		while (std::getline(f, ln))
@@ -64,11 +68,11 @@ namespace banana
 		std::string tmp = path + ".new";
 		FILE* w = fopen(tmp.c_str(), "w");
 		if (!w) return;
-		fwrite(out.data(), 1, out.size(), w);
-		fflush(w);
-		fsync(fileno(w));
-		fclose(w);
-		rename(tmp.c_str(), path.c_str());
+		// (a full card: the short copy is dropped and the old file kept, RetroArch's whole retroarch.cfg among them)
+		bool ok = fwrite(out.data(), 1, out.size(), w) == out.size();
+		ok &= fflush(w) == 0 && fsync(fileno(w)) == 0;
+		ok &= fclose(w) == 0;
+		if (!ok || rename(tmp.c_str(), path.c_str()) != 0) unlink(tmp.c_str());
 	}
 
 	static std::string readLine(const std::string& path)
@@ -165,6 +169,17 @@ namespace banana
 		p.pick = Color::hex(rnds::accent.base); p.pickBand = Color::hex(rnds::accent.band); p.pickLow = Color::hex(rnds::accent.low);
 		p.pickEdge = light ? Color::hex(rnds::accent.dark) : Color::hex(0xffffff);
 		p.onPick = Color::hex(0x17161c); p.onPickAccent = Color::hex(0x7a3a00);
+		// a user theme's colours by the same names as the engine's palette (RndsUI.cpp), and two of this screen's own
+		struct { const char* n; Color SPal::* m; } names[] = {
+			{ "ink", &SPal::ink }, { "muted", &SPal::muted }, { "line", &SPal::line }, { "edge", &SPal::edge },
+			{ "screenBg", &SPal::screenBg }, { "screenFrame", &SPal::screenFrame }, { "screenBand", &SPal::screenBand },
+			{ "ditherA", &SPal::ditherA }, { "ditherB", &SPal::ditherB }, { "panelBand", &SPal::panelBand },
+			{ "panelBody", &SPal::panelBody }, { "panelLow", &SPal::panelLow }, { "bubbleBand", &SPal::bubbleBand },
+			{ "bubbleBody", &SPal::bubbleBody }, { "bubbleLow", &SPal::bubbleLow }, { "slotOn", &SPal::slotOn },
+			{ "kbdBg", &SPal::kbdBg }, { "kbdInk", &SPal::kbdInk }, { "blackish", &SPal::blackish }, { "shade45", &SPal::shade45 },
+			{ "onPick", &SPal::onPick }, { "onPickAccent", &SPal::onPickAccent },
+		};
+		for (auto& e : names) rnds::themeColor(e.n, p.*e.m);
 		return p;
 	}
 
@@ -180,17 +195,23 @@ namespace banana
 		build();
 	}
 
-	void Settings::setVariant(const std::string& v)
+	void Settings::setVariant(const std::string& value)
 	{
+		// the Theme setting's value (theme.cpp): its palette, a user theme's colours, files and accent set (or cleared)
+		std::string v = applyTheme(value, getConfValue(data + "/settings.conf", "accent", "yellow"));
 		bool l = v == "light";
 		light = l; cache.clear();	// (also for a new accent: the boxes are drawn again)
 		// the Carts theme writes in Inter (a clean typeface), the others in the theme's Pixelify Sans
 		bool clean = v == "carts" && !fontDir.empty();
-		if (clean != cleanFonts || !R)
+		std::string fonts = clean ? "carts" : rnds::themeFiles.fontRegular + "|" + rnds::themeFiles.fontMedium;
+		if (clean != cleanFonts || !R || fonts != fontsLoaded)
 		{
 			cleanFonts = clean;
-			R = rnds::Font::load(clean ? fontDir + "/Inter-Regular.ttf" : assets + "/fonts/PixelifySans-Regular.ttf");
-			M = rnds::Font::load(clean ? fontDir + "/Inter-Medium.ttf" : assets + "/fonts/PixelifySans-Medium.ttf");
+			fontsLoaded = fonts;
+			// a user theme's fonts (rnds::themeFiles) on its Pixel palettes; one that doesn't load: the theme's
+			const std::string& ownR = rnds::themeFiles.fontRegular, &ownM = rnds::themeFiles.fontMedium;
+			R = rnds::Font::load(clean ? fontDir + "/Inter-Regular.ttf" : !ownR.empty() ? ownR : assets + "/fonts/PixelifySans-Regular.ttf");
+			M = rnds::Font::load(clean ? fontDir + "/Inter-Medium.ttf" : !ownM.empty() ? ownM : assets + "/fonts/PixelifySans-Medium.ttf");
 			if (!R || !M)
 			{
 				R = rnds::Font::load(assets + "/fonts/PixelifySans-Regular.ttf");
@@ -235,6 +256,45 @@ namespace banana
 		{ "Sao Paulo, Buenos Aires", "<-03>3" },
 	};
 
+	// on the RG DS Plus a shader's GPU pass heats the chip enough to slow the CPU in a long session (Golden Sun: Dark
+	// Dawn at 2x: none 0.0% missed refreshes in 6 min, the LCD grid 0.6-1%, measured 2026-10-18)
+	static const char* PLUS_SHADER_NOTE = " On the RG DS Plus a shader also heats the chip: a heavy 3D game can drop frames after a few minutes with one. Set such a game to None on its own page (X in the library).";
+
+	// Settings > Nintendo DS > Shader's choices: Banana's shaders, then the card's own (banana/shaders/<name>.frag,
+	// SuperDrastic's shader format: README.txt there). Made again each time Settings loads the row (load()), so a shader
+	// copied over file sharing while the menu runs is listed without a restart
+	static void shaderChoices(const std::string& data, std::vector<std::string>& shaderNames, std::vector<std::string>& shaderValues)
+	{
+		shaderNames = { "None (smooth)", "Sharp pixels (integer)", "Crisp", "Crisp + DS colours", "LCD grid", "LCD grid + colours", "FSR", "LCD (DS colours)", "LCD 1x", "LCD 3x", "Fast LCD",
+			  "DS colours", "Retro", "Bevel", "Sharp bilinear", "Sharp + scanlines", "Fast CRT", "FXAA", "Integer fill", "LCD grid 2x",
+			  "Dot (MiZai)", "Dot (MiZai, RG DS+)", "Retro tiles", "DraStic LCD", "DraStic LCD + colours", "DraStic Quilez",
+			  "DraStic sharp", "DraStic sharp + colours", "DraStic fast LCD", "DraStic fast LCD + colours" };
+		shaderValues = { "none", "ds-integer", "ds-crisp", "ds-crisp-color", "ds-grid", "ds-grid-color", "ds-fsr", "lcd1x-nds", "lcd1x", "lcd3x", "zfast-lcd",
+			  "nds-color", "retro-v2", "bevel", "sharp-bilinear", "sharp-bilinear-scanlines", "zfast-crt", "fxaa", "ds-integer-fill", "ds-grid-2x",
+			  "nnddss-dot-mizai", "nnddss-dot-mizai-rgds", "nnddss-retro-tiles", "drastic-lcd1x", "drastic-lcd1x-nds-color", "drastic-quilez",
+			  "drastic-sharp-bilinear", "drastic-sharp-bilinear-nds-color", "drastic-zfast-lcd", "drastic-zfast-lcd-nds-color" };
+		if (DIR* d = opendir((data + "/shaders").c_str()))
+		{
+			std::vector<std::string> own;
+			while (dirent* e = readdir(d))
+			{
+				std::string n = e->d_name;
+				if (n.size() > 5 && n[0] != '.' && n.compare(n.size() - 5, 5, ".frag") == 0)
+				{
+					// only names of letters, digits and . _ + - (the README says so): the name goes into the launchers'
+					// settings files, and one with a space, a ";" or a "$" broke them (or ran what it held, before kv-env)
+					std::string base = n.substr(0, n.size() - 5);
+					if (base.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._+-") == std::string::npos)
+						own.push_back(base);
+				}
+			}
+			closedir(d);
+			std::sort(own.begin(), own.end());
+			for (auto& n : own)
+				if (std::find(shaderValues.begin(), shaderValues.end(), n) == shaderValues.end()) { shaderNames.push_back(n + " (card)"); shaderValues.push_back(n); }
+		}
+	}
+
 	void Settings::build()
 	{
 		std::string menu = data + "/settings.conf", power = data + "/bananad.conf", sd = data + "/superdrastic.conf";
@@ -248,7 +308,13 @@ namespace banana
 			items.push_back(it);
 		};
 		const char* D = "Display & sound";
-		add(D, "picture", "Theme", "ROCKNIXDS Pixel's two palettes, dark or light for daylight; or Carts (experimental): your games as cartridges on a shelf, in a clean typeface.", menu, "theme", { "Dark", "Light", "Carts" }, { "dark", "light", "carts" });
+		{
+			// Banana's three, then the themes in banana/themes on the card and the image's examples (theme.h)
+			std::vector<std::string> names = { "Dark", "Light", "Carts" }, values = { "dark", "light", "carts" };
+			for (auto& t : userThemes()) { names.push_back(t.name); values.push_back(t.value); }
+			add(D, "picture", "Theme", "ROCKNIXDS Pixel's two palettes, dark or light for daylight; Carts (experimental): your games as cartridges on a shelf, in a clean typeface; or a theme of your own: a .json in banana/themes on the card (banana/themes/README.txt says how).",
+				menu, "theme", names, values);
+		}
 		add(D, "picture", "Accent colour", "The colour of the selection, the logo and the boot animation's banana.", menu, "accent",
 			{ "Yellow", "Blue", "Red", "Green", "Purple", "Pink" }, { "yellow", "blue", "red", "green", "purple", "pink" });
 		add(D, "picture", "Brightness", "Both panels' backlights. F + volume changes it anywhere, in games too.", "", "",
@@ -275,19 +341,15 @@ namespace banana
 		// with SuperDrastic's Gengis Engine, always (run-drastic, run-bananads).
 		const char* N = "Nintendo DS";
 		const std::string emu = getConfValue(menu, "nds_emulator", getConfValue("/etc/banana/settings.conf", "nds_emulator", "superdrastic"));
-		add(N, "nds", "Emulator", "SuperDrastic: DraStic straight onto both panels, with its own governor. BananaDS: Banana's own emulator (melonDS's core). Both draw 3D with the Gengis Engine at 2x and have their menu on L3; each keeps its own settings below.",
+		add(N, "nds", "Emulator", "SuperDrastic: DraStic straight onto both panels, with its own governor. BananaDS: Banana's own emulator (melonDS's core). Both draw 3D with the Gengis Engine at 2x and have their menu on L3; each keeps its own settings below. X on a game in the library picks one for that game alone.",
 			menu, "nds_emulator", { "SuperDrastic", "BananaDS" }, { "superdrastic", "bananads" });
 		add(N, "nds", "Quick resume", "On: quitting keeps where you are, and the game goes on from there next time (a shutdown too). Off: quitting ends the game, which starts from its title next time.",
 			menu, "quick_resume", { "Off", "On" }, { "off", "on" });
-		const std::vector<std::string> shaderNames = { "None", "Crisp", "Crisp + DS colours", "LCD grid", "LCD grid + colours", "FSR", "LCD (DS colours)", "LCD 1x", "LCD 3x", "Fast LCD",
-			  "DS colours", "Retro", "Bevel", "Sharp bilinear", "Sharp + scanlines", "Fast CRT", "FXAA", "Integer", "Integer fill", "LCD grid 2x",
-			  "Dot (MiZai)", "Dot (MiZai, RG DS+)", "Retro tiles", "DraStic LCD", "DraStic LCD + colours", "DraStic Quilez",
-			  "DraStic sharp", "DraStic sharp + colours", "DraStic fast LCD", "DraStic fast LCD + colours" };
-		const std::vector<std::string> shaderValues = { "none", "ds-crisp", "ds-crisp-color", "ds-grid", "ds-grid-color", "ds-fsr", "lcd1x-nds", "lcd1x", "lcd3x", "zfast-lcd",
-			  "nds-color", "retro-v2", "bevel", "sharp-bilinear", "sharp-bilinear-scanlines", "zfast-crt", "fxaa", "ds-integer", "ds-integer-fill", "ds-grid-2x",
-			  "nnddss-dot-mizai", "nnddss-dot-mizai-rgds", "nnddss-retro-tiles", "drastic-lcd1x", "drastic-lcd1x-nds-color", "drastic-quilez",
-			  "drastic-sharp-bilinear", "drastic-sharp-bilinear-nds-color", "drastic-zfast-lcd", "drastic-zfast-lcd-nds-color" };
-		const char* shaderHelp = "Crisp: exact pixel-area scaling. Grid and LCD: the DS's screen grid. Colours: the DS's own, duller colours. CRT: a TV's scanlines. FSR: smooth edges, the heaviest. None costs no GPU work.";
+		std::vector<std::string> shaderNames, shaderValues;
+		shaderChoices(data, shaderNames, shaderValues);
+		std::string shaderHelpS = "Sharp pixels: every DS pixel an exact square, no blur (4x4 on the RG DS Plus, 2x2 with a frame on the RG DS). None scales smoothly. Your own: .frag files in banana/shaders, named with letters, digits and . _ + - only. Crisp: exact pixel-area scaling. Grid and LCD: the DS's screen grid. Colours: the DS's own, duller colours. CRT: a TV's scanlines. FSR: smooth edges, the heaviest. None costs no GPU work.";
+		if (readLine("/etc/banana/board") == "rgds-plus") shaderHelpS += PLUS_SHADER_NOTE;
+		const char* shaderHelp = shaderHelpS.c_str();
 		if (emu == "bananads")
 		{
 			const std::string bds = "/data/bananads/bananads.conf";
@@ -301,10 +363,10 @@ namespace banana
 				bds, "kms.pace", { "Panels", "DS rate" }, { "display", "ds" });
 			add(N, "nds", "CPU clock", "Saves battery finds the lowest clock each game runs at full speed and remembers it. Always full keeps the top clock.",
 				bds, "cpugov", { "Saves battery", "Always full" }, { "on", "off" });
-			add(N, "nds", "Timing", "Fast lets the two CPUs run longer between meeting (about 10% faster). Accurate is melonDS's own, for a game that misbehaves.",
-				bds, "core.slice", { "Fast", "Accurate" }, { "auto", "64" });
-			add(N, "nds", "Microphone", "How loud a blow or a word must be to reach the game.", bds, "mic.threshold",
-				{ "Medium", "High", "Low", "Off" }, { "0.15", "0.03", "0.3", "0" });
+			add(N, "nds", "Timing", "Accurate is melonDS's own. Fast lets the two CPUs run longer between meeting (about 10% faster), but it can break a game: Golden Sun: Dark Dawn loses its 3D world.",
+				bds, "core.slice", { "Accurate", "Fast" }, { "64", "auto" });
+			add(N, "nds", "Microphone", "How loud a word or a blow must be to reach the game.", bds, "mic.threshold",
+				{ "Medium", "High", "Low", "Off" }, { "0.05", "0.02", "0.15", "0" });
 		}
 		else
 		{
@@ -320,6 +382,13 @@ namespace banana
 			"/data/retroarch/retroarch.cfg", "video_monitor_index", { "Top", "Bottom" }, { "2", "1" });
 		add(O, "gamepad", "Second screen", "While a game plays on one screen, the other shows its RetroAchievements and tiles to save, load, open RetroArch's menu, fast forward and quit (by touch when they are on the bottom screen). Off: the other screen stays dark.",
 			menu, "retroarch_panel", { "Game panel", "Off" }, { "panel", "off" });
+		add(O, "gamepad", "RetroAchievements", "Softcore: achievements unlock with save states, rewind and cheats still there. Hardcore: those are locked for the game, and the unlocks count as hardcore on retroachievements.org. RetroArch's own menu changes the same setting.",
+			"/data/retroarch/retroarch.cfg", "cheevos_hardcore_mode_enable", { "Softcore", "Hardcore" }, { "false", "true" });
+		add(O, "gamepad", "Quick resume", "On: quitting keeps where you are, and the game goes on from there next time (RetroArch's automatic save state; not in Hardcore). Off: a game starts from its title.", "/data/retroarch/retroarch.cfg", "savestate_auto_save", { "Off", "On" }, { "false", "true" });
+		add(O, "picture", "Shader", "A look for the systems RetroArch runs: a handheld's LCD grid, a CRT's scanlines, or sharp pixels at any size. RetroArch's own Shaders menu still picks any of libretro's presets.",
+			menu, "ra_shader", { "Off", "LCD", "CRT", "Sharp pixels" }, { "off", "lcd", "crt", "sharp" });
+		if (access("/usr/lib/libretro/mgba_libretro.so", F_OK) == 0)
+			add(O, "gamepad", "Game Boy Advance", "The emulator for GBA games. gpSP: the fastest. mGBA: the most accurate, and the one RetroAchievements accepts for hardcore.", menu, "core.gba", { "gpSP", "mGBA" }, { "gpsp", "mgba" });
 		const char* W = "Network";
 		add(W, "phone", "Wi-Fi", "", menu, "wifi", { "On", "Off" }, { "on", "off" });
 		add(W, "phone", "Network", "The networks around: A on one joins it, with a password typed on the keyboard here (or by touch).", "", "network", {}, {}, Item::PAGE);
@@ -334,8 +403,12 @@ namespace banana
 		add(S, "gear", "Update", "A new version of Banana from a package on the card, written to the other slot and run from the next restart; this one stays as it is until then.", "", "update", {}, {}, Item::PAGE);
 		add(S, "picture", "Box art", "Covers, title screens, genres and years for your games, from libretro's free collections (no account, Wi-Fi needed). It keeps going in the background; games that already have art are skipped, so running it again only fetches what is new.",
 			"", "scrape", {}, {}, Item::PAGE);
+		add(S, "picture", "Box art from", "libretro: libretro's collections. libretro + Twilight: TwilightBoxart (boxart.kirovair.com) for the covers libretro has none of. Twilight first: TwilightBoxart's covers where it has them. TwilightBoxart is asked one game a second.",
+			menu, "boxart_source", { "libretro", "libretro + Twilight", "Twilight first" }, { "libretro", "both", "twilight" });
 		add(S, "gear", "Previous version", "Restarts into the other slot: the version that ran before the last update. Press A twice.", "", "switch", { "" }, { "" }, Item::ACTION);
 		add(S, "gear", "SSH", "", menu, "ssh", { "Off", "On" }, { "off", "on" });
+		if (access("/run/banana/sd2/slot", F_OK) == 0)	// a second card slot (bananad's sd2 script): the RG DS Plus
+		add(S, "gear", "Second SD card", "Games on the card in the second slot (its roms folder, with the same system folders as this card) show up in the library with the others while it's in. exFAT or FAT32.", menu, "sd2_roms", { "Show its games", "Off" }, { "on", "off" });
 		add(S, "gear", "First-time setup", "The steps from the first boot again: Wi-Fi, the time zone and the RetroAchievements account (ScreenScraper: not available yet).", "", "setup", {}, {}, Item::PAGE);
 		add(S, "gear", "About", "", "", "", {}, {}, Item::INFO);
 		add(S, "gear", "Restart", "Restarts the handheld. Press A twice.", "", "reboot", { "" }, { "" }, Item::ACTION);
@@ -344,6 +417,27 @@ namespace banana
 
 	void Settings::load(Item& it)
 	{
+		if (it.key == "theme")
+		{
+			// the themes as they are on the card now: one copied over file sharing while the menu runs is listed the
+			// next time Settings opens (the list was made once, when banana-ui started)
+			it.names = { "Dark", "Light", "Carts" }; it.values = { "dark", "light", "carts" };
+			for (auto& t : userThemes()) { it.names.push_back(t.name); it.values.push_back(t.value); }
+		}
+		if (it.key == "DSFLIP_SHADER" || it.key == "kms.shader")
+			shaderChoices(data, it.names, it.values);	// the card's shaders as they are now (one copied in while the menu runs)
+		if (it.key == "accent")
+		{
+			// a theme with its own accent: the row says so and has nothing to pick (it came back to life when the theme
+			// changes: the Theme row loads it again)
+			static const std::vector<std::string> NAMES = { "Yellow", "Blue", "Red", "Green", "Purple", "Pink" },
+				VALUES = { "yellow", "blue", "red", "green", "purple", "pink" };
+			bool own = themeSetsAccent(getConfValue(data + "/settings.conf", "theme", "dark"));
+			it.names = own ? std::vector<std::string>{ "From the theme" } : NAMES;
+			it.values = own ? std::vector<std::string>{ getConfValue(it.file, "accent", "yellow") } : VALUES;
+			it.help = own ? "This theme sets its own accent colour. Pick Dark, Light or a theme without one to choose it here."
+				: "The colour of the selection, the logo and the boot animation's banana.";
+		}
 		if (it.kind == Item::BRIGHTNESS)
 		{
 			// the level set (bananad keeps it in banana/backlight; the live one is lower while the idle menu is dimmed,
@@ -388,14 +482,17 @@ namespace banana
 		if (it.file == data + "/bananad.conf") def = getConfValue("/etc/banana/bananad.conf", it.key, def);
 		if (it.file == data + "/settings.conf") def = getConfValue("/etc/banana/settings.conf", it.key, def);
 		if (it.key == "led_brightness") def = getConfValue("/etc/banana/bananad.conf", it.key, "128");
-		if (it.key == "video_monitor_index") def = getConfValue("/etc/banana/retroarch.cfg", it.key, "2");
+		if (it.file.find("retroarch.cfg") != std::string::npos) def = getConfValue("/etc/banana/retroarch.cfg", it.key, def);
 		std::string v = getConfValue(it.file, it.key, def);
 		it.at = -1;
 		for (size_t i = 0; i < it.values.size(); i++)
 			if (it.values[i] == v) it.at = (int)i;
 		// a value the list doesn't have (set by hand, or a shader added later): shown as it is and kept, rather than
 		// shown as the first choice and lost at the first press
-		if (it.at < 0 && !v.empty() && it.key != "led_brightness") { it.names.push_back(v); it.values.push_back(v); it.at = (int)it.values.size() - 1; }
+		// (not the theme: a user theme whose file has gone shows Dark, which is what the menu draws then)
+		// (not a DS shader that is nowhere: a card shader whose file has gone shows None, which is what the emulators draw then)
+		bool goneShader = (it.key == "DSFLIP_SHADER" || it.key == "kms.shader") && access(("/usr/lib/superdrastic/shaders/" + v + ".frag").c_str(), F_OK) != 0;
+		if (it.at < 0 && !v.empty() && it.key != "led_brightness" && it.key != "theme" && !goneShader) { it.names.push_back(v); it.values.push_back(v); it.at = (int)it.values.size() - 1; }
 		if (it.at < 0) it.at = 0;
 		// a value between the choices (the LEDs at 128): the nearest one
 		if (it.key == "led_brightness")
@@ -554,6 +651,7 @@ namespace banana
 		if (it.key == "wifi") spawn("/usr/libexec/banana/wifi", v == "on" ? "up" : "down");
 		if (it.key == "ssh") spawn("/usr/libexec/banana/ssh", v == "on" ? "up" : "down");
 		if (it.key == "share") spawn("/usr/libexec/banana/share", v == "on" ? "up" : "down");
+		if (it.key == "sd2_roms") spawn("/usr/libexec/banana/sd2", "scan");
 	}
 
 	Settings::Result Settings::change(int dir)
@@ -600,8 +698,13 @@ namespace banana
 			armed = -1;
 			return CHANGED;
 		}
-		if (it.key == "theme") { setVariant(it.values[at]); return THEME; }
-		if (it.key == "accent") { rnds::setAccent(it.values[at]); setVariant(light ? "light" : "dark"); return THEME; }
+		if (it.key == "theme")
+		{
+			setVariant(it.values[at]);
+			for (auto& x : items) if (x.key == "accent") load(x);	// "From the theme", or the colours again
+			return THEME;
+		}
+		if (it.key == "accent") { setVariant(getConfValue(data + "/settings.conf", "theme", "dark")); return THEME; }	// (saved above)
 		return CHANGED;
 	}
 
@@ -609,6 +712,7 @@ namespace banana
 	{
 		if (page == NETWORKS) return pressNetworks(k);
 		if (page == KEYBOARD) return pressKeyboard(k);
+		if (page == GAME) return pressGame(k);
 		if (page == UPDATES) return pressUpdates(k);
 		if (page == SETUP) return pressSetup(k);
 		if (inGroups) return pressGroups(k);
@@ -674,6 +778,7 @@ namespace banana
 		downOnRow = false;
 		if (page == NETWORKS) return touchNetworks(cx, cy);
 		if (page == KEYBOARD) return touchKeyboard(cx, cy);
+		if (page == GAME) return touchGame(cx, cy);
 		if (page == SETUP)
 		{
 			if (downY >= 418 && downY <= 466) return pressSetup(downX < 320 ? Key::B : Key::A);
@@ -1073,6 +1178,7 @@ namespace banana
 	{
 		if (page == NETWORKS) { renderNetworks(); return; }
 		if (page == KEYBOARD) { renderKeyboard(); return; }
+		if (page == GAME) { renderGame(); return; }
 		if (page == UPDATES) { renderUpdates(); return; }
 		if (page == SETUP) { renderSetup(); return; }
 		if (inGroups) { renderGroups(); return; }
@@ -1418,6 +1524,7 @@ namespace banana
 			return MOVED;
 		case Key::A: return keyboardKey(krow, kcol);
 		case Key::B:
+			if (pw.empty() && entry == ENTRY_SEARCH) { close(); return CLOSED; }
 			if (pw.empty()) { page = entryBack; message.clear(); return MOVED; }
 			pw.pop_back();
 			return MOVED;
@@ -1571,7 +1678,7 @@ namespace banana
 		be->beginScreen(0);
 		box("screen", false, 0, 0, 640, 480);
 		box("hero", false, 18, 20, 604, 436);
-		icon("phone", 50, 56, 3);
+		icon(entry == ENTRY_SEARCH ? "search" : "phone", 50, 56, 3);
 		text(entryTitle, true, 17, 170, 62, p.muted, true, 1.4f);
 		text(fit(entrySub, true, 30, 420), true, 30, 170, 88, p.ink);
 		box("slot", true, 50, 150, 540, 56);
@@ -1584,8 +1691,14 @@ namespace banana
 		else text(shown, true, 22, 70, 165, p.ink);
 		be->fill(std::round(X(72 + w)), std::round(X(166)), std::round(X(10)), std::round(X(24)), p.accent);	// the cursor
 		std::string n = std::to_string(pw.size()) + (pw.size() == 1 ? " character" : " characters");
+		if (entry == ENTRY_SEARCH && searchCount)
+		{
+			int m = pw.empty() ? -1 : searchCount(pw);
+			n = m < 0 ? "Every system's games" : m == 0 ? "No games match" : std::to_string(m) + (m == 1 ? " game matches" : " games match");
+		}
 		text(n, true, 17, 50, 216, p.muted);
 		std::string help = !message.empty() ? message
+			: entry == ENTRY_SEARCH ? "A types the key, B deletes, X capitals, Y a space, START searches: the games found open as a shelf of their own, first on the shelf. Part of a name is enough; an empty search takes the shelf away."
 			: entry == ENTRY_WIFI ? "A types the key, B deletes, X capitals, L symbols, Y a space, START joins. Or tap the keys. The password is kept in banana/wifi.conf on the card."
 			: "A types the key, B deletes, X capitals, L symbols, Y a space, START when it is typed. Or tap the keys. Accounts are kept in banana/accounts.conf on the card.";
 		wrapped(help, 20, 50, 252, 540, 6, message.empty() ? p.muted : p.accent);
@@ -1596,15 +1709,23 @@ namespace banana
 		// the text being typed, here too, so the keys and what they make are seen together
 		box("slot", true, 18, 12, 604, 56);
 		{
+			// at the right: the length of a password; for a search the games it finds (a bare number there read as a
+			// match count)
+			std::string n = std::to_string(pw.size());
+			if (entry == ENTRY_SEARCH && searchCount)
+			{
+				int m = pw.empty() ? -1 : searchCount(pw);
+				n = m < 0 ? "" : m == 0 ? "No games" : std::to_string(m) + (m == 1 ? " game" : " games");
+			}
+			float nw = text(n, true, 17, 0, 0, p.muted, false, 0, true);
+			const float room = std::min(500.f, 600 - nw - 16 - 40);	// the text stops short of it
 			std::string t = pw;
 			float tw = text(t, true, 24, 0, 0, p.ink, false, 0, true);
-			while (tw > 500 && t.size() > 1) { t.erase(0, 1); tw = text("..." + t, true, 24, 0, 0, p.ink, false, 0, true); }
+			while (tw > room && t.size() > 1) { t.erase(0, 1); tw = text("..." + t, true, 24, 0, 0, p.ink, false, 0, true); }
 			if (t != pw) t = "..." + t;
 			if (pw.empty()) { tw = 0; text(entrySub.empty() ? "Type here" : entrySub, true, 22, 38, 28, p.muted); }
 			else text(t, true, 24, 38, 27, p.ink);
 			be->fill(std::round(X(40 + tw)), std::round(X(26)), std::round(X(10)), std::round(X(28)), p.accent);	// the cursor
-			std::string n = std::to_string(pw.size());
-			float nw = text(n, true, 17, 0, 0, p.muted, false, 0, true);
 			text(n, true, 17, 600 - nw, 31, p.muted);
 		}
 		// the keys: the selected one in the menu's yellow, the others light on dark
@@ -1759,6 +1880,182 @@ namespace banana
 		be->endScreen();
 	}
 
+	// ---- the game page: a DS game's own emulator and shader ------------------------------------------------------
+	static const char* GAME_EMUS[] = { "", "superdrastic", "bananads" };
+	static const char* GAME_EMU_NAMES[] = { "", "SuperDrastic", "BananaDS" };
+
+	// a game's own choice in banana/<file> ("<rom file name> = <value>" a line, the name as on the card without its
+	// folder; the last line for a game counts): nds-per-game.conf its emulator (run-nds), nds-per-game-shader.conf its
+	// shader (run-drastic, run-bananads, through nds-game-shader)
+	std::string Settings::perGame(const std::string& file, const std::string& rom)
+	{
+		std::ifstream f(data + "/" + file);
+		std::string ln, r;
+		while (std::getline(f, ln))
+		{
+			size_t eq = ln.rfind(" = ");	// (the last one: a name may have " = " in it)
+			if (ln.empty() || ln[0] == '#' || eq == std::string::npos) continue;
+			if (ln.substr(0, eq) == rom) r = trim(ln.substr(eq + 3));
+		}
+		return r;
+	}
+
+	void Settings::setPerGame(const std::string& file, const std::string& rom, const std::string& value)
+	{
+		std::string path = data + "/" + file, out, ln;
+		{
+			std::ifstream f(path);
+			// a file that is there but can't be read (a card error): left alone
+			if (!f && access(path.c_str(), F_OK) == 0) return;
+			while (std::getline(f, ln))
+			{
+				size_t eq = ln.rfind(" = ");
+				if (!ln.empty() && ln[0] != '#' && eq != std::string::npos && ln.substr(0, eq) == rom) continue;
+				out += ln + "\n";
+			}
+		}
+		if (!value.empty()) out += rom + " = " + value + "\n";
+		// the last game back to "As in Settings": no file rather than an empty one (the launchers and the tests look for
+		// the file; a card with nothing chosen per game has none)
+		if (out.find_first_not_of(" \t\r\n") == std::string::npos)
+		{
+			unlink(path.c_str());
+			return;
+		}
+		std::string tmp = path + ".new";
+		FILE* f = fopen(tmp.c_str(), "w");
+		if (!f) return;
+		bool ok = fwrite(out.data(), 1, out.size(), f) == out.size();
+		ok = fflush(f) == 0 && fsync(fileno(f)) == 0 && ok;
+		fclose(f);
+		if (ok) rename(tmp.c_str(), path.c_str());
+		else unlink(tmp.c_str());
+	}
+
+	std::string Settings::gameEmulator(const std::string& rom) { return perGame("nds-per-game.conf", rom); }
+	void Settings::setGameEmulator(const std::string& rom, const std::string& emu) { setPerGame("nds-per-game.conf", rom, emu); }
+
+	void Settings::openGame(const std::string& title, const std::string& romName)
+	{
+		open();
+		pgTitle = title; pgRom = romName;
+		std::string cur = gameEmulator(romName);
+		pgEmu = 0;
+		for (int i = 1; i < 3; i++) if (cur == GAME_EMUS[i]) pgEmu = i;
+		// the shaders as Settings lists them (the card's included, as they are now), after "As in Settings"
+		std::vector<std::string> names, values;
+		shaderChoices(data, names, values);
+		pgShaderNames = { "" }; pgShaderValues = { "" };
+		pgShaderNames.insert(pgShaderNames.end(), names.begin(), names.end());
+		pgShaderValues.insert(pgShaderValues.end(), values.begin(), values.end());
+		std::string sh = perGame("nds-per-game-shader.conf", romName);
+		pgShader = 0;
+		for (size_t i = 1; i < pgShaderValues.size(); i++) if (pgShaderValues[i] == sh) pgShader = (int)i;
+		if (!sh.empty() && pgShader == 0)	// a card shader that has gone: shown (and kept) as it is
+		{
+			pgShaderNames.push_back(sh + " (not on the card)"); pgShaderValues.push_back(sh);
+			pgShader = (int)pgShaderValues.size() - 1;
+		}
+		pgRow = 0;
+		message.clear();
+		page = GAME;
+	}
+
+	Settings::Result Settings::pressGame(Key k)
+	{
+		switch (k)
+		{
+		case Key::UP: case Key::DOWN: pgRow ^= 1; return MOVED;
+		case Key::LEFT: case Key::RIGHT:
+		{
+			int d = k == Key::LEFT ? -1 : 1;
+			if (pgRow == 0) pgEmu = (pgEmu + d + 3) % 3;
+			else
+			{
+				int n = (int)pgShaderValues.size();
+				pgShader = (pgShader + d + n) % n;
+			}
+			return MOVED;
+		}
+		case Key::A:
+			setGameEmulator(pgRom, GAME_EMUS[pgEmu]);
+			setPerGame("nds-per-game-shader.conf", pgRom, pgShaderValues[pgShader]);
+			close();
+			return CHANGED;
+		case Key::B: close(); return CLOSED;
+		default: return NONE;
+		}
+	}
+
+	Settings::Result Settings::touchGame(float cx, float cy)
+	{
+		(void)cx; (void)cy;
+		if (downY >= 418 && downY <= 466) return pressGame(downX < 320 ? Key::B : Key::A);
+		for (int r = 0; r < 2; r++)
+		{
+			float ry = 82 + r * 64;
+			if (downY < ry || downY > ry + 56) continue;
+			if (r != pgRow) { pgRow = r; return MOVED; }
+			return pressGame(downX < 320 ? Key::LEFT : Key::RIGHT);	// the value's left or right half steps it
+		}
+		return NONE;
+	}
+
+	void Settings::renderGame()
+	{
+		SPal p = pal(light);
+		const std::string menu = data + "/settings.conf";
+		std::string global = getConfValue(menu, "nds_emulator", getConfValue("/etc/banana/settings.conf", "nds_emulator", "superdrastic"));
+		if (global != "bananads") global = "superdrastic";
+		// the emulator this game runs in, and Settings' shader for that emulator (each keeps its own)
+		const std::string emu = pgEmu ? GAME_EMUS[pgEmu] : global;
+		std::string gsh = emu == "bananads" ? getConfValue("/data/bananads/bananads.conf", "kms.shader", "") : "";
+		if (gsh.empty()) gsh = getConfValue(data + "/superdrastic.conf", "DSFLIP_SHADER", "none");
+		std::string gshName = gsh;
+		for (size_t i = 1; i < pgShaderValues.size(); i++) if (pgShaderValues[i] == gsh) gshName = pgShaderNames[i];
+		const std::string emuValue = pgEmu ? std::string(GAME_EMU_NAMES[pgEmu]) : std::string("As in Settings (") + (global == "bananads" ? "BananaDS" : "SuperDrastic") + ")";
+		const std::string shValue = pgShader ? pgShaderNames[pgShader] : "As in Settings: " + gshName;	// (names have brackets of their own)
+		const bool plus = readLine("/etc/banana/board") == "rgds-plus";
+
+		be->beginScreen(0);
+		box("screen", false, 0, 0, 640, 480);
+		box("hero", false, 18, 20, 604, 436);
+		icon("nds", 50, 56, 3);
+		text(pgRow == 0 ? "This game's emulator" : "This game's shader", true, 17, 170, 62, p.muted, true, 1.4f);
+		text(fit(pgTitle, true, 30, 420), true, 30, 170, 88, p.ink);
+		text(fit(pgRow == 0 ? emuValue : shValue, true, 22, 420), true, 22, 170, 130, p.accent);
+		std::string help = pgRow == 0
+			? "SuperDrastic: DraStic onto both panels, the fastest. BananaDS: Banana's own emulator (melonDS's core), the most "
+			  "accurate. The choice is for this game only; the others follow Settings > Nintendo DS > Emulator."
+			: std::string("The picture's shader for this game only, in either emulator; the others follow Settings > Nintendo DS > Shader. "
+			  "None scales smoothly and costs no GPU work.") + (plus ? PLUS_SHADER_NOTE : "");
+		wrapped(help, 20, 50, 196, 540, 7, p.muted);
+		be->endScreen();
+
+		be->beginScreen(1);
+		box("screen", false, 0, 0, 640, 480);
+		box("bubble", false, 18, 14, 604, 54);
+		text("This game", true, 22, 38, 28, p.ink);
+		for (int r = 0; r < 2; r++)
+		{
+			bool on = r == pgRow;
+			float y = 82 + r * 64;
+			box(on ? "pick" : "slot", on, 18, y, 604, 56);
+			Color c = on ? p.onPick : p.muted;
+			text(r == 0 ? "Emulator" : "Shader", true, 20, 38, y + 16, c);
+			std::string v = fit(r == 0 ? emuValue : shValue, true, 19, 380);
+			float vw = text(v, true, 19, 0, 0, p.ink, false, 0, true);
+			arrow(true, 576, y + 21, c);
+			text(v, true, 19, 566 - vw, y + 17, c);
+			arrow(false, 556 - vw - 2 - std::round(13 / 2.0f + 1), y + 21, c);
+		}
+		float bw = faceWidth("B", "Back");
+		face("B", "Back", 18, bw);
+		float aw = faceWidth("A", "Done");
+		face("A", "Done", 622 - aw, aw);
+		be->endScreen();
+	}
+
 	// ---- the keyboard's purposes, and the accounts file -------------------------------------------------------
 	void Settings::startEntry(Entry e, const std::string& title, const std::string& sub, Page back, const std::string& start)
 	{
@@ -1767,6 +2064,12 @@ namespace banana
 		layer = 0; krow = 1; kcol = 0;
 		message.clear();
 		page = KEYBOARD;
+	}
+
+	void Settings::openSearch(const std::string& start)
+	{
+		open();
+		startEntry(ENTRY_SEARCH, "Search games", "Type a name", LIST, start);
 	}
 
 	std::string Settings::account(const char* key)
@@ -1811,6 +2114,11 @@ namespace banana
 			page = entryBack;
 			message.clear();
 			return CHANGED;
+		case ENTRY_SEARCH:
+			searchText = pw;
+			pw.clear();
+			close();
+			return SEARCH;
 		}
 		return NONE;
 	}
@@ -1961,6 +2269,17 @@ namespace banana
 		if (wifiOn() && !statusJob.running()) statusJob.start(wifiTool + " status", sync);
 	}
 
+	// the time on the clock now, in the time zone in effect (save() sets TZ when the zone changes)
+	static std::string clockNow()
+	{
+		time_t t = time(nullptr);
+		struct tm lt;
+		localtime_r(&t, &lt);
+		char b[8];
+		snprintf(b, sizeof b, "%02d:%02d", lt.tm_hour, lt.tm_min);
+		return b;
+	}
+
 	void Settings::setupDone()
 	{
 		std::ofstream(data + "/setup-done") << "done\n";
@@ -1985,6 +2304,7 @@ namespace banana
 				int n = (int)tz->values.size();
 				tz->at = (tz->at + (k == Key::LEFT ? -1 : 1) + n) % n;
 				save(*tz);
+				message.clear();
 			}
 			return CHANGED;
 		case Key::A:
@@ -1994,7 +2314,18 @@ namespace banana
 			case 1: return pressSetup(Key::RIGHT);
 			case 2: startEntry(ENTRY_RA_USER, "RetroAchievements", "Account name", SETUP, account("ra_user")); return MOVED;
 			case 3: startScrape(); return MOVED;	// box art: on its own, while the setup goes on
-			default: setupDone(); return CLOSED;
+			default:
+				// the clock is UTC until a zone is picked, and a setup finished with the first entry left the menu's clock
+				// hours off: the first A on Finish goes to the time zone (with the time it would show), a second finishes
+				if (tz && tz->at == 0 && !tzAsked)
+				{
+					tzAsked = true;
+					wsel = 1;
+					message = "The time zone is still UTC, so the clock shows " + clockNow() + ". Left and right pick yours; Finish again to keep UTC.";
+					return MOVED;
+				}
+				setupDone();
+				return CLOSED;
 			}
 		case Key::B: case Key::START:
 			setupDone();		// skipped: Settings > System > First-time setup brings it back
@@ -2012,7 +2343,7 @@ namespace banana
 		static const char* names[5] = { "Wi-Fi", "Time zone", "RetroAchievements", "Box art", "Finish" };
 		std::string status[5] = {
 			wstat.connected ? "Connected to " + wstat.ssid : wifiOn() ? "Not connected" : "Off",
-			tz ? tz->names[tz->at] : "",
+			tz ? tz->names[tz->at] + " (" + clockNow() + ")" : "",	// (the time it gives, so a wrong zone shows)
 			ra.empty() ? "Not signed in" : ra,
 			scrapeShort(),
 			"" };
@@ -2071,6 +2402,20 @@ namespace banana
 		if (t < scrapeNext) return false;
 		scrapeNext = t + 500;
 		std::string ln = readLine("/run/banana/scrape.status");
+		// a run that is gone (banana-scrape crashed, was killed, or never started): "running" with no word for 90 s
+		// and no scraper alive (its pid in awake.pid) is over, so the row can be started again (it said Running until
+		// a restart)
+		struct stat st;
+		if (ln.compare(0, 8, "running ") == 0 && stat("/run/banana/scrape.status", &st) == 0 && time(nullptr) - st.st_mtime > 90)
+		{
+			int pid = 0;
+			std::ifstream("/run/banana/awake.pid") >> pid;
+			if (pid <= 0 || kill(pid, 0) != 0)
+			{
+				ln = "error stopped";
+				std::ofstream("/run/banana/scrape.status") << ln << "\n";
+			}
+		}
 		if (ln == scrapeLine) return false;
 		bool was = scraping();
 		scrapeLine = ln;
@@ -2226,6 +2571,7 @@ namespace banana
 		std::map<std::string, bool> badgeReady;		// badge name -> its file is in BADGES
 		int gen = 0;
 		std::string user, token;
+		time_t cfgSeen = 0;	// retroarch.cfg's mtime when the token was last looked for in it
 		long long pos = 0;
 		std::string part;
 		double since = 0;
@@ -2363,8 +2709,14 @@ namespace banana
 			if (raw->since == 0) raw->since = t;
 			raw->poll(raw, t);
 			std::lock_guard<std::mutex> l(raw->mu);
-			// a token RetroArch wrote while the game started (a first login)
-			if (raw->token.empty() && raw->state != 4) raw->token = cfgValue("/data/retroarch/retroarch.cfg", "cheevos_token");
+			// a token RetroArch wrote while the game started (a first login): looked for when the file changes, not on
+			// every pass (the whole retroarch.cfg ten times a second, beside the game, for as long as it had none)
+			struct stat st;
+			if (raw->token.empty() && raw->state != 4 && stat("/data/retroarch/retroarch.cfg", &st) == 0 && st.st_mtime != raw->cfgSeen)
+			{
+				raw->cfgSeen = st.st_mtime;
+				raw->token = cfgValue("/data/retroarch/retroarch.cfg", "cheevos_token");
+			}
 			if (raw->gen != gSeen) changed = true;
 		}
 		if (gFlash >= 0 && t >= gFlashUntil && gDown < 0) { gFlash = -1; changed = true; }

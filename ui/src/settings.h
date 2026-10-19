@@ -15,6 +15,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -46,7 +47,14 @@ namespace banana
 		bool takeLibraryChanged() { bool r = libChanged; libChanged = false; return r; }
 
 		// what the host has to do after an input
-		enum Result { NONE, MOVED, CHANGED, CLOSED, THEME, REBOOT, POWEROFF };
+		enum Result { NONE, MOVED, CHANGED, CLOSED, THEME, REBOOT, POWEROFF, SEARCH };
+		// SELECT in the menu: the keyboard alone, for a search of the games; SEARCH when it is done, with the text in
+		// searchText (empty: the search taken away)
+		void openSearch(const std::string& start);
+		// X on a DS game in the library: which emulator runs this one game (title shown, ROM file name as the key)
+		void openGame(const std::string& title, const std::string& romName);
+		std::string searchText;
+		std::function<int(const std::string&)> searchCount;	// the games the text typed so far finds (the host's library)
 		Result press(Key k);
 		Result touch(float x, float y, bool down);	// bottom panel, device px
 		void render();
@@ -98,10 +106,23 @@ namespace banana
 		std::string about, wifiInfo, ip;
 
 		// the Wi-Fi pages: the networks around, and the keyboard for a password (settings-wifi.cpp)
-		enum Page { LIST, NETWORKS, KEYBOARD, UPDATES, SETUP } page = LIST;
+		enum Page { LIST, NETWORKS, KEYBOARD, UPDATES, SETUP, GAME } page = LIST;
+		// the game page (X on a DS game in the library): its emulator, this game only (banana/nds-per-game.conf, read by
+		// run-nds: "<ROM file name> = superdrastic|bananads", no line = Settings > Nintendo DS > Emulator)
+		// the game page (X on a DS game): its own emulator and shader, each "As in Settings" (index 0) or a choice
+		std::string pgTitle, pgRom;
+		int pgRow = 0, pgEmu = 0, pgShader = 0;
+		std::vector<std::string> pgShaderNames, pgShaderValues;
+		std::string gameEmulator(const std::string& rom);
+		void setGameEmulator(const std::string& rom, const std::string& emu);
+		std::string perGame(const std::string& file, const std::string& rom);
+		void setPerGame(const std::string& file, const std::string& rom, const std::string& value);
+		Result pressGame(Key k);
+		Result touchGame(float cx, float cy);
+		void renderGame();
 		// the keyboard types a text for a purpose: a Wi-Fi password, or an account's name or password
 		// (banana/accounts.conf: RetroAchievements for DraStic and RetroArch, ScreenScraper for the scraper to come)
-		enum Entry { ENTRY_WIFI, ENTRY_RA_USER, ENTRY_RA_PASS, ENTRY_SS_USER, ENTRY_SS_PASS } entry = ENTRY_WIFI;
+		enum Entry { ENTRY_WIFI, ENTRY_RA_USER, ENTRY_RA_PASS, ENTRY_SS_USER, ENTRY_SS_PASS, ENTRY_SEARCH } entry = ENTRY_WIFI;
 		std::string entryTitle, entrySub;
 		Page entryBack = NETWORKS;
 		void startEntry(Entry e, const std::string& title, const std::string& sub, Page back, const std::string& start = "");
@@ -120,6 +141,7 @@ namespace banana
 		// the installation (banana/setup-done is written at the end) and from Settings > System
 		bool wizard = false;
 		int wsel = 0;
+		bool tzAsked = false;	// the setup's Finish has pointed at a time zone left at UTC once
 		void openSetup();
 		Result pressSetup(Key k);
 		void renderSetup();
@@ -170,6 +192,7 @@ namespace banana
 		std::shared_ptr<rnds::Font> R, M;
 		std::string fontDir;		// Inter's TTFs (the Carts theme)
 		bool cleanFonts = false;
+		std::string fontsLoaded;	// the fonts R and M are (setVariant): a user theme's, or "carts"
 		struct Cached { rnds::TexPtr tex; int ox = 0, oy = 0; float w = 0; };
 		std::map<std::string, Cached> cache;
 

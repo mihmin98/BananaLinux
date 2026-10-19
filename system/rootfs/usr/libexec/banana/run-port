@@ -11,13 +11,30 @@ fi
 export HOME=/data/home XDG_DATA_HOME=/data/home/.local/share XDG_CONFIG_HOME=/data/home/.config XDG_RUNTIME_DIR=/run
 mkdir -p $XDG_DATA_HOME $XDG_CONFIG_HOME
 export SDL_KMSDRM_FIRST=${BANANA_TOP:-DSI-2} TERM=linux
+# PortMaster's menu is Python with PySDL2, which finds SDL2 through ctypes.util.find_library: no ldconfig cache or
+# compiler here, so it found nothing and PortMaster quit a second after starting. Its own folder says where.
+export PYSDL2_DLL_PATH=/usr/lib
+# PortMaster starts its splash (a LÖVE app on KMSDRM, holding DRM master) and then its menu, which stops the splash
+# only after SDL is up. SDL's KMSDRM skips a device it can't be master of (SDL_KMSDRM_REQUIRE_DRM_MASTER, on by
+# default), so the menu's SDL fell back to the offscreen driver and drew nowhere: a black screen. Master is taken when
+# the window is made, once the splash has gone.
+export SDL_KMSDRM_REQUIRE_DRM_MASTER=0
 . /usr/libexec/banana/one-panel
 one_panel_dark top
 cd "$(dirname "$1")"
-bash "$1" &
+# the port in its own session (its process group = $C): a quit from the menu, and the port's end, reach everything it
+# started. PortMaster's script runs its menu (python3 pugwash) as a child: a TERM to the script alone left that
+# running, holding the display, and the menu's next game got no panel
+setsid bash "$1" &
 C=$!
-trap 'kill -TERM $C 2>/dev/null' TERM INT HUP
+trap 'kill -TERM -$C 2>/dev/null' TERM INT HUP
 wait $C; S=$?
 while kill -0 $C 2>/dev/null; do wait $C; S=$?; done
+# whatever of it is still running (the script gone, a child left behind): asked to stop, then stopped
+if kill -0 -$C 2>/dev/null; then
+    kill -TERM -$C 2>/dev/null
+    for i in 1 2 3 4 5 6 7 8 9 10; do kill -0 -$C 2>/dev/null || break; sleep 0.2; done
+    kill -KILL -$C 2>/dev/null
+fi
 one_panel_restore
 exit $S

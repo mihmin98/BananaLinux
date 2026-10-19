@@ -33,6 +33,9 @@ if [ -f $A ]; then
 fi
 # the in-game menu (L3) in BananaOS's colours and fonts
 export DSFLIP_MENU_THEME=banana
+# a shader of your own (banana/shaders/<name>.frag, listed in Settings as "<name> (card)"): SuperDrastic looks there
+s=$(sed -n 's/^ *DSFLIP_SHADER *= *//p' /data/banana/superdrastic.conf 2>/dev/null | tail -n 1)
+[ -n "$s" ] && [ -f "/data/banana/shaders/$s.frag" ] && export DSFLIP_SHADER_DIR=/data/banana/shaders
 # Settings > Nintendo DS > Frame pacing (superdrastic.conf DSFLIP_PACE): Panels (the default) runs DraStic at the
 # panels' refresh instead of the DS's 59.83 Hz, which against a 60 Hz panel showed a frame twice every ~6 s (a
 # hitch when the picture scrolls; BananaDS's kms.pace=display): SuperDrastic takes its sound as 44100 * refresh /
@@ -47,7 +50,14 @@ refresh() {
     awk -v k=$1 -v h=$2 -v v=$3 -v c=${clk:-0} 'BEGIN { if (c < 1000000) c = k * 1000; printf "%.4f\n", c / (h * v) }'
 }
 pace=$(sed -n 's/^ *DSFLIP_PACE *= *//p' /data/banana/superdrastic.conf 2>/dev/null | tail -n 1)
-[ "$pace" = ds ] || export DSFLIP_AUDIO_LOCK=${DSFLIP_AUDIO_LOCK:-$(refresh)}
+# DraStic makes 44100 samples a second here whatever the panels' rate (it runs its own 60 frames a second: present/s
+# 60.0 on a 60.17 Hz panel too), so its sound is taken at exactly that: DSFLIP_AUDIO_LOCK_PER = the refresh rate. Taken
+# at the DS's rate it was drained faster than it was made, and DraStic filled the gaps with zeros (Mario Kart DS: 40-66
+# clicks every 10 s; 0 at 44100, measured at 59.9986 and at 60.17 Hz, the stock timing before panel-tune's next boot)
+if [ "$pace" != ds ]; then
+    export DSFLIP_AUDIO_LOCK=${DSFLIP_AUDIO_LOCK:-$(refresh)}
+    export DSFLIP_AUDIO_LOCK_PER=${DSFLIP_AUDIO_LOCK_PER:-$DSFLIP_AUDIO_LOCK}
+fi
 export DSFLIP_AUDIO_DEVICE_RATE=${DSFLIP_AUDIO_DEVICE_RATE:-48000}
 # two finished frames may wait for the panels, not one: DraStic's frames come unevenly (two in one refresh, then
 # none), and with one a frame was dropped and the next refresh repeated the last (HeartGold, 65 s: 12 drops and 8
@@ -69,7 +79,16 @@ if grep -q '^ *quick_resume *= *on' /data/banana/settings.conf 2>/dev/null; then
     export DSFLIP_RESUME_FILE="$R" DSFLIP_RESUME_LOAD=$RLOAD
 fi
 # the settings screen's choices (KEY=value lines), exported to SuperDrastic
-if [ -f /data/banana/superdrastic.conf ]; then set -a; . /data/banana/superdrastic.conf; set +a; fi
+. /usr/libexec/banana/kv-env
+kv_export /data/banana/superdrastic.conf DSFLIP_ DSHOOK_  # (read, never run: kv-env)
+# the game's own shader (its page, X in the library: nds-game-shader), for this run only; a card shader from its folder
+gs=$(/usr/libexec/banana/nds-game-shader "$1")
+if [ -n "$gs" ]; then
+    echo "run-drastic: ${1##*/} has its own shader: $gs" >&2
+    export DSFLIP_SHADER=$gs
+    unset DSFLIP_SHADER_DIR
+    [ -f "/data/banana/shaders/$gs.frag" ] && export DSFLIP_SHADER_DIR=/data/banana/shaders
+fi
 # the 3D always through the Gengis Engine (no longer a setting; a DSFLIP_RAST=0 left in the file from before is overruled)
 export DSFLIP_RAST=1
 exec $SD/superdrastic-run $D/drastic "$1"

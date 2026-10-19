@@ -1,4 +1,5 @@
 #include "library.h"
+#include "theme.h"
 #include <algorithm>
 #include <cerrno>
 #include <cmath>
@@ -10,6 +11,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <glob.h>
+#include <map>
+#include <unordered_map>
 #include "../rnds/RndsRaster.h"
 #include "../third_party/stb_image_write.h"
 
@@ -329,17 +332,17 @@ namespace banana
 		}
 	}
 
-	// written beside and renamed over, so a power cut leaves the old file or the new one
+	// written beside and renamed over, so a power cut leaves the old file or the new one (and a full card, a write
+	// that fell short: the old one, not the short copy over it)
 	static void writeAtomic(const std::string& path, const std::string& body)
 	{
 		std::string tmp = path + ".new";
 		FILE* f = fopen(tmp.c_str(), "w");
 		if (!f) return;
-		fwrite(body.data(), 1, body.size(), f);
-		fflush(f);
-		fsync(fileno(f));
-		fclose(f);
-		rename(tmp.c_str(), path.c_str());
+		bool ok = fwrite(body.data(), 1, body.size(), f) == body.size();
+		ok &= fflush(f) == 0 && fsync(fileno(f)) == 0;
+		ok &= fclose(f) == 0;
+		if (!ok || rename(tmp.c_str(), path.c_str()) != 0) unlink(tmp.c_str());
 	}
 
 	void Library::saveFavs()
@@ -371,9 +374,16 @@ namespace banana
 		{
 			if (e->d_name[0] == '.') continue;
 			std::string name = e->d_name, full = dir + "/" + name, rel = relDir.empty() ? name : relDir + "/" + name;
-			struct stat st;
-			if (stat(full.c_str(), &st)) continue;
-			if (S_ISDIR(st.st_mode))
+			// the directory's own word for what each entry is (exFAT and vfat give it): a stat only when it doesn't
+			// say, or for a link (a thousand stats on the card at each scan before)
+			bool isDir = e->d_type == DT_DIR;
+			if (e->d_type == DT_UNKNOWN || e->d_type == DT_LNK)
+			{
+				struct stat st;
+				if (stat(full.c_str(), &st)) continue;
+				isDir = S_ISDIR(st.st_mode);
+			}
+			if (isDir)
 			{
 				// art and ES's own folders are not games
 				std::string ln = lower(name);
@@ -389,26 +399,80 @@ namespace banana
 		closedir(d);
 	}
 
-	// media/<kind>/<rom name>.png or .jpg
-	static std::string mediaFile(const std::string& sysDir, const char* kind, const std::string& stem)
+	// media/<kind>/<rom name>.png or .jpg. Each folder is listed once a scan and looked up in memory: a name that
+	// isn't there walks the whole folder on exFAT, and every game missed in box/, cart/ and label/ and as .png before
+	// .jpg (a thousand games: thousands of walks of a thousand names). Matched without case, as exFAT opens them
+	struct MediaIndex
 	{
-		for (const char* ext : { ".png", ".jpg" })
+		std::map<std::string, std::unordered_map<std::string, std::string>> dirs;	// folder -> lower-case name -> name
+		std::string find(const std::string& sysDir, const char* kind, const std::string& stem)
 		{
-			std::string p = sysDir + "/media/" + kind + "/" + stem + ext;
-			if (exists(p)) return p;
+			std::string d = sysDir + "/media/" + kind;
+			auto it = dirs.find(d);
+			if (it == dirs.end())
+			{
+				std::unordered_map<std::string, std::string> names;
+				if (DIR* dd = opendir(d.c_str()))
+				{
+					while (dirent* e = readdir(dd)) if (e->d_name[0] != '.') names.emplace(lower(e->d_name), e->d_name);
+					closedir(dd);
+				}
+				it = dirs.emplace(d, std::move(names)).first;
+			}
+			if (it->second.empty()) return "";
+			for (const char* ext : { ".png", ".jpg" })
+			{
+				auto n = it->second.find(lower(stem + ext));
+				if (n != it->second.end()) return d + "/" + n->second;
+			}
+			return "";
 		}
-		return "";
+	};
+
+	std::vector<std::string> Library::roots() const
+	{
+		std::vector<std::string> r = { romRoot };
+		std::ifstream f("/run/banana/sd2/roms");
+		std::string ln;
+		if (f && std::getline(f, ln) && !trim(ln).empty() && trim(ln) != romRoot) r.push_back(trim(ln));
+		return r;
+	}
+
+	// the folders under a system's folder that listRoms looks into (not art's or ES's own), to watch them as well: a game
+	// copied into one of them otherwise went unseen until the next scan for another reason
+	static void gameDirs(const std::string& dir, int depth, std::vector<std::string>& out)
+	{
+		if (depth >= 2) return;
+		DIR* d = opendir(dir.c_str());
+		if (!d) return;
+		while (dirent* e = readdir(d))
+		{
+			if (e->d_name[0] == '.' || (e->d_type != DT_DIR && e->d_type != DT_UNKNOWN)) continue;
+			std::string ln = lower(e->d_name), full = dir + "/" + e->d_name;
+			if (ln == "media" || ln == "images" || ln == "videos" || ln == "manuals" || ln == "downloaded_images") continue;
+			struct stat st;
+			if (e->d_type == DT_UNKNOWN && (stat(full.c_str(), &st) || !S_ISDIR(st.st_mode))) continue;
+			out.push_back(full);
+			gameDirs(full, depth + 1, out);
+		}
+		closedir(d);
 	}
 
 	std::vector<std::string> Library::watchDirs() const
 	{
-		std::vector<std::string> r = { romRoot };
-		for (auto& d : defs)
+		std::vector<std::string> r = { "/run/banana/sd2" };	// the second card in or out: a new scan
+		for (auto& root : roots())
 		{
-			std::string dir = folderPath(romRoot, d.folder);
-			r.push_back(dir);
-			r.push_back(dir + "/media");
-			for (const char* m : { "box", "cart", "label" }) r.push_back(dir + "/media/" + m);
+			r.push_back(root);
+			for (auto& d : defs)
+			{
+				if (root != romRoot && !d.folder.empty() && d.folder[0] == '/') continue;	// an absolute folder: one place
+				std::string dir = folderPath(root, d.folder);
+				r.push_back(dir);
+				r.push_back(dir + "/media");
+				for (const char* m : { "box", "cart", "label" }) r.push_back(dir + "/media/" + m);
+				if (!d.flat) gameDirs(dir, 0, r);	// the folders games are found in too (listRoms looks 2 deep)
+			}
 		}
 		return r;
 	}
@@ -417,44 +481,50 @@ namespace banana
 	{
 		loadState();
 		shelves.clear();
+		MediaIndex media;
 		for (auto& def : defs)
 		{
 			Shelf sh;
 			sh.def = def;
 			sh.order = (int)(&def - &defs[0]);
-			std::string dir = folderPath(romRoot, def.folder);
-			std::vector<std::string> rels;
-			listRoms(dir, "", def.exts, rels, 0, def.flat ? 0 : 2);
-			auto gl = readGamelist(dir);
-			for (auto& rel : rels)
+			auto rootList = roots();
+			for (size_t ri = 0; ri < rootList.size(); ri++)
 			{
-				Game g;
-				g.rel = rel; g.path = dir + "/" + rel;
-				std::string base = rel.substr(rel.rfind('/') == std::string::npos ? 0 : rel.rfind('/') + 1);
-				std::string stem = base.substr(0, base.rfind('.'));
-				if (lower(stem).size() > 3 && lower(stem).compare(stem.size() - 3, 3, ".p8") == 0) stem.resize(stem.size() - 3);	// a .p8.png cart
-				g.title = cleanTitle(stem);
-				auto it = gl.find(rel);
-				if (it != gl.end())
+				if (ri > 0 && !def.folder.empty() && def.folder[0] == '/') continue;	// an absolute folder: one place
+				std::string dir = folderPath(rootList[ri], def.folder);
+				std::vector<std::string> rels;
+				listRoms(dir, "", def.exts, rels, 0, def.flat ? 0 : 2);
+				auto gl = readGamelist(dir);
+				for (auto& rel : rels)
 				{
-					if (!it->second.name.empty()) g.title = cleanTitle(it->second.name);
-					std::string genre = it->second.genre;
-					size_t cut = genre.find_first_of(",;/|");
-					g.genre = trim(cut == std::string::npos ? genre : genre.substr(0, cut));
-					const std::string& d = it->second.date;
-					if (d.size() >= 4 && d.compare(0, 4, "0000") && std::all_of(d.begin(), d.begin() + 4, ::isdigit)) g.year = d.substr(0, 4);
-					g.box = exists(it->second.thumb) ? it->second.thumb : (exists(it->second.image) ? it->second.image : "");
-					if (exists(it->second.cart)) g.cart = it->second.cart;
-					if (exists(it->second.boxback)) g.label = it->second.boxback;
+					Game g;
+					g.rel = (ri > 0 ? "@sd2/" : "") + rel; g.path = dir + "/" + rel;
+					std::string base = rel.substr(rel.rfind('/') == std::string::npos ? 0 : rel.rfind('/') + 1);
+					std::string stem = base.substr(0, base.rfind('.'));
+					if (lower(stem).size() > 3 && lower(stem).compare(stem.size() - 3, 3, ".p8") == 0) stem.resize(stem.size() - 3);	// a .p8.png cart
+					g.title = cleanTitle(stem);
+					auto it = gl.find(rel);
+					if (it != gl.end())
+					{
+						if (!it->second.name.empty()) g.title = cleanTitle(it->second.name);
+						std::string genre = it->second.genre;
+						size_t cut = genre.find_first_of(",;/|");
+						g.genre = trim(cut == std::string::npos ? genre : genre.substr(0, cut));
+						const std::string& d = it->second.date;
+						if (d.size() >= 4 && d.compare(0, 4, "0000") && std::all_of(d.begin(), d.begin() + 4, ::isdigit)) g.year = d.substr(0, 4);
+						g.box = exists(it->second.thumb) ? it->second.thumb : (exists(it->second.image) ? it->second.image : "");
+						if (exists(it->second.cart)) g.cart = it->second.cart;
+						if (exists(it->second.boxback)) g.label = it->second.boxback;
+					}
+					if (g.box.empty()) g.box = media.find(dir, "box", stem);
+					if (g.cart.empty()) g.cart = media.find(dir, "cart", stem);
+					if (g.label.empty()) g.label = media.find(dir, "label", stem);
+					std::string key = def.id + "/" + g.rel;
+					auto st = stats.find(key);
+					if (st != stats.end()) { g.plays = st->second.plays; g.seconds = st->second.seconds; g.last = st->second.last; g.achA = st->second.achA; g.achB = st->second.achB; }
+					g.fav = favGames.count(key) > 0;
+					sh.games.push_back(g);
 				}
-				if (g.box.empty()) g.box = mediaFile(dir, "box", stem);
-				if (g.cart.empty()) g.cart = mediaFile(dir, "cart", stem);
-				if (g.label.empty()) g.label = mediaFile(dir, "label", stem);
-				std::string key = def.id + "/" + rel;
-				auto st = stats.find(key);
-				if (st != stats.end()) { g.plays = st->second.plays; g.seconds = st->second.seconds; g.last = st->second.last; g.achA = st->second.achA; g.achB = st->second.achB; }
-				g.fav = favGames.count(key) > 0;
-				sh.games.push_back(g);
 			}
 			std::sort(sh.games.begin(), sh.games.end(), [](const Game& a, const Game& b) { return lower(a.title) < lower(b.title); });
 			if (!sh.games.empty() || def.always) shelves.push_back(sh);
@@ -464,6 +534,39 @@ namespace banana
 	}
 
 	// the shelf's order and the Favorites collection, from the systems' games and the favourites as they are now
+	// a search's words, lower case; a game matches when its name, file name, genre or year has each of them
+	static std::vector<std::string> searchWords(const std::string& q)
+	{
+		std::vector<std::string> words;
+		std::istringstream ws(lower(q));
+		for (std::string w; ws >> w;)
+		{
+			// the short names people type for genres the box-art scrape spells out ("Role Playing Game", "Shooter / FPV")
+			if (w == "rpg" || w == "jrpg") { words.push_back("role"); words.push_back("playing"); }
+			else if (w == "fps" || w == "shmup") words.push_back("shoot");
+			else words.push_back(w);
+		}
+		return words;
+	}
+
+	static bool searchMatch(const Game& g, const std::vector<std::string>& words)
+	{
+		if (words.empty()) return false;
+		std::string t = lower(g.title) + " " + lower(g.rel) + " " + lower(g.genre) + " " + g.year;
+		for (auto& w : words) if (t.find(w) == std::string::npos) return false;
+		return true;
+	}
+
+	int Library::countMatches(const std::string& q) const
+	{
+		std::vector<std::string> words = searchWords(q);
+		int n = 0;
+		for (auto& sh : shelves)
+			if (!sh.favorites)
+				for (auto& g : sh.games) n += searchMatch(g, words);
+		return n;
+	}
+
 	void Library::arrange()
 	{
 		shelves.erase(std::remove_if(shelves.begin(), shelves.end(), [](const Shelf& s) { return s.favorites; }), shelves.end());
@@ -485,15 +588,69 @@ namespace banana
 		// sysOf follows the sort: find each game's system again by its path
 		for (size_t k = 0; k < fav.games.size(); k++)
 			for (int s = 0; s < (int)shelves.size(); s++)
-				if (fav.games[k].path.compare(0, folderPath(romRoot, shelves[s].def.folder).size() + 1, folderPath(romRoot, shelves[s].def.folder) + "/") == 0)
-					{ fav.sysOf[k] = s; break; }
+			{
+				bool in = false;
+				for (auto& root : roots())
+				{
+					std::string d = folderPath(root, shelves[s].def.folder) + "/";
+					if (fav.games[k].path.compare(0, d.size(), d) == 0) { in = true; break; }
+				}
+				if (in) { fav.sysOf[k] = s; break; }
+			}
 		if (!fav.games.empty())
 		{
 			// after the favourite systems when the collection is starred itself, else at the end
 			size_t at = shelves.size();
 			if (favSystems.count("favorites"))
 				for (at = 0; at < shelves.size() && favSystems.count(shelves[at].def.id); at++) {}
+			// the systems from there on move one along: sysOf follows them (else a favourite launched with the
+			// shelf before its own system's emulator, and its plays were kept under "favorites/")
+			for (int& s : fav.sysOf) if (s >= (int)at) s++;
 			shelves.insert(shelves.begin() + (long)at, fav);
+		}
+		// Recently played: the last games played on any system, newest first, a collection at the end of the shelf (one L
+		// from the first system; at the end, so the systems' places, and the menu's saved one, don't move)
+		{
+			Shelf rec;
+			rec.favorites = rec.recent = true;
+			rec.order = 1 << 21;
+			rec.def.id = "recently-played"; rec.def.name = "Recently played"; rec.def.maker = "Collection";
+			std::vector<std::pair<time_t, std::pair<int, size_t>>> played;	// last play, (system, game)
+			for (int s = 0; s < (int)shelves.size(); s++)
+				if (!shelves[s].favorites)
+					for (size_t i = 0; i < shelves[s].games.size(); i++)
+						if (shelves[s].games[i].last > 0) played.push_back({ shelves[s].games[i].last, { s, i } });
+			std::sort(played.begin(), played.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+			for (size_t k = 0; k < played.size() && k < 12; k++)
+			{
+				rec.games.push_back(shelves[played[k].second.first].games[played[k].second.second]);
+				rec.sysOf.push_back(played[k].second.first);
+			}
+			if (!rec.games.empty()) shelves.push_back(rec);
+		}
+		// Search: first on the shelf while there is a query, the games of every system whose name (or file name) has each
+		// of its words, case aside
+		if (!query.empty())
+		{
+			std::vector<std::string> words = searchWords(query);
+			Shelf srch;
+			srch.favorites = srch.search = true;
+			srch.def.id = "search"; srch.def.name = "Search"; srch.def.maker = "\u201c" + query + "\u201d";
+			for (int s = 0; s < (int)shelves.size(); s++)
+			{
+				if (shelves[s].favorites) continue;
+				for (auto& g : shelves[s].games)
+				{
+					if (searchMatch(g, words)) { srch.games.push_back(g); srch.sysOf.push_back(s + 1); }	// (+1: the systems move one along)
+				}
+			}
+			std::vector<size_t> ix(srch.games.size());
+			for (size_t k = 0; k < ix.size(); k++) ix[k] = k;
+			std::stable_sort(ix.begin(), ix.end(), [&](size_t a, size_t b) { return lower(srch.games[a].title) < lower(srch.games[b].title); });
+			Shelf sorted = srch;
+			for (size_t k = 0; k < ix.size(); k++) { sorted.games[k] = srch.games[ix[k]]; sorted.sysOf[k] = srch.sysOf[ix[k]]; }
+			for (auto& sh : shelves) if (sh.favorites) for (int& s : sh.sysOf) s++;
+			shelves.insert(shelves.begin(), sorted);
 		}
 		if (lib >= (int)shelves.size()) lib = 0;
 		changed = false;
@@ -534,6 +691,7 @@ namespace banana
 		if (achB > 0) { st.achA = achA; st.achB = achB; }
 		saveStats();
 		g->plays = st.plays; g->seconds = st.seconds; g->last = st.last; g->achA = st.achA; g->achB = st.achB;
+		changed = true;	// Recently played is arranged again once the shelf shows
 		if (shelves[lib].favorites) { Game& f = shelves[lib].games[game]; f.plays = st.plays; f.seconds = st.seconds; f.last = st.last; f.achA = st.achA; f.achB = st.achB; }
 	}
 
@@ -561,7 +719,7 @@ namespace banana
 			auto mk = looks.find("@" + lower(r.maker));
 			if (mk != looks.end()) r.accent = mk->second.accent;
 		}
-		r.icon = look.icon;
+		r.icon = themedIcon(s.def.id, look.icon);	// a user theme's own icon for the system (theme.h)
 		r.app = look.app;
 		r.games = (int)s.games.size();
 		long secs = 0;
@@ -602,7 +760,7 @@ namespace banana
 		std::string ext = lower(g.path.substr(g.path.rfind('.') + 1));
 		// the DS ROM's own icon when there is no art (from inside a .zip too)
 		if (ext == "nds" || (ext == "zip" && systemOf(i).id == "nds")) r.rom = g.path;
-		r.icon = lookOf(systemOf(i).id).icon;
+		r.icon = themedIcon(systemOf(i).id, lookOf(systemOf(i).id).icon);
 		// what the emulator last said of its RetroAchievements (the block is left out until a game has said so)
 		if (g.achB > 0)
 		{
@@ -633,26 +791,47 @@ namespace banana
 		return b;
 	}
 
+	// (BOOTTIME: it counts the time asleep, so the first look after a wake reads /sys again)
+	static double monoSec()
+	{
+		timespec ts;
+		clock_gettime(CLOCK_BOOTTIME, &ts);
+		return ts.tv_sec + ts.tv_nsec / 1e9;
+	}
+
+	// read again at most every 2 s: the top screen asks on every frame it draws (a directory and five files a frame
+	// while the shelf scrolls)
 	Library::Power Library::power()
 	{
 		if (testPower.percent >= 0) return testPower;
+		double now = monoSec();
+		if (powerAt > 0 && now - powerAt < 2) return powerSeen;
+		powerAt = now;
 		Power r;
+		bool charger = false;
 		DIR* d = opendir("/sys/class/power_supply");
-		if (!d) return r;
+		if (!d) return powerSeen = r;
 		while (dirent* e = readdir(d))
 		{
 			if (e->d_name[0] == '.') continue;
 			std::string base = std::string("/sys/class/power_supply/") + e->d_name;
-			if (readLine(base + "/type") != "Battery") continue;
+			if (readLine(base + "/type") != "Battery")
+			{
+				// a charger plugged in (USB, Mains): the rk817's gauge says "Discharging" while it charges, so its own
+				// status alone showed no bolt and kept the low-battery notice up on the cable (as bananad's LED)
+				if (readLine(base + "/online") == "1") charger = true;
+				continue;
+			}
+			if (r.percent >= 0) continue;
 			std::string cap = readLine(base + "/capacity");
 			if (cap.empty()) continue;
 			r.percent = std::min(100, std::max(0, atoi(cap.c_str())));
 			std::string st = readLine(base + "/status");
 			r.charging = st == "Charging" || st == "Full";
-			break;
 		}
 		closedir(d);
-		return r;
+		if (charger && r.percent >= 0) r.charging = true;
+		return powerSeen = r;
 	}
 
 	float Library::battery()
@@ -663,7 +842,10 @@ namespace banana
 
 	bool Library::online()
 	{
-		return readLine("/sys/class/net/wlan0/operstate") == "up";
+		double now = monoSec();
+		if (onlineAt > 0 && now - onlineAt < 2) return onlineSeen;
+		onlineAt = now;
+		return onlineSeen = readLine("/sys/class/net/wlan0/operstate") == "up";
 	}
 
 	int Library::openLibrary(int sys)
@@ -709,7 +891,17 @@ namespace banana
 	std::string Library::emptyTitle()
 	{
 		if (dataFailed()) return "Can't read the card's games";
+		if (lib < (int)shelves.size() && shelves[lib].search) return "No games match";
 		return lib < (int)shelves.size() && shelves[lib].favorites ? "Nothing here yet" : "No games yet";
+	}
+
+	// the bottom bar's hints for Banana's own buttons: SELECT searches (main.cpp), X on a DS game picks its emulator
+	std::vector<std::pair<std::string, std::string>> Library::hints(bool library, int /*sys*/, int game)
+	{
+		std::vector<std::pair<std::string, std::string>> r;
+		if (library && game >= 0 && game < gameCount() && systemOf(game).id == "nds") r.push_back({ "X", "Options" });	// (the game page: its emulator and shader)
+		r.push_back({ "SELECT", "Search" });
+		return r;
 	}
 
 	std::string Library::emptyHint()
@@ -717,6 +909,7 @@ namespace banana
 		if (dataFailed()) return "The BANANA partition needs exFAT";
 		if (lib >= (int)shelves.size()) return "";
 		const Shelf& s = shelves[lib];
+		if (s.search) return "SELECT searches again";
 		if (s.favorites) return "Y on a game adds it here";
 		std::string ext = s.def.exts.empty() ? "" : "." + s.def.exts[0] + " ";
 		return "Copy " + ext + "files to roms/" + s.def.folder;

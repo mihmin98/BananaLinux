@@ -6,6 +6,13 @@ config BR2_PACKAGE_LIBRETRO_GPSP
 	help
 	  Game Boy Advance, with its ARM64 dynamic recompiler.
 
+config BR2_PACKAGE_LIBRETRO_MGBA
+	bool "libretro-mgba"
+	default y
+	help
+	  Game Boy Advance, accurate and with RetroAchievements support
+	  (gpSP has none): chosen per system in Settings.
+
 config BR2_PACKAGE_LIBRETRO_GAMBATTE
 	bool "libretro-gambatte"
 	default y
@@ -47,3 +54,16 @@ config BR2_PACKAGE_LIBRETRO_FAKE08
 	default y
 	help
 	  PICO-8 carts (.p8 and .p8.png), when the official PICO-8 isn't on the card.
+
+config BR2_PACKAGE_RETROARCH_GLSL_SHADERS
+	bool "retroarch-glsl-shaders"
+	default y
+	help
+	  libretro's GLSL shader presets for RetroArch's GL driver.
+
+config BR2_PACKAGE_LIBRETRO_CHEATS_NDS
+	bool "libretro-cheats-nds"
+	default y
+	help
+	  libretro-database's Action Replay cheats for the Nintendo DS,
+	  read by BananaDS's Cheats.

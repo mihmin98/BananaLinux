@@ -19,6 +19,17 @@ namespace rnds
 		{ "purple", { 0xa07ae6, 0xddd0ff, 0x43266e, 0xbfa4f2, 0x7f58c4 } },
 		{ "pink",   { 0xec6fa8, 0xffc6e0, 0x7a1f4a, 0xf59cc4, 0xc9508a } },
 	};
+	std::map<std::string, uint32_t> themeColors;
+	ThemeFiles themeFiles;
+	void setAccent(const Accent& a) { accent = a; }
+	bool themeColor(const char* name, Color& c)
+	{
+		auto it = themeColors.find(name);
+		if (it == themeColors.end()) return false;
+		uint32_t v = it->second;
+		c = Color(((v >> 16) & 0xff) / 255.f, ((v >> 8) & 0xff) / 255.f, (v & 0xff) / 255.f, ((v >> 24) & 0xff) / 255.f);
+		return true;
+	}
 	bool setAccent(const std::string& name)
 	{
 		for (auto& e : ACCENTS) if (name == e.name) { accent = e.a; return true; }
@@ -310,6 +321,7 @@ namespace rnds
 		std::map<int, GameInfo> gameCache;
 
 		Pal P;
+		Bitmap wallTop, wallBottom;		// a user theme's pictures behind the screens (loadAssets), empty: none
 		Color INK, MUTED, LINE, EDGE, NAVY, RED, SHADE40, SHADE45, SHADE35, BLACKISH;
 
 		Impl(UI* u) : ui(u) {}
@@ -318,6 +330,24 @@ namespace rnds
 		{
 			lightTheme = variant == "light";
 			P = lightTheme ? lightPal() : darkPal();
+			// a user theme's colours over it, by name (theme.cpp reads them from its JSON)
+			struct { const char* n; Color Pal::* m; } names[] = {
+				{ "ink", &Pal::ink }, { "muted", &Pal::muted }, { "line", &Pal::line }, { "edge", &Pal::edge }, { "navy", &Pal::navy },
+				{ "red", &Pal::red }, { "shade40", &Pal::shade40 }, { "shade45", &Pal::shade45 }, { "shade35", &Pal::shade35 },
+				{ "blackish", &Pal::blackish }, { "screenBg", &Pal::screenBg }, { "screenFrame", &Pal::screenFrame },
+				{ "screenBand", &Pal::screenBand }, { "ditherA", &Pal::ditherA }, { "ditherB", &Pal::ditherB },
+				{ "sheetBase", &Pal::sheetBase }, { "sheetHi", &Pal::sheetHi }, { "sheetLo", &Pal::sheetLo },
+				{ "panelBand", &Pal::panelBand }, { "panelBody", &Pal::panelBody }, { "panelLow", &Pal::panelLow },
+				{ "chipBand", &Pal::chipBand }, { "chipBody", &Pal::chipBody }, { "frameBorder", &Pal::frameBorder },
+				{ "frameBg", &Pal::frameBg }, { "meterBg", &Pal::meterBg }, { "brandBg", &Pal::brandBg }, { "kbdBg", &Pal::kbdBg },
+				{ "kbdInk", &Pal::kbdInk }, { "rule", &Pal::rule }, { "bubbleBand", &Pal::bubbleBand }, { "bubbleBody", &Pal::bubbleBody },
+				{ "bubbleLow", &Pal::bubbleLow }, { "trackBg", &Pal::trackBg }, { "trackHi", &Pal::trackHi },
+				{ "trackShade", &Pal::trackShade }, { "slotOn", &Pal::slotOn }, { "railBg", &Pal::railBg }, { "faceMuted", &Pal::faceMuted },
+				{ "favBorder", &Pal::favBorder }, { "favBand", &Pal::favBand }, { "favBody", &Pal::favBody }, { "favInk", &Pal::favInk },
+				{ "glint", &Pal::glint }, { "floor", &Pal::floor }, { "slotDark", &Pal::slotDark }, { "slotLip", &Pal::slotLip },
+				{ "cartLabel", &Pal::cartLabel },
+			};
+			for (auto& e : names) themeColor(e.n, P.*e.m);
 			INK = P.ink; MUTED = P.muted; LINE = P.line; EDGE = P.edge; NAVY = P.navy; RED = P.red;
 			SHADE40 = P.shade40; SHADE45 = P.shade45; SHADE35 = P.shade35; BLACKISH = P.blackish;
 		}
@@ -430,11 +460,26 @@ namespace rnds
 
 		void loadAssets()
 		{
-			R = Font::load(dir + "/fonts/PixelifySans-Regular.ttf");
-			M = Font::load(dir + "/fonts/PixelifySans-Medium.ttf");
+			// a user theme's fonts (themeFiles), else the theme's own; one that doesn't load falls back
+			R = themeFiles.fontRegular.empty() ? nullptr : Font::load(themeFiles.fontRegular);
+			M = themeFiles.fontMedium.empty() ? nullptr : Font::load(themeFiles.fontMedium);
+			if (!R) R = Font::load(dir + "/fonts/PixelifySans-Regular.ttf");
+			if (!M) M = Font::load(dir + "/fonts/PixelifySans-Medium.ttf");
 			shell = std::make_shared<const Bitmap>(loadPng("game_slot.png"));
 			std::string sfx = s > 1.3f ? "@1.6x.png" : "@1x.png";
 			logo = loadPng("logo" + sfx);
+			if (!themeFiles.logo.empty())
+				if (Bitmap own = decodeFile(themeFiles.logo); !own.empty())
+				{
+					// the theme's logo, fitted into the default's box (its aspect kept)
+					int w = logo.empty() ? own.w : logo.w, h = logo.empty() ? own.h : logo.h;
+					float k = std::min((float)w / own.w, (float)h / own.h);
+					logo = resize(own, std::max(1, (int)std::lround(own.w * k)), std::max(1, (int)std::lround(own.h * k)));
+				}
+			// a user theme's pictures behind the screens, at the screens' device size
+			int sw = (int)std::lround(640 * s), sh = (int)std::lround(480 * s);
+			if (!themeFiles.wallTop.empty()) if (Bitmap b = decodeFile(themeFiles.wallTop); !b.empty()) wallTop = resize(b, sw, sh);
+			if (!themeFiles.wallBottom.empty()) if (Bitmap b = decodeFile(themeFiles.wallBottom); !b.empty()) wallBottom = resize(b, sw, sh);
 			tintAccent(logo);
 			wifi = loadPng("wifi" + sfx);
 			batt = loadPng("battery" + sfx);
@@ -1069,6 +1114,8 @@ namespace rnds
 			float railW = 0;		// the rail's track: what the widest count leaves (one length for the whole list)
 			Face left, right;
 			float leftW = 0, rightW = 0;
+			std::vector<Face> mids;		// the host's hints between them (Source::hints), as many as fit
+			std::vector<float> midW;
 			float startW = 0;
 		};
 
@@ -1130,7 +1177,10 @@ namespace rnds
 			if (v == HOME)
 			{
 				g.left = Face{ "Y", "Fav", sys(ui->mSys).fav ? 1 : 0, ACT_FAV };
-				g.right = Face{ "X", sys(ui->mSys).app ? "Start" : "Resume", 0, ACT_RESUME };	// an app has nothing to resume
+				const auto& sy = sys(ui->mSys);
+				if (sy.app) g.right = Face{ "X", "Start", 0, ACT_RESUME };	// an app has nothing to resume
+				else if (!sy.hasResume) g.right = Face{ "", "No games", 2, ACT_NONE };	// (X would do nothing)
+				else g.right = Face{ "X", sy.played > 0 ? "Resume" : "Start", 0, ACT_RESUME };	// (nothing played: the first game)
 			}
 			else if (v == LIBRARY)
 			{
@@ -1145,14 +1195,29 @@ namespace rnds
 			}
 			g.leftW = faceW(g.left);
 			g.rightW = faceW(g.right);
+			g.mids.clear(); g.midW.clear();
+			if (v == HOME || (v == LIBRARY && src->gameCount() > 0))
+			{
+				float room = 604 - g.leftW - g.rightW - 2 * 10;
+				for (auto& h : src->hints(v == LIBRARY, ui->mSys, ui->mGame))
+				{
+					Face f{ h.first, h.second, 0, ACT_NONE };
+					float w = faceW(f);
+					if (w + (g.mids.empty() ? 0 : 10) > room) break;
+					room -= w + (g.mids.empty() ? 0 : 10);
+					g.mids.push_back(f); g.midW.push_back(w);
+				}
+			}
 			g.startW = line("START", ts(true, 20, 2.4f)).width + 16;
 			return g;
 		}
 
 		// ---- styles ----
-		BoxCss screenBox()
+		// over a theme's picture (wall): no colour or dots of its own, only the frame and band shadows
+		BoxCss screenBox(bool wall = false)
 		{
-			BoxCss b; b.key = "screen"; b.radius = 2; b.bg = P.screenBg; b.dither = true; b.async = true;
+			BoxCss b; b.key = wall ? "screen-over-wall" : "screen"; b.radius = 2; b.bg = wall ? Color(0, 0, 0, 0) : P.screenBg;
+			b.dither = !wall && themeFiles.dither; b.async = true;
 			b.shadows = { inset(0, 0, 4, P.screenFrame), inset(0, 8, 0, P.screenBand) };
 			return b;
 		}
@@ -1515,7 +1580,8 @@ namespace rnds
 		void drawTop()
 		{
 			be->beginScreen(0);
-			drawBox(screenBox(), 0, 0, 640, 480);
+			if (!wallTop.empty()) drawSprite(still("wall-top", wallTop, true), 0, 0);
+			drawBox(screenBox(!wallTop.empty()), 0, 0, 640, 480);
 			float ry = rise(topAt);
 			drawStatus(ry);
 			const SysInfo& sy = sys(ui->mSys);
@@ -1699,7 +1765,8 @@ namespace rnds
 		void drawBottom()
 		{
 			be->beginScreen(1);
-			drawBox(screenBox(), 0, 0, 640, 480);
+			if (!wallBottom.empty()) drawSprite(still("wall-bottom", wallBottom, true), 0, 0);
+			drawBox(screenBox(!wallBottom.empty()), 0, 0, 640, 480);
 			float rb = rise(shellAt);
 			Geo g = geometry();
 			View v = ui->mView;
@@ -1852,6 +1919,14 @@ namespace rnds
 			// face buttons
 			drawFace(g.left, 18, g.leftW, pressedAction && pressedSide == 0);
 			drawFace(g.right, 622 - g.rightW, g.rightW, pressedAction && pressedSide == 1 && g.right.kind != 2);
+			// the host's hints, centred between the two
+			if (!g.mids.empty())
+			{
+				float total = -10;
+				for (float w : g.midW) total += w + 10;
+				float x = 18 + g.leftW + (604 - g.leftW - g.rightW - total) / 2;
+				for (size_t i = 0; i < g.mids.size(); i++) { drawFace(g.mids[i], x, g.midW[i], false); x += g.midW[i] + 10; }
+			}
 			if (railDrag && v == LIBRARY && n > 0)
 				drawLetter(20 + thumbValue());
 			be->endScreen();

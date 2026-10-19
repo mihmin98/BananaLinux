@@ -12,6 +12,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace rnds
@@ -83,6 +84,9 @@ namespace rnds
 		// roms/nds"); the host knows where the games go
 		virtual std::string emptyTitle() { return "No games yet"; }
 		virtual std::string emptyHint() { return ""; }
+		// more buttons for the bottom bar, between its two (key, what it does), on the home shelf (library false: sys is
+		// the system) or in a library (game: its index there); shown as long as they fit, from the first
+		virtual std::vector<std::pair<std::string, std::string>> hints(bool /*library*/, int /*sys*/, int /*game*/) { return {}; }
 	};
 
 	// ---- drawing ------------------------------------------------------------------------------------------------------
@@ -128,6 +132,22 @@ namespace rnds
 	struct Accent { uint32_t base, light, dark, band, low; };
 	extern Accent accent;
 	bool setAccent(const std::string& name);		// false: unknown, the yellow kept
+	void setAccent(const Accent& a);				// a theme's own accent
+	// a user theme's colours over the palette, by the palette's names ("ink", "screenBg", ...), 0xAARRGGBB; empty: none.
+	// Applied when a palette is set (UI and Banana's settings screen alike)
+	extern std::map<std::string, uint32_t> themeColors;
+	// a user theme's own files (absolute paths, checked to exist; empty: the default) and switches
+	struct ThemeFiles
+	{
+		std::string fontRegular, fontMedium;		// .ttf
+		std::string wallTop, wallBottom;			// pictures behind the top and bottom screens (scaled to fit)
+		std::string logo;							// the logo at the top (scaled to the default's size)
+		std::map<std::string, std::string> icons;	// system id -> .png
+		std::map<std::string, std::string> sounds;	// scroll, select, back, fav, ready, insert -> .wav, or "off"
+		bool dither = true;							// the screens' dot pattern
+	};
+	extern ThemeFiles themeFiles;
+	bool themeColor(const char* name, Color& c);	// c replaced by the theme's colour of that name: true
 	void tintAccent(Bitmap& b);						// RGBA8: its yellows in the accent's hue (nothing with the yellow)
 	uint32_t tintAccent(uint32_t argb);				// one colour, 0xAARRGGBB (premultiplied is fine: hue and ratios)
 

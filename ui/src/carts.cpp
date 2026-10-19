@@ -569,12 +569,12 @@ namespace banana
 		if (j.back >= 0)
 		{
 			// a screen's background in a colour not seen yet (tens of milliseconds: not on the main thread)
-			CartBmp cb;
+			CartTex ct;
 			int H = (int)std::lround(480 * s), W = (int)std::lround(640 * s);
-			cb.card = backgroundRect(j.back, j.accent, s, 0, 0, W, H, H);
+			ct.tex = be->upload(backgroundRect(j.back, j.accent, s, 0, 0, W, H, H), false);	// made a texture here, as walls are
 			{
 				std::lock_guard<std::mutex> l(jm);
-				doneBmp.push_back({ j.key, std::move(cb) });
+				doneTex.push_back({ j.key, std::move(ct) });
 			}
 			if (mFinished) mFinished();
 			return true;
@@ -582,16 +582,16 @@ namespace banana
 		if (j.wall)
 		{
 			// a piece of the top screen's wall with the chosen art's light baked in (drawn as a plain copy)
-			CartBmp cb;
+			CartTex ct;
 			int H = (int)std::lround(480 * s), W = (int)std::lround(640 * s);
 			float gcx = 176 * s, gcy = (TOP_FLOOR - j.heroH * 0.52f) * s, grx = 230 * s, gry = 190 * s;
 			int x0 = std::max(0, (int)std::floor(gcx - grx)), y0 = std::max(0, (int)std::floor(gcy - gry));
 			int x1 = std::min(W, (int)std::ceil(gcx + grx)), y1 = std::min(H, (int)std::ceil(gcy + gry));
-			cb.card = backgroundRect(0, j.accent, s, x0, y0, x1 - x0, y1 - y0, H, j.glow, gcx, gcy, grx, gry, 0.17f);
-			cb.reflTop = x0; cb.glow = (uint32_t)y0;	// (where it goes)
+			ct.tex = be->upload(backgroundRect(0, j.accent, s, x0, y0, x1 - x0, y1 - y0, H, j.glow, gcx, gcy, grx, gry, 0.17f), false);
+			ct.reflTop = x0; ct.glow = (uint32_t)y0;	// (where it goes)
 			{
 				std::lock_guard<std::mutex> l(jm);
-				doneBmp.push_back({ j.key, std::move(cb) });
+				doneTex.push_back({ j.key, std::move(ct) });
 			}
 			if (mFinished) mFinished();
 			return true;
@@ -611,15 +611,17 @@ namespace banana
 		rnds::Bitmap icon = j.icon.empty() ? rnds::Bitmap() : rnds::decodeFile(j.icon);
 		CartPose p;
 		p.height = j.height; p.yaw = j.yaw; p.pitch = j.pitch;
-		CartBmp cb;
-		cb.card = renderCart(j.system, art, p, icon, j.band);
+		CartTex ct;
+		rnds::Bitmap card = renderCart(j.system, art, p, icon, j.band);
 		// (the shelf's row: its shadows baked into its reflection; the lifted one's and the top screen's move, drawn apart)
 		float unit = j.height / (float)ROW_H;
-		cb.refl = reflectionOf(cb.card, 0.2f, cb.reflTop, j.height == (int)std::lround(X(ROW_H)) ? ROW_H * cartAspect(j.system) * 0.95f * unit : 0, unit);
-		cb.glow = glowOf(art);
+		rnds::Bitmap refl = reflectionOf(card, 0.2f, ct.reflTop, j.height == (int)std::lround(X(ROW_H)) ? ROW_H * cartAspect(j.system) * 0.95f * unit : 0, unit);
+		ct.tex = be->upload(card, true);
+		if (!refl.empty()) ct.refl = be->upload(refl, true);
+		ct.glow = glowOf(art);
 		{
 			std::lock_guard<std::mutex> l(jm);
-			doneBmp.push_back({ j.key, std::move(cb) });
+			doneTex.push_back({ j.key, std::move(ct) });
 		}
 		if (mFinished) mFinished();
 		return true;
@@ -632,34 +634,29 @@ namespace banana
 		now = t;
 		{
 			std::lock_guard<std::mutex> l(jm);
-			for (auto& d : doneBmp)
+			for (auto& d : doneTex)
 			{
 				queued.erase(d.first);
 				if (d.first.compare(0, 5, "back|") == 0)
 				{
 					if (backs.size() > 12) backs.clear();
-					backs[d.first.substr(5)] = be->upload(d.second.card, false);
+					backs[d.first.substr(5)] = d.second.tex;
 					continue;
 				}
 				if (d.first.compare(0, 5, "wall|") == 0)
 				{
 					Wall w;
-					w.tex = be->upload(d.second.card, false);
+					w.tex = d.second.tex;
 					w.x = d.second.reflTop; w.y = (int)d.second.glow;
 					walls[d.first] = w;
 					wallOrder.push_back(d.first);
 					while (walls.size() > 6 && !wallOrder.empty()) { walls.erase(wallOrder.front()); wallOrder.pop_front(); }
 					continue;
 				}
-				CartTex ct;
-				ct.tex = be->upload(d.second.card, true);
-				if (!d.second.refl.empty()) ct.refl = be->upload(d.second.refl, true);
-				ct.reflTop = d.second.reflTop;
-				ct.glow = d.second.glow;
-				carts[d.first] = ct;
+				carts[d.first] = d.second;
 				cartOrder.push_back(d.first);
 			}
-			doneBmp.clear();
+			doneTex.clear();
 			// only the newest wishes wait: the cursor ran past the rest
 			while (jobs.size() > 24) { queued.erase(jobs.front().key); jobs.pop_front(); }
 		}
@@ -689,7 +686,7 @@ namespace banana
 	{
 		if (animating()) return 0;
 		std::lock_guard<std::mutex> l(const_cast<std::mutex&>(jm));
-		return doneBmp.empty() ? -1 : 0;
+		return doneTex.empty() ? -1 : 0;
 	}
 
 	// ---- drawing helpers ---------------------------------------------------------------------------------------------
@@ -1008,16 +1005,27 @@ namespace banana
 		text(sel.title, fSemi, 19, 320, 348, INK, 1, 580, 1);
 		text(sel.sub, fReg, 14, 320, 374, SOFT, 1, 580, 1);
 		// the buttons, as chips
-		struct Chip { const char* key; std::string label; };
+		struct Chip { std::string key, label; };
 		std::vector<Chip> chips;
 		if (home) chips = { { "A", sel.app ? "Start" : "Open" }, { "X", "Resume" }, { "Y", "Favourite" } };
 		else chips = { { "A", "Play" }, { "B", "Back" }, { "Y", sel.fav ? "Unfavourite" : "Favourite" }, { "L R", "Systems" } };
-		float total = 0;
-		std::vector<float> widths;
-		for (auto& c : chips)
+		size_t own = chips.size();
+		if (home || !items.empty())	// the host's own buttons after them (Source::hints), as many as fit the panel
+			for (auto& h : src->hints(!home, home ? cursor() : -1, home ? -1 : cursor())) chips.push_back({ h.first, h.second });
+		auto chipW = [&](const Chip& c)
 		{
 			float kw = std::max(22.0f, text(c.key, fSemi, 12, 0, 0, INK, 1, 0, 0, 0, false, true) + 12);
-			float w = kw + 8 + text(c.label, fMed, 13, 0, 0, INK, 1, 0, 0, 0, false, true) + 14;
+			return kw + 8 + text(c.label, fMed, 13, 0, 0, INK, 1, 0, 0, 0, false, true) + 14;
+		};
+		auto rowW = [&] { float t = 0; for (auto& c : chips) t += chipW(c) + 10; return t; };
+		// too many for the panel: "L R Systems" goes first (the header shows L and R by the system's name already)
+		if (rowW() > 620 && !home && own == 4) { chips.erase(chips.begin() + 3); own--; }
+		float total = 0;
+		std::vector<float> widths;
+		for (size_t i = 0; i < chips.size(); i++)
+		{
+			float w = chipW(chips[i]);
+			if (i >= own && total + w > 620) { chips.resize(i); break; }
 			widths.push_back(w);
 			total += w + 10;
 		}

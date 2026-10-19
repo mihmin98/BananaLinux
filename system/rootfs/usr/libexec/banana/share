@@ -6,6 +6,7 @@
 CONF=/run/banana/ksmbd.conf
 case $1 in
 up)
+    /usr/libexec/banana/ra-secrets scrub    # (RetroArch's password out of retroarch.cfg before it is shared)
     modprobe ksmbd 2>/dev/null || exit 1
     pidof ksmbd.mountd >/dev/null && exit 0
     cat > $CONF <<'CONF'
@@ -24,6 +25,10 @@ up)
 	; exFAT has no extended attributes to keep DOS attributes in
 	store dos attributes = no
 	hide dot files = yes
+	; secrets stay off the network (neither listed nor opened, in any folder; a card in a computer still has them):
+	; the SSH host key, the RetroAchievements account and tokens, the Wi-Fi networks' passwords
+	; (a leading * because ksmbd matches an open against the whole path, a listing against the bare name)
+	veto files = /*host_key_ed25519/*accounts.conf/*ra.token/*wifi.conf/
 CONF
     : > /run/banana/ksmbdpwd.db
     ksmbd.mountd -C $CONF -P /run/banana/ksmbdpwd.db

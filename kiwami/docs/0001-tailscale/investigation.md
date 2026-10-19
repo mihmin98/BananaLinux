@@ -318,16 +318,19 @@ is polled while they are closed. Opening Settings asks once, for the row's value
 - **Performance and footprint**:
   - Memory: tailscaled is estimated at 25-50 MB resident on a small tailnet, growing with the number of devices.
     The whole system idles at 95 MB (measured in QEMU, `docs/ARCHITECTURE.md` *What it costs*), so a large share of
-    that, while Tailscale is on. To be measured on the device (`VmRSS` in `/proc/<pid>/status`).
+    that, while Tailscale is on. Measured in QEMU (plan, step 2): 25 MB, and 15 MB more for the `tailscale up` that
+    waits for a login, only while it waits. To be measured on the device (`VmRSS` in `/proc/<pid>/status`, M14).
   - CPU while idle: estimated well under 1% on average; keepalives with the relay and peers every few seconds to tens
     of seconds. These also wake the Wi-Fi radio: the battery cost is likely larger than the CPU's. To be measured.
   - Under traffic: WireGuard runs on the CPU; a big transfer keeps a good share of one A55 core busy (the Wi-Fi limits
     the speed first).
-  - Frame time: none outside the Tailscale page; the page draws the QR once into a texture.
-  - Rootfs: ~10-15 MB of the 256 MB slot (to be measured); the update package grows by as much.
+  - Frame time: none outside the Tailscale page; the page draws the QR once into a texture (the login page draws in
+    0.06 ms, headless).
+  - Rootfs: measured (plan, step 1): `tailscaled` is 15.7 MB stripped; the squashfs grows by 7.26 MB of the 256 MB
+    slot (161.97 to 169.23 MB), the update package by 7.25 MB, the `.img.gz` by 6.2 MB. `tun.ko` is 77 KB.
   - Boot: tailscaled starts in the background subshell after the menu's first frame; nothing waits for it.
-  - Build: Go's prebuilt compiler and Tailscale's modules are downloaded; the first image build takes some minutes
-    longer.
+  - Build: Go's prebuilt compiler and Tailscale's modules are downloaded; `kiwami-tailscale` itself builds in 17 s
+    once they are.
 - **Conflicts with upstream**: `settings.cpp` changes often upstream and gets ~10 hook lines; conflicts there are
   likely but each is one line to put back (rerere remembers). `settings.h`, `ui/Makefile`, `rcS`, `rcK` one line each.
   The share script's veto list is patched at build time, so an upstream change to that line must be checked by hand

@@ -228,7 +228,34 @@ Each step is one commit, and leaves the tree building and `make test` passing.
   the order checked in the log, the selected device's details shot, B back to the submenu.
 - **Commit**: `banana-ui: the tailnet's devices, from Tailscale's submenu`
 
-### 7. Final check
+### 7. The helper runs one change at a time
+
+Added after manual test M2 (*Deviations*, 2026-10-19): Tailscale switched on and off quickly left a tailscaled
+nothing knew of, and every later switch-on failed until a restart. Implemented once the other manual tests are done.
+
+- **Files**: `kiwami/rootfs/usr/libexec/kiwami/tailscale`, `ui/src/kiwami/tailscale.cpp` (changed);
+  `kiwami/tests/tailscale-helper.sh`, `kiwami/tests/fake-tailscale.sh`, `kiwami/tests/tailscale-ui.sh` (changed).
+- **Change**:
+  - The helper's `up`, `down`, `logout` and `name` hold a lock (`flock` on `/run/banana/tailscale.lock`, busybox's)
+    for as long as they run, so they run one after another. The lock's descriptor is closed for what they leave
+    running (tailscaled, its `logger`, the background login), which would otherwise hold it for as long as they run.
+    `status` takes no lock: the menu's polling never waits behind a start.
+  - `up` and `down` are functions inside the helper, called as such (by `boot`, `apply`, and `up`'s own clean-up
+    after a failed start) rather than as `"$0" down`, which would wait for the lock its caller holds.
+  - A new verb, `apply`: under the lock, `up` when `settings.conf` has `tailscale = on`, else `down`, read when
+    the lock is taken. The menu's On / Off writes the setting and runs `apply` (instead of `up` / `down`), so
+    however many switches queue up and in whatever order the lock lets them through (Linux doesn't make it a queue),
+    the last one to run leaves tailscaled as the setting is. `up` and `down` stay, for `boot` and for SSH.
+  - No "stop any tailscaled" fallback in `down`: run by the tests on a computer it would stop that computer's own
+    tailscaled, and with the lock, overlapping runs no longer leave one behind.
+- **Tests**: `tailscale-helper.sh`: on / off / on / off / on as five `apply`s started at once, with the setting
+  changed before each: one stand-in daemon in the end, matching the last setting, and its pid file and socket
+  there; the same ending on off: no daemon, no pid file, no socket; `up` and `down` started at once leave no daemon
+  that the pid file doesn't name; `status` answers while an `up` holds the lock. `tailscale-ui.sh`: On / Off calls
+  the stand-in's `apply`. Manual: M19.
+- **Commit**: `tailscale: the helper runs one change at a time, and switching on and off follows the setting`
+
+### 8. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
 - The fork's tests in `kiwami/tests/` (`tailscale-helper.sh`, `units.cpp`, `tailscale-ui.sh`, run by `ci.sh`).
@@ -294,8 +321,8 @@ SSH; `/run/banana/messages` is syslog (tailscaled's own output), in RAM: copy it
 
 | # | Board | Steps | Expected | Logs to collect | Outcome |
 |---|---|---|---|---|---|
-| M1 | rgds, rgds-plus | Fresh card, Tailscale never switched on. `ps`, `lsmod`, `ip link` | No tailscaled, no `tun` module, no `tailscale0`; the row says `Off` | `ps` / `lsmod` output | not run |
-| M2 | rgds, rgds-plus | Switch Tailscale on; scan the QR with a phone; log in and approve | `Starting`, then the QR (scans first time on each panel size); the page turns to Connected by itself; the row shows the address | `/data/banana/logs/tailscale.log`, `/run/banana/messages`, `tailscale status --json` saved into `kiwami/tests/tailscale/` for the unit tests | not run |
+| M1 | rgds, rgds-plus | Fresh card, Tailscale never switched on. `ps`, `lsmod`, `ip link` | No tailscaled, no `tun` module, no `tailscale0`; the row says `Off` | `ps` / `lsmod` output | rgds-plus: passed (2026-10-19): no tailscaled, no `tun`, no `tailscale0`, no `banana/tailscale/`. rgds: not run |
+| M2 | rgds, rgds-plus | Switch Tailscale on; scan the QR with a phone; log in and approve | `Starting`, then the QR (scans first time on each panel size); the page turns to Connected by itself; the row shows the address | `/data/banana/logs/tailscale.log`, `/run/banana/messages`, `tailscale status --json` saved into `kiwami/tests/tailscale/` for the unit tests | rgds-plus: passed (2026-10-19): the QR in under 2 s, scanned at once; Connected by itself 2 s after the approval; routes in table 52, `tailscale0` with its 100.x and IPv6 addresses, a direct path (UDP, the router's port mapping) with DERP behind it. Switching on and off quickly lost a tailscaled (*Deviations*, step 7, M19). rgds: not run |
 | M3 | rgds | Tailnet with device approval on (admin console); log in | `Waiting for approval` until approved in the console, then Connected | `tailscale.log`, `messages` | not run |
 | M4 | rgds-plus | Logged out; an auth key in `banana/tailscale/authkey`, dropped in over File sharing; switch on. Then a revoked key | Logged in with no QR, the key file gone. The revoked one: `authkey.refused`, the reason on the page, the QR shown | `tailscale.log` | not run |
 | M5 | rgds, rgds-plus | Connected; restart; then shut down and power on | Connected again by itself each time, no login; time from the menu's first frame to Connected noted | `tailscale.log`, `logs/boot.txt`, `messages` | not run |
@@ -312,6 +339,7 @@ SSH; `/run/banana/messages` is syslog (tailscaled's own output), in RAM: copy it
 | M16 | rgds | Connected; apply an A/B update package (Settings > System > Update), restart | Still logged in after the update (state on `/data`) | `tailscale.log` | not run |
 | M17 | rgds | Over SSH: clock set back a year (`date -s`), `tailscale down`/`up` from the helper, open the page | The page says the clock is wrong and to connect Wi-Fi; after NTP (Wi-Fi reconnected) it connects | `messages`, `tailscale status --json` | not run |
 | M18 | rgds, rgds-plus | A `universal` card (built locally), Tailscale on with no name set, on each handheld | `banana-rgds` on the RG DS, `banana-rgds-plus` on the Plus | `tailscale.log` | not run |
+| M19 | rgds, rgds-plus | After step 7. Switch Tailscale on and off as fast as the buttons allow, ten times or so, ending on On; then the same ending on Off. Over SSH, after each: `ps \| grep [t]ailscaled`, `ls /run/banana/tailscaled.pid /run/tailscale/` | Ending on On: one tailscaled, its pid file and socket there, Connected; no error on the page. Ending on Off: no tailscaled, no `tun`, no `tailscale0`. A switch-on afterwards works with no restart | `tailscale.log`, `ps`, `messages` | not run |
 
 Notes from the runs (what the logs showed, what was fixed):
 
@@ -360,6 +388,16 @@ Notes from the runs (what the logs showed, what was fixed):
   online, the three offline, each by name), Down scrolling the eight through five rows and wrapping to the top, a
   tap selecting, the selected one's details, the status still asked every 2 s, B back to the menu. Against `main`, as
   in step 3.
+
+- **Step 8 (the final check), the automated part** (2026-10-19). `make test` passes; `make -C ui` (with ALSA) builds `banana-ui`,
+  `banana-scrape` and the lease shim with no warnings; `bananad` builds with `-Werror`; `kiwami/tests/ci.sh .buildroot`
+  passes (helper 39 checks, units 248, the menu at both sizes, the veto, the three boards configured); upstream's
+  `sh -n` loop passes. The hooks: `git diff kiwami...HEAD` outside the fork's folders and `git grep 'kiwami:'` agree,
+  20 lines as in *Hooks*. The only other changed lines are the two enum lines changed in place and `docs/FORK.md`'s
+  shadowed-files paragraph. `make test`'s 124 renders against `main`'s (both rendered at once): identical but for
+  `wifi-row-bot` and `share-row-bot` at each size. `DEPENDENCIES.md` lists all three. `docs/ARCHITECTURE.md`
+  describes nothing this feature changes (its module count is upstream's kernel), and `CLAUDE.md` has nothing to
+  add. The investigation's *Risks* have step 1's sizes; memory and CPU wait for M14. Left: the manual tests.
 
 ## Deviations
 
@@ -427,6 +465,21 @@ Where the implementation turned out different from this plan, why, and what chan
   ("3 hours ago", "on 2026-08-01") and `osName()` are pure functions there, unit-tested in `units.cpp`, rather than
   only checked through the log in `tailscale-ui.sh`.
 
+- **2026-10-19, manual test M2: switching on and off quickly loses a tailscaled; a new step 7.** On the RG DS Plus,
+  Tailscale switched on, off and on again in quick succession showed an error at every switch-on after that, until
+  a restart. `tailscale.log`: `started`, `stopped`, then `failed: tailscaled did not start` twice; after the
+  restart, `rcS`'s `boot` started it cleanly. The cause is in step 2's helper and step 4's menu together: the menu
+  runs the helper detached (`Kiwami::run`) with nothing keeping two runs apart, so an `up` ran while the `down`
+  before it was finishing. The `down`'s `rm -f "$PID" "$SOCK"` deleted the new tailscaled's pid file and socket.
+  The `up` waited 5 s for the socket that was gone, logged the failure, and its clean-up `"$0" down` found no pid
+  file, so that tailscaled was left running, holding `tailscale0`, and every `up` after it failed. Keeping the
+  runs apart isn't enough on its own: Linux doesn't let processes waiting on a lock through in the order they came,
+  so a quick on / off / on could also end with a `down` last and the setting `on`. The fix, as step 7: the helper
+  holds a lock for every change, the menu's switch runs a new `apply` that follows `settings.conf` as it is when
+  the lock is taken, and `up` and `down` call each other as functions. Implemented after the other manual tests;
+  M19 checks it on the device. The headless tests didn't see it because they run the helper's stand-in
+  synchronously (`st.sync`), one command after another.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -439,4 +492,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 4. The Tailscale submenu | done | `banana-ui: Tailscale's submenu: on or off, the device's name, log out, and its state on the top panel` |
 | 5. The login QR code | done | `banana-ui: the Tailscale login link as a QR code, scanned from a phone` |
 | 6. The tailnet's devices | done | `banana-ui: the tailnet's devices, from Tailscale's submenu` |
-| 7. Final check | todo | |
+| 7. The helper runs one change at a time | todo | |
+| 8. Final check | todo | |

@@ -32,7 +32,7 @@ Found while working out the exact changes; none changes what the feature does.
   code telling them apart.
 - **Two more hook lines**: `#include "kiwami/kiwami.h"` in `settings.cpp`, and a second line in `ui/Makefile` making
   the fork's headers prerequisites of `banana-ui` (otherwise `make ui` doesn't rebuild after a header change).
-  17 hooks in banana-ui in all (*Hooks*, below; *Deviations*: two found in step 3).
+  18 hooks in banana-ui in all (*Hooks*, below; *Deviations*: three found in steps 3 and 4).
 - **The helper's `status`** prints `state off` when tailscaled isn't running (and the menu doesn't even run the
   helper while the setting is `off`), an `error <text>` line for the last failure it knows (no `tun` module, a
   refused auth key), then tailscaled's JSON. The clock problem of oversight 6 comes from the JSON's `Health`
@@ -170,8 +170,9 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 
 ### 4. The Tailscale submenu
 
-- **Files**: `ui/src/kiwami/tailscale.cpp` (new), `ui/src/kiwami/kiwami.h`/`.cpp` (changed);
-  `kiwami/tests/tailscale-ui.sh`, `kiwami/tests/units.cpp` (changed).
+- **Files**: `ui/src/kiwami/tailscale.cpp` (new), `ui/src/kiwami/kiwami.h`/`.cpp`, `tsstatus.h`/`.cpp` (changed);
+  `ui/src/settings.cpp` (hook, 1 line: *Deviations*); `kiwami/tests/tailscale-ui.sh`, `kiwami/tests/units.cpp`
+  (changed).
 - **Change**:
   - The submenu replaces the stub: on the bottom panel, in the Settings list's look (the same `box`/`text`/`arrow`/
     `face` helpers), `Tailscale` ◀ On / Off ▶, `Devices` (when logged in, value: how many are online; opens a
@@ -233,7 +234,8 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 - The hooks: `git diff --stat main...HEAD` and `git grep -n 'kiwami:'` (the commands in `docs/FORK.md`) agree, and
   list only the hooks this feature meant to add (*Hooks*, below).
 - With the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s, except `wifi-row` and
-  `share-row` (the Network list's extra row, *Refinements*).
+  `share-row` (the Network list's extra row, *Refinements*). Both rendered in the same minute: the clock is in the
+  shots.
 - `kiwami/DEPENDENCIES.md` lists Tailscale 1.98.8, Go's prebuilt variant and qrcodegen 1.8.0.
 - `docs/FORK.md` (the share script among the shadowed files, done in step 2), `docs/ARCHITECTURE.md` (nothing of
   upstream's described there changes; checked), `CLAUDE.md` (nothing to add; checked) updated where needed.
@@ -264,6 +266,7 @@ Every line this feature adds to upstream's files.
 | `ui/src/settings.cpp` | `update()`, before `return changed` | `if (kw) changed \|= kw->update(t);	// kiwami:` |
 | `ui/src/settings.cpp` | `nextWake()`, after `pageWake` | `if (int k = kw ? kw->wake(t, page == KIWAMI) : -1; k >= 0 && (w < 0 \|\| k < w)) w = k;	// kiwami:` |
 | `ui/src/settings.cpp` | `finishEntry()` | `case ENTRY_KIWAMI: return kw->entered(pw);	// kiwami:` |
+| `ui/src/settings.cpp` | `renderKeyboard()`, the help | `: entry == ENTRY_KIWAMI ? kw->entryHelp()	// kiwami:` |
 | `system/rootfs/etc/init.d/rcS` | background subshell, after SSH | `/usr/libexec/kiwami/tailscale boot &	# kiwami: Tailscale, when switched on` |
 | `system/rootfs/etc/init.d/rcK` | after `ssh down` | `/usr/libexec/kiwami/tailscale down 2>/dev/null	# kiwami: before /data is unmounted` |
 
@@ -337,6 +340,15 @@ Notes from the runs (what the logs showed, what was fixed):
   the B chip, START). `make test` passes; against `main`'s renders (exported with `git archive`), only `wifi-row` and
   `share-row`'s bottom panels differ: the count (`02 / 04`) and the Tailscale row in the list.
 
+- **Step 4, headless** (2026-10-19). `units`: 219 checks. `tailscale-ui.sh`, both sizes: the row and the page in 14
+  states; on and off (Right, then a tap) write `settings.conf` and run `up` and `down`, with the status asked only
+  while on; the page asks every 2 s and nothing after B; a name typed by touch (`Kiwi 2`) kept as `kiwi-2` and
+  passed to `name`, `kiwi-2_` refused with the keyboard still open; Log out runs on the second A only; Devices opens
+  and closes. The headless script updates Settings after a `wait`, a `shot` or a `touch` but not after a `press`, so
+  the test takes the helper's answer in with `wait 1` before moving through rows that depend on it. `make test`
+  passes; against `main` (rendered in the same minute, the clock being in the shots) only `wifi-row` and
+  `share-row` differ, as in step 3.
+
 ## Deviations
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
@@ -384,6 +396,13 @@ Where the implementation turned out different from this plan, why, and what chan
   from `pageWake()` would have hidden an upstream job due sooner (the Wi-Fi status job while the Tailscale page polls
   every 2 s). 12 hook lines in `settings.cpp`, 17 in banana-ui (the plan said 13, but its own table listed 16).
 
+- **2026-10-19, step 4: the keyboard's help for a name.** Upstream's keyboard ends its help, for any purpose but
+  Wi-Fi and search, with "Accounts are kept in banana/accounts.conf on the card", wrong for the device's name: one
+  more line in `renderKeyboard()`'s help, `entry == ENTRY_KIWAMI ? kw->entryHelp()`, gives the fork's pages their
+  own (no upstream line changed). 13 hook lines in `settings.cpp`, 18 in banana-ui. The name's normalisation and the
+  default name went into `tsstatus.*`, beside the status (pure functions the unit test links without the screen),
+  rather than into `tailscale.cpp`.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -393,7 +412,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 1. Tailscale in the image | done | `tailscale: Tailscale 1.98.8 in the image, built from source, with TUN as a kernel module` |
 | 2. The helper, at boot and shutdown | done | `tailscale: the helper that starts and stops it, at boot and before /data is unmounted` |
 | 3. banana-ui: the fork's hooks and the Tailscale row | done | `banana-ui: the fork's rows and pages hooked into Settings, and Tailscale's row in Network` |
-| 4. The Tailscale submenu | todo | |
+| 4. The Tailscale submenu | done | `banana-ui: Tailscale's submenu: on or off, the device's name, log out, and its state on the top panel` |
 | 5. The login QR code | todo | |
 | 6. The tailnet's devices | todo | |
 | 7. Final check | todo | |

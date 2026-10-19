@@ -5,7 +5,7 @@
 // Settings' page KIWAMI, and its texts typed on upstream's keyboard come back as ENTRY_KIWAMI.
 //   Network > Tailscale (kiwami.tailscale): the state, from the Tailscale helper (/usr/libexec/kiwami/tailscale, or
 //   KIWAMI_TAILSCALE in the environment: the test's stand-in), asked once when Settings opens and only while
-//   settings.conf has tailscale = on
+//   settings.conf has tailscale = on. A opens Tailscale's page (tailscale.cpp).
 #include "../settings.h"
 #include "tsstatus.h"
 
@@ -28,6 +28,7 @@ namespace banana
 		std::string value(const std::string& key) const;	// a row's value in the list
 		bool update(double t);						// true: something to draw again
 		int wake(double t, bool shown) const;		// ms until update() has something to do, -1 nothing
+		std::string entryHelp() const;				// the keyboard's help, typing for the fork's pages
 		Result entered(std::string& text);			// the keyboard's Done, for the fork's pages
 
 	private:
@@ -39,5 +40,28 @@ namespace banana
 		std::string word;							// the Tailscale row's value
 		std::string logged;							// the last state written to the log
 		bool show(const std::string& state, const std::string& w);
+
+		// Tailscale's page (tailscale.cpp): its rows (Tailscale on / off, Devices, Device name, Log out) on the bottom
+		// panel, the state and the selected row's help on the top one; the helper's status every 2 s while it shows
+		enum View { MENU, DEVICES } view = MENU;
+		std::string tool;							// the helper, as found when Settings opened
+		bool on = false;							// tailscale = on, as read then or set since
+		std::string selKey = "on";					// the selected row
+		bool armed = false;							// Log out waiting for its second A
+		double nextPoll = 0;
+		std::string model;							// the device tree's model, read once
+		bool modelRead = false;
+		std::vector<std::string> menuRows() const;	// the rows' keys: on, devices, name, logout
+		bool loggedIn() const;
+		std::string name();							// tailscale_name, else the board's
+		void run(const char* verb, const char* arg = nullptr);	// the helper, detached (waited for in the headless test)
+		void setOn(bool v);
+		Result change(int dir);
+		Result pressMenu(Key k);
+		Result pressDevices(Key k);
+		void renderTop(const std::string& title, const std::string& accent, const std::string& state, const std::string& help);
+		void renderMenu();
+		void renderDevices();
+		float para(const std::string& t, float top, int maxLines, const rnds::Color& c);
 	};
 }

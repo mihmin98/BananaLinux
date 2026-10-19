@@ -1,5 +1,5 @@
-// The fork's banana-ui code that needs no screen, checked on its own: the JSON reader and Tailscale's status. Built and
-// run by kiwami/tests/ci.sh with the host's g++:
+// The fork's banana-ui code that needs no screen, checked on its own: the JSON reader, Tailscale's status and the
+// device's name. Built and run by kiwami/tests/ci.sh with the host's g++:
 //   g++ -std=c++17 -Wall -I ui/src kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp -o units
 //   ./units kiwami/tests/tailscale
 #include "kiwami/json.h"
@@ -166,11 +166,36 @@ static void testStatus()
 	EQ(rowWord(stopped, true), "Stopped");
 }
 
+// the name: the board's by default (as the helper's, kiwami/tests/tailscale-helper.sh, from the same models), and what
+// the keyboard's text becomes
+static void testName()
+{
+	EQ(defaultName("Anbernic RG DS"), "banana-rgds");
+	EQ(defaultName("Anbernic RG DS Plus"), "banana-rgds-plus");
+	EQ(defaultName("Something else"), "banana");
+	EQ(defaultName(""), "banana");
+	EQ(normaliseName("My Handheld"), "my-handheld");
+	EQ(normaliseName("  Kiwi 2 "), "kiwi-2");
+	EQ(normaliseName("banana-rgds-plus"), "banana-rgds-plus");
+	EQ(normaliseName("a"), "a");
+	EQ(normaliseName("0"), "0");
+	EQ(normaliseName(std::string(63, 'x')), std::string(63, 'x'));
+	const std::string bad[] = { "", "   ", std::string(64, 'x'), "my_handheld", "-first", "last-", "a b-", "caf\xc3\xa9", "a.b", "a/b",
+		" - ", "tab\there", "semi;colon" };
+	for (const std::string& b : bad)
+	{
+		bool ok = normaliseName(b).empty();
+		if (!ok) fprintf(stderr, "units: name accepted: \"%s\"\n", b.c_str());
+		CHECK(ok);
+	}
+}
+
 int main(int argc, char** argv)
 {
 	dir = argc > 1 ? argv[1] : "kiwami/tests/tailscale";
 	testJson();
 	testStatus();
+	testName();
 	if (failed) { fprintf(stderr, "units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("units: %d checks passed\n", checks);
 	return 0;

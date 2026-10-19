@@ -1,7 +1,8 @@
 #pragma once
 // banana-ui (kiwami): Tailscale's state, from the helper's `status` (kiwami/rootfs/usr/libexec/kiwami/tailscale):
 // "state off" or "state starting" while there is no tailscaled to ask, "error <text>" for the last failure the helper
-// knows, then `tailscale status --json` (its fields as tailscaled 1.98.8 writes them). Pure functions, no I/O.
+// knows, then `tailscale status --json` (its fields as tailscaled 1.98.8 writes them). And the device's name in the
+// tailnet. Pure functions, no I/O.
 #include <string>
 #include <vector>
 
@@ -36,4 +37,11 @@ namespace banana::kiwami
 	// adapter); without one, and with this device not connected to Tailscale's servers, it waits for Wi-Fi.
 	// "state off" with no error is the moment before tailscaled starts (at boot, on switching it on): Starting.
 	std::string rowWord(const TsStatus& s, bool network);
+
+	// the device's name in the tailnet when Settings has none: the board's, from the device tree's model (as the helper
+	// works it out at boot), banana when there is none
+	std::string defaultName(const std::string& model);
+	// a name typed on the keyboard: spaces at either end dropped, the others hyphens, capitals lowercase; "" when what
+	// is left isn't a DNS label (a-z, 0-9 and hyphens, 1 to 63, no hyphen first or last)
+	std::string normaliseName(const std::string& typed);
 }

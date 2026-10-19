@@ -1,17 +1,18 @@
-// banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h).
+// banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing; the pages
+// are in their own files (tailscale.cpp).
 #include "kiwami.h"
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 namespace banana
 {
-	using rnds::Color;
-
 	// the handheld has an IPv4 address on a network of its own (Wi-Fi, a USB adapter): not the loopback, not
 	// Tailscale's; KIWAMI_NETWORK=0 or 1 says so instead (the headless test, whatever the machine running it has)
 	static bool hasNetwork()
@@ -61,14 +62,15 @@ namespace banana
 	void Settings::Kiwami::opened()
 	{
 		// switched off (or no helper in this image): nothing is run, the row says Off
-		std::string h = helper();
-		if (!tsOn() || h.empty())
+		tool = helper();
+		on = tsOn();
+		if (!on || tool.empty())
 		{
 			ts = kiwami::TsStatus();
-			show(h.empty() ? "no helper" : "switched off", "Off");
+			show(tool.empty() ? "no helper" : "switched off", "Off");
 			return;
 		}
-		if (!job.running()) job.start(quoted(h) + " status", st.sync);
+		if (!job.running()) job.start(quoted(tool) + " status", st.sync);
 	}
 
 	// the row's value, and a line in the log when the state changed (the tests read it)
@@ -82,20 +84,29 @@ namespace banana
 		return changed;
 	}
 
-	bool Settings::Kiwami::update(double)
+	bool Settings::Kiwami::update(double t)
 	{
+		// Tailscale's page asks again every 2 s while it shows
+		bool shown = st.page == KIWAMI;
+		if (shown && on && !tool.empty() && t >= nextPoll && !job.running())
+		{
+			job.start(quoted(tool) + " status", st.sync);
+			nextPoll = t + 2000;
+		}
 		std::string out;
-		if (!job.take(out)) return false;
+		if (!job.take(out) || !on) return false;	// (an answer from before it was switched off: dropped)
 		ts = kiwami::parseStatus(out);
 		std::string state = "state " + (ts.backend.empty() ? std::string("unreadable") : ts.backend);
 		if (!ts.self.ipv4.empty()) state += ", " + ts.self.ipv4;
 		if (!ts.error.empty()) state += ", error \"" + ts.error + "\"";
-		return show(state, kiwami::rowWord(ts, hasNetwork()));
+		return show(state, kiwami::rowWord(ts, hasNetwork())) || shown;
 	}
 
-	int Settings::Kiwami::wake(double, bool) const
+	int Settings::Kiwami::wake(double t, bool shown) const
 	{
-		return job.running() ? 100 : -1;
+		if (job.running()) return 100;
+		if (shown && on && !tool.empty()) return std::max(0, (int)(nextPoll - t));
+		return -1;
 	}
 
 	std::string Settings::Kiwami::value(const std::string& key) const
@@ -103,57 +114,20 @@ namespace banana
 		return key == "kiwami.tailscale" ? word : "";
 	}
 
-	Settings::Result Settings::Kiwami::open(const std::string& key)
+	// a program of the fork's, its own session; detached so that it outlives a game the menu starts next, waited for
+	// in the headless test (so what it does is done before the next command)
+	void Settings::Kiwami::run(const char* verb, const char* arg)
 	{
-		if (key != "kiwami.tailscale") return NONE;
-		st.page = KIWAMI;
-		st.armed = -1;
-		return MOVED;
-	}
-
-	// ---- Tailscale's page (for now its title and state; its rows come with the submenu) ------------------------
-	Settings::Result Settings::Kiwami::press(Key k)
-	{
-		switch (k)
+		if (tool.empty()) return;
+		fprintf(stderr, "banana-ui: tailscale: run %s%s%s\n", verb, arg ? " " : "", arg ? arg : "");
+		pid_t p = fork();
+		if (p == 0)
 		{
-		case Key::B: case Key::LEFT: st.page = LIST; return MOVED;
-		case Key::START: st.page = LIST; st.mOpen = false; return CLOSED;
-		default: return NONE;
+			setsid();
+			if (!st.sync && fork() != 0) _exit(0);
+			execl(tool.c_str(), tool.c_str(), verb, arg, (char*)nullptr);
+			_exit(127);
 		}
-	}
-
-	Settings::Result Settings::Kiwami::touch(float, float)
-	{
-		// the B chip (where the press went down, as upstream's pages)
-		if (st.downY >= 418 && st.downY <= 466 && st.downX < 320) return press(Key::B);
-		return NONE;
-	}
-
-	void Settings::Kiwami::render()
-	{
-		Colours p = colours(st.light);
-		rnds::Backend* be = st.be;
-		be->beginScreen(0);
-		st.box("screen", false, 0, 0, 640, 480);
-		st.box("hero", false, 18, 20, 604, 436);
-		st.icon("phone", 50, 56, 3);
-		st.text("Network", true, 17, 170, 62, p.muted, true, 1.4f);
-		st.text("Tailscale", true, 30, 170, 88, p.ink);
-		st.text(st.fit(word, true, 22, 420), true, 22, 170, 130, p.accent);
-		st.wrapped("Switching Tailscale on and off, the login and the devices come here.", 20, 50, 196, 540, 7, p.muted);
-		be->endScreen();
-
-		be->beginScreen(1);
-		st.box("screen", false, 0, 0, 640, 480);
-		st.box("bubble", false, 18, 14, 604, 54);
-		st.text("Tailscale", true, 22, 38, 28, p.ink);
-		float bw = st.faceWidth("B", "Back");
-		st.face("B", "Back", 18, bw);
-		be->endScreen();
-	}
-
-	Settings::Result Settings::Kiwami::entered(std::string&)
-	{
-		return NONE;
+		if (p > 0) waitpid(p, nullptr, 0);
 	}
 }

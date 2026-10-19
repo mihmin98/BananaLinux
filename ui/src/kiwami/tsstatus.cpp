@@ -73,4 +73,28 @@ namespace banana::kiwami
 		}
 		return offline ? "Waiting for Wi-Fi" : "Starting";
 	}
+
+	std::string defaultName(const std::string& model)
+	{
+		if (model.find("RG DS Plus") != std::string::npos) return "banana-rgds-plus";
+		if (model.find("RG DS") != std::string::npos) return "banana-rgds";
+		return "banana";
+	}
+
+	std::string normaliseName(const std::string& typed)
+	{
+		size_t a = typed.find_first_not_of(' '), b = typed.find_last_not_of(' ');
+		if (a == std::string::npos) return "";
+		std::string n;
+		for (size_t i = a; i <= b; i++)
+		{
+			char c = typed[i];
+			if (c == ' ') c = '-';
+			else if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
+			else if (!(c >= 'a' && c <= 'z') && !(c >= '0' && c <= '9') && c != '-') return "";
+			n += c;
+		}
+		if (n.size() > 63 || n.front() == '-' || n.back() == '-') return "";
+		return n;
+	}
 }

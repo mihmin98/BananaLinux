@@ -1,1 +1,6 @@
 # The fork's kernel options, merged after upstream's linux-banana.fragment (the last one wins), each with why.
+
+# Tailscale's tailscale0 (kernel mode, so the handheld's own programs reach the tailnet): a module, loaded only while
+# Tailscale is on. Netfilter and WireGuard stay off as upstream has them: tailscaled runs with --netfilter-mode=off
+# and does WireGuard in its own process.
+CONFIG_TUN=m

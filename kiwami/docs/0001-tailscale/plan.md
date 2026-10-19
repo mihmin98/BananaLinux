@@ -310,9 +310,38 @@ SSH; `/run/banana/messages` is syslog (tailscaled's own output), in RAM: copy it
 
 Notes from the runs (what the logs showed, what was fixed):
 
+- **Step 1, the build** (2026-10-19, on `output/rgds-plus`: the same arch and kernel as the RG DS's, and already
+  built, so the full build was incremental). `kiwami-tailscale` builds in 17 s; `tailscaled` is aarch64, linked
+  against glibc (Buildroot turns cgo on when the toolchain can, as for its own package), stripped: 15.7 MB, against
+  39.4 MB built with the CLI alone and nothing omitted (gzipped: 6.0 MB against 13.3 MB). The squashfs grows by
+  7.26 MB (161.97 to 169.23 MB, lz4 HC), the `.img.gz` by 6.2 MB, the update package by 7.25 MB. `tun.ko` (77 KB) is
+  in the target's modules; the kernel's `.config` has `CONFIG_TUN=m`, and `CONFIG_NETFILTER` and `CONFIG_WIREGUARD`
+  still unset. Under `qemu-aarch64-static`, `tailscale version` (through the symlink) says 1.98.8 / go1.26.3, and
+  every flag the helper uses is there (`up --accept-dns --netfilter-mode --auth-key --hostname`, `set --hostname`,
+  `logout`, tailscaled's `--statedir --socket --tun --no-logs-no-support`). The vendored tarball comes out
+  byte-identical from a second download, so the `.hash` holds.
+
 ## Deviations
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
+
+- **2026-10-19, step 1: vendored through Go's module proxy.** Buildroot vendors a Go package with
+  `GOPROXY=direct`, each module from its own repository, and one of Tailscale's (indirect) dependencies,
+  `github.com/kenshaw/evdev` v0.1.0, is no longer on GitHub, so the download failed. `proxy.golang.org` still has it:
+  the package sets `KIWAMI_TAILSCALE_GO_ENV = GOPROXY=https://proxy.golang.org,direct`, which comes after
+  Buildroot's in the download's environment. Nothing is trusted more than before: `go mod vendor` checks every
+  module against Tailscale's `go.sum`, and the build stays offline (`-mod=vendor`).
+- **2026-10-19, step 1: more features left out than the plan named.** Beyond the plan's list and what the
+  investigation leaves out, `ts_omit_*` also drops userspace networking (gVisor's netstack, and GRO and the outbound
+  proxy, which need it: kernel mode is the only mode, so a missing `tun` is an error, as step 2 has it), the
+  integrations this OS has nothing for (iptables, systemd, D-Bus, NetworkManager, resolved, the desktop, a browser,
+  cloud and Synology detection), log upload (`--no-logs-no-support` anyway), Tailscale's self-update, MDM and posture,
+  OAuth and federated auth keys, what polls for something nobody looks at here (listening ports, the tun's counters
+  and link speed, user metrics), and the CLI's terminal extras (its QR, colours, shell completion). Kept, besides the
+  port mapper, DERP, netcheck and the CLI: osrouter (kernel mode's addresses and routes), the IPN bus (`tailscale up`
+  waits on it, which the helper needs to tell a login from a refused key), health, DNS (for a later on-device
+  MagicDNS), Tailnet Lock (a tailnet using it would otherwise refuse the handheld), c2n, the peer API, the baked-in CA
+  roots, captive portal detection, debug and doctor. Each group is commented in `kiwami-tailscale.mk`.
 
 ## Progress
 
@@ -320,7 +349,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. Tailscale in the image | todo | |
+| 1. Tailscale in the image | done | `tailscale: Tailscale 1.98.8 in the image, built from source, with TUN as a kernel module` |
 | 2. The helper, at boot and shutdown | todo | |
 | 3. banana-ui: the fork's hooks and the Tailscale row | todo | |
 | 4. The Tailscale submenu | todo | |

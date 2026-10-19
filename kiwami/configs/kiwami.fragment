@@ -1,3 +1,8 @@
 # The fork's Buildroot options, over upstream's banana_<board>_defconfig for every board (kiwami/configure.sh merges
 # them). An option here replaces upstream's value. The lists (overlays, post-build scripts, kernel fragments) are not
 # set here: configure.sh appends the fork's entries to upstream's.
+
+# Tailscale (Settings > Network), built with Go's prebuilt compiler (the same 1.26.3) rather than five bootstrap
+# stages of it from source
+BR2_PACKAGE_KIWAMI_TAILSCALE=y
+BR2_PACKAGE_HOST_GO_BIN=y

@@ -1,0 +1,12 @@
+config BR2_PACKAGE_KIWAMI_TAILSCALE
+	bool "kiwami-tailscale"
+	depends on BR2_PACKAGE_HOST_GO_TARGET_ARCH_SUPPORTS
+	select BR2_PACKAGE_HOST_GO
+	help
+	  Tailscale (Settings > Network > Tailscale): one tailscaled binary with the CLI built in, tailscale a link to
+	  it, the features the handheld doesn't use left out. Kernel mode with the tun module, netfilter left off.
+
+	  Buildroot's own tailscale package is not to be used instead: it is older, and it switches netfilter on in
+	  the kernel, which Banana keeps off.
+
+	  https://github.com/tailscale/tailscale

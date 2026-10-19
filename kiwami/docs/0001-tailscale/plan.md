@@ -231,33 +231,65 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 ### 7. The helper runs one change at a time
 
 Added after manual test M2 (*Deviations*, 2026-10-19): Tailscale switched on and off quickly left a tailscaled
-nothing knew of, and every later switch-on failed until a restart. Implemented once the other manual tests are done.
+nothing knew of, and every later switch-on failed until a restart. Implemented before the remaining manual tests,
+so that they (M3, M4, M6, M12, M13, M16 among them) test the helper as it stays; it also takes in the two things
+M5's logs showed (*Notes*).
 
-- **Files**: `kiwami/rootfs/usr/libexec/kiwami/tailscale`, `ui/src/kiwami/tailscale.cpp` (changed);
-  `kiwami/tests/tailscale-helper.sh`, `kiwami/tests/fake-tailscale.sh`, `kiwami/tests/tailscale-ui.sh` (changed).
+- **Files**: `kiwami/rootfs/usr/libexec/kiwami/tailscale`, `ui/src/kiwami/tailscale.cpp`, `tsstatus.h`/`.cpp`
+  (changed); `kiwami/tests/tailscale-helper.sh`, `kiwami/tests/bin/tailscaled`, `kiwami/tests/fake-tailscale.sh`,
+  `kiwami/tests/tailscale-ui.sh`, `kiwami/tests/units.cpp` (changed).
 - **Change**:
-  - The helper's `up`, `down`, `logout` and `name` hold a lock (`flock` on `/run/banana/tailscale.lock`, busybox's)
-    for as long as they run, so they run one after another. The lock's descriptor is closed for what they leave
-    running (tailscaled, its `logger`, the background login), which would otherwise hold it for as long as they run.
-    `status` takes no lock: the menu's polling never waits behind a start.
+  - The helper's `boot`, `apply`, `up`, `down`, `logout` and `name` hold a lock (`flock` on
+    `/run/banana/tailscale.lock`) for as long as they run, so they run one after another. The lock is taken on a
+    descriptor (`exec 9>...`, then `flock 9`), the one form busybox's `flock` and util-linux's (the tests' on a
+    computer) share. Its descriptor is closed (`9>&-`) for what they leave running (tailscaled, its `logger`, the
+    background login), which would otherwise hold the lock for as long as they run. `status` takes no lock: the
+    menu's polling never waits behind a start. Nor does `login`, the background login `up` starts: it runs for as
+    long as the login takes, and `down` stops it as before.
+  - The wait for the lock is bounded: busybox 1.37's `flock` has no `-w`, so it is `timeout 10 flock 9` (busybox's
+    `timeout`; the lock belongs to the open file, so the child taking it takes it for the script). A run that
+    gives up logs `failed: busy` and exits 1, so `rcK`'s `down` can never keep `/data` from being unmounted.
   - `up` and `down` are functions inside the helper, called as such (by `boot`, `apply`, and `up`'s own clean-up
-    after a failed start) rather than as `"$0" down`, which would wait for the lock its caller holds.
+    after a failed start) rather than as `"$0" down`, which would wait for the lock its caller holds. The `up` and
+    `down` verbs stay, for `rcK` and for SSH.
   - A new verb, `apply`: under the lock, `up` when `settings.conf` has `tailscale = on`, else `down`, read when
     the lock is taken. The menu's On / Off writes the setting and runs `apply` (instead of `up` / `down`), so
     however many switches queue up and in whatever order the lock lets them through (Linux doesn't make it a queue),
-    the last one to run leaves tailscaled as the setting is. `up` and `down` stay, for `boot` and for SSH.
+    the last one to run leaves tailscaled as the setting is. (The setting is written to a `.new` file and renamed
+    before `apply` is started, so `apply` never reads it half-written.) A side effect: when `settings.conf` can't
+    be written (a full card; `setConfValue` keeps the old file), the switch now changes nothing, where before it
+    still ran `up` or `down`; the next poll, 2 s later, shows the state as it is. The helper's header comment lists
+    `apply`.
   - No "stop any tailscaled" fallback in `down`: run by the tests on a computer it would stop that computer's own
     tailscaled, and with the lock, overlapping runs no longer leave one behind.
-- **Tests**: `tailscale-helper.sh`: on / off / on / off / on as five `apply`s started at once, with the setting
-  changed before each: one stand-in daemon in the end, matching the last setting, and its pid file and socket
-  there; the same ending on off: no daemon, no pid file, no socket; `up` and `down` started at once leave no daemon
-  that the pid file doesn't name; `status` answers while an `up` holds the lock. `tailscale-ui.sh`: On / Off calls
-  the stand-in's `apply`. Manual: M19.
+  - From M5: the helper sets `TZ` from `settings.conf`'s `timezone` (as banana-ui does), so `tailscale.log` has the
+    same clock whether the menu, `rcS` or `rcK` runs it.
+  - From M5: while the state is Starting, the page doesn't show tailscaled's `Health` messages (the row and the page
+    already say Starting); for a few seconds after a boot they say "the network is down", then "You are logged out"
+    while the first connection to the control server is cut by Wi-Fi coming up. They are shown, as before, in every
+    other state. In `tsstatus.*`, where the page's message is chosen.
+- **Tests**: written to fail against the step 2 helper first, then pass.
+  - The stand-in `tailscaled` takes `KT_START_DELAY` (seconds before its socket appears) and `KT_STOP_DELAY`
+    (seconds before it exits on SIGTERM), so the windows the race needs are as wide as on the device.
+  - `tailscale-helper.sh`, with both delays at a few tenths of a second: M2's sequence, `up`, `down`, `up` each
+    started in the background 50 ms after the one before: one stand-in daemon in the end, the one the pid file
+    names, its socket there (this fails with the step 2 helper). On / off / on / off / on as five `apply`s, each
+    one the setting written, then `apply` started in the background, then 50 ms: one daemon in the end, its pid file
+    and socket there; the same ending on off: no daemon, no pid file, no socket. `status` answers while an `up`
+    holds the lock. The lock is free once `up` returns (`flock -n` on it succeeds while the stand-in daemon,
+    `logger` and the login still run: a missed `9>&-` fails this). A lock held by the test makes `down` give up
+    after its timeout, with `failed: busy` in the log. The log's clock follows `timezone` (a fixed `TZ` rule against
+    the same `date` in UTC).
+  - `units.cpp`: a Starting status with a `Health` message gives the Starting text with no message; NeedsLogin and
+    Running with the same message still show it.
+  - `tailscale-ui.sh`: On / Off calls the stand-in's `apply`.
+  - Manual: M19, and M5's boot looked at again (the log's clock, the Starting page).
 - **Commit**: `tailscale: the helper runs one change at a time, and switching on and off follows the setting`
 
 ### 8. Final check
 
-- `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
+- `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`
+  (run again after step 7: the automated part in *Notes* was run before it).
 - The fork's tests in `kiwami/tests/` (`tailscale-helper.sh`, `units.cpp`, `tailscale-ui.sh`, run by `ci.sh`).
 - The hooks: `git diff --stat main...HEAD` and `git grep -n 'kiwami:'` (the commands in `docs/FORK.md`) agree, and
   list only the hooks this feature meant to add (*Hooks*, below).
@@ -308,8 +340,8 @@ conflict, resolved by keeping both values.
 | Configure | `kiwami/tests/ci.sh` | every board configures with the package, the prebuilt Go and `CONFIG_TUN=m`'s fragment, nothing dropped |
 | Shell | `kiwami/tests/ci.sh` | the helper parses (`sh -n`) |
 | Veto | `kiwami/tests/ci.sh` | `post-build.sh` adds the state file to the share script's `veto files`, and fails if the line moved |
-| Helper | `kiwami/tests/tailscale-helper.sh` | boot, up (flags, `tun`), down, logout, name, status; the auth key deleted after a login, renamed after a refusal; the default name per board |
-| Units | `kiwami/tests/units.cpp` | the JSON reader, the status parser over captured outputs, the name's checks, the QR's version for a login URL |
+| Helper | `kiwami/tests/tailscale-helper.sh` | boot, up (flags, `tun`), down, logout, name, status; the auth key deleted after a login, renamed after a refusal; the default name per board; overlapping runs and `apply` leave tailscaled as the setting is, the lock free once a run returns and bounded in time, the log's clock |
+| Units | `kiwami/tests/units.cpp` | the JSON reader, the status parser over captured outputs, the name's checks, the QR's version for a login URL, no `Health` message while Starting |
 | Menu | `kiwami/tests/tailscale-ui.sh` | at both sizes: the row in each state, the submenu, on/off and the settings written, the name typed, log out, the QR (decoded with `zbarimg` when installed), the devices page; nothing polled when closed or off |
 | Upstream | `make test` | unchanged and passing; renders as `main`'s but for the Network list |
 
@@ -325,11 +357,11 @@ SSH; `/run/banana/messages` is syslog (tailscaled's own output), in RAM: copy it
 | M2 | rgds, rgds-plus | Switch Tailscale on; scan the QR with a phone; log in and approve | `Starting`, then the QR (scans first time on each panel size); the page turns to Connected by itself; the row shows the address | `/data/banana/logs/tailscale.log`, `/run/banana/messages`, `tailscale status --json` saved into `kiwami/tests/tailscale/` for the unit tests | rgds-plus: passed (2026-10-19): the QR in under 2 s, scanned at once; Connected by itself 2 s after the approval; routes in table 52, `tailscale0` with its 100.x and IPv6 addresses, a direct path (UDP, the router's port mapping) with DERP behind it. Switching on and off quickly lost a tailscaled (*Deviations*, step 7, M19). rgds: not run |
 | M3 | rgds | Tailnet with device approval on (admin console); log in | `Waiting for approval` until approved in the console, then Connected | `tailscale.log`, `messages` | not run |
 | M4 | rgds-plus | Logged out; an auth key in `banana/tailscale/authkey`, dropped in over File sharing; switch on. Then a revoked key | Logged in with no QR, the key file gone. The revoked one: `authkey.refused`, the reason on the page, the QR shown | `tailscale.log` | not run |
-| M5 | rgds, rgds-plus | Connected; restart; then shut down and power on | Connected again by itself each time, no login; time from the menu's first frame to Connected noted | `tailscale.log`, `logs/boot.txt`, `messages` | not run |
-| M6 | rgds | Switch off; restart | tailscaled gone, `tun` unloaded, no `tailscale0`; still off after the restart, nothing started | `tailscale.log`, `lsmod` | not run |
+| M5 | rgds, rgds-plus | Connected; restart; then shut down and power on | Connected again by itself each time, no login; time from the menu's first frame to Connected noted | `tailscale.log`, `logs/boot.txt`, `messages` | rgds-plus: passed (2026-10-19): Connected by itself after a restart and after a power-off, no login. The menu at 7.35 s / 7.33 s from the kernel's start; tailscaled `Running` about 11 s / 10 s after syslogd (~1.2 s), so ~5 s / ~4 s after the menu, most of it waiting for Wi-Fi. Found: the log's clock and the Starting page's Health message (*Notes*). rgds: not run |
+| M6 | rgds | Switch off; restart | tailscaled gone, `tun` unloaded, no `tailscale0`; still off after the restart, nothing started; the menu's time in `boot.txt` against M5's (tailscaled starts beside the menu, in `rcS`'s background subshell) | `tailscale.log`, `lsmod`, `logs/boot.txt` | not run |
 | M7 | rgds, rgds-plus | Connected; sleep 1 min, wake; sleep 15 min, wake; ping the handheld's 100.x from another device right after each wake | Reachable again within ~10 s each time (the RG DS's Wi-Fi unloaded and loaded around the sleep); the time noted | `messages` (tailscaled's link-change lines), `tailscale.log`, `logs/` bananad's | not run |
 | M8 | rgds | Connected; Wi-Fi off in Settings; then on | Row and page say `Waiting for Wi-Fi`; Connected again once Wi-Fi is back | `messages` | not run |
-| M9 | rgds-plus | From a phone on mobile data (not the handheld's network): `ssh root@100.x`; `\\100.x\banana` (or `smb://`) | Both work. Over SMB, `banana/tailscale/tailscaled.state` is neither listed nor opened; an `authkey` put there is listed until a login deletes it | `ls` of the share from the computer | not run |
+| M9 | rgds-plus | From a phone on mobile data (not the handheld's network): `ssh root@100.x`; `\\100.x\banana` (or `smb://`) | Both work. Over SMB, `banana/tailscale/tailscaled.state` is neither listed nor opened; an `authkey` put there is listed until a login deletes it | `ls` of the share from the computer | rgds-plus: SSH over the tailnet passed (2026-10-19); File sharing and the veto not run yet |
 | M10 | rgds | Over SSH on the handheld: `ping -c3` a tailnet device's 100.x; `wget` a service at home by its 100.x | Both answer (the handheld reaches out through `tailscale0`) | the commands' output | not run |
 | M11 | rgds | Rename to `my handheld` while connected; then a name with `_` | `my-handheld` in the admin console within a minute; the `_` one refused with the message | `tailscale.log` | not run |
 | M12 | rgds-plus | Log out (A twice) | The admin console shows the device logged out; a fresh QR at once | `tailscale.log` | not run |
@@ -398,6 +430,19 @@ Notes from the runs (what the logs showed, what was fixed):
   `wifi-row-bot` and `share-row-bot` at each size. `DEPENDENCIES.md` lists all three. `docs/ARCHITECTURE.md`
   describes nothing this feature changes (its module count is upstream's kernel), and `CLAUDE.md` has nothing to
   add. The investigation's *Risks* have step 1's sizes; memory and CPU wait for M14. Left: the manual tests.
+
+- **M5, two small things in the logs** (2026-10-19, RG DS Plus), both fixed in step 7:
+  - `tailscale.log`'s clock is the time zone's when the menu runs the helper (banana-ui sets `TZ` from
+    `settings.conf`'s `timezone`, a POSIX rule) and UTC when `rcS` or `rcK` do: the log goes from 19:54 back to
+    17:06. One line in the helper would set `TZ` from `settings.conf` as banana-ui does. Upstream's `boot.txt`
+    is in UTC too.
+  - For the first seconds after a boot, before Wi-Fi has an address, tailscaled's `Health` holds "Tailscale
+    cannot connect because the network is down", then "You are logged out. The last login error was: fetch
+    control key ..." (its first connection cut by the link change), cleared a second later. The Starting page
+    shows `Health`'s first message as it is, so a page opened then says "You are logged out" for a moment. The
+    row says `Starting` meanwhile, which is right.
+  - Not a fault: `investigation.md` has tailscaled starting after the menu's first frame. `rcS`'s background
+    subshell runs beside banana-ui's start instead, so M6 compares the menu's time in `boot.txt` with it off.
 
 ## Deviations
 
@@ -476,9 +521,10 @@ Where the implementation turned out different from this plan, why, and what chan
   runs apart isn't enough on its own: Linux doesn't let processes waiting on a lock through in the order they came,
   so a quick on / off / on could also end with a `down` last and the setting `on`. The fix, as step 7: the helper
   holds a lock for every change, the menu's switch runs a new `apply` that follows `settings.conf` as it is when
-  the lock is taken, and `up` and `down` call each other as functions. Implemented after the other manual tests;
-  M19 checks it on the device. The headless tests didn't see it because they run the helper's stand-in
-  synchronously (`st.sync`), one command after another.
+  the lock is taken, and `up` and `down` call each other as functions. Implemented before the remaining manual
+  tests, so they test the helper as it stays; M19 checks it on the device. The headless tests didn't see it
+  because they run the helper's stand-in synchronously (`st.sync`), one command after another, and the helper's
+  stand-in daemon starts and stops at once; step 7 slows it down.
 
 ## Progress
 

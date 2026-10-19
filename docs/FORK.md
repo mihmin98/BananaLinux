@@ -10,10 +10,20 @@ only small, marked hooks into them.
 |---|---|
 | `main` | upstream, exactly: never committed to, only fast-forwarded to `upstream/main` |
 | `kiwami` | the fork: `main` plus the customizations; upstream comes in by merging `main` into it |
-| `k/<feature>` | work on one customization, branched off `kiwami` and merged back when it works |
+| `k/<NNNN>-<name>` | work on one feature, branched off `kiwami` and merged back when it works |
 
-Feature branches are `k/<feature>`, not `kiwami/<feature>`: git keeps a branch as a file under `.git/refs/heads/`, so
-a branch `kiwami` and a branch `kiwami/x` can't both exist.
+Feature branches are `k/<NNNN>-<name>`, not `kiwami/<name>`: git keeps a branch as a file under `.git/refs/heads/`,
+so a branch `kiwami` and a branch `kiwami/x` can't both exist.
+
+A small change goes on `kiwami` directly. A feature has a GitHub issue on this fork, and the issue's number, four
+digits, is its ID: issue #7 about Tailscale is the branch `k/0007-tailscale`, and its investigation and plan are in
+`kiwami/docs/0007-tailscale/` (templates in `kiwami/docs/templates/`; the stages are in `CLAUDE.md`). Two features on
+the same subject stay apart by their numbers.
+
+A feature branch comes back through a pull request in GitHub's UI. Opened from a fork, a pull request's base is the
+parent repository by default: set it to this fork's `kiwami`. Merge with "Create a merge commit" (not squash or
+rebase), so the feature's step commits, which its plan's progress section points to, stay in the history. The
+description ends with `Closes #<issue>`.
 
 A change meant for upstream (a fix, or a hook upstream could use too) is a branch off `main`, not `kiwami`, so it
 carries nothing of the fork.
@@ -41,6 +51,8 @@ The rule: a new file of the fork's own wherever the build allows one; an upstrea
 | Additions to upstream's files in the image (`systems.conf`, the theme's `systems.cfg`) | `kiwami/post-build.sh`, appending or inserting into the copy in `$TARGET_DIR`, rather than a whole replacement in the overlay |
 | Boot and network services | hook folders that run every file in them: `/etc/banana/sleep.d/` (around a suspend), `/usr/share/udhcpc/default.script.d/` (on an address from DHCP) |
 | banana-ui | `ui/src/kiwami/` (inside `ui/`: the package builds only that folder): its own theme behind `banana::Menu`, its own settings rows, its own handlers for the host's events |
+| Tests of the fork's features | `kiwami/tests/` (a one-line `kiwami:` hook if `make test` has to run them) |
+| A feature's investigation and plan | `kiwami/docs/<NNNN>-<name>/` |
 | Settings only | `/data/banana/` on the card (`settings.conf`, `bananad.conf`, `systems.conf`): nothing in the repo |
 
 Left alone, because their owners overwrite them: `ui/rnds/` and `ui/assets/rnds/` (ROCKNIXDS, `tools/import-rnds.sh`),

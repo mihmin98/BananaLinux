@@ -24,6 +24,50 @@ change the repository's history, refs or branches; the user does all of that by 
 change is ready, stage it and give the user a commit message to use (subject line plus body, in the style described
 under *Conventions*), then stop. Commit messages carry no `Co-Authored-By` trailer or other AI attribution lines.
 
+## Working on a change: the workflow
+
+Every stage waits for the user's approval; ask whenever something is unclear, at any stage, rather than guessing.
+
+**Small or feature.** At the start, say which it is and why, and propose where it goes: directly on `kiwami`, or a
+feature branch. The user approves or decides otherwise.
+
+- A *small* change (a fix, a setting, a doc) skips the investigation and the plan once the user approves skipping
+  them: describe it in a few lines with the files it touches, make it, stage it, give a commit message.
+- A *feature* gets a GitHub issue, a branch and the stages below.
+
+**Issue.** Write the issue's text (title, a short description of what and why); the user creates it by hand. Its
+number is the feature's ID: issue #7 about Tailscale is `0007-tailscale`, the branch `k/0007-tailscale` (the user
+creates it, off `kiwami`) and the folder `kiwami/docs/0007-tailscale/`.
+
+**1. Investigation.** Find out the project's current state for the feature, what has to change, and what the user
+wants. Read the user's requirements critically: point out what they overlook (cases not covered, conflicts with
+existing behaviour or with upstream, sleep, both boards, both panels, first boot, updates, a missing card or network,
+cost in performance and footprint) and suggest what would make the feature better (simpler approaches, additions
+worth having, things worth leaving out). Write `kiwami/docs/<NNNN>-<name>/investigation.md` from `kiwami/docs/templates/investigation.md`, present it,
+refine it with the user until they're happy, then stage it and give a commit message. The user gives the go-ahead for
+planning.
+
+**2. Plan.** Work out the exact changes, step by step, each step one commit. Write `plan.md` next to the investigation
+from `kiwami/docs/templates/plan.md`: the steps, the automated tests (the fork's tests live in `kiwami/tests/`), a
+manual test checklist for what headless tests can't reach (sleep, hardware, Wi-Fi), with what to collect from the
+device's logs for analysis, and the progress section. The last step is always the final check. Present it, discuss,
+and once it's approved stage it and give a commit message.
+
+**3. Implementation.** Ask permission to start. Then one step at a time: implement it, mark it done in the plan's
+progress section (in the same commit), stage the files, give a short overview and a commit message, and stop until
+the user has committed and says to go on. If a step turns out different from the plan, stop, explain why, and update
+the plan (its *Deviations* section) before going further.
+
+Where a manual test needs information from the device, the feature logs to `/data/banana/logs/` (or the test says
+which existing log to read), and the checklist says what to fetch: over SSH/SFTP (Settings > System > SSH) or from
+the card on a computer. The user passes the logs back for analysis, and the outcome goes in the plan's manual test
+table.
+
+**4. Merge.** The user merges the branch into `kiwami` through a pull request in GitHub's UI. Give the PR's title (it
+becomes the merge commit's subject) and description, ending with `Closes #<issue>`, and remind the user that the base
+must be this fork's `kiwami`, not upstream's repository (GitHub defaults to the parent), and to merge with "Create a
+merge commit", which keeps the step commits the plan's progress points to.
+
 ## The project
 
 BananaOS ("Banana") is a Buildroot-based Linux for the Anbernic RG DS and RG DS Plus (RK3566, two panels, clamshell).
@@ -104,6 +148,8 @@ immediately to the file that owns them (`settings.conf`, `bananad.conf` + SIGHUP
 - Prose style in comments, docs and commit messages is plain descriptive English about behaviour ("The menu holds
   still: no bob ..."), not conventional-commit prefixes; a component prefix like `banana-ui:`, `rnds:`, `qemu-boot:`
   or `BananaDS <sha>:` is used when it helps. Match this.
+- A commit message is written to be understood from `git log` alone: the subject says what changed, the body says
+  what it does and why, and how where that isn't obvious from the diff.
 - Performance and footprint are the point of the project (menu frames under a millisecond, nothing running while
   idle, games get the whole device). Avoid adding polling, background threads, daemons or rootfs weight.
 - Rendering optimisations in banana-ui/rnds are expected to keep frames bit-identical; `make test`'s PNGs in

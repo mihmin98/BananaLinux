@@ -32,7 +32,7 @@ Found while working out the exact changes; none changes what the feature does.
   code telling them apart.
 - **Two more hook lines**: `#include "kiwami/kiwami.h"` in `settings.cpp`, and a second line in `ui/Makefile` making
   the fork's headers prerequisites of `banana-ui` (otherwise `make ui` doesn't rebuild after a header change).
-  13 hooks in banana-ui in all (*Hooks*, below).
+  17 hooks in banana-ui in all (*Hooks*, below; *Deviations*: two found in step 3).
 - **The helper's `status`** prints `state off` when tailscaled isn't running (and the menu doesn't even run the
   helper while the setting is `off`), an `error <text>` line for the last failure it knows (no `tun` module, a
   refused auth key), then tailscaled's JSON. The clock problem of oversight 6 comes from the JSON's `Health`
@@ -137,7 +137,7 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 
 ### 3. banana-ui: the fork's hooks and the Tailscale row
 
-- **Files**: `ui/Makefile` (hook, 2 lines); `ui/src/settings.h` (hook, 3 lines); `ui/src/settings.cpp` (hook, 10
+- **Files**: `ui/Makefile` (hook, 2 lines); `ui/src/settings.h` (hook, 3 lines); `ui/src/settings.cpp` (hook, 12
   lines); `ui/src/kiwami/kiwami.h`, `kiwami.cpp`, `json.h`, `json.cpp`, `tsstatus.h`, `tsstatus.cpp` (new);
   `kiwami/tests/fake-tailscale.sh`, `kiwami/tests/units.cpp`, `kiwami/tests/tailscale/*.json`,
   `kiwami/tests/tailscale-ui.sh` (new); `kiwami/tests/ci.sh` (changed).
@@ -253,6 +253,7 @@ Every line this feature adds to upstream's files.
 | `ui/src/settings.h` | `enum Entry` | `ENTRY_SEARCH, ENTRY_KIWAMI }`, marked `// kiwami: ENTRY_KIWAMI, a text for the fork's pages` |
 | `ui/src/settings.h` | beside `struct RaWatch;` | `struct Kiwami; std::shared_ptr<Kiwami> kw;	// kiwami: the fork's rows and pages (ui/src/kiwami/)` |
 | `ui/src/settings.cpp` | the includes | `#include "kiwami/kiwami.h"	// kiwami: the fork's rows and pages` |
+| `ui/src/settings.cpp` | after `pal()` | `Settings::Kiwami::Colours Settings::Kiwami::colours(bool light) { ... }	// kiwami: the screen's colours for the fork's pages` |
 | `ui/src/settings.cpp` | `build()`, after File sharing | `Kiwami::rows(*this, W);	// kiwami: Tailscale` |
 | `ui/src/settings.cpp` | `open()` | `if (kw) kw->opened();	// kiwami: the rows' values, once` |
 | `ui/src/settings.cpp` | `change()`, `PAGE` | `if (kw && kw->owns(it.key)) return kw->open(it.key);	// kiwami:` |
@@ -261,7 +262,7 @@ Every line this feature adds to upstream's files.
 | `ui/src/settings.cpp` | `render()` | `if (page == KIWAMI) { kw->render(); return; }	// kiwami:` |
 | `ui/src/settings.cpp` | `render()`, a page row's value | `else if (it.kind == Item::PAGE && kw && kw->owns(it.key)) v = kw->value(it.key);	// kiwami:` |
 | `ui/src/settings.cpp` | `update()`, before `return changed` | `if (kw) changed \|= kw->update(t);	// kiwami:` |
-| `ui/src/settings.cpp` | `pageWake()`, first | `if (int w = kw ? kw->wake(t, page == KIWAMI) : -1; w >= 0) return w;	// kiwami:` |
+| `ui/src/settings.cpp` | `nextWake()`, after `pageWake` | `if (int k = kw ? kw->wake(t, page == KIWAMI) : -1; k >= 0 && (w < 0 \|\| k < w)) w = k;	// kiwami:` |
 | `ui/src/settings.cpp` | `finishEntry()` | `case ENTRY_KIWAMI: return kw->entered(pw);	// kiwami:` |
 | `system/rootfs/etc/init.d/rcS` | background subshell, after SSH | `/usr/libexec/kiwami/tailscale boot &	# kiwami: Tailscale, when switched on` |
 | `system/rootfs/etc/init.d/rcK` | after `ssh down` | `/usr/libexec/kiwami/tailscale down 2>/dev/null	# kiwami: before /data is unmounted` |
@@ -331,6 +332,10 @@ Notes from the runs (what the logs showed, what was fixed):
   state kept. With `tailscale = on`, `poweroff`: rcK stopped it (`stopped` in `tailscale.log`) before the unmount;
   the next boot started it from rcS with the same state file (`NeedsLogin`, a new login URL), and no exFAT
   warnings in `dmesg`. syslog got 110 lines of tailscaled's in the first 15 s, most at start.
+- **Step 3, headless** (2026-10-19). `units`: 196 checks (also clean under ASan and UBSan). `tailscale-ui.sh`: the row
+  in 14 states at both sizes, the helper asked once per opening and never while off, the page opened and closed (B,
+  the B chip, START). `make test` passes; against `main`'s renders (exported with `git archive`), only `wifi-row` and
+  `share-row`'s bottom panels differ: the count (`02 / 04`) and the Tailscale row in the list.
 
 ## Deviations
 
@@ -371,6 +376,14 @@ Where the implementation turned out different from this plan, why, and what chan
   connection as the unix socket's, so `actor.Permissions` grants neither read nor write, whatever the feature's
   description says. The feature is kept (65 KB); everything here runs as root, so it changes nothing else.
 
+- **2026-10-19, step 3: two hooks different from the plan's.** The screen's palette (`SPal`, `pal()`) is private to
+  `settings.cpp` and `text()` takes its colour from the caller, so the fork's pages had no way to draw in the
+  screen's colours: one more line in `settings.cpp`, after `pal()`, defines `Settings::Kiwami::colours()`, the few
+  colours the fork's pages use, taken from `pal()` (an upstream rename breaks the build rather than drifting). And
+  the wake hook moved from the top of `pageWake()` to `nextWake()`, keeping the sooner of the two: returning early
+  from `pageWake()` would have hidden an upstream job due sooner (the Wi-Fi status job while the Tailscale page polls
+  every 2 s). 12 hook lines in `settings.cpp`, 17 in banana-ui (the plan said 13, but its own table listed 16).
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -379,7 +392,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. Tailscale in the image | done | `tailscale: Tailscale 1.98.8 in the image, built from source, with TUN as a kernel module` |
 | 2. The helper, at boot and shutdown | done | `tailscale: the helper that starts and stops it, at boot and before /data is unmounted` |
-| 3. banana-ui: the fork's hooks and the Tailscale row | todo | |
+| 3. banana-ui: the fork's hooks and the Tailscale row | done | `banana-ui: the fork's rows and pages hooked into Settings, and Tailscale's row in Network` |
 | 4. The Tailscale submenu | todo | |
 | 5. The login QR code | todo | |
 | 6. The tailnet's devices | todo | |

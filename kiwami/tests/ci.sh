@@ -13,6 +13,15 @@ done
 # the Tailscale helper, against stand-ins
 kiwami/tests/tailscale-helper.sh
 
+# banana-ui's code of the fork's that needs no screen (the JSON reader, Tailscale's status), with the host's g++
+T=$(mktemp -d)
+${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp
+"$T/units" kiwami/tests/tailscale
+rm -rf "$T"
+
+# Tailscale in banana-ui's Settings, headless, when banana-ui is built (CI builds it before)
+if [ -x ui/banana-ui ]; then kiwami/tests/tailscale-ui.sh; else echo "tailscale-ui: skipped, no ui/banana-ui (make ui)"; fi
+
 # post-build.sh vetoes tailscaled's state in upstream's share script, and stops the build when the line isn't there
 T=$(mktemp -d)
 mkdir -p "$T/usr/libexec/banana"

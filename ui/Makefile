@@ -9,6 +9,8 @@ override CXXFLAGS += -std=c++17 -Wall -Wno-unused-function
 override LDLIBS += -lpthread
 
 SRC = src/main.cpp src/soft.cpp src/kms.cpp src/input.cpp src/library.cpp src/sound.cpp src/splash.cpp src/settings.cpp src/wifi.cpp src/zip.cpp src/carts.cpp src/cart3d.cpp src/theme.cpp rnds/RndsRaster.cpp rnds/RndsUI.cpp
+SRC += $(wildcard src/kiwami/*.cpp)	# kiwami: the fork's sources
+banana-ui: $(wildcard src/kiwami/*.h src/kiwami/*.hpp)	# kiwami: and their headers
 PKGS = freetype2 libdrm zlib
 ifeq ($(ALSA),1)
 PKGS += alsa

@@ -1,5 +1,5 @@
 // The fork's banana-ui code that needs no screen, checked on its own: the JSON reader, Tailscale's status, the
-// device's name and the login's QR code. Built and run by kiwami/tests/ci.sh with the host's g++:
+// device's name, the login's QR code and the devices' list. Built and run by kiwami/tests/ci.sh with the host's g++:
 //   g++ -std=c++17 -Wall -I ui/src kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp
 //       ui/src/kiwami/qrcodegen.cpp -o units
 //   ./units kiwami/tests/tailscale
@@ -214,6 +214,35 @@ static void testQr()
 	CHECK(loginQr(std::string(4000, 'x'), side).empty() && side == 0);	// more than a QR code holds
 }
 
+// the devices page: this one first, those online, the rest, each by name; when an offline one was last seen
+static void testDevices()
+{
+	std::vector<TsDevice> l = deviceList(parseStatus(capture("running")));
+	std::string order;
+	for (auto& d : l) order += d.name + (d.self ? "*" : d.online ? "" : "-") + " ";
+	EQ(order, "banana-rgds* alexs-iphone desktop nas raspberrypi banana-rgds-plus- living-room-tv- macbook- ");
+	CHECK(deviceList(TsStatus()).empty());
+
+	long long now = 1792370530;	// 2026-10-19T00:42:10Z
+	EQ(seenAgo("2026-10-19T00:42:00Z", now), "a moment ago");
+	EQ(seenAgo("2026-10-19T00:45:00Z", now), "a moment ago");	// a clock behind the other device's
+	EQ(seenAgo("2026-10-19T00:41:10Z", now), "a minute ago");
+	EQ(seenAgo("2026-10-19T00:30:10.123456789Z", now), "12 minutes ago");
+	EQ(seenAgo("2026-10-18T23:42:10Z", now), "an hour ago");
+	EQ(seenAgo("2026-10-18T21:42:10Z", now), "3 hours ago");
+	EQ(seenAgo("2026-10-19T02:42:10+03:00", now), "an hour ago");	// 23:42:10Z
+	EQ(seenAgo("2026-10-18T00:00:00Z", now), "a day ago");
+	EQ(seenAgo("2026-10-12T19:05:00Z", now), "6 days ago");
+	EQ(seenAgo("2026-08-01T10:00:00Z", now), "on 2026-08-01");
+	EQ(seenAgo("", now), "");
+	EQ(seenAgo("yesterday", now), "");
+	EQ(seenAgo("2026-10-18T21:42:10", now), "");	// no zone
+	EQ(osName("linux"), "Linux");
+	EQ(osName("windows"), "Windows");
+	EQ(osName("iOS"), "iOS");
+	EQ(osName("plan9"), "plan9");
+}
+
 int main(int argc, char** argv)
 {
 	dir = argc > 1 ? argv[1] : "kiwami/tests/tailscale";
@@ -221,6 +250,7 @@ int main(int argc, char** argv)
 	testStatus();
 	testName();
 	testQr();
+	testDevices();
 	if (failed) { fprintf(stderr, "units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("units: %d checks passed\n", checks);
 	return 0;

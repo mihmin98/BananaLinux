@@ -120,10 +120,16 @@ for size in 640x480 1024x768; do
     asked "status|status|logout|status|"
     differ tsp-logout tsp-logout-armed bot
 
-    # Devices (when connected) opens their page, B back to the menu
-    ts $size devices "tailscale = on" running 1 100.64.0.7 "press a; wait 1; press down; shot tsp-devrow; press a; shot tsp-devices; press b; shot tsp-devback" \
-        "tsp-devices"
-    same tsp-devrow tsp-devback; differ tsp-devrow tsp-devices bot
+    # Devices (when connected): this one, those online, the rest, by name; eight of them, five rows: Down scrolls, wraps
+    # round to the top; a tap selects; the selected one in full on the top panel; B back to the menu
+    ts $size devices "tailscale = on" running 1 100.64.0.7 \
+        "press a; wait 1; press down; shot tsp-devrow; press a; shot tsp-devices; press down; press down; press down; press down; press down; press down; shot tsp-devices-down; press down; shot tsp-device-offline; press down; shot tsp-devices-wrap; touch 1 300 238; shot tsp-device-tap; wait 2000; press b; shot tsp-devback" \
+        "tsp-devices tsp-devices-down tsp-device-offline tsp-device-tap"
+    logged "tailscale: devices: banana-rgds (this), alexs-iphone, desktop, nas, raspberrypi, banana-rgds-plus (offline), living-room-tv (offline), macbook (offline)"
+    same tsp-devrow tsp-devback; same tsp-devices tsp-devices-wrap
+    differ tsp-devrow tsp-devices bot; differ tsp-devices tsp-devices-down bot; differ tsp-devices-down tsp-device-offline top
+    differ tsp-devices tsp-device-tap top; differ tsp-devices tsp-device-tap bot
+    asked "status|status|status|"      # (asked as the menu is, while the devices show)
 done
 [ $fail = 0 ] && echo "tailscale-ui: all checks passed ($OUT)"
 exit $fail

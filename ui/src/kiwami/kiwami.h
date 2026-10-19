@@ -42,13 +42,18 @@ namespace banana
 		bool show(const std::string& state, const std::string& w);
 
 		// Tailscale's page (tailscale.cpp): its rows (Tailscale on / off, Devices, Device name, Log out) on the bottom
-		// panel, the state and the selected row's help on the top one; the helper's status every 2 s while it shows
+		// panel, the state and the selected row's help on the top one; the helper's status every 2 s while it shows.
+		// Devices: the tailnet's, on the bottom panel, the selected one in full on the top one
 		enum View { MENU, DEVICES } view = MENU;
 		std::string tool;							// the helper, as found when Settings opened
 		bool on = false;							// tailscale = on, as read then or set since
 		std::string selKey = "on";					// the selected row
 		bool armed = false;							// Log out waiting for its second A
 		double nextPoll = 0;
+		int dsel = 0, dtop = 0;						// the devices page: the selected row, the first one shown
+		std::string dname;							// the selected device (the selection follows it as the list changes)
+		void devicesOpened();
+		std::vector<kiwami::TsDevice> devices();	// the list now, dsel and dtop kept on the selected device
 		std::string model;							// the device tree's model, read once
 		bool modelRead = false;
 		std::vector<std::string> menuRows() const;	// the rows' keys: on, devices, name, logout
@@ -59,6 +64,7 @@ namespace banana
 		Result change(int dir);
 		Result pressMenu(Key k);
 		Result pressDevices(Key k);
+		Result touchDevices(float cy);
 		void renderTop(const std::string& title, const std::string& accent, const std::string& state, const std::string& help);
 		// the login: its link's QR code on the left of the top panel, the rest beside and under it
 		std::string qrUrl;							// the link the code is of

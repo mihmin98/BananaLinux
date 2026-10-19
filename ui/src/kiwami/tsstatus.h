@@ -2,7 +2,7 @@
 // banana-ui (kiwami): Tailscale's state, from the helper's `status` (kiwami/rootfs/usr/libexec/kiwami/tailscale):
 // "state off" or "state starting" while there is no tailscaled to ask, "error <text>" for the last failure the helper
 // knows, then `tailscale status --json` (its fields as tailscaled 1.98.8 writes them). And the device's name in the
-// tailnet, and its login link as a QR code. Pure functions, no I/O.
+// tailnet, its login link as a QR code, and the devices page's list. Pure functions, no I/O.
 #include <string>
 #include <vector>
 
@@ -15,6 +15,7 @@ namespace banana::kiwami
 		std::string ipv4, ipv6;	// its first of each, "" for none
 		std::string lastSeen;	// RFC 3339, "" when never (or online)
 		bool online = false, expired = false;
+		bool self = false;		// this handheld (deviceList)
 	};
 
 	struct TsStatus
@@ -49,4 +50,12 @@ namespace banana::kiwami
 	// side x side modules, row after row, the 4-module quiet zone round it included, true for dark; empty when the
 	// link can't be encoded
 	std::vector<bool> loginQr(const std::string& url, int& side);
+
+	// the devices page's list: this handheld first, then the devices online, then the others, each group by name
+	std::vector<TsDevice> deviceList(const TsStatus& s);
+	// when a device was last seen, from tailscaled's RFC 3339 time and now (seconds since 1970): "a moment ago",
+	// "5 minutes ago", "an hour ago", "3 days ago", "on 2026-08-01"; "" when the time can't be read
+	std::string seenAgo(const std::string& rfc3339, long long now);
+	// tailscaled's OS names as people write them (linux: Linux); others as they are
+	std::string osName(const std::string& os);
 }

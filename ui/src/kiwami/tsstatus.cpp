@@ -2,6 +2,9 @@
 #include "tsstatus.h"
 #include "json.h"
 #include "qrcodegen.hpp"
+#include <algorithm>
+#include <cstdio>
+#include <ctime>
 
 namespace banana::kiwami
 {
@@ -114,5 +117,55 @@ namespace banana::kiwami
 			return m;
 		}
 		catch (const std::exception&) { side = 0; return {}; }	// (longer than a QR code holds)
+	}
+
+	std::vector<TsDevice> deviceList(const TsStatus& s)
+	{
+		std::vector<TsDevice> peers = s.peers;
+		auto lower = [](std::string t) { for (auto& c : t) if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a'); return t; };
+		std::stable_sort(peers.begin(), peers.end(), [&](const TsDevice& a, const TsDevice& b)
+			{ return a.online != b.online ? a.online : lower(a.name) < lower(b.name); });
+		std::vector<TsDevice> all;
+		if (!s.self.name.empty()) { all.push_back(s.self); all.back().self = true; }
+		all.insert(all.end(), peers.begin(), peers.end());
+		return all;
+	}
+
+	std::string seenAgo(const std::string& t, long long now)
+	{
+		// 2026-10-18T21:42:10Z, perhaps with a fraction of a second, perhaps with an offset (+03:00) instead of Z
+		struct tm tm = {};
+		int n = 0;
+		if (sscanf(t.c_str(), "%4d-%2d-%2dT%2d:%2d:%2d%n", &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec, &n) != 6)
+			return "";
+		size_t at = (size_t)n;
+		if (at < t.size() && t[at] == '.') { at++; while (at < t.size() && t[at] >= '0' && t[at] <= '9') at++; }
+		long long offset = 0;
+		if (at < t.size() && (t[at] == '+' || t[at] == '-'))
+		{
+			int oh = 0, om = 0;
+			if (sscanf(t.c_str() + at + 1, "%2d:%2d", &oh, &om) != 2) return "";
+			offset = (t[at] == '-' ? -1 : 1) * (oh * 3600LL + om * 60);
+		}
+		else if (at >= t.size() || t[at] != 'Z') return "";
+		int year = tm.tm_year, mon = tm.tm_mon, day = tm.tm_mday;
+		tm.tm_year -= 1900; tm.tm_mon -= 1;
+		long long when = (long long)timegm(&tm) - offset, ago = now - when;
+		auto count = [](long long v, const char* one, const char* many) { return v == 1 ? std::string(one) : std::to_string(v) + " " + many; };
+		if (ago < 60) return "a moment ago";	// (or a clock behind the device's)
+		if (ago < 3600) return count(ago / 60, "a minute", "minutes") + " ago";
+		if (ago < 86400) return count(ago / 3600, "an hour", "hours") + " ago";
+		if (ago < 30 * 86400LL) return count(ago / 86400, "a day", "days") + " ago";
+		char d[32];
+		snprintf(d, sizeof d, "on %04d-%02d-%02d", year, mon, day);
+		return d;
+	}
+
+	std::string osName(const std::string& os)
+	{
+		static const char* const names[][2] = { { "linux", "Linux" }, { "windows", "Windows" }, { "android", "Android" },
+			{ "freebsd", "FreeBSD" }, { "openbsd", "OpenBSD" }, { "darwin", "macOS" }, { "js", "a browser" } };
+		for (auto& n : names) if (os == n[0]) return n[1];
+		return os;	// (iOS, macOS, tvOS: written so already)
 	}
 }

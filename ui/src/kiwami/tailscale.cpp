@@ -78,7 +78,7 @@ namespace banana
 			return CHANGED;
 		}
 		if (dir <= 0) return NONE;
-		if (selKey == "devices") { view = DEVICES; return MOVED; }
+		if (selKey == "devices") { devicesOpened(); return MOVED; }
 		if (selKey == "name") { st.startEntry(ENTRY_KIWAMI, "Tailscale", "Device name", KIWAMI, name()); return MOVED; }
 		return NONE;
 	}
@@ -107,22 +107,80 @@ namespace banana
 		}
 	}
 
+	// ---- the devices: this one first, then those online, then the rest, by name; Up and Down move through them
+	// (scrolling as upstream's lists), the selected one in full on the top panel ----------------------------------------
+	void Settings::Kiwami::devicesOpened()
+	{
+		view = DEVICES;
+		dsel = dtop = 0;
+		dname.clear();
+		std::string order;
+		for (auto& d : kiwami::deviceList(ts)) order += (order.empty() ? "" : ", ") + d.name + (d.self ? " (this)" : d.online ? "" : " (offline)");
+		fprintf(stderr, "banana-ui: tailscale: devices: %s\n", order.c_str());
+	}
+
+	std::vector<kiwami::TsDevice> Settings::Kiwami::devices()
+	{
+		std::vector<kiwami::TsDevice> list = kiwami::deviceList(ts);
+		int n = (int)list.size();
+		for (int i = 0; i < n; i++) if (list[i].name == dname) dsel = i;
+		dsel = std::max(0, std::min(dsel, n - 1));
+		dname = n ? list[dsel].name : "";
+		if (dsel < dtop) dtop = dsel;
+		if (dsel >= dtop + ROWS) dtop = dsel - ROWS + 1;
+		dtop = std::max(0, std::min(dtop, n - ROWS));
+		return list;
+	}
+
 	Settings::Result Settings::Kiwami::pressDevices(Key k)
 	{
+		int n = (int)devices().size();
 		switch (k)
 		{
+		case Key::UP: case Key::DOWN:
+			if (n < 2) return NONE;
+			dsel = (dsel + (k == Key::UP ? -1 : 1) + n) % n;
+			dname.clear();
+			devices();	// (the scroll follows)
+			return MOVED;
 		case Key::B: case Key::LEFT: view = MENU; return MOVED;
 		case Key::START: view = MENU; st.page = LIST; st.mOpen = false; return CLOSED;
 		default: return NONE;
 		}
 	}
 
-	Settings::Result Settings::Kiwami::touch(float, float)
+	Settings::Result Settings::Kiwami::touchDevices(float cy)
+	{
+		float dy = st.downY;
+		int n = (int)devices().size();
+		for (int r = 0; r < ROWS && dtop + r < n; r++)
+		{
+			float ry = 82 + r * 64;
+			if (dy < ry || dy > ry + 56) continue;
+			if (dtop + r == dsel) return NONE;
+			dsel = dtop + r;
+			dname.clear();
+			devices();
+			return MOVED;
+		}
+		// a swipe up or down scrolls a page
+		if (std::fabs(cy - dy) > 40 && n > ROWS)
+		{
+			dtop = std::max(0, std::min(n - ROWS, dtop + (cy < dy ? ROWS : -ROWS)));
+			dsel = std::max(dtop, std::min(dsel, dtop + ROWS - 1));
+			dname.clear();
+			devices();
+			return MOVED;
+		}
+		return NONE;
+	}
+
+	Settings::Result Settings::Kiwami::touch(float, float cy)
 	{
 		// where the press went down, as upstream's pages: the chips, B on the left and A on the right, then the rows
 		float dx = st.downX, dy = st.downY;
 		if (dy >= 418 && dy <= 466) return dx < 320 ? press(Key::B) : view == MENU ? press(Key::A) : NONE;
-		if (view != MENU) return NONE;
+		if (view == DEVICES) return touchDevices(cy);
 		std::vector<std::string> rows = menuRows();
 		for (int r = 0; r < (int)rows.size(); r++)
 		{
@@ -386,19 +444,56 @@ namespace banana
 		be->endScreen();
 	}
 
-	// the tailnet's devices (their list comes with the next step)
 	void Settings::Kiwami::renderDevices()
 	{
 		Colours p = colours(st.light);
-		int online = 0;
+		std::vector<kiwami::TsDevice> list = devices();
+		int n = (int)list.size(), online = 0;
 		for (auto& d : ts.peers) online += d.online;
-		renderTop("Devices", std::to_string(online) + " of " + std::to_string(ts.peers.size()) + " online",
-			"The tailnet's devices, with their addresses, come here.", "");
+
+		// ---- top: the selected device in full ----
+		if (n == 0) renderTop("Devices", "", "No devices: Tailscale isn't connected now.", "");
+		else
+		{
+			const kiwami::TsDevice& d = list[dsel];
+			std::string dns = d.dnsName;
+			if (!dns.empty() && dns.back() == '.') dns.pop_back();
+			std::string state = d.self ? "This handheld." : d.online ? "Online." : "Offline" + (d.lastSeen.empty() ? std::string(".") :
+				", last seen " + kiwami::seenAgo(d.lastSeen, (long long)time(nullptr)) + ".");
+			if (!d.os.empty()) state += " " + kiwami::osName(d.os) + ".";
+			if (!d.hostName.empty() && d.hostName != d.name) state += " It calls itself " + d.hostName + ".";
+			if (!dns.empty()) state += " MagicDNS name: " + dns + ".";
+			if (!d.ipv6.empty()) state += " IPv6: " + d.ipv6 + ".";
+			std::string help = d.self ? "The tailnet reaches the handheld at " + (d.ipv4.empty() ? std::string("its address") : d.ipv4) + ", wherever it is."
+				: d.ipv4.empty() ? "" : "From the handheld, over SSH: ping, ssh or wget " + d.ipv4 + ".";
+			renderTop(d.name, d.ipv4, state, help);
+		}
+
+		// ---- bottom: the list ----
 		rnds::Backend* be = st.be;
 		be->beginScreen(1);
 		st.box("screen", false, 0, 0, 640, 480);
 		st.box("bubble", false, 18, 14, 604, 54);
 		st.text("Devices", true, 22, 38, 28, p.ink);
+		std::string count = std::to_string(online) + " of " + std::to_string(ts.peers.size()) + " online";
+		float cw = st.text(count, true, 17, 0, 0, p.muted, false, 0, true);
+		st.text(count, true, 17, 602 - cw, 31, p.muted);
+		for (int r = 0; r < ROWS && dtop + r < n; r++)
+		{
+			const kiwami::TsDevice& d = list[dtop + r];
+			bool sel = dtop + r == dsel;
+			float y = 82 + r * 64;
+			st.box(sel ? "pick" : "slot", sel, 18, y, 604, 56);
+			// the name; then, right-aligned, whether it is online and its address
+			Color c = sel ? p.onPick : d.online || d.self ? p.ink : p.muted;
+			st.text(st.fit(d.name, true, 20, 290), true, 20, 38, y + 16, c);
+			float aw = st.text(d.ipv4, true, 19, 0, 0, c, false, 0, true);
+			st.text(d.ipv4, true, 19, 586 - aw, y + 17, c);
+			std::string tag = d.self ? "this one" : d.online ? "online" : "offline";
+			float tw = st.text(tag, false, 17, 0, 0, c, false, 0, true);
+			st.text(tag, false, 17, 436 - tw, y + 19, sel ? p.onPick : p.muted);
+		}
+		if (n == 0) st.text("Tailscale isn't connected now.", true, 20, 38, 98, p.muted);
 		float bw = st.faceWidth("B", "Back");
 		st.face("B", "Back", 18, bw);
 		be->endScreen();

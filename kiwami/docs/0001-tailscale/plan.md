@@ -218,7 +218,8 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 
 ### 6. The tailnet's devices
 
-- **Files**: `ui/src/kiwami/tailscale.cpp` (changed); `kiwami/tests/tailscale-ui.sh` (changed).
+- **Files**: `ui/src/kiwami/tailscale.cpp`, `kiwami.h`, `tsstatus.h`/`.cpp` (changed); `kiwami/tests/tailscale-ui.sh`,
+  `kiwami/tests/units.cpp` (changed).
 - **Change**: `Devices` opens the devices page: on the bottom panel the devices, this one first then the online ones,
   then by name, each with its name, IPv4 address and online/offline, scrolling as upstream's lists; on the top
   panel the selected one in full: MagicDNS name, IPv4 and IPv6 addresses, OS, and when it was last seen if
@@ -354,6 +355,12 @@ Notes from the runs (what the logs showed, what was fixed):
   pixels a module at 640x480, 12 at 1024x768) and read back from the shots by `zbarimg` to the stand-in's link (log
   in, a refused key, an expired login). The login page draws in 0.06 ms. Against `main`, as in step 3.
 
+- **Step 6, headless** (2026-10-19). `units`: 248 checks, among them the devices' order over the `running` capture
+  and when an offline one was last seen. `tailscale-ui.sh`, both sizes: the order in the log (this one, the four
+  online, the three offline, each by name), Down scrolling the eight through five rows and wrapping to the top, a
+  tap selecting, the selected one's details, the status still asked every 2 s, B back to the menu. Against `main`, as
+  in step 3.
+
 ## Deviations
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
@@ -416,6 +423,10 @@ Where the implementation turned out different from this plan, why, and what chan
   refused key went, or (an expired login) the admin console's Disable key expiry. The row's help, after the state
   beside the code, gets what room is left.
 
+- **2026-10-19, step 6: the devices' order and their "last seen" in `tsstatus.*`.** `deviceList()`, `seenAgo()`
+  ("3 hours ago", "on 2026-08-01") and `osName()` are pure functions there, unit-tested in `units.cpp`, rather than
+  only checked through the log in `tailscale-ui.sh`.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -427,5 +438,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 3. banana-ui: the fork's hooks and the Tailscale row | done | `banana-ui: the fork's rows and pages hooked into Settings, and Tailscale's row in Network` |
 | 4. The Tailscale submenu | done | `banana-ui: Tailscale's submenu: on or off, the device's name, log out, and its state on the top panel` |
 | 5. The login QR code | done | `banana-ui: the Tailscale login link as a QR code, scanned from a phone` |
-| 6. The tailnet's devices | todo | |
+| 6. The tailnet's devices | done | `banana-ui: the tailnet's devices, from Tailscale's submenu` |
 | 7. Final check | todo | |

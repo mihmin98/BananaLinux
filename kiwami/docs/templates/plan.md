@@ -19,11 +19,12 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 
 ### N. Final check
 
-- `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `sh -n` on the fork's shell scripts.
+- `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
 - The fork's tests in `kiwami/tests/`.
 - The hooks: `git diff --stat main...HEAD` and `git grep -n 'kiwami:'` (the commands in `docs/FORK.md`) agree, and
   list only the hooks this feature meant to add.
 - With the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s.
+- `kiwami/DEPENDENCIES.md` lists every dependency the feature adds or bumps, with its version.
 - `docs/FORK.md`, `docs/ARCHITECTURE.md`, `CLAUDE.md` updated where the feature changes what they describe.
 - The manual tests below all passed.
 

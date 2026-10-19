@@ -14,7 +14,8 @@ files (`kiwami/` for Buildroot packages, defconfig/kernel fragments, the rootfs 
 for banana-ui), never in `ui/rnds/`, `ui/assets/rnds/`, `ui/assets/overrides/` or the ROCKNIX-synced files in
 `buildroot/board/rgds/`. An upstream file changes only for a hook, a call into the fork's code in as few lines as
 possible, marked with a `kiwami:` comment, with no reformatting around it. Changed behaviour sits behind a setting
-whose default is upstream's.
+whose default is upstream's. Every external dependency the fork adds (a package, a library, a toolchain) goes in
+`kiwami/DEPENDENCIES.md` with its version and where it's pinned, in the same commit that adds or bumps it.
 
 ## Git: the user commits, not Claude
 

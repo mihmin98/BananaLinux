@@ -45,8 +45,8 @@ The rule: a new file of the fork's own wherever the build allows one; an upstrea
 | Customization | Where |
 |---|---|
 | Packages (Tailscale, emulators, cores, Grout...) | `kiwami/package/`, a second Buildroot external tree (`kiwami/external.desc`, `Config.in`, `external.mk`) |
-| Image options | a defconfig fragment in `kiwami/configs/`, merged over upstream's `banana_*_defconfig` at build time; upstream's defconfigs are not edited |
-| Kernel, busybox, U-Boot options | fragments in `kiwami/`, listed after upstream's (the last one wins) |
+| Image options | `kiwami/configs/kiwami.fragment`, merged over upstream's `banana_*_defconfig` at build time; upstream's defconfigs are not edited |
+| Kernel options | `kiwami/linux.fragment`, listed after upstream's (the last one wins); busybox and U-Boot the same way when needed |
 | Files in the image | `kiwami/rootfs/`, a second rootfs overlay (copied after upstream's, so it can also replace an upstream file) |
 | Additions to upstream's files in the image (`systems.conf`, the theme's `systems.cfg`) | `kiwami/post-build.sh`, appending or inserting into the copy in `$TARGET_DIR`, rather than a whole replacement in the overlay |
 | Boot and network services | hook folders that run every file in them: `/etc/banana/sleep.d/` (around a suspend), `/usr/share/udhcpc/default.script.d/` (on an address from DHCP) |
@@ -54,11 +54,26 @@ The rule: a new file of the fork's own wherever the build allows one; an upstrea
 | Tests of the fork's features | `kiwami/tests/` (a one-line `kiwami:` hook if `make test` has to run them) |
 | A feature's investigation and plan | `kiwami/docs/<NNNN>-<name>/` |
 | Settings only | `/data/banana/` on the card (`settings.conf`, `bananad.conf`, `systems.conf`): nothing in the repo |
+| External code and its versions | `kiwami/DEPENDENCIES.md`: every dependency the fork adds, its version and where it is pinned, updated in the commit that adds or bumps it; and upstream's that the fork's code relies on (Buildroot, its Go, Linux) |
 
 Left alone, because their owners overwrite them: `ui/rnds/` and `ui/assets/rnds/` (ROCKNIXDS, `tools/import-rnds.sh`),
 the ROCKNIX-synced files in `buildroot/board/rgds/` (`tools/sync-rocknix-hw.sh`), and `ui/assets/overrides/` (upstream's
 own pictures over the import). A change there goes to its owner, or is done from the fork's files instead (a wrapper
 around `RndsMenu`, a file in the overlay).
+
+## How the build takes in the fork
+
+The top `Makefile` (three `kiwami:` lines) configures each board with `BR2_EXTERNAL=buildroot:kiwami`, so Buildroot
+sees the fork's packages, and then runs `kiwami/configure.sh` over the `.config` upstream's defconfig made. That
+appends the fork's rootfs overlay, post-build script and kernel fragment to upstream's lists, merges
+`kiwami/configs/kiwami.fragment`, lets Buildroot resolve the dependencies and fails if an option of the fork's was
+dropped. A board's output is configured again when the fragment or the script change; packages already built aren't
+rebuilt by that (`make linux-reconfigure-rgds` after a change to `linux.fragment`, for example).
+
+`kiwami/tests/ci.sh <buildroot dir>` checks the fork's shell scripts and configures every board that way; CI runs it
+after upstream's checks (one `kiwami:` step in `.github/workflows/ci.yml`), and `kiwami/tests/ci.sh .buildroot` runs it
+locally. `make savedefconfig-<board>` would write the merged options into upstream's defconfig: don't use it on the
+fork's builds.
 
 ## Hooks in upstream's files
 
@@ -109,8 +124,9 @@ git switch kiwami && git merge main
 Conflicts are then in hooks, and resolving one is putting its line back where upstream's code now is (rerere repeats
 it next time). After the merge:
 
-1. **Builds and tests**: `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, and `sh -n` on the
-   fork's shell scripts.
+1. **Builds and tests**: `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, and
+   `kiwami/tests/ci.sh .buildroot` (the fork's shell scripts, and every board configured with the fork's options). If
+   upstream moved Buildroot, its Go or Linux, check `kiwami/DEPENDENCIES.md`'s second table against the fork's code.
 2. **The hooks are all there**: the `git grep` above lists the same hooks as before the merge. A hook whose line upstream
    removed is not a conflict, only a hook gone.
 3. **What the fork shadows**: files the fork replaces or patches at build time get no conflicts, so their upstream

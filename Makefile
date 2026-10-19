@@ -18,7 +18,9 @@ $(BUILDROOT_DIR)/Makefile:
 
 define board
 $(OUT)/$(1)/.config: $(BUILDROOT_DIR)/Makefile buildroot/configs/banana_$(subst -,_,$(1))_defconfig
-	$(MAKE) -C $(BUILDROOT_DIR) O=$(OUT)/$(1) BR2_EXTERNAL=$(CURDIR)/buildroot banana_$(subst -,_,$(1))_defconfig
+	$(MAKE) -C $(BUILDROOT_DIR) O=$(OUT)/$(1) BR2_EXTERNAL=$(CURDIR)/buildroot:$(CURDIR)/kiwami banana_$(subst -,_,$(1))_defconfig	# kiwami: the fork's tree
+	kiwami/configure.sh $(BUILDROOT_DIR) $(OUT)/$(1)	# kiwami: the fork's options over upstream's
+$(OUT)/$(1)/.config: kiwami/configure.sh kiwami/configs/kiwami.fragment	# kiwami: configured again when they change
 
 $(1): $(OUT)/$(1)/.config
 	$(MAKE) -C $(OUT)/$(1)

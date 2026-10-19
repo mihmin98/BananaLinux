@@ -38,6 +38,8 @@ jobs:
               grep -qxF "$l" /tmp/out-$d/.config || { echo "$d drops: $l"; exit 1; }
             done
           done
+      - name: The fork's checks (kiwami/tests/ci.sh)  # kiwami: the fork's scripts and options
+        run: kiwami/tests/ci.sh /tmp/br
 
   image:
     if: github.event_name == 'workflow_dispatch' && inputs.image

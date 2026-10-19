@@ -5,12 +5,15 @@
 # updates. An auth key from the admin console put in banana/tailscale/authkey logs in with no QR code: it is deleted
 # once used, renamed authkey.refused if refused. Its own log is logs/tailscale.log; tailscaled's goes to syslog.
 #   tailscale boot          up, when settings.conf has tailscale = on
+#   tailscale apply         up or down, as settings.conf has it when this one's turn comes (the menu's switch)
 #   tailscale up            tailscaled started, then a login in the background (which returns at once when logged in)
 #   tailscale down          tailscaled stopped and the tun module unloaded; the login stays
 #   tailscale logout        out of the tailnet, and a new login started at once
 #   tailscale name <name>   the device's name in the tailnet (the next up passes settings.conf's anyway)
 #   tailscale status        "state off" or "state starting" while there is no tailscaled to ask, "error <text>" for
 #                           the last failure, then tailscaled's status as JSON
+# All but status run one at a time (the lock): a switch-on can't start a tailscaled while a switch-off is still
+# stopping the one before.
 # KIWAMI_DATA, KIWAMI_RUN, KIWAMI_SOCKET and KIWAMI_MODEL move /data/banana, /run/banana, tailscaled's socket and the
 # device tree's model, for the tests only.
 B=${KIWAMI_DATA:-/data/banana}
@@ -22,12 +25,18 @@ KEY=$D/authkey
 PID=$R/tailscaled.pid
 LOGIN=$R/tailscale-login.pid
 ERR=$R/tailscale.error
+LOCK=$R/tailscale.lock
 LOG=$B/logs/tailscale.log
+
+# the log's clock in Settings' time zone, as the menu's, whoever runs this (rcS and rcK have no TZ)
+tz=$(sed -n 's/^ *timezone *= *//p' "$B/settings.conf" 2>/dev/null | tr -d '\r' | sed 's/ *$//' | tail -n 1)
+[ -n "$tz" ] && export TZ="$tz"
 
 log() { mkdir -p "${LOG%/*}"; echo "$(date '+%F %T') $*" >> "$LOG"; }
 fail() { echo "$*" > "$ERR"; log "failed: $*"; }
 ts() { tailscale --socket="$SOCK" "$@"; }
 running() { [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; }
+on() { grep -q '^ *tailscale *= *on' "$B/settings.conf" 2>/dev/null; }
 # the name in the tailnet: Settings' tailscale_name, else the board's
 name() {
     n=$(sed -n 's/^ *tailscale_name *= *//p' "$B/settings.conf" 2>/dev/null | tr -d '\r' | sed 's/ *$//' | tail -n 1)
@@ -38,6 +47,19 @@ name() {
     *) echo banana ;;
     esac
 }
+# one change at a time, for as long as this runs: the lock on fd 9, which what is left running doesn't get (9>&-).
+# Given up after 10 s, so that rcK's down never keeps /data from being unmounted. (busybox's flock has no -w, and its
+# timeout leaves a process holding fd 9, and so the lock, for up to a second after.)
+lock() {
+    mkdir -p "$R"
+    exec 9>"$LOCK"
+    read t _ < /proc/uptime; end=$((${t%.*} + 10))
+    until flock -n 9; do
+        read t _ < /proc/uptime
+        [ "${t%.*}" -lt $end ] || { log "failed: busy, $1 gave up waiting for another change"; exit 1; }
+        sleep 0.1
+    done
+}
 # the login, in its own session so that down and logout stop it with whatever `tailscale up` it waits in
 stoplogin() {
     [ -f "$LOGIN" ] && kill -TERM -"$(cat "$LOGIN")" 2>/dev/null
@@ -45,16 +67,10 @@ stoplogin() {
 }
 login() {
     [ -f "$LOGIN" ] && kill -0 "$(cat "$LOGIN")" 2>/dev/null && return 0
-    setsid "$0" login </dev/null >/dev/null 2>&1 &
+    setsid "$0" login </dev/null >/dev/null 2>&1 9>&- &
     echo $! > "$LOGIN"
 }
-
-case $1 in
-boot)
-    grep -q '^ *tailscale *= *on' "$B/settings.conf" 2>/dev/null || exit 0
-    exec "$0" up
-    ;;
-up)
+up() {
     rm -f "$ERR"
     if ! running; then
         modprobe tun 2>/dev/null || { fail "the tun module could not be loaded"; exit 1; }
@@ -62,21 +78,48 @@ up)
         rm -f "$PID" "$SOCK"    # one that died
         # its output to syslog; both in a session of their own, so nothing that ends the caller's ends them
         { setsid tailscaled --statedir="$D" --socket="$SOCK" --tun=tailscale0 --no-logs-no-support 2>&1 &
-          echo $! > "$PID"; } </dev/null | setsid logger -t tailscaled >/dev/null 2>&1 &
+          echo $! > "$PID"; } </dev/null 9>&- | setsid logger -t tailscaled >/dev/null 2>&1 9>&- &
         # its socket, a few seconds at most (the pid file comes from the line above, a moment later)
         for i in $(seq 50); do
             [ -S "$SOCK" ] && break
             [ -s "$PID" ] && ! running && break
             sleep 0.1
         done
-        [ -S "$SOCK" ] || { fail "tailscaled did not start"; "$0" down; exit 1; }
+        [ -S "$SOCK" ] || { fail "tailscaled did not start"; down; exit 1; }
         log "started as $(name)"
     fi
     login
+}
+down() {
+    stoplogin
+    if running; then
+        p=$(cat "$PID")
+        kill -TERM "$p"
+        for i in $(seq 50); do kill -0 "$p" 2>/dev/null || break; sleep 0.1; done
+        kill -0 "$p" 2>/dev/null && kill -KILL "$p"
+        log "stopped"
+    fi
+    rm -f "$PID" "$SOCK"
+    modprobe -r tun 2>/dev/null
+}
+
+case $1 in
+boot)
+    on || exit 0
+    lock boot
+    up
+    ;;
+apply)
+    lock apply
+    if on; then up; else down; fi
+    ;;
+up)
+    lock up
+    up
     ;;
 login)
-    # (up's, in the background) `tailscale up` returns once logged in, at once when the login is still good; a
-    # refused key is put aside and a login by QR code started instead
+    # (up's, in the background, outside the lock: it lasts as long as the login) `tailscale up` returns once logged
+    # in, at once when the login is still good; a refused key is put aside and a login by QR code started instead
     while :; do
         set -- up --accept-dns=false --netfilter-mode=off --hostname="$(name)"
         k=; [ -s "$KEY" ] && k=1 && set -- "$@" --auth-key=file:"$KEY"
@@ -99,18 +142,11 @@ login)
     rm -f "$LOGIN"
     ;;
 down)
-    stoplogin
-    if running; then
-        p=$(cat "$PID")
-        kill -TERM "$p"
-        for i in $(seq 50); do kill -0 "$p" 2>/dev/null || break; sleep 0.1; done
-        kill -0 "$p" 2>/dev/null && kill -KILL "$p"
-        log "stopped"
-    fi
-    rm -f "$PID" "$SOCK"
-    modprobe -r tun 2>/dev/null
+    lock down
+    down
     ;;
 logout)
+    lock logout
     running || exit 1
     stoplogin
     ts logout >/dev/null 2>&1
@@ -119,6 +155,7 @@ logout)
     ;;
 name)
     [ -n "$2" ] || { echo "usage: tailscale name <name>" >&2; exit 1; }
+    lock name
     running || exit 0
     ts set --hostname="$2" || { fail "the name $2 was refused"; exit 1; }
     log "named $2"
@@ -130,6 +167,6 @@ status)
     [ -s "$ERR" ] && echo "error $(cat "$ERR")"
     running && [ -S "$SOCK" ] && ts status --json
     ;;
-*) echo "usage: tailscale boot|up|down|logout|name <name>|status" >&2; exit 1 ;;
+*) echo "usage: tailscale boot|apply|up|down|logout|name <name>|status" >&2; exit 1 ;;
 esac
 exit 0

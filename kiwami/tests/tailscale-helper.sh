@@ -17,6 +17,8 @@ ok() { n=$((n + 1)); }
 # a fresh card and boot: settings.conf with the given lines, no records, nothing running
 fresh() {
     "$H" down >/dev/null 2>&1 || true
+    # one the helper lost, gone before the next starts (a stand-in deletes its socket on its way out)
+    while pkill -KILL -f -- "--statedir=$X/"; do sleep 0.05; done
     rm -rf "$X/data" "$X/run" "$KT_REC" "$KT_SYSLOG" "$X/model"
     mkdir -p "$B" "$X/run"
     : > "$KT_REC"
@@ -28,7 +30,7 @@ hasnt() { ! grep -qF -- "$1" "$KT_REC" || fail "$2: '$1' called"; ok; }
 waitrec() { for i in $(seq 50); do grep -qxF -- "$1" "$KT_REC" && { ok; return; }; sleep 0.1; done; fail "$2: no '$1'"; }
 waitlog() { for i in $(seq 50); do grep -qF -- "$1" "$B/logs/tailscale.log" 2>/dev/null && { ok; return; }; sleep 0.1; done; fail "$2: no '$1' in tailscale.log"; }
 alive() { [ -f "$X/run/tailscaled.pid" ] && kill -0 "$(cat "$X/run/tailscaled.pid")" 2>/dev/null; }
-trap '"$H" down >/dev/null 2>&1; rm -rf "$X"' EXIT
+trap '"$H" down >/dev/null 2>&1; pkill -KILL -f -- "--statedir=$X/" || true; rm -rf "$X"' EXIT
 
 # boot: nothing with the setting absent or off
 for s in "" "tailscale = off"; do
@@ -50,8 +52,8 @@ waitlog "logged in" "boot"
 alive || fail "boot: tailscaled not running"; ok
 grep -qxF "tailscaled: stand-in tailscaled started" "$KT_SYSLOG" || fail "tailscaled's output not in syslog"; ok
 [ "$("$H" status)" = '{"BackendState": "Running"}' ] || fail "status while running"; ok
-# up again: the same tailscaled, no second one
-"$H" up
+# up again: the same tailscaled, no second one (and the lock free: what the first left running doesn't hold it)
+"$H" up || fail "up again: $(tail -n 1 "$B/logs/tailscale.log")"
 [ "$(grep -c '^tailscaled ' "$KT_REC")" = 1 ] || fail "up while running started a second tailscaled"; ok
 
 # down: tailscaled stopped, tun unloaded, the state kept
@@ -121,11 +123,67 @@ printf 'Anbernic RG DS\0' > "$X/model"
 "$H" up
 waitrec "$UP --hostname=my-handheld" "tailscale_name"
 
+# the log's clock in Settings' time zone (rcS and rcK run the helper with no TZ)
+fresh "timezone = XYZ-5"
+a=$(TZ=XYZ-5 date '+%F %H:%M'); "$H" up; waitlog "logged in" "time zone"; b=$(TZ=XYZ-5 date '+%F %H:%M')
+grep -q "^\($a\|$b\):.. started as" "$B/logs/tailscale.log" || fail "time zone: the log isn't in settings.conf's"; ok
+
 # no tun: up fails, nothing started, the reason in status
 fresh
 KT_NO_TUN=1 "$H" up && fail "up without tun succeeded"; ok
 hasnt "tailscaled " "up without tun"
 [ "$("$H" status)" = "state off
 error the tun module could not be loaded" ] || fail "status after no tun"; ok
+
+# one change at a time: a stand-in tailscaled as slow to start and stop as the real one, so that runs started close
+# together overlap as on the device (M2: on, off, on in quick succession lost a tailscaled)
+export KT_START_DELAY=0.3 KT_STOP_DELAY=0.35    # not a multiple of the helper's 0.1 s polling
+daemons() { pgrep -f -- "--statedir=$B/tailscale" || true; }
+# tailscaled as the helper knows it: $1 on, one running, the one its pid file names, its socket there; off, none of them
+settled() {
+    if [ "$1" = on ]; then
+        [ "$(daemons)" = "$(cat "$X/run/tailscaled.pid" 2>/dev/null)" ] && alive && [ -S "$S" ] || fail "$2: not on as it should be (running: $(daemons | tr '\n' ' '))"
+    else
+        [ -z "$(daemons)" ] && [ ! -e "$X/run/tailscaled.pid" ] && [ ! -e "$S" ] || fail "$2: not off as it should be (running: $(daemons | tr '\n' ' '))"
+    fi
+    ok
+}
+# on, then off and on again with the second switch landing anywhere in the first one's stop (when tailscaled has
+# exited and the pid file is still there is the window M2 hit)
+for d in 0.26 0.28 0.30 0.32 0.34 0.36 0.38 0.40 0.42 0.44; do
+    fresh
+    "$H" up
+    waitlog "logged in" "up, down, up after $d s"
+    "$H" down & sleep "$d"; "$H" up & wait
+    settled on "up, down, up after $d s"
+done
+# the menu's switch, as fast as it goes: the setting written (as the menu does, whole), then apply, 50 ms apart; the
+# last setting wins
+for v in "on off on off on" "on off on off on off"; do
+    fresh
+    for s in $v; do
+        echo "tailscale = $s" > "$B/settings.conf.new"; mv "$B/settings.conf.new" "$B/settings.conf"
+        "$H" apply & sleep 0.05
+    done
+    wait
+    settled "${v##* }" "apply: $v"
+done
+# status answers while a start holds the lock
+fresh
+"$H" up & sleep 0.1
+[ "$("$H" status)" = "state starting" ] && kill -0 $! 2>/dev/null || fail "status while up holds the lock"; ok
+wait
+# the lock is free once up returns, though tailscaled, its logger and a login waiting for a QR code still run
+fresh
+KT_LOGIN=wait "$H" up
+sleep 0.2
+pgrep -f "kiwami/tests/bin/tailscale --socket=$S up" >/dev/null && alive || fail "lock: nothing left running to test"; ok
+flock -n "$X/run/tailscale.lock" true || fail "lock: still held after up returned"; ok
+# held for longer than 10 s (a change that hangs), down gives up rather than keep /data from being unmounted
+flock "$X/run/tailscale.lock" sleep 11 & sleep 0.2
+! "$H" down || fail "down with the lock held succeeded"; ok
+waitlog "failed: busy, down gave up waiting for another change" "lock held"
+alive || fail "lock held: down stopped tailscaled anyway"; ok
+wait
 
 echo "tailscale-helper: all $n checks passed"

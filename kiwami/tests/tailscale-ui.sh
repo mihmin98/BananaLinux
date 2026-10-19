@@ -44,7 +44,7 @@ ts() {
 asked() {
     [ "$(tr '\n' '|' < "$KT_REC")" = "$1" ] || { echo "FAIL $size $name: the helper was asked '$(tr '\n' '|' < "$KT_REC")', not '$1'"; fail=1; }
 }
-same() { cmp -s "$OUT/$size-$1-bot.png" "$OUT/$size-$2-bot.png" || { echo "FAIL $size $name: $1 and $2 differ"; fail=1; }; }
+same() { cmp -s "$OUT/$size-$1-${3:-bot}.png" "$OUT/$size-$2-${3:-bot}.png" || { echo "FAIL $size $name: $1 and $2 differ"; fail=1; }; }
 differ() { cmp -s "$OUT/$size-$1-$3.png" "$OUT/$size-$2-$3.png" && { echo "FAIL $size $name: $1 and $2 are the same"; fail=1; }; true; }
 logged() { grep -qF -- "$1" "$log" || { echo "FAIL $size $name: no '$1' in the log"; fail=1; }; }
 
@@ -58,6 +58,10 @@ for size in 640x480 1024x768; do
     page not-yet "tailscale = on" off 1 Starting; asked "status|status|"
     page error "tailscale = on" error 1 Error
     page starting "tailscale = on" starting 1 Starting
+    # tailscaled's passing messages while it starts (for a few seconds after a boot, "You are logged out" while Wi-Fi
+    # comes up) aren't shown: the page is as with none
+    page starting-health "tailscale = on" starting-health 1 Starting
+    same tsp-starting tsp-starting-health top
     page no-wifi "tailscale = on" starting 0 "Waiting for Wi-Fi"
     page login "tailscale = on" needs-login 1 "Log in"
     page refused "tailscale = on" refused 1 "Log in"
@@ -86,12 +90,12 @@ for size in 640x480 1024x768; do
     same ts-list ts-back; same ts-list ts-touch
     tail -n 1 "$log" | grep -q "press start: settings closed" || { echo "FAIL $size: START on the page didn't close Settings"; fail=1; }
 
-    # switched on (Right) and off again (a tap on its value): settings.conf, the helper's up and down, and asked in
-    # between only while on
+    # switched on (Right) and off again (a tap on its value): settings.conf written, then the helper's apply each time
+    # (which follows it), and asked in between only while on
     ts $size onoff "tailscale = off" needs-login 1 Off \
         "press a; shot tsp-onoff-off; press right; shot tsp-onoff-on; touch 1 500 110; shot tsp-onoff-off2; wait 3000; wait 3000" \
         "tsp-onoff-off tsp-onoff-on"
-    asked "up|status|down|"
+    asked "apply|status|apply|"
     logged 'tailscale: switched on: row "Starting"'
     logged 'tailscale: switched off: row "Off"'
     grep -qx 'tailscale = off' "$CONF" || { echo "FAIL $size onoff: settings.conf: $(tr '\n' ' ' < "$CONF")"; fail=1; }

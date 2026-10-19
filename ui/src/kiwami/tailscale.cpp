@@ -60,7 +60,7 @@ namespace banana
 		setConfValue(st.data + "/settings.conf", "tailscale", v ? "on" : "off");
 		ts = S();
 		if (tool.empty()) { show("no helper", "Off"); return; }
-		run(v ? "up" : "down");
+		run("apply");	// (the helper follows the setting as it is when its turn comes, however quickly it's switched)
 		show(v ? "switched on" : "switched off", v ? "Starting" : "Off");
 		nextPoll = st.now;
 	}
@@ -338,8 +338,9 @@ namespace banana
 			break;
 		case S::STARTING:
 			title = "Starting";
+			// (not tailscaled's Health: while it starts it passes through "the network is down" and "You are logged
+			// out" as Wi-Fi comes up, which are over a moment later)
 			state = "Tailscale is starting and reaching its servers.";
-			if (!ts.health.empty()) state += " " + ts.health[0];
 			break;
 		case S::NEEDS_LOGIN:
 			title = ts.self.expired ? "Log in again" : "Log in";

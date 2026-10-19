@@ -341,8 +341,8 @@ conflict, resolved by keeping both values.
 | Shell | `kiwami/tests/ci.sh` | the helper parses (`sh -n`) |
 | Veto | `kiwami/tests/ci.sh` | `post-build.sh` adds the state file to the share script's `veto files`, and fails if the line moved |
 | Helper | `kiwami/tests/tailscale-helper.sh` | boot, up (flags, `tun`), down, logout, name, status; the auth key deleted after a login, renamed after a refusal; the default name per board; overlapping runs and `apply` leave tailscaled as the setting is, the lock free once a run returns and bounded in time, the log's clock |
-| Units | `kiwami/tests/units.cpp` | the JSON reader, the status parser over captured outputs, the name's checks, the QR's version for a login URL, no `Health` message while Starting |
-| Menu | `kiwami/tests/tailscale-ui.sh` | at both sizes: the row in each state, the submenu, on/off and the settings written, the name typed, log out, the QR (decoded with `zbarimg` when installed), the devices page; nothing polled when closed or off |
+| Units | `kiwami/tests/units.cpp` | the JSON reader, the status parser over captured outputs, the name's checks, the QR's version for a login URL |
+| Menu | `kiwami/tests/tailscale-ui.sh` | at both sizes: the row in each state, the submenu, on/off and the settings written, the name typed, log out, the QR (decoded with `zbarimg` when installed), the devices page, no `Health` message while Starting; nothing polled when closed or off |
 | Upstream | `make test` | unchanged and passing; renders as `main`'s but for the Network list |
 
 ## Manual tests
@@ -430,6 +430,16 @@ Notes from the runs (what the logs showed, what was fixed):
   `wifi-row-bot` and `share-row-bot` at each size. `DEPENDENCIES.md` lists all three. `docs/ARCHITECTURE.md`
   describes nothing this feature changes (its module count is upstream's kernel), and `CLAUDE.md` has nothing to
   add. The investigation's *Risks* have step 1's sizes; memory and CPU wait for M14. Left: the manual tests.
+
+- **Step 7, headless** (2026-10-19). With the stand-in tailscaled taking 0.3 s to start and 0.35 s to stop, the
+  step 2 helper fails the new checks: an `up` landing 0.26 to 0.34 s into a `down` does nothing and everything ends
+  off; one landing 0.36 to 0.40 s in leaves M2's tailscaled, running with no pid file naming it; five quick
+  `apply`s ending on on end off; the log is in UTC; a held lock doesn't stop `down`. The new helper passes all 69
+  checks, also with busybox 1.37's `ash`, `flock`, `setsid` and core tools from `output/rgds-plus/target` under
+  `qemu-aarch64-static` (the host's `/bin/sh` is bash). With the `9>&-` taken off the login or off tailscaled, the
+  suite fails at once (`up again: ... failed: busy`). The Starting page with M5's `Health` message differed from the
+  plain one before the fix, and is the same after. `kiwami/tests/ci.sh .buildroot` and `make test` pass. The helper
+  test now takes about 40 s (the ten overlapping runs, and the 10 s wait on a held lock).
 
 - **M5, two small things in the logs** (2026-10-19, RG DS Plus), both fixed in step 7:
   - `tailscale.log`'s clock is the time zone's when the menu runs the helper (banana-ui sets `TZ` from
@@ -526,6 +536,26 @@ Where the implementation turned out different from this plan, why, and what chan
   because they run the helper's stand-in synchronously (`st.sync`), one command after another, and the helper's
   stand-in daemon starts and stops at once; step 7 slows it down.
 
+- **2026-10-19, step 7: what turned out different.**
+  - **The lock's wait is a loop, not `timeout 10 flock 9`.** busybox's `timeout` leaves a watcher process that
+    inherits fd 9 and checks only once a second whether `flock` is gone, so the lock would stay held for up to a
+    second after a quick run (a rename, an `apply` with nothing to do), and only on the device (util-linux's
+    `timeout` doesn't). The helper tries `flock -n 9` every 0.1 s until 10 s have passed by `/proc/uptime`
+    (counting tries ran 11 s under qemu). The same for busybox's and util-linux's `flock`.
+  - **The Starting page's text is chosen in `tailscale.cpp`, not `tsstatus.*`**, so the `Health` message is dropped
+    there, and the check is in `tailscale-ui.sh` rather than `units.cpp`: a new capture, `starting-health.json`
+    (Starting, with M5's "You are logged out" message), whose page must be the same as `starting`'s. The clock's
+    note (a certificate error) is added in every state apart from this, so it still shows. `tsstatus.*`,
+    `units.cpp` and `fake-tailscale.sh` (which records any verb) are unchanged.
+  - **M2's sequence is `down` then `up`, at ten offsets**, not `up`, `down`, `up` 50 ms apart: after a finished
+    `up`, a `down` and an `up` landing 0.26 to 0.44 s into it, which must end on. Started 50 ms apart, the two last
+    runs both wait on the first, and as the lock doesn't take them in order, either may win, so the ending couldn't be
+    checked; and the window M2 hit (tailscaled gone, its pid file not yet deleted) is narrower than 50 ms. The
+    stand-in's stop takes 0.35 s, not a multiple of the helper's 0.1 s polling, or that window closes.
+  - **The test's clean-up** kills a tailscaled the helper lost with SIGKILL and waits for it (a stand-in deletes the
+    socket path on its way out, which is the next test's), and its exit trap tolerates finding none (`set -e`
+    applies inside traps).
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -538,5 +568,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 4. The Tailscale submenu | done | `banana-ui: Tailscale's submenu: on or off, the device's name, log out, and its state on the top panel` |
 | 5. The login QR code | done | `banana-ui: the Tailscale login link as a QR code, scanned from a phone` |
 | 6. The tailnet's devices | done | `banana-ui: the tailnet's devices, from Tailscale's submenu` |
-| 7. The helper runs one change at a time | todo | |
+| 7. The helper runs one change at a time | done | `tailscale: the helper runs one change at a time, and switching on and off follows the setting` |
 | 8. Final check | todo | |

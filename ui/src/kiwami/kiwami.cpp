@@ -64,6 +64,7 @@ namespace banana
 		// switched off (or no helper in this image): nothing is run, the row says Off
 		tool = helper();
 		on = tsOn();
+		dropQr();
 		if (!on || tool.empty())
 		{
 			ts = kiwami::TsStatus();
@@ -88,6 +89,7 @@ namespace banana
 	{
 		// Tailscale's page asks again every 2 s while it shows
 		bool shown = st.page == KIWAMI;
+		if ((!shown || view != MENU) && qrTex) dropQr();	// (left another way than B or START: the keyboard, Devices)
 		if (shown && on && !tool.empty() && t >= nextPoll && !job.running())
 		{
 			job.start(quoted(tool) + " status", st.sync);

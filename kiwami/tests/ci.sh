@@ -13,9 +13,11 @@ done
 # the Tailscale helper, against stand-ins
 kiwami/tests/tailscale-helper.sh
 
-# banana-ui's code of the fork's that needs no screen (the JSON reader, Tailscale's status), with the host's g++
+# banana-ui's code of the fork's that needs no screen (the JSON reader, Tailscale's status, the name, the QR code),
+# with the host's g++
 T=$(mktemp -d)
-${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp
+${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp \
+    ui/src/kiwami/qrcodegen.cpp
 "$T/units" kiwami/tests/tailscale
 rm -rf "$T"
 

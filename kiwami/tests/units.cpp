@@ -1,6 +1,7 @@
-// The fork's banana-ui code that needs no screen, checked on its own: the JSON reader, Tailscale's status and the
-// device's name. Built and run by kiwami/tests/ci.sh with the host's g++:
-//   g++ -std=c++17 -Wall -I ui/src kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp -o units
+// The fork's banana-ui code that needs no screen, checked on its own: the JSON reader, Tailscale's status, the
+// device's name and the login's QR code. Built and run by kiwami/tests/ci.sh with the host's g++:
+//   g++ -std=c++17 -Wall -I ui/src kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp
+//       ui/src/kiwami/qrcodegen.cpp -o units
 //   ./units kiwami/tests/tailscale
 #include "kiwami/json.h"
 #include "kiwami/tsstatus.h"
@@ -190,12 +191,36 @@ static void testName()
 	}
 }
 
+// the login link's QR code: a link of Tailscale's (~45 characters) is a version 4 code, 33 modules, 41 with the quiet
+// zone: 8 device pixels a module fit the 640x480 top panel
+static void testQr()
+{
+	int side = -1;
+	for (const char* url : { "https://login.tailscale.com/a/1a2b3c4d5e6f7a", "https://login.tailscale.com/a/1a2b3c4d5e6f7a8" })
+	{
+		std::vector<bool> m = loginQr(url, side);
+		CHECK(side == 33 + 8 && m.size() == 41u * 41u);
+		if (m.size() != 41u * 41u) continue;
+		bool quiet = true;
+		for (int i = 0; i < 41; i++)
+			for (int q = 0; q < 4; q++)
+				quiet &= !m[q * 41 + i] && !m[(40 - q) * 41 + i] && !m[i * 41 + q] && !m[i * 41 + 40 - q];
+		CHECK(quiet);
+		// the finders' outer rings at three corners, dark; the module inside the top left one's ring, light
+		CHECK(m[4 * 41 + 4] && m[4 * 41 + 10] && m[10 * 41 + 4] && m[4 * 41 + 30] && m[30 * 41 + 4] && m[36 * 41 + 10]);
+		CHECK(!m[5 * 41 + 5]);
+	}
+	CHECK(loginQr("", side).empty() && side == 0);
+	CHECK(loginQr(std::string(4000, 'x'), side).empty() && side == 0);	// more than a QR code holds
+}
+
 int main(int argc, char** argv)
 {
 	dir = argc > 1 ? argv[1] : "kiwami/tests/tailscale";
 	testJson();
 	testStatus();
 	testName();
+	testQr();
 	if (failed) { fprintf(stderr, "units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("units: %d checks passed\n", checks);
 	return 0;

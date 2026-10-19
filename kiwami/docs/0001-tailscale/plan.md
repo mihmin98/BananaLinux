@@ -201,8 +201,8 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 ### 5. The login QR code
 
 - **Files**: `ui/src/kiwami/qrcodegen.hpp`, `qrcodegen.cpp` (new, vendored unchanged, MIT notice kept);
-  `ui/src/kiwami/tailscale.cpp` (changed); `kiwami/DEPENDENCIES.md`; `kiwami/tests/units.cpp`,
-  `kiwami/tests/tailscale-ui.sh` (changed).
+  `ui/src/kiwami/tailscale.cpp`, `kiwami.h`/`.cpp`, `tsstatus.h`/`.cpp` (changed); `kiwami/DEPENDENCIES.md`;
+  `kiwami/tests/units.cpp`, `kiwami/tests/tailscale-ui.sh`, `kiwami/tests/ci.sh` (changed).
 - **Change**:
   - Nayuki's QR Code generator (C++, v1.8.0) in the fork's sources.
   - Needs login: the URL encoded once (error correction M) into a texture of one pixel per module with the quiet
@@ -349,6 +349,11 @@ Notes from the runs (what the logs showed, what was fixed):
   passes; against `main` (rendered in the same minute, the clock being in the shots) only `wifi-row` and
   `share-row` differ, as in step 3.
 
+- **Step 5, headless** (2026-10-19). `units`: 229 checks, among them the login link's code: version 4, 41 modules
+  with the quiet zone, light all round. `tailscale-ui.sh`: the code made for each login state at both sizes (8 device
+  pixels a module at 640x480, 12 at 1024x768) and read back from the shots by `zbarimg` to the stand-in's link (log
+  in, a refused key, an expired login). The login page draws in 0.06 ms. Against `main`, as in step 3.
+
 ## Deviations
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
@@ -403,6 +408,14 @@ Where the implementation turned out different from this plan, why, and what chan
   default name went into `tsstatus.*`, beside the status (pure functions the unit test links without the screen),
   rather than into `tailscale.cpp`.
 
+- **2026-10-19, step 5: the code's modules in `tsstatus.*`, and a note under the link.** The code's modules come from
+  `loginQr()` in `tsstatus.*` (pure, so `units.cpp` checks our use of qrcodegen, and `ci.sh` links `qrcodegen.cpp`
+  into the test); `tailscale.cpp` only makes the texture. qrcodegen's `encodeText` raises the error correction above
+  M when that keeps the same size (its default), which only helps the scan. Beside the code there is room for about
+  seven short lines, so the line under the link holds the note that didn't fit: the auth key's path, or where a
+  refused key went, or (an expired login) the admin console's Disable key expiry. The row's help, after the state
+  beside the code, gets what room is left.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -413,6 +426,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 2. The helper, at boot and shutdown | done | `tailscale: the helper that starts and stops it, at boot and before /data is unmounted` |
 | 3. banana-ui: the fork's hooks and the Tailscale row | done | `banana-ui: the fork's rows and pages hooked into Settings, and Tailscale's row in Network` |
 | 4. The Tailscale submenu | done | `banana-ui: Tailscale's submenu: on or off, the device's name, log out, and its state on the top panel` |
-| 5. The login QR code | todo | |
+| 5. The login QR code | done | `banana-ui: the Tailscale login link as a QR code, scanned from a phone` |
 | 6. The tailnet's devices | todo | |
 | 7. Final check | todo | |

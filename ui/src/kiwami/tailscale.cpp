@@ -101,8 +101,8 @@ namespace banana
 			return MOVED;
 		case Key::LEFT: selKey = rows[i]; return change(-1);
 		case Key::RIGHT: case Key::A: selKey = rows[i]; return change(1);
-		case Key::B: st.page = LIST; armed = false; return MOVED;
-		case Key::START: st.page = LIST; st.mOpen = false; return CLOSED;
+		case Key::B: st.page = LIST; armed = false; dropQr(); return MOVED;
+		case Key::START: st.page = LIST; st.mOpen = false; dropQr(); return CLOSED;
 		default: return NONE;
 		}
 	}
@@ -165,14 +165,14 @@ namespace banana
 		if (view == DEVICES) renderDevices(); else renderMenu();
 	}
 
-	// a paragraph on the top panel, as upstream's help (20 px, 540 wide); the top of the next one
-	float Settings::Kiwami::para(const std::string& t, float top, int maxLines, const Color& c)
+	// a paragraph on the top panel, as upstream's help (20 px, 540 wide at its left); the top of the next one
+	float Settings::Kiwami::para(const std::string& t, float top, int maxLines, const Color& c, float x, float width)
 	{
 		if (t.empty() || maxLines <= 0 || !st.R) return top;
 		rnds::TextStyle ts;
 		ts.font = st.R; ts.size = 20;
-		int n = (int)rnds::layoutWrap(rnds::utf8to32(t), ts, 540, maxLines).size();
-		st.wrapped(t, 20, 50, top, 540, maxLines, c);
+		int n = (int)rnds::layoutWrap(rnds::utf8to32(t), ts, (int)width, maxLines).size();
+		st.wrapped(t, 20, x, top, width, maxLines, c);
 		return top + n * std::round(20 * 1.4f);
 	}
 
@@ -193,6 +193,56 @@ namespace banana
 		st.be->endScreen();
 	}
 
+	// the login link's QR code, made once a link: black modules on white, one pixel each (drawn at a whole number of
+	// device pixels a module, not smoothed)
+	bool Settings::Kiwami::qrFor(const std::string& url)
+	{
+		if (url.empty()) { dropQr(); return false; }
+		if (url == qrUrl) return (bool)qrTex;
+		dropQr();
+		qrUrl = url;
+		int side = 0;
+		std::vector<bool> m = kiwami::loginQr(url, side);
+		if (m.empty()) return false;
+		rnds::Bitmap b;
+		b.w = b.h = side;
+		b.px.resize((size_t)side * side * 4);
+		for (size_t i = 0; i < m.size(); i++)
+		{
+			uint8_t v = m[i] ? 0 : 255;
+			b.px[i * 4] = b.px[i * 4 + 1] = b.px[i * 4 + 2] = v;
+			b.px[i * 4 + 3] = 255;
+		}
+		qrTex = st.be->upload(b, false);
+		fprintf(stderr, "banana-ui: tailscale: login code %dx%d modules for %s\n", side, side, url.c_str());
+		return (bool)qrTex;
+	}
+
+	// the top panel while a login waits: the code as large as the panel allows on the left (330 px of a 640x480 panel:
+	// 8 device pixels a module at 640x480, 12 at 1024x768, for a link of ~45 characters), the title, the state and the
+	// help beside it, the link and a note under it (the auth key, mostly)
+	void Settings::Kiwami::renderLogin(const std::string& title, const std::string& accent, const std::string& state, const std::string& help,
+		const std::string& link, const std::string& foot)
+	{
+		Colours p = colours(st.light);
+		rnds::Backend* be = st.be;
+		be->beginScreen(0);
+		st.box("screen", false, 0, 0, 640, 480);
+		st.box("hero", false, 18, 20, 604, 436);
+		int side = qrTex->w, k = std::max(1, (int)std::floor(st.X(330) / side));
+		be->draw(qrTex, std::round(st.X(36)), std::round(st.X(34)), (float)side * k, (float)side * k, Color(1, 1, 1, 1));
+		const float x = 384, w = 216;
+		st.text("Tailscale", true, 17, x, 46, p.muted, true, 1.4f);
+		st.text(st.fit(title, true, 30, w), true, 30, x, 72, p.ink);
+		if (!accent.empty()) st.text(st.fit(accent, true, 22, w), true, 22, x, 114, p.accent);
+		float y = para(state, 160, 7, p.ink, x, w);
+		if (!state.empty()) y += 14;
+		para(help, y, (int)((370 - y) / 28), p.muted, x, w);
+		st.text(st.fit(link, false, 20, 556), false, 20, 50, 380, p.ink);
+		st.text(st.fit(foot, false, 18, 556), false, 18, 50, 410, p.muted);
+		be->endScreen();
+	}
+
 	void Settings::Kiwami::renderMenu()
 	{
 		Colours p = colours(st.light);
@@ -207,7 +257,8 @@ namespace banana
 		for (auto& d : ts.peers) online += d.online;
 
 		// ---- top: the state ----
-		std::string title, accent, state;
+		std::string title, accent, state, foot;
+		bool qr = false;
 		if (!on || tool.empty())
 		{
 			title = "Off";
@@ -235,10 +286,15 @@ namespace banana
 		case S::NEEDS_LOGIN:
 			title = ts.self.expired ? "Log in again" : "Log in";
 			accent = nm;
+			// with a link: its QR code, scanned from a phone (renderLogin, below)
+			qr = qrFor(ts.authUrl);
+			// (beside the code there is room for a few words: the key's and the expiry's notes go under it, as foot)
 			state = std::string(ts.self.expired ? "This device's login expired. " : "") +
-				(url.empty() ? "Asking Tailscale for a login link... " : "Open " + url + " on your phone or a computer, log in, and approve " + nm + ". ") +
-				"Or put an auth key from the admin console in banana/tailscale/authkey on the card." +
-				(ts.self.expired ? " In the admin console, Disable key expiry keeps it logged in." : "");
+				(qr ? "Scan the code with your phone, log in, and approve " + nm + "." :
+				 url.empty() ? "Asking Tailscale for a login link... Or put an auth key from the admin console in banana/tailscale/authkey on the card." :
+				 "Open " + url + " on your phone or a computer, log in, and approve " + nm + ". Or put an auth key from the admin console in banana/tailscale/authkey on the card.") +
+				(ts.self.expired && !qr ? " In the admin console, Disable key expiry keeps it logged in." : "");
+			foot = ts.self.expired ? "Disable key expiry in the admin console to stay in." : "Or an auth key in banana/tailscale/authkey on the card.";
 			break;
 		case S::NEEDS_APPROVAL:
 			title = "Waiting for approval";
@@ -259,9 +315,18 @@ namespace banana
 		if (on && ts.state != S::OFF && !ts.error.empty())
 		{
 			const std::string refused = "auth key refused: ";
-			state = (ts.error.compare(0, refused.size(), refused) == 0
-				? "The auth key on the card was refused (" + ts.error.substr(refused.size()) + "); it is now authkey.refused. "
-				: "Last error: " + ts.error + ". ") + state;
+			if (ts.error.compare(0, refused.size(), refused) == 0)
+			{
+				std::string why = ts.error.substr(refused.size());
+				if (why.compare(0, 15, "backend error: ") == 0) why.erase(0, 15);
+				if (qr)
+				{
+					state = "Auth key refused: " + why + ". " + state;
+					foot = "The refused key is now banana/tailscale/authkey.refused.";
+				}
+				else state = "The auth key on the card was refused (" + why + "); it is now authkey.refused. " + state;
+			}
+			else state = "Last error: " + ts.error + ". " + state;
 		}
 		// the certificates of Tailscale's servers don't check out with the clock wrong (an RTC that lost the time)
 		bool clock = false;
@@ -273,7 +338,9 @@ namespace banana
 		else if (selKey == "devices") help = "The tailnet's devices: their names, their addresses and which are online.";
 		else if (selKey == "name") help = "The handheld's name in the tailnet, and in its MagicDNS name. A name changed in the admin console stops following this one.";
 		else help = armed ? "Press A again to log out." : "Takes the handheld out of the tailnet and asks for a new login at once. To stop Tailscale and stay logged in, switch it off instead. Press A twice.";
-		renderTop(title, accent, state, help);
+		if (!qr) dropQr();
+		if (qr) renderLogin(title, accent, state, help, url, foot);
+		else renderTop(title, accent, state, help);
 
 		// ---- bottom: the rows ----
 		rnds::Backend* be = st.be;

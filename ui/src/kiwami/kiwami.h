@@ -60,8 +60,15 @@ namespace banana
 		Result pressMenu(Key k);
 		Result pressDevices(Key k);
 		void renderTop(const std::string& title, const std::string& accent, const std::string& state, const std::string& help);
+		// the login: its link's QR code on the left of the top panel, the rest beside and under it
+		std::string qrUrl;							// the link the code is of
+		rnds::TexPtr qrTex;							// one pixel a module, its quiet zone included; none once the page closes
+		bool qrFor(const std::string& url);
+		void dropQr() { qrTex.reset(); qrUrl.clear(); }
+		void renderLogin(const std::string& title, const std::string& accent, const std::string& state, const std::string& help,
+			const std::string& link, const std::string& foot);
 		void renderMenu();
 		void renderDevices();
-		float para(const std::string& t, float top, int maxLines, const rnds::Color& c);
+		float para(const std::string& t, float top, int maxLines, const rnds::Color& c, float x = 50, float width = 540);
 	};
 }

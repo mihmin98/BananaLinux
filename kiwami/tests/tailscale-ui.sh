@@ -1,8 +1,8 @@
 #!/bin/sh
 # Tailscale in banana-ui's Settings, headless at both panel sizes, against a stand-in helper (fake-tailscale.sh): the
-# Network list's Tailscale row and Tailscale's page in each state (the row's value in the log, and shots), switching it
-# on and off, the device's name typed, logging out, the helper asked every 2 s while the page shows and never once it
-# is closed or while Tailscale is off. Needs ui/banana-ui (make ui) and ImageMagick (the test library's art).
+# Network list's Tailscale row and Tailscale's page in each state (the row's value in the log, and shots), the
+# login's QR code (read back with zbarimg when installed), switching it on and off, the device's name typed, logging
+# out, the helper asked every 2 s while the page shows and never once it is closed or while Tailscale is off. Needs ui/banana-ui (make ui) and ImageMagick (the test library's art).
 # Run by kiwami/tests/ci.sh when banana-ui is built, or by hand:
 #   kiwami/tests/tailscale-ui.sh        (the shots in $OUT, /tmp/kiwami-ui by default)
 set -e
@@ -67,6 +67,18 @@ for size in 640x480 1024x768; do
     page running "tailscale = on" running 1 100.64.0.7
     # still connected to Tailscale with no address of the handheld's own (Self online): the address
     page running-no-wifi "tailscale = on" running 0 100.64.0.7
+
+    # the login's QR code, at 8 device pixels a module (12 at 1024x768): made for the stand-in's link, and read back
+    # from the shot when zbarimg is installed (CI doesn't install it)
+    for s in login:1a2b3c4d5e6f7a refused:1a2b3c4d5e6f7a expired:9f8e7d6c5b4a3b; do
+        name=${s%:*} url=https://login.tailscale.com/a/${s#*:}
+        grep -q "tailscale: login code 41x41 modules for $url$" "$OUT/$size-ts-$name.log" || { echo "FAIL $size $name: no login code for $url"; fail=1; }
+        if command -v zbarimg >/dev/null; then
+            got=$(zbarimg -q --raw "$OUT/$size-tsp-$name-top.png" 2>/dev/null || true)
+            [ "$got" = "$url" ] || { echo "FAIL $size $name: the code reads '$got', not $url"; fail=1; }
+        fi
+    done
+    command -v zbarimg >/dev/null || [ $size != 640x480 ] || echo "tailscale-ui: no zbarimg, the QR codes aren't read back"
 
     # B goes back to the list (and the B chip by touch), START closes Settings from the page
     ts $size back "tailscale = on" running 1 100.64.0.7 \

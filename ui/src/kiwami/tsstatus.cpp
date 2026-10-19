@@ -1,6 +1,7 @@
 // banana-ui (kiwami): Tailscale's state from the helper's status output (tsstatus.h).
 #include "tsstatus.h"
 #include "json.h"
+#include "qrcodegen.hpp"
 
 namespace banana::kiwami
 {
@@ -96,5 +97,22 @@ namespace banana::kiwami
 		}
 		if (n.size() > 63 || n.front() == '-' || n.back() == '-') return "";
 		return n;
+	}
+
+	std::vector<bool> loginQr(const std::string& url, int& side)
+	{
+		side = 0;
+		if (url.empty()) return {};
+		try
+		{
+			qrcodegen::QrCode qr = qrcodegen::QrCode::encodeText(url.c_str(), qrcodegen::QrCode::Ecc::MEDIUM);
+			int n = qr.getSize();
+			side = n + 8;
+			std::vector<bool> m((size_t)side * side, false);
+			for (int y = 0; y < n; y++)
+				for (int x = 0; x < n; x++) m[(size_t)(y + 4) * side + x + 4] = qr.getModule(x, y);
+			return m;
+		}
+		catch (const std::exception&) { side = 0; return {}; }	// (longer than a QR code holds)
 	}
 }

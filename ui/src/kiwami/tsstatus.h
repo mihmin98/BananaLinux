@@ -2,7 +2,7 @@
 // banana-ui (kiwami): Tailscale's state, from the helper's `status` (kiwami/rootfs/usr/libexec/kiwami/tailscale):
 // "state off" or "state starting" while there is no tailscaled to ask, "error <text>" for the last failure the helper
 // knows, then `tailscale status --json` (its fields as tailscaled 1.98.8 writes them). And the device's name in the
-// tailnet. Pure functions, no I/O.
+// tailnet, and its login link as a QR code. Pure functions, no I/O.
 #include <string>
 #include <vector>
 
@@ -44,4 +44,9 @@ namespace banana::kiwami
 	// a name typed on the keyboard: spaces at either end dropped, the others hyphens, capitals lowercase; "" when what
 	// is left isn't a DNS label (a-z, 0-9 and hyphens, 1 to 63, no hyphen first or last)
 	std::string normaliseName(const std::string& typed);
+
+	// the login link as a QR code (Nayuki's qrcodegen: error correction M, or better where it fits the same size):
+	// side x side modules, row after row, the 4-module quiet zone round it included, true for dark; empty when the
+	// link can't be encoded
+	std::vector<bool> loginQr(const std::string& url, int& side);
 }

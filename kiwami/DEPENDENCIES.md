@@ -7,7 +7,7 @@ dependency, or changes its version, updates this file in the same commit.
 
 | Dependency | Version | Released | Pinned in | Source | Notes |
 |---|---|---|---|---|---|
-| Tailscale | 1.98.8 | 30 Jun 2026 | `kiwami/package/kiwami-tailscale/kiwami-tailscale.mk` (`KIWAMI_TAILSCALE_VERSION`), the vendored tarball's sha256 in `kiwami-tailscale.hash` | https://github.com/tailscale/tailscale | Its Go modules are vendored through `proxy.golang.org` (one is gone from GitHub) and checked by its `go.sum`. A newer Tailscale needs a newer Go than Buildroot's (its `go.mod`'s `go` line); a bump recomputes the hash |
+| Tailscale | 1.98.8 | 30 Jun 2026 | `kiwami/package/kiwami-tailscale/kiwami-tailscale.mk` (`KIWAMI_TAILSCALE_VERSION`), the vendored tarball's sha256 in `kiwami-tailscale.hash` | https://github.com/tailscale/tailscale | Its Go modules are vendored through `proxy.golang.org` (one is gone from GitHub) and checked by its `go.sum`. Carries `0001-atomicfile-paths-carry-on-when-the-filesystem-refuses-chmod.patch` (its state on the exFAT card), which a bump checks still applies and is still needed. A newer Tailscale needs a newer Go than Buildroot's (its `go.mod`'s `go` line); a bump recomputes the hash |
 
 ## Upstream's, that the fork depends on
 

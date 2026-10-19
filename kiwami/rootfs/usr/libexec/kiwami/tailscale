@@ -1,0 +1,135 @@
+#!/bin/sh
+# Tailscale (Settings > Network > Tailscale): the handheld in a tailnet, in kernel mode (tailscale0, through the tun
+# module, loaded only while Tailscale is on). Off until switched on there; then rcS starts it at every boot and rcK
+# stops it before /data is unmounted. The login is kept on the card, in banana/tailscale/, so it survives restarts and
+# updates. An auth key from the admin console put in banana/tailscale/authkey logs in with no QR code: it is deleted
+# once used, renamed authkey.refused if refused. Its own log is logs/tailscale.log; tailscaled's goes to syslog.
+#   tailscale boot          up, when settings.conf has tailscale = on
+#   tailscale up            tailscaled started, then a login in the background (which returns at once when logged in)
+#   tailscale down          tailscaled stopped and the tun module unloaded; the login stays
+#   tailscale logout        out of the tailnet, and a new login started at once
+#   tailscale name <name>   the device's name in the tailnet (the next up passes settings.conf's anyway)
+#   tailscale status        "state off" or "state starting" while there is no tailscaled to ask, "error <text>" for
+#                           the last failure, then tailscaled's status as JSON
+# KIWAMI_DATA, KIWAMI_RUN, KIWAMI_SOCKET and KIWAMI_MODEL move /data/banana, /run/banana, tailscaled's socket and the
+# device tree's model, for the tests only.
+B=${KIWAMI_DATA:-/data/banana}
+R=${KIWAMI_RUN:-/run/banana}
+SOCK=${KIWAMI_SOCKET:-/run/tailscale/tailscaled.sock}   # where the CLI looks by itself, so `tailscale` works over SSH
+MODEL=${KIWAMI_MODEL:-/proc/device-tree/model}
+D=$B/tailscale
+KEY=$D/authkey
+PID=$R/tailscaled.pid
+LOGIN=$R/tailscale-login.pid
+ERR=$R/tailscale.error
+LOG=$B/logs/tailscale.log
+
+log() { mkdir -p "${LOG%/*}"; echo "$(date '+%F %T') $*" >> "$LOG"; }
+fail() { echo "$*" > "$ERR"; log "failed: $*"; }
+ts() { tailscale --socket="$SOCK" "$@"; }
+running() { [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; }
+# the name in the tailnet: Settings' tailscale_name, else the board's
+name() {
+    n=$(sed -n 's/^ *tailscale_name *= *//p' "$B/settings.conf" 2>/dev/null | tr -d '\r' | sed 's/ *$//' | tail -n 1)
+    [ -n "$n" ] && { echo "$n"; return; }
+    case $(cat "$MODEL" 2>/dev/null | tr -d '\0') in
+    *"RG DS Plus"*) echo banana-rgds-plus ;;
+    *"RG DS"*) echo banana-rgds ;;
+    *) echo banana ;;
+    esac
+}
+# the login, in its own session so that down and logout stop it with whatever `tailscale up` it waits in
+stoplogin() {
+    [ -f "$LOGIN" ] && kill -TERM -"$(cat "$LOGIN")" 2>/dev/null
+    rm -f "$LOGIN"
+}
+login() {
+    [ -f "$LOGIN" ] && kill -0 "$(cat "$LOGIN")" 2>/dev/null && return 0
+    setsid "$0" login </dev/null >/dev/null 2>&1 &
+    echo $! > "$LOGIN"
+}
+
+case $1 in
+boot)
+    grep -q '^ *tailscale *= *on' "$B/settings.conf" 2>/dev/null || exit 0
+    exec "$0" up
+    ;;
+up)
+    rm -f "$ERR"
+    if ! running; then
+        modprobe tun 2>/dev/null || { fail "the tun module could not be loaded"; exit 1; }
+        mkdir -p "$D" "${SOCK%/*}"
+        rm -f "$PID" "$SOCK"    # one that died
+        # its output to syslog; both in a session of their own, so nothing that ends the caller's ends them
+        { setsid tailscaled --statedir="$D" --socket="$SOCK" --tun=tailscale0 --no-logs-no-support 2>&1 &
+          echo $! > "$PID"; } </dev/null | setsid logger -t tailscaled >/dev/null 2>&1 &
+        # its socket, a few seconds at most (the pid file comes from the line above, a moment later)
+        for i in $(seq 50); do
+            [ -S "$SOCK" ] && break
+            [ -s "$PID" ] && ! running && break
+            sleep 0.1
+        done
+        [ -S "$SOCK" ] || { fail "tailscaled did not start"; "$0" down; exit 1; }
+        log "started as $(name)"
+    fi
+    login
+    ;;
+login)
+    # (up's, in the background) `tailscale up` returns once logged in, at once when the login is still good; a
+    # refused key is put aside and a login by QR code started instead
+    while :; do
+        set -- up --accept-dns=false --netfilter-mode=off --hostname="$(name)"
+        k=; [ -s "$KEY" ] && k=1 && set -- "$@" --auth-key=file:"$KEY"
+        out=$(ts "$@" 2>&1)
+        if [ $? = 0 ]; then
+            rm -f "$ERR"
+            if [ -n "$k" ]; then rm -f "$KEY"; log "logged in with the auth key"; else log "logged in"; fi
+            break
+        fi
+        running || break    # stopped while it waited
+        why=$(echo "$out" | grep . | tail -n 1)
+        if [ -n "$k" ]; then
+            mv -f "$KEY" "$D/authkey.refused"
+            fail "auth key refused: $why"
+            continue
+        fi
+        fail "$why"
+        break
+    done
+    rm -f "$LOGIN"
+    ;;
+down)
+    stoplogin
+    if running; then
+        p=$(cat "$PID")
+        kill -TERM "$p"
+        for i in $(seq 50); do kill -0 "$p" 2>/dev/null || break; sleep 0.1; done
+        kill -0 "$p" 2>/dev/null && kill -KILL "$p"
+        log "stopped"
+    fi
+    rm -f "$PID" "$SOCK"
+    modprobe -r tun 2>/dev/null
+    ;;
+logout)
+    running || exit 1
+    stoplogin
+    ts logout >/dev/null 2>&1
+    log "logged out"
+    login
+    ;;
+name)
+    [ -n "$2" ] || { echo "usage: tailscale name <name>" >&2; exit 1; }
+    running || exit 0
+    ts set --hostname="$2" || { fail "the name $2 was refused"; exit 1; }
+    log "named $2"
+    ;;
+status)
+    if ! running; then echo "state off"
+    elif [ ! -S "$SOCK" ]; then echo "state starting"
+    fi
+    [ -s "$ERR" ] && echo "error $(cat "$ERR")"
+    running && [ -S "$SOCK" ] && ts status --json
+    ;;
+*) echo "usage: tailscale boot|up|down|logout|name <name>|status" >&2; exit 1 ;;
+esac
+exit 0

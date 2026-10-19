@@ -1,0 +1,24 @@
+#!/bin/sh
+# Stand-in tailscale CLI for kiwami/tests/tailscale-helper.sh: records its arguments (but the socket), and answers as
+# told. `up` with an auth key: the key file's content "bad" is refused, anything else logs in. `up` without one logs
+# in at once, or with KT_LOGIN=wait waits for a login by QR code until tailscaled stops.
+S=
+case $1 in --socket=*) S=${1#--socket=}; shift ;; esac
+echo "tailscale $*" >> "$KT_REC"
+case $1 in
+up)
+    for a; do case $a in --auth-key=file:*) K=${a#--auth-key=file:} ;; esac; done
+    if [ -n "$K" ]; then
+        [ "$(cat "$K")" = bad ] && { echo "backend error: invalid key: API key does not exist" >&2; exit 1; }
+        exit 0
+    fi
+    [ "$KT_LOGIN" = wait ] || exit 0
+    echo "To authenticate, visit:"
+    echo "	https://login.tailscale.com/a/1234abcd"
+    while [ -S "$S" ]; do sleep 0.1; done
+    echo "backend error: tailscaled stopped" >&2
+    exit 1
+    ;;
+status) echo '{"BackendState": "Running"}' ;;
+esac
+exit 0

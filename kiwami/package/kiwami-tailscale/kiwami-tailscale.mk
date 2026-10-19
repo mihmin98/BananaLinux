@@ -80,15 +80,15 @@ KIWAMI_TAILSCALE_TAGS += \
 	ts_omit_tundevstats \
 	ts_omit_linkspeed \
 	ts_omit_usermetrics
-# the CLI's terminal niceties (the menu draws its own QR) and developers' debugging; one user, root
+# the CLI's terminal niceties (the menu draws its own QR) and developers' debugging
+# (not ts_omit_unixsocketidentity: in 1.98.8 it leaves every LocalAPI call denied, the CLI's included)
 KIWAMI_TAILSCALE_TAGS += \
 	ts_omit_qrcodes \
 	ts_omit_colorable \
 	ts_omit_completion \
 	ts_omit_completion_scripts \
 	ts_omit_debugeventbus \
-	ts_omit_debugportmapper \
-	ts_omit_unixsocketidentity
+	ts_omit_debugportmapper
 
 # the CLI by its name: tailscaled runs as the CLI when called `tailscale`
 define KIWAMI_TAILSCALE_INSTALL_CLI

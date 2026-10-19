@@ -12,6 +12,7 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27
 done
 /usr/libexec/banana/share down 2>/dev/null     # a computer's open files on the card
 /usr/libexec/banana/ssh down 2>/dev/null
+/usr/libexec/kiwami/tailscale down 2>/dev/null	# kiwami: before /data is unmounted
 /usr/libexec/banana/wifi down 2>/dev/null
 hwclock -w 2>/dev/null
 /usr/libexec/banana/boot-log       # the boot's log, complete, whenever the handheld is turned off

@@ -1,0 +1,61 @@
+From: kiwami <kiwami@localhost>
+Subject: [PATCH] atomicfile, paths: carry on when the filesystem refuses chmod
+
+tailscaled chmods its state directory to 0700 (when it is named
+"tailscale") and each state file it writes to 0600, and fails when the
+chmod fails. exFAT and FAT can't hold those modes and refuse such a chmod
+with EPERM (Linux's exfat_sanitize_mode, without the "quiet" mount
+option), so tailscaled with its state on such a filesystem exits at start
+and could never save a login. Banana keeps the state on its exFAT data
+partition: an EPERM from the chmod is not an error, the file or directory
+is used with the mode the filesystem gives it.
+
+Upstream: not sent (the fork's own; see kiwami/docs/0001-tailscale/plan.md)
+---
+--- a/atomicfile/atomicfile.go
++++ b/atomicfile/atomicfile.go
+@@ -8,7 +8,9 @@
+ package atomicfile // import "tailscale.com/atomicfile"
+ 
+ import (
++	"errors"
+ 	"fmt"
++	"io/fs"
+ 	"os"
+ 	"path/filepath"
+ 	"runtime"
+@@ -38,7 +40,9 @@
+ 		return err
+ 	}
+ 	if runtime.GOOS != "windows" {
+-		if err := f.Chmod(perm); err != nil {
++		// A filesystem that can't hold the mode (exFAT, FAT) refuses the chmod with
++		// EPERM: the file is written all the same.
++		if err := f.Chmod(perm); err != nil && !errors.Is(err, fs.ErrPermission) {
+ 			return err
+ 		}
+ 	}
+--- a/paths/paths_unix.go
++++ b/paths/paths_unix.go
+@@ -6,7 +6,9 @@
+ package paths
+ 
+ import (
++	"errors"
+ 	"fmt"
++	"io/fs"
+ 	"os"
+ 	"path/filepath"
+ 	"runtime"
+@@ -87,5 +89,10 @@
+ 		// Already correct.
+ 		return nil
+ 	}
+-	return os.Chmod(dir, perm)
++	// A filesystem that can't hold the mode (exFAT, FAT) refuses the chmod with
++	// EPERM: the directory is used all the same.
++	if err := os.Chmod(dir, perm); err != nil && !errors.Is(err, fs.ErrPermission) {
++		return err
++	}
++	return nil
+ }

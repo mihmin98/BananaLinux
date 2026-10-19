@@ -1,0 +1,3 @@
+#!/bin/sh
+# Stand-in logger for kiwami/tests/tailscale-helper.sh: syslog is a file, each line with its tag.
+while IFS= read -r l; do echo "$2: $l" >> "$KT_SYSLOG"; done

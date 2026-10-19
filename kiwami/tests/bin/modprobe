@@ -1,0 +1,5 @@
+#!/bin/sh
+# Stand-in modprobe for kiwami/tests/tailscale-helper.sh: records, and fails to load tun when KT_NO_TUN is set.
+echo "modprobe $*" >> "$KT_REC"
+[ "$KT_NO_TUN" = 1 ] && [ "$1" = tun ] && exit 1
+exit 0

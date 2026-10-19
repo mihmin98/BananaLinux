@@ -99,7 +99,7 @@ Each step is one commit, and leaves the tree building and `make test` passing.
   (changed); `docs/FORK.md` (*What the fork shadows*: the share script).
 - **Change**:
   - The helper, `tailscale boot | up | down | logout | name <name> | status`, in the style of upstream's `ssh` and
-    `share`. State in `/data/banana/tailscale/`, socket `/run/banana/tailscaled.sock`, pid
+    `share`. State in `/data/banana/tailscale/`, socket `/run/tailscale/tailscaled.sock` (*Deviations*), pid
     `/run/banana/tailscaled.pid`, its own log `/data/banana/logs/tailscale.log` (a timestamped line per start, stop,
     login, refusal, failure), tailscaled's output to syslog through `logger -t tailscaled`. The data and run
     folders can be moved by environment variables, for the test only.
@@ -320,6 +320,17 @@ Notes from the runs (what the logs showed, what was fixed):
   every flag the helper uses is there (`up --accept-dns --netfilter-mode --auth-key --hostname`, `set --hostname`,
   `logout`, tailscaled's `--statedir --socket --tun --no-logs-no-support`). The vendored tarball comes out
   byte-identical from a second download, so the `.hash` holds.
+- **Step 2, in QEMU** (2026-10-19, `rgds-plus` image, `tools/qemu-boot.sh`'s card, then the helper driven over SSH).
+  `qemu-boot.sh`: 48 passed, 0 failed (the menu at 4.2 s, as before). Before Tailscale is first switched on: no
+  tailscaled, no `tun`, no `tailscale0`, `status` says `state off`. `up` returns in 1.1 s; 15 s later `status` gives
+  `NeedsLogin` with an `AuthURL` from login.tailscale.com (QEMU's user networking), and a plain `tailscale status`
+  over SSH answers (the default socket). `tailscaled.state` (119 bytes, with its machine key) is written in
+  `banana/tailscale/` on the exFAT `/data` (`fmask=0000`, no `quiet`): the patch works. `tailscale0` up, `tun`
+  loaded. Resident memory under QEMU: tailscaled 25 MB; the `tailscale up` waiting for a login 15 MB more, while
+  it waits (M14 measures it on the device). `down` in 1.1 s: no tailscaled, `tun` unloaded, no `tailscale0`, the
+  state kept. With `tailscale = on`, `poweroff`: rcK stopped it (`stopped` in `tailscale.log`) before the unmount;
+  the next boot started it from rcS with the same state file (`NeedsLogin`, a new login URL), and no exFAT
+  warnings in `dmesg`. syslog got 110 lines of tailscaled's in the first 15 s, most at start.
 
 ## Deviations
 
@@ -342,6 +353,23 @@ Where the implementation turned out different from this plan, why, and what chan
   waits on it, which the helper needs to tell a login from a refused key), health, DNS (for a later on-device
   MagicDNS), Tailnet Lock (a tailnet using it would otherwise refuse the handheld), c2n, the peer API, the baked-in CA
   roots, captive portal detection, debug and doctor. Each group is commented in `kiwami-tailscale.mk`.
+- **2026-10-19, step 2: a patch so tailscaled can keep its state on exFAT.** tailscaled `chmod`s its state folder to
+  0700 when it is called `tailscale` (`paths.MkStateDir`, on start) and every state file it writes to 0600
+  (`atomicfile.WriteFile`), and fails when that fails. `/data` is exFAT mounted with `fmask=0000,dmask=0000` and
+  without `quiet`, and exFAT refuses a `chmod` taking bits away with `EPERM` (`exfat_sanitize_mode`): tailscaled would
+  exit at start, and could never save a login. Decided (over the `quiet` mount option, which changes upstream's
+  behaviour for all of `/data`, and the state in RAM copied to the card, which loses key rotations to a crash): step
+  2 adds `kiwami/package/kiwami-tailscale/0001-*.patch`, by which both carry on when the `chmod` is refused with
+  `EPERM`. Nothing else of tailscaled's `chmod`s or `chown`s under its state folder (checked in 1.98.8's source:
+  the rest is the socket in `/run`, `/etc/resolv.conf` which `--accept-dns=false` leaves alone, Synology, and the
+  SSH server left out). A Tailscale bump carries the patch (`DEPENDENCIES.md` says so).
+- **2026-10-19, step 2: tailscaled's socket where Tailscale puts it**, `/run/tailscale/tailscaled.sock` (`/var/run`
+  is `/run`), rather than `/run/banana/tailscaled.sock`: `tailscale ...` over SSH then finds the daemon with no
+  `--socket` (the manual tests use it). The pid file stays `/run/banana/tailscaled.pid`.
+- **2026-10-19, step 2: `ts_omit_unixsocketidentity` taken out of step 1's tags.** In QEMU every CLI call was
+  refused (`Access denied: status access denied`): with that tag, 1.98.8's `GetConnIdentity` never marks a
+  connection as the unix socket's, so `actor.Permissions` grants neither read nor write, whatever the feature's
+  description says. The feature is kept (65 KB); everything here runs as root, so it changes nothing else.
 
 ## Progress
 
@@ -350,7 +378,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. Tailscale in the image | done | `tailscale: Tailscale 1.98.8 in the image, built from source, with TUN as a kernel module` |
-| 2. The helper, at boot and shutdown | todo | |
+| 2. The helper, at boot and shutdown | done | `tailscale: the helper that starts and stops it, at boot and before /data is unmounted` |
 | 3. banana-ui: the fork's hooks and the Tailscale row | todo | |
 | 4. The Tailscale submenu | todo | |
 | 5. The login QR code | todo | |

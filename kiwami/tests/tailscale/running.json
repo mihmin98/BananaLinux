@@ -1,0 +1,299 @@
+{
+  "Version": "1.98.8-t1a2b3c4d5-g6e7f8a9b0",
+  "TUN": true,
+  "BackendState": "Running",
+  "HaveNodeKey": true,
+  "AuthURL": "",
+  "TailscaleIPs": [
+    "100.64.0.7",
+    "fd7a:115c:a1e0::7"
+  ],
+  "Self": {
+    "ID": "n1CNTRL",
+    "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000001",
+    "HostName": "banana-rgds",
+    "DNSName": "banana-rgds.tail5c2e1.ts.net.",
+    "OS": "linux",
+    "UserID": 7001,
+    "TailscaleIPs": [
+      "100.64.0.7",
+      "fd7a:115c:a1e0::7"
+    ],
+    "AllowedIPs": [
+      "100.64.0.7/32",
+      "fd7a:115c:a1e0::7/128"
+    ],
+    "Addrs": null,
+    "CurAddr": "",
+    "Relay": "fra",
+    "RxBytes": 0,
+    "TxBytes": 0,
+    "Created": "2026-03-02T09:14:00Z",
+    "LastWrite": "0001-01-01T00:00:00Z",
+    "LastSeen": "0001-01-01T00:00:00Z",
+    "LastHandshake": "0001-01-01T00:00:00Z",
+    "Online": true,
+    "ExitNode": false,
+    "ExitNodeOption": false,
+    "Active": false,
+    "PeerAPIURL": [
+      "http://100.64.0.7:43211",
+      "http://[fd7a:115c:a1e0::7]:43211"
+    ],
+    "InNetworkMap": true,
+    "InMagicSock": false,
+    "InEngine": false,
+    "KeyExpiry": "2027-04-17T12:00:00Z"
+  },
+  "Health": [],
+  "MagicDNSSuffix": "tail5c2e1.ts.net",
+  "CurrentTailnet": {
+    "Name": "someone@example.com",
+    "MagicDNSSuffix": "tail5c2e1.ts.net",
+    "MagicDNSEnabled": true
+  },
+  "CertDomains": null,
+  "Peer": {
+    "nodekey:0000000000000000000000000000000000000000000000000000000000000002": {
+      "ID": "n2CNTRL",
+      "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000002",
+      "HostName": "desktop",
+      "DNSName": "desktop.tail5c2e1.ts.net.",
+      "OS": "windows",
+      "UserID": 7001,
+      "TailscaleIPs": [
+        "100.101.12.4",
+        "fd7a:115c:a1e0::4"
+      ],
+      "AllowedIPs": [
+        "100.101.12.4/32",
+        "fd7a:115c:a1e0::4/128"
+      ],
+      "Addrs": null,
+      "CurAddr": "",
+      "Relay": "fra",
+      "RxBytes": 0,
+      "TxBytes": 0,
+      "Created": "2026-03-02T09:14:00Z",
+      "LastWrite": "0001-01-01T00:00:00Z",
+      "LastSeen": "0001-01-01T00:00:00Z",
+      "LastHandshake": "0001-01-01T00:00:00Z",
+      "Online": true,
+      "ExitNode": false,
+      "ExitNodeOption": false,
+      "Active": false,
+      "PeerAPIURL": null,
+      "InNetworkMap": true,
+      "InMagicSock": false,
+      "InEngine": false
+    },
+    "nodekey:0000000000000000000000000000000000000000000000000000000000000003": {
+      "ID": "n3CNTRL",
+      "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000003",
+      "HostName": "Alex\u2019s iPhone",
+      "DNSName": "alexs-iphone.tail5c2e1.ts.net.",
+      "OS": "iOS",
+      "UserID": 7001,
+      "TailscaleIPs": [
+        "100.88.40.2",
+        "fd7a:115c:a1e0::2"
+      ],
+      "AllowedIPs": [
+        "100.88.40.2/32",
+        "fd7a:115c:a1e0::2/128"
+      ],
+      "Addrs": null,
+      "CurAddr": "",
+      "Relay": "fra",
+      "RxBytes": 0,
+      "TxBytes": 0,
+      "Created": "2026-03-02T09:14:00Z",
+      "LastWrite": "0001-01-01T00:00:00Z",
+      "LastSeen": "0001-01-01T00:00:00Z",
+      "LastHandshake": "0001-01-01T00:00:00Z",
+      "Online": true,
+      "ExitNode": false,
+      "ExitNodeOption": false,
+      "Active": false,
+      "PeerAPIURL": null,
+      "InNetworkMap": true,
+      "InMagicSock": false,
+      "InEngine": false
+    },
+    "nodekey:0000000000000000000000000000000000000000000000000000000000000004": {
+      "ID": "n4CNTRL",
+      "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000004",
+      "HostName": "nas",
+      "DNSName": "nas.tail5c2e1.ts.net.",
+      "OS": "linux",
+      "UserID": 7001,
+      "TailscaleIPs": [
+        "100.70.1.9",
+        "fd7a:115c:a1e0::9"
+      ],
+      "AllowedIPs": [
+        "100.70.1.9/32",
+        "fd7a:115c:a1e0::9/128"
+      ],
+      "Addrs": null,
+      "CurAddr": "",
+      "Relay": "fra",
+      "RxBytes": 0,
+      "TxBytes": 0,
+      "Created": "2026-03-02T09:14:00Z",
+      "LastWrite": "0001-01-01T00:00:00Z",
+      "LastSeen": "0001-01-01T00:00:00Z",
+      "LastHandshake": "0001-01-01T00:00:00Z",
+      "Online": true,
+      "ExitNode": false,
+      "ExitNodeOption": false,
+      "Active": false,
+      "PeerAPIURL": null,
+      "InNetworkMap": true,
+      "InMagicSock": false,
+      "InEngine": false
+    },
+    "nodekey:0000000000000000000000000000000000000000000000000000000000000005": {
+      "ID": "n5CNTRL",
+      "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000005",
+      "HostName": "macbook",
+      "DNSName": "macbook.tail5c2e1.ts.net.",
+      "OS": "macOS",
+      "UserID": 7001,
+      "TailscaleIPs": [
+        "100.96.3.15",
+        "fd7a:115c:a1e0::f"
+      ],
+      "AllowedIPs": [
+        "100.96.3.15/32",
+        "fd7a:115c:a1e0::f/128"
+      ],
+      "Addrs": null,
+      "CurAddr": "",
+      "Relay": "fra",
+      "RxBytes": 0,
+      "TxBytes": 0,
+      "Created": "2026-03-02T09:14:00Z",
+      "LastWrite": "0001-01-01T00:00:00Z",
+      "LastSeen": "2026-10-18T21:42:10Z",
+      "LastHandshake": "0001-01-01T00:00:00Z",
+      "Online": false,
+      "ExitNode": false,
+      "ExitNodeOption": false,
+      "Active": false,
+      "PeerAPIURL": null,
+      "InNetworkMap": true,
+      "InMagicSock": false,
+      "InEngine": false
+    },
+    "nodekey:0000000000000000000000000000000000000000000000000000000000000006": {
+      "ID": "n6CNTRL",
+      "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000006",
+      "HostName": "living-room-tv",
+      "DNSName": "living-room-tv.tail5c2e1.ts.net.",
+      "OS": "android",
+      "UserID": 7001,
+      "TailscaleIPs": [
+        "100.112.8.30",
+        "fd7a:115c:a1e0::1e"
+      ],
+      "AllowedIPs": [
+        "100.112.8.30/32",
+        "fd7a:115c:a1e0::1e/128"
+      ],
+      "Addrs": null,
+      "CurAddr": "",
+      "Relay": "fra",
+      "RxBytes": 0,
+      "TxBytes": 0,
+      "Created": "2026-03-02T09:14:00Z",
+      "LastWrite": "0001-01-01T00:00:00Z",
+      "LastSeen": "2026-10-12T19:05:00Z",
+      "LastHandshake": "0001-01-01T00:00:00Z",
+      "Online": false,
+      "ExitNode": false,
+      "ExitNodeOption": false,
+      "Active": false,
+      "PeerAPIURL": null,
+      "InNetworkMap": true,
+      "InMagicSock": false,
+      "InEngine": false
+    },
+    "nodekey:0000000000000000000000000000000000000000000000000000000000000007": {
+      "ID": "n7CNTRL",
+      "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000007",
+      "HostName": "raspberrypi",
+      "DNSName": "raspberrypi.tail5c2e1.ts.net.",
+      "OS": "linux",
+      "UserID": 7001,
+      "TailscaleIPs": [
+        "100.72.5.6",
+        "fd7a:115c:a1e0::6"
+      ],
+      "AllowedIPs": [
+        "100.72.5.6/32",
+        "fd7a:115c:a1e0::6/128"
+      ],
+      "Addrs": null,
+      "CurAddr": "",
+      "Relay": "fra",
+      "RxBytes": 0,
+      "TxBytes": 0,
+      "Created": "2026-03-02T09:14:00Z",
+      "LastWrite": "0001-01-01T00:00:00Z",
+      "LastSeen": "0001-01-01T00:00:00Z",
+      "LastHandshake": "0001-01-01T00:00:00Z",
+      "Online": true,
+      "ExitNode": false,
+      "ExitNodeOption": false,
+      "Active": false,
+      "PeerAPIURL": null,
+      "InNetworkMap": true,
+      "InMagicSock": false,
+      "InEngine": false
+    },
+    "nodekey:0000000000000000000000000000000000000000000000000000000000000008": {
+      "ID": "n8CNTRL",
+      "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000008",
+      "HostName": "banana-rgds-plus",
+      "DNSName": "banana-rgds-plus.tail5c2e1.ts.net.",
+      "OS": "linux",
+      "UserID": 7001,
+      "TailscaleIPs": [
+        "100.80.2.11",
+        "fd7a:115c:a1e0::b"
+      ],
+      "AllowedIPs": [
+        "100.80.2.11/32",
+        "fd7a:115c:a1e0::b/128"
+      ],
+      "Addrs": null,
+      "CurAddr": "",
+      "Relay": "fra",
+      "RxBytes": 0,
+      "TxBytes": 0,
+      "Created": "2026-03-02T09:14:00Z",
+      "LastWrite": "0001-01-01T00:00:00Z",
+      "LastSeen": "2026-10-19T08:30:00Z",
+      "LastHandshake": "0001-01-01T00:00:00Z",
+      "Online": false,
+      "ExitNode": false,
+      "ExitNodeOption": false,
+      "Active": false,
+      "PeerAPIURL": null,
+      "InNetworkMap": true,
+      "InMagicSock": false,
+      "InEngine": false
+    }
+  },
+  "User": {
+    "7001": {
+      "ID": 7001,
+      "LoginName": "someone@example.com",
+      "DisplayName": "Someone",
+      "ProfilePicURL": "",
+      "Roles": []
+    }
+  },
+  "ClientVersion": null
+}

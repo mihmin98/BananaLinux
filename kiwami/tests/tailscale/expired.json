@@ -1,0 +1,70 @@
+{
+  "Version": "1.98.8-t1a2b3c4d5-g6e7f8a9b0",
+  "TUN": true,
+  "BackendState": "NeedsLogin",
+  "HaveNodeKey": true,
+  "AuthURL": "https://login.tailscale.com/a/9f8e7d6c5b4a3b",
+  "TailscaleIPs": [
+    "100.64.0.7",
+    "fd7a:115c:a1e0::7"
+  ],
+  "Self": {
+    "ID": "n1CNTRL",
+    "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000001",
+    "HostName": "banana-rgds",
+    "DNSName": "banana-rgds.tail5c2e1.ts.net.",
+    "OS": "linux",
+    "UserID": 7001,
+    "TailscaleIPs": [
+      "100.64.0.7",
+      "fd7a:115c:a1e0::7"
+    ],
+    "AllowedIPs": [
+      "100.64.0.7/32",
+      "fd7a:115c:a1e0::7/128"
+    ],
+    "Addrs": null,
+    "CurAddr": "",
+    "Relay": "fra",
+    "RxBytes": 0,
+    "TxBytes": 0,
+    "Created": "2026-03-02T09:14:00Z",
+    "LastWrite": "0001-01-01T00:00:00Z",
+    "LastSeen": "0001-01-01T00:00:00Z",
+    "LastHandshake": "0001-01-01T00:00:00Z",
+    "Online": false,
+    "ExitNode": false,
+    "ExitNodeOption": false,
+    "Active": false,
+    "PeerAPIURL": [
+      "http://100.64.0.7:43211",
+      "http://[fd7a:115c:a1e0::7]:43211"
+    ],
+    "InNetworkMap": true,
+    "InMagicSock": false,
+    "InEngine": false,
+    "KeyExpiry": "2026-10-01T12:00:00Z",
+    "Expired": true
+  },
+  "Health": [
+    "Tailscale key expired; log in again"
+  ],
+  "MagicDNSSuffix": "tail5c2e1.ts.net",
+  "CurrentTailnet": {
+    "Name": "someone@example.com",
+    "MagicDNSSuffix": "tail5c2e1.ts.net",
+    "MagicDNSEnabled": true
+  },
+  "CertDomains": null,
+  "Peer": null,
+  "User": {
+    "7001": {
+      "ID": 7001,
+      "LoginName": "someone@example.com",
+      "DisplayName": "Someone",
+      "ProfilePicURL": "",
+      "Roles": []
+    }
+  },
+  "ClientVersion": null
+}

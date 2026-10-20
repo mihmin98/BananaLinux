@@ -1,6 +1,7 @@
 #include <ctime>
 #include "settings.h"
 #include "theme.h"
+#include "kiwami/kiwami.h"	// kiwami: the fork's rows and pages
 #include <algorithm>
 #include <dlfcn.h>
 #include <thread>
@@ -182,6 +183,7 @@ namespace banana
 		for (auto& e : names) rnds::themeColor(e.n, p.*e.m);
 		return p;
 	}
+	Settings::Kiwami::Colours Settings::Kiwami::colours(bool light) { SPal p = pal(light); return { p.ink, p.muted, p.line, p.accent, p.onPick, p.onPickAccent }; }	// kiwami: the screen's colours for the fork's pages
 
 	// ---- the settings ------------------------------------------------------------------------------------------------
 	Settings::Settings(rnds::Backend* b, const std::string& a, const std::string& d, float scale, const std::string& variant)
@@ -393,6 +395,7 @@ namespace banana
 		add(W, "phone", "Wi-Fi", "", menu, "wifi", { "On", "Off" }, { "on", "off" });
 		add(W, "phone", "Network", "The networks around: A on one joins it, with a password typed on the keyboard here (or by touch).", "", "network", {}, {}, Item::PAGE);
 		add(W, "phone", "File sharing", "", menu, "share", { "Off", "On" }, { "off", "on" });
+		Kiwami::rows(*this, W);	// kiwami: Tailscale
 		const char* S = "System";
 		{
 			std::vector<std::string> names, tzs;
@@ -593,6 +596,7 @@ namespace banana
 		page = LIST;
 		message.clear();
 		if (wifiOn() && !statusJob.running()) statusJob.start(wifiTool + " status", sync);	// the network's name on its row
+		if (kw) kw->opened();	// kiwami: the rows' values, once
 		mOpen = true;
 	}
 
@@ -661,6 +665,7 @@ namespace banana
 		if (it.kind == Item::PAGE)
 		{
 			if (dir <= 0) return NONE;
+			if (kw && kw->owns(it.key)) return kw->open(it.key);	// kiwami:
 			if (it.key == "scrape") { startScrape(); return MOVED; }
 			if (it.key == "update") openUpdates(); else if (it.key == "setup") openSetup(); else openNetworks();
 			return MOVED;
@@ -715,6 +720,7 @@ namespace banana
 		if (page == GAME) return pressGame(k);
 		if (page == UPDATES) return pressUpdates(k);
 		if (page == SETUP) return pressSetup(k);
+		if (page == KIWAMI) return kw->press(k);	// kiwami:
 		if (inGroups) return pressGroups(k);
 		int g = groupOf(sel), b = groupStart(g), e = groupEnd(g);
 		switch (k)
@@ -779,6 +785,7 @@ namespace banana
 		if (page == NETWORKS) return touchNetworks(cx, cy);
 		if (page == KEYBOARD) return touchKeyboard(cx, cy);
 		if (page == GAME) return touchGame(cx, cy);
+		if (page == KIWAMI) return kw->touch(cx, cy);	// kiwami:
 		if (page == SETUP)
 		{
 			if (downY >= 418 && downY <= 466) return pressSetup(downX < 320 ? Key::B : Key::A);
@@ -1181,6 +1188,7 @@ namespace banana
 		if (page == GAME) { renderGame(); return; }
 		if (page == UPDATES) { renderUpdates(); return; }
 		if (page == SETUP) { renderSetup(); return; }
+		if (page == KIWAMI) { kw->render(); return; }	// kiwami:
 		if (inGroups) { renderGroups(); return; }
 		SPal p = pal(light);
 		const Item& cur = items[sel];
@@ -1248,6 +1256,7 @@ namespace banana
 			else if (it.kind == Item::PAGE && it.key == "network") v = wstat.connected ? fit(wstat.ssid, true, 19, 300) : (wifiOn() ? "Choose" : "");
 			else if (it.kind == Item::PAGE && it.key == "update") v = updatesWaiting();
 			else if (it.kind == Item::PAGE && it.key == "scrape") v = scrapeShort();
+			else if (it.kind == Item::PAGE && kw && kw->owns(it.key)) v = kw->value(it.key);	// kiwami:
 			if (v.empty()) continue;
 			float vw = text(v, true, 19, 0, 0, p.ink, false, 0, true);
 			Color vc = on ? (armed == i ? p.onPickAccent : p.onPick) : p.muted;
@@ -1375,6 +1384,7 @@ namespace banana
 			joining.clear();
 			changed = true;
 		}
+		if (kw) changed |= kw->update(t);	// kiwami:
 		return changed;
 	}
 
@@ -1382,6 +1392,7 @@ namespace banana
 	{
 		if (!mOpen) return -1;
 		int w = pageWake(t);
+		if (int k = kw ? kw->wake(t, page == KIWAMI) : -1; k >= 0 && (w < 0 || k < w)) w = k;	// kiwami:
 		// the account check's answer, and the pop-up going away
 		int mine = raCheck ? 200 : toastUntil > t ? std::max(0, (int)(toastUntil - t) + 1) : -1;
 		if (mine >= 0 && (w < 0 || mine < w)) w = mine;
@@ -1700,6 +1711,7 @@ namespace banana
 		std::string help = !message.empty() ? message
 			: entry == ENTRY_SEARCH ? "A types the key, B deletes, X capitals, Y a space, START searches: the games found open as a shelf of their own, first on the shelf. Part of a name is enough; an empty search takes the shelf away."
 			: entry == ENTRY_WIFI ? "A types the key, B deletes, X capitals, L symbols, Y a space, START joins. Or tap the keys. The password is kept in banana/wifi.conf on the card."
+			: entry == ENTRY_KIWAMI ? kw->entryHelp()	// kiwami:
 			: "A types the key, B deletes, X capitals, L symbols, Y a space, START when it is typed. Or tap the keys. Accounts are kept in banana/accounts.conf on the card.";
 		wrapped(help, 20, 50, 252, 540, 6, message.empty() ? p.muted : p.accent);
 		be->endScreen();
@@ -2119,6 +2131,7 @@ namespace banana
 			pw.clear();
 			close();
 			return SEARCH;
+		case ENTRY_KIWAMI: return kw->entered(pw);	// kiwami:
 		}
 		return NONE;
 	}

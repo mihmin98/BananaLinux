@@ -1,0 +1,11 @@
+#!/bin/sh
+# Stand-in tailscaled for kiwami/tests/tailscale-helper.sh: records its arguments, makes its socket, says a line (for
+# the helper's syslog pipe), and runs until stopped. KT_START_DELAY and KT_STOP_DELAY (seconds) make it as slow as the
+# real one to make its socket and to exit on SIGTERM, so that helper runs started close together overlap.
+echo "tailscaled $*" >> "$KT_REC"
+for a; do case $a in --socket=*) S=${a#--socket=} ;; esac; done
+trap 'sleep "${KT_STOP_DELAY:-0}"; rm -f "$S"; exit 0' TERM
+[ -n "$KT_START_DELAY" ] && { sleep "$KT_START_DELAY" & wait $!; }
+python3 -c 'import socket, sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' "$S"
+echo "stand-in tailscaled started"
+while :; do sleep 1 & wait $!; done

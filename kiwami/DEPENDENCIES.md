@@ -19,4 +19,5 @@ fragments against it (the merge's checks in `docs/FORK.md`).
 |---|---|---|---|
 | Buildroot | 2026.02.3 | `Makefile` (`BUILDROOT_VERSION`) and CI's clone in `.github/workflows/ci.yml` | `kiwami/package/` (Buildroot's package infrastructures), `kiwami/configs/kiwami.fragment` (option names) |
 | Go (Buildroot's `host-go`) | 1.26.3, the prebuilt variant (`BR2_PACKAGE_HOST_GO_BIN`, set in `kiwami/configs/kiwami.fragment`) | Buildroot's `package/go/go.mk` | Go packages in `kiwami/package/` (`kiwami-tailscale`): a module whose `go.mod` asks for a newer Go doesn't build |
+| RetroArch | v1.22.2, built with its 7z support (`HAVE_7ZIP`, on by default; the `.mk` doesn't pass `--disable-7zip`) | `buildroot/package/retroarch/retroarch.mk` (`RETROARCH_VERSION`, `RETROARCH_CONF_OPTS`) | The 7z ROMs (`kiwami/post-build.sh` lists `.7z` games on seven systems): built without 7z, they'd be listed and fail to start |
 | Linux | 7.2.7 | `buildroot/configs/banana_*_defconfig` (`BR2_LINUX_KERNEL_CUSTOM_TARBALL_LOCATION`) | `kiwami/linux.fragment` (option names) |

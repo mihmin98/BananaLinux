@@ -131,6 +131,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. The cartridge systems list .7z games | todo | |
+| 1. The cartridge systems list .7z games | done | `7z ROMs: the cartridge systems list .7z games` |
 | 2. A headless check: .7z games on their shelves | todo | |
 | 3. Final check | todo | |

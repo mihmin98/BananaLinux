@@ -319,16 +319,19 @@ is polled while they are closed. Opening Settings asks once, for the row's value
   - Memory: tailscaled is estimated at 25-50 MB resident on a small tailnet, growing with the number of devices.
     The whole system idles at 95 MB (measured in QEMU, `docs/ARCHITECTURE.md` *What it costs*), so a large share of
     that, while Tailscale is on. Measured in QEMU (plan, step 2): 25 MB, and 15 MB more for the `tailscale up` that
-    waits for a login, only while it waits. To be measured on the device (`VmRSS` in `/proc/<pid>/status`, M14).
+    waits for a login, only while it waits. Not measured on the device (M14 skipped, plan *Deviations* 2026-10-20).
   - CPU while idle: estimated well under 1% on average; keepalives with the relay and peers every few seconds to tens
-    of seconds. These also wake the Wi-Fi radio: the battery cost is likely larger than the CPU's. To be measured.
+    of seconds. These also wake the Wi-Fi radio: the battery cost is likely larger than the CPU's. Not measured (M14,
+    M15 skipped).
   - Under traffic: WireGuard runs on the CPU; a big transfer keeps a good share of one A55 core busy (the Wi-Fi limits
     the speed first).
   - Frame time: none outside the Tailscale page; the page draws the QR once into a texture (the login page draws in
     0.06 ms, headless).
   - Rootfs: measured (plan, step 1): `tailscaled` is 15.7 MB stripped; the squashfs grows by 7.26 MB of the 256 MB
     slot (161.97 to 169.23 MB), the update package by 7.25 MB, the `.img.gz` by 6.2 MB. `tun.ko` is 77 KB.
-  - Boot: tailscaled starts in the background subshell after the menu's first frame; nothing waits for it.
+  - Boot: tailscaled starts in `rcS`'s background subshell, beside banana-ui's start; nothing waits for it.
+    Measured on the RG DS Plus (plan, M5): `Running` about 4-5 s after the menu's first frame, most of it waiting for
+    Wi-Fi.
   - Build: Go's prebuilt compiler and Tailscale's modules are downloaded; `kiwami-tailscale` itself builds in 17 s
     once they are.
 - **Conflicts with upstream**: `settings.cpp` changes often upstream and gets ~10 hook lines; conflicts there are

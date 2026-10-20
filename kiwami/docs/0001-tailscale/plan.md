@@ -454,6 +454,17 @@ Notes from the runs (what the logs showed, what was fixed):
   - Not a fault: `investigation.md` has tailscaled starting after the menu's first frame. `rcS`'s background
     subshell runs beside banana-ui's start instead, so M6 compares the menu's time in `boot.txt` with it off.
 
+- **Step 8 (the final check), the automated part again after step 7** (2026-10-20, on `8075172`). `make test` passes;
+  `make -C ui` (with ALSA) builds `banana-ui`, and `banana-scrape` and the lease shim (which its default target
+  leaves out) build too, with no warnings; `bananad` and `banana-panel-tune` build with `-Werror`; upstream's `sh -n`
+  loop passes; `kiwami/tests/ci.sh .buildroot` passes (helper 69 checks, units 248, the menu at both sizes, the
+  veto, the three boards configured). The hooks: `git diff kiwami...HEAD` outside the fork's folders adds the 20
+  marked lines in *Hooks* and changes the two enum lines in place, nothing else; `git grep 'kiwami:'` finds those
+  20 and the fork's 4 from before this feature (`ci.yml`, the top-level `Makefile`). `make test`'s 124 renders
+  against `main`'s (exported with `git archive`, both rendered at once): identical but for `wifi-row-bot` and
+  `share-row-bot` at each size. `DEPENDENCIES.md` lists all three. Left: M14's memory and CPU in the
+  investigation's *Risks*, and the manual tests, on an image built with step 7.
+
 ## Deviations
 
 Where the implementation turned out different from this plan, why, and what changed (dated).

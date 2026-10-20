@@ -24,6 +24,9 @@ rm -rf "$T"
 # Tailscale in banana-ui's Settings, headless, when banana-ui is built (CI builds it before)
 if [ -x ui/banana-ui ]; then kiwami/tests/tailscale-ui.sh; else echo "tailscale-ui: skipped, no ui/banana-ui (make ui)"; fi
 
+# .7z games on the cartridge systems' shelves, headless, when banana-ui is built
+if [ -x ui/banana-ui ]; then kiwami/tests/7z-ui.sh; else echo "7z-ui: skipped, no ui/banana-ui (make ui)"; fi
+
 # post-build.sh vetoes tailscaled's state in upstream's share script, and stops the build when the line isn't there
 T=$(mktemp -d)
 mkdir -p "$T/usr/libexec/banana" "$T/etc/banana"

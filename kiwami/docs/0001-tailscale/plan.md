@@ -301,7 +301,7 @@ M5's logs showed (*Notes*).
   upstream's described there changes; checked), `CLAUDE.md` (nothing to add; checked) updated where needed.
 - The footprint measured: the binary and squashfs sizes (step 1), tailscaled's memory and CPU (M14), written in the
   investigation's *Risks* in place of the estimates.
-- The manual tests below all passed.
+- The manual tests below all passed (on the RG DS Plus).
 
 ### Hooks
 
@@ -347,31 +347,32 @@ conflict, resolved by keeping both values.
 
 ## Manual tests
 
-On the device, for what headless tests can't reach. Logs are fetched over SSH/SFTP (Settings > System > SSH) or from
+On the device, for what headless tests can't reach. All on the RG DS Plus, the one handheld at hand (*Deviations*,
+2026-10-20). Logs are fetched over SSH/SFTP (Settings > System > SSH) or from
 the card on a computer (`banana/logs/` on the card is `/data/banana/logs/` on the device). Commands are run over
 SSH; `/run/banana/messages` is syslog (tailscaled's own output), in RAM: copy it before a restart.
 
 | # | Board | Steps | Expected | Logs to collect | Outcome |
 |---|---|---|---|---|---|
-| M1 | rgds, rgds-plus | Fresh card, Tailscale never switched on. `ps`, `lsmod`, `ip link` | No tailscaled, no `tun` module, no `tailscale0`; the row says `Off` | `ps` / `lsmod` output | rgds-plus: passed (2026-10-19): no tailscaled, no `tun`, no `tailscale0`, no `banana/tailscale/`. rgds: not run |
-| M2 | rgds, rgds-plus | Switch Tailscale on; scan the QR with a phone; log in and approve | `Starting`, then the QR (scans first time on each panel size); the page turns to Connected by itself; the row shows the address | `/data/banana/logs/tailscale.log`, `/run/banana/messages`, `tailscale status --json` saved into `kiwami/tests/tailscale/` for the unit tests | rgds-plus: passed (2026-10-19): the QR in under 2 s, scanned at once; Connected by itself 2 s after the approval; routes in table 52, `tailscale0` with its 100.x and IPv6 addresses, a direct path (UDP, the router's port mapping) with DERP behind it. Switching on and off quickly lost a tailscaled (*Deviations*, step 7, M19). rgds: not run |
-| M3 | rgds | Tailnet with device approval on (admin console); log in | `Waiting for approval` until approved in the console, then Connected | `tailscale.log`, `messages` | not run |
+| M1 | rgds-plus | Fresh card, Tailscale never switched on. `ps`, `lsmod`, `ip link` | No tailscaled, no `tun` module, no `tailscale0`; the row says `Off` | `ps` / `lsmod` output | rgds-plus: passed (2026-10-19): no tailscaled, no `tun`, no `tailscale0`, no `banana/tailscale/`. rgds: not run (no RG DS) |
+| M2 | rgds-plus | Switch Tailscale on; scan the QR with a phone; log in and approve | `Starting`, then the QR (scans first time on each panel size); the page turns to Connected by itself; the row shows the address | `/data/banana/logs/tailscale.log`, `/run/banana/messages`, `tailscale status --json` saved into `kiwami/tests/tailscale/` for the unit tests | rgds-plus: passed (2026-10-19): the QR in under 2 s, scanned at once; Connected by itself 2 s after the approval; routes in table 52, `tailscale0` with its 100.x and IPv6 addresses, a direct path (UDP, the router's port mapping) with DERP behind it. Switching on and off quickly lost a tailscaled (*Deviations*, step 7, M19). rgds: not run (no RG DS) |
+| M3 | rgds-plus | Tailnet with device approval on (admin console); log in | `Waiting for approval` until approved in the console, then Connected | `tailscale.log`, `messages` | not run |
 | M4 | rgds-plus | Logged out; an auth key in `banana/tailscale/authkey`, dropped in over File sharing; switch on. Then a revoked key | Logged in with no QR, the key file gone. The revoked one: `authkey.refused`, the reason on the page, the QR shown | `tailscale.log` | not run |
-| M5 | rgds, rgds-plus | Connected; restart; then shut down and power on | Connected again by itself each time, no login; time from the menu's first frame to Connected noted | `tailscale.log`, `logs/boot.txt`, `messages` | rgds-plus: passed (2026-10-19): Connected by itself after a restart and after a power-off, no login. The menu at 7.35 s / 7.33 s from the kernel's start; tailscaled `Running` about 11 s / 10 s after syslogd (~1.2 s), so ~5 s / ~4 s after the menu, most of it waiting for Wi-Fi. Found: the log's clock and the Starting page's Health message (*Notes*). rgds: not run |
-| M6 | rgds | Switch off; restart | tailscaled gone, `tun` unloaded, no `tailscale0`; still off after the restart, nothing started; the menu's time in `boot.txt` against M5's (tailscaled starts beside the menu, in `rcS`'s background subshell) | `tailscale.log`, `lsmod`, `logs/boot.txt` | not run |
-| M7 | rgds, rgds-plus | Connected; sleep 1 min, wake; sleep 15 min, wake; ping the handheld's 100.x from another device right after each wake | Reachable again within ~10 s each time (the RG DS's Wi-Fi unloaded and loaded around the sleep); the time noted | `messages` (tailscaled's link-change lines), `tailscale.log`, `logs/` bananad's | not run |
-| M8 | rgds | Connected; Wi-Fi off in Settings; then on | Row and page say `Waiting for Wi-Fi`; Connected again once Wi-Fi is back | `messages` | not run |
+| M5 | rgds-plus | Connected; restart; then shut down and power on | Connected again by itself each time, no login; time from the menu's first frame to Connected noted | `tailscale.log`, `logs/boot.txt`, `messages` | rgds-plus: passed (2026-10-19): Connected by itself after a restart and after a power-off, no login. The menu at 7.35 s / 7.33 s from the kernel's start; tailscaled `Running` about 11 s / 10 s after syslogd (~1.2 s), so ~5 s / ~4 s after the menu, most of it waiting for Wi-Fi. Found: the log's clock and the Starting page's Health message (*Notes*). rgds: not run (no RG DS) |
+| M6 | rgds-plus | Switch off; restart | tailscaled gone, `tun` unloaded, no `tailscale0`; still off after the restart, nothing started; the menu's time in `boot.txt` against M5's (tailscaled starts beside the menu, in `rcS`'s background subshell) | `tailscale.log`, `lsmod`, `logs/boot.txt` | not run |
+| M7 | rgds-plus | Connected; `lsmod \| grep rtw88` (the driver `sleep.d/10-wifi` unloads); sleep 1 min, wake; sleep 15 min, wake; ping the handheld's 100.x from another device right after each wake | `rtw88_8821cs` loaded, so the Wi-Fi is unloaded and loaded around the sleep as on the RG DS; reachable again within ~10 s each time; the time noted | `lsmod`, `messages` (tailscaled's link-change lines), `tailscale.log`, `logs/` bananad's | not run |
+| M8 | rgds-plus | Connected; Wi-Fi off in Settings; then on | Row and page say `Waiting for Wi-Fi`; Connected again once Wi-Fi is back | `messages` | not run |
 | M9 | rgds-plus | From a phone on mobile data (not the handheld's network): `ssh root@100.x`; `\\100.x\banana` (or `smb://`) | Both work. Over SMB, `banana/tailscale/tailscaled.state` is neither listed nor opened; an `authkey` put there is listed until a login deletes it | `ls` of the share from the computer | rgds-plus: SSH over the tailnet passed (2026-10-19); File sharing and the veto not run yet |
-| M10 | rgds | Over SSH on the handheld: `ping -c3` a tailnet device's 100.x; `wget` a service at home by its 100.x | Both answer (the handheld reaches out through `tailscale0`) | the commands' output | not run |
-| M11 | rgds | Rename to `my handheld` while connected; then a name with `_` | `my-handheld` in the admin console within a minute; the `_` one refused with the message | `tailscale.log` | not run |
+| M10 | rgds-plus | Over SSH on the handheld: `ping -c3` a tailnet device's 100.x; `wget` a service at home by its 100.x | Both answer (the handheld reaches out through `tailscale0`) | the commands' output | not run |
+| M11 | rgds-plus | Rename to `my handheld` while connected; then a name with `_` | `my-handheld` in the admin console within a minute; the `_` one refused with the message | `tailscale.log` | not run |
 | M12 | rgds-plus | Log out (A twice) | The admin console shows the device logged out; a fresh QR at once | `tailscale.log` | not run |
-| M13 | rgds | Connected, game running over SSH: `poweroff` | tailscaled stopped before the unmount; the next boot's `dmesg` has no exFAT "not properly unmounted" | `logs/dmesg.txt`, `logs/boot.txt`, `tailscale.log` | not run |
-| M14 | rgds, rgds-plus | Connected and idle in the menu 10 min; then the same with Tailscale off. Then 30 min each, battery % before and after | tailscaled's `VmRSS` (`/proc/<pid>/status`) and CPU (`utime+stime` from `/proc/<pid>/stat` at the start and end); battery drop with it on vs off; written in *Notes* | the numbers | not run |
-| M15 | rgds | Connected; play a 3D DS game (SuperDrastic) and a RetroArch game 10 min each | No stutter or slowdown against Tailscale off; tailscaled's CPU over the game | `/proc/<pid>/stat` before/after | not run |
-| M16 | rgds | Connected; apply an A/B update package (Settings > System > Update), restart | Still logged in after the update (state on `/data`) | `tailscale.log` | not run |
-| M17 | rgds | Over SSH: clock set back a year (`date -s`), `tailscale down`/`up` from the helper, open the page | The page says the clock is wrong and to connect Wi-Fi; after NTP (Wi-Fi reconnected) it connects | `messages`, `tailscale status --json` | not run |
-| M18 | rgds, rgds-plus | A `universal` card (built locally), Tailscale on with no name set, on each handheld | `banana-rgds` on the RG DS, `banana-rgds-plus` on the Plus | `tailscale.log` | not run |
-| M19 | rgds, rgds-plus | After step 7. Switch Tailscale on and off as fast as the buttons allow, ten times or so, ending on On; then the same ending on Off. Over SSH, after each: `ps \| grep [t]ailscaled`, `ls /run/banana/tailscaled.pid /run/tailscale/` | Ending on On: one tailscaled, its pid file and socket there, Connected; no error on the page. Ending on Off: no tailscaled, no `tun`, no `tailscale0`. A switch-on afterwards works with no restart | `tailscale.log`, `ps`, `messages` | rgds-plus: passed (2026-10-20, on `8075172`, installed as an update): ten quick presses ending on On, eleven ending on Off, then one press on, all twice over. `started` and `stopped` alternate throughout (about four pairs a burst), no `failed:`. Ending on On: one tailscaled, its pid the pid file's, the socket, `tun`, `tailscale0` with its 100.x, the tailnet listed; ending on Off: nothing left. The switch-on after each logged in within a second, no restart. rcS's `started` after the update is in the time zone's clock (*Notes*, M5). rgds: not run |
+| M13 | rgds-plus | Connected, game running over SSH: `poweroff` | tailscaled stopped before the unmount; the next boot's `dmesg` has no exFAT "not properly unmounted" | `logs/dmesg.txt`, `logs/boot.txt`, `tailscale.log` | not run |
+| M14 | rgds-plus | Connected and idle in the menu 10 min; then the same with Tailscale off. Then 30 min each, battery % before and after | tailscaled's `VmRSS` (`/proc/<pid>/status`) and CPU (`utime+stime` from `/proc/<pid>/stat` at the start and end); battery drop with it on vs off; written in *Notes* | the numbers | not run |
+| M15 | rgds-plus | Connected; play a 3D DS game (SuperDrastic) and a RetroArch game 10 min each | No stutter or slowdown against Tailscale off; tailscaled's CPU over the game | `/proc/<pid>/stat` before/after | not run |
+| M16 | rgds-plus | Connected; apply an A/B update package (Settings > System > Update), restart | Still logged in after the update (state on `/data`) | `tailscale.log` | not run |
+| M17 | rgds-plus | Over SSH: clock set back a year (`date -s`), `tailscale down`/`up` from the helper, open the page | The page says the clock is wrong and to connect Wi-Fi; after NTP (Wi-Fi reconnected) it connects | `messages`, `tailscale status --json` | not run |
+| M18 | rgds-plus | A `universal` card (built locally), Tailscale on with no name set, on each handheld | `banana-rgds` on the RG DS, `banana-rgds-plus` on the Plus | `tailscale.log` | dropped (2026-10-20, *Deviations*): no RG DS, and on the Plus it shows only what M2 showed |
+| M19 | rgds-plus | After step 7. Switch Tailscale on and off as fast as the buttons allow, ten times or so, ending on On; then the same ending on Off. Over SSH, after each: `ps \| grep [t]ailscaled`, `ls /run/banana/tailscaled.pid /run/tailscale/` | Ending on On: one tailscaled, its pid file and socket there, Connected; no error on the page. Ending on Off: no tailscaled, no `tun`, no `tailscale0`. A switch-on afterwards works with no restart | `tailscale.log`, `ps`, `messages` | rgds-plus: passed (2026-10-20, on `8075172`, installed as an update): ten quick presses ending on On, eleven ending on Off, then one press on, all twice over. `started` and `stopped` alternate throughout (about four pairs a burst), no `failed:`. Ending on On: one tailscaled, its pid the pid file's, the socket, `tun`, `tailscale0` with its 100.x, the tailnet listed; ending on Off: nothing left. The switch-on after each logged in within a second, no restart. rcS's `started` after the update is in the time zone's clock (*Notes*, M5). rgds: not run (no RG DS) |
 
 Notes from the runs (what the logs showed, what was fixed):
 
@@ -566,6 +567,19 @@ Where the implementation turned out different from this plan, why, and what chan
   - **The test's clean-up** kills a tailscaled the helper lost with SIGKILL and waits for it (a stand-in deletes the
     socket path on its way out, which is the next test's), and its exit trap tolerates finding none (`set -e`
     applies inside traps).
+
+- **2026-10-20, manual tests: all on the RG DS Plus.** Only an RG DS Plus is at hand, so every manual test runs on it:
+  the RG DS's (M3, M6, M8, M10, M11, M13, M15, M16, M17) move to the Plus, nothing in them being the board's, and
+  those for both (M1, M2, M5, M7, M14, M19) are the Plus's alone; their RG DS half is "not run (no RG DS)". M18 is
+  dropped: on a Plus a `universal` card shows only `banana-rgds-plus`, which M2 showed, and the RG DS's name comes
+  from the same code, checked by `tailscale-helper.sh` with the RG DS's model string. What the RG DS would have
+  added, and what covers it instead:
+  - The login QR on 640x480 panels (8 px a module): the Plus's are 1024x768. Step 5's `tailscale-ui.sh` makes the
+    code at 640x480 and reads it back from the shot with `zbarimg`; a phone scan at that size stays untested.
+  - Wi-Fi unloaded and loaded around a sleep (M7): the boards share the kernel and Wi-Fi, and `sleep.d/10-wifi`
+    acts on the driver (`rtw88_8821cs`) being loaded, not on the board; M7 now checks it is loaded on the Plus.
+  - tailscaled's memory, CPU and battery cost (M14, M15): the same SoC, so the Plus's numbers stand for both.
+  The PR says the manual tests ran on the RG DS Plus only.
 
 ## Progress
 

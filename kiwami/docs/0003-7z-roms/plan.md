@@ -111,19 +111,31 @@ test (`retroarch-M2-gba.log`, ...).
 
 | # | Board | Steps | Expected | Logs to collect | Outcome |
 |---|---|---|---|---|---|
-| M1 | rgds-plus | On the second card: `roms/<system>/<game>.7z` for the seven systems, the DS games as they are, one `.7z` in `roms/psx`. On the main card: one `.7z` in `/data/roms/gba`. Start the handheld and look at the shelves. | Every `.7z` game listed on its system's shelf, from both cards; the DS games still listed; the PlayStation's `.7z` not | `/data/banana/logs/banana-ui.log` | not run |
-| M2 | rgds-plus | Start a `.7z` game on each of GBA (gpsp), Game Boy and Game Boy Color (gambatte), NES (fceumm), Super Nintendo (snes9x), Mega Drive (picodrive); play a minute, quit from RetroArch's menu. | Each starts, plays with sound, quits back to the menu | `banana-ui.log`; `retroarch.log` after each (`[Content]` lines: what it took from the archive, and whether it unpacked to `/tmp`) | not run |
-| M3 | rgds-plus | The same N64 game as `.z64` and as `.7z`: time each from A to its first frame (a stopwatch); with the `.7z` running, over SSH: `grep -E 'VmHWM\|VmRSS' /proc/$(pidof retroarch)/status; free -m`, and the same with the `.z64`. | Both start and play; how much longer the `.7z` takes and how much more memory it peaks at (VmHWM) is noted, and you decide whether the N64 keeps `7z` | `retroarch.log` of each; the two outputs | not run |
-| M4 | rgds-plus | A GBA `.7z` game (unpacked to a file): over SSH, `ls -l /tmp` while it runs; save in the game, quit, `ls -l /tmp` again and `ls -l /data/saves`; start it again. The same with a Super Nintendo `.7z` game (unpacked in memory), without the `/tmp` checks. | While the GBA game runs, its ROM is in `/tmp`, gone after quitting; `/data/saves/<game>.srm` written for both; each save loads at the next start | the `ls` outputs; `retroarch.log` of each | not run |
-| M5 | rgds-plus | A game already played and saved as `.gba` (or `.zip`), replaced on the card by the same game as `.7z`; start it. | The in-game save is there (the same `<game>.srm`); its play count and time start from zero (expected, oversight 2) | `ls -l /data/saves`; `banana-ui.log` | not run |
-| M6 | rgds-plus | During a `.7z` game, close the lid, wait 10 s, open it. | The game carries on | `/data/banana/logs/bananad.log` if it doesn't | not run |
-| M7 | rgds-plus | Only with a RetroAchievements account set: start a `.7z` game that has achievements. | The game is identified: its achievements on the game panel, `retroarch.log` names the game (`[RCHEEVOS]` lines) | `retroarch.log` | not run |
+| M1 | rgds-plus | On the second card: `roms/<system>/<game>.7z` for the seven systems, the DS games as they are, one `.7z` in `roms/psx`. On the main card: one `.7z` in `/data/roms/gba`. Start the handheld and look at the shelves. | Every `.7z` game listed on its system's shelf, from both cards; the DS games still listed; the PlayStation's `.7z` not | `/data/banana/logs/banana-ui.log` | passed |
+| M2 | rgds-plus | Start a `.7z` game on each of GBA (gpsp), Game Boy and Game Boy Color (gambatte), NES (fceumm), Super Nintendo (snes9x), Mega Drive (picodrive); play a minute, quit from RetroArch's menu. | Each starts, plays with sound, quits back to the menu | `banana-ui.log`; `retroarch.log` after each (`[Content]` lines: what it took from the archive, and whether it unpacked to `/tmp`) | passed |
+| M3 | rgds-plus | The same N64 game as `.z64` and as `.7z`: time each from A to its first frame (a stopwatch); with the `.7z` running, over SSH: `grep -E 'VmHWM\|VmRSS' /proc/$(pidof retroarch)/status; free -m`, and the same with the `.z64`. | Both start and play; how much longer the `.7z` takes and how much more memory it peaks at (VmHWM) is noted, and you decide whether the N64 keeps `7z` | `retroarch.log` of each; the two outputs | passed |
+| M4 | rgds-plus | A GBA `.7z` game (unpacked to a file): over SSH, `ls -l /tmp` while it runs; save in the game, quit, `ls -l /tmp` again and `ls -l /data/saves`; start it again. The same with a Super Nintendo `.7z` game (unpacked in memory), without the `/tmp` checks. | While the GBA game runs, its ROM is in `/tmp`, gone after quitting; `/data/saves/<game>.srm` written for both; each save loads at the next start | the `ls` outputs; `retroarch.log` of each | passed |
+| M5 | rgds-plus | A game already played and saved as `.gba` (or `.zip`), replaced on the card by the same game as `.7z`; start it. | The in-game save is there (the same `<game>.srm`); its play count and time start from zero (expected, oversight 2) | `ls -l /data/saves`; `banana-ui.log` | passed |
+| M6 | rgds-plus | During a `.7z` game, close the lid, wait 10 s, open it. | The game carries on | `/data/banana/logs/bananad.log` if it doesn't | passed |
+| M7 | rgds-plus | Only with a RetroAchievements account set: start a `.7z` game that has achievements. | The game is identified: its achievements on the game panel, `retroarch.log` names the game (`[RCHEEVOS]` lines) | `retroarch.log` | passed |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- 2026-10-21, image `banana-rgds-plus-0.4.1` built from `c9cde8a`: its `/etc/banana/systems.conf` has `7z` on the
+  seven systems' `ext` lines, once each, and differs from upstream's in nothing else. The user ran the tests on the
+  RG DS Plus and reported them all working; no logs were passed back, so no measurements are recorded, and the N64
+  keeps `7z` (M3).
 
 ## Deviations
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
+
+- **2026-10-21, step 3: the renders are compared with `kiwami` before the feature, not with `main`.** `make test`'s
+  renders on this branch differ from `main`'s on four screens (`wifi-row` and `share-row`, bottom, at both sizes):
+  the Network page has the Tailscale row of feature 0002, which `main` doesn't. The baseline that shows this feature
+  changes nothing on screen is `kiwami` where the branch left it (`2458ab8`): all 124 renders are identical to it.
+  (Renders taken in different minutes also differ in the clock, on the home, library, ready, battery and setup
+  screens; the comparisons were made in the same minute.)
 
 ## Progress
 
@@ -133,4 +145,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. The cartridge systems list .7z games | done | `7z ROMs: the cartridge systems list .7z games` |
 | 2. A headless check: .7z games on their shelves | done | `7z ROMs: a headless check that the .7z games are on their shelves` |
-| 3. Final check | todo | |
+| 3. Final check | done | `7z ROMs: the final check done` |

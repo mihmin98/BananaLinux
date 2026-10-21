@@ -24,16 +24,41 @@ rm -rf "$T"
 # Tailscale in banana-ui's Settings, headless, when banana-ui is built (CI builds it before)
 if [ -x ui/banana-ui ]; then kiwami/tests/tailscale-ui.sh; else echo "tailscale-ui: skipped, no ui/banana-ui (make ui)"; fi
 
+# .7z games on the cartridge systems' shelves, headless, when banana-ui is built
+if [ -x ui/banana-ui ]; then kiwami/tests/7z-ui.sh; else echo "7z-ui: skipped, no ui/banana-ui (make ui)"; fi
+
 # post-build.sh vetoes tailscaled's state in upstream's share script, and stops the build when the line isn't there
 T=$(mktemp -d)
-mkdir -p "$T/usr/libexec/banana"
+mkdir -p "$T/usr/libexec/banana" "$T/etc/banana"
 cp system/rootfs/usr/libexec/banana/share "$T/usr/libexec/banana/"
+cp system/rootfs/etc/banana/systems.conf "$T/etc/banana/"
 sh kiwami/post-build.sh "$T" rgds
 grep -q '^	veto files = /.*/\*tailscaled\.state/$' "$T/usr/libexec/banana/share" || { echo "post-build: no veto for tailscaled.state" >&2; exit 1; }
+
+# ... and adds 7z to the cartridge systems' ext lines, once each and nowhere else, the same on a second run, and stops
+# the build when one of them has no ext line
+C=$T/etc/banana/systems.conf
+ext() { awk -v s="[$1]" '/^\[/ { in_s = ($0 == s) } in_s && /^ext *=/ { print }' "$C"; }
+for s in gba gb gbc nes snes megadrive n64; do
+    ext $s | grep -q ' 7z$' || { echo "post-build: no 7z on [$s]'s ext line: $(ext $s)" >&2; exit 1; }
+    [ "$(ext $s | tr ' ' '\n' | grep -cx 7z)" = 1 ] || { echo "post-build: 7z more than once on [$s]: $(ext $s)" >&2; exit 1; }
+done
+for s in nds psx; do
+    ! ext $s | grep -q '7z' || { echo "post-build: 7z on [$s]: $(ext $s)" >&2; exit 1; }
+done
+cp "$C" "$T/systems.once"
+sh kiwami/post-build.sh "$T" rgds
+cmp -s "$C" "$T/systems.once" || { echo "post-build: a second run changed systems.conf" >&2; exit 1; }
+awk '/^\[/ { in_s = ($0 == "[n64]") } !(in_s && /^ext *=/)' system/rootfs/etc/banana/systems.conf > "$C"
+! sh kiwami/post-build.sh "$T" rgds 2>"$T/err" || { echo "post-build: no failure without [n64]'s ext line" >&2; exit 1; }
+grep -q '\[n64\]' "$T/err" || { echo "post-build: the failure doesn't name [n64]: $(cat "$T/err")" >&2; exit 1; }
+[ ! -e "$C.tmp" ] || { echo "post-build: left its temporary behind" >&2; exit 1; }
+cp system/rootfs/etc/banana/systems.conf "$C"
+
 sed -i '/veto files/d' "$T/usr/libexec/banana/share"
 ! sh kiwami/post-build.sh "$T" rgds 2>/dev/null || { echo "post-build: no failure without the veto line" >&2; exit 1; }
 rm -rf "$T"
-echo "post-build: veto checked"
+echo "post-build: veto and 7z checked"
 
 # every board configures with the fork's tree and options over upstream's, keeping all of the fork's options
 for b in rgds rgds_plus universal; do

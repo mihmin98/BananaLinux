@@ -135,10 +135,12 @@ it next time). After the merge:
    git diff $OLD main -- system/rootfs/etc/banana/systems.conf buildroot/configs/ ui/src/menu.h \
        system/rootfs/usr/libexec/banana/share
    ```
-   (the systems list and defconfigs the fork adds to, the share script whose `veto files` `kiwami/post-build.sh`
-   adds tailscaled's state to (the build stops if the line changes shape; a new place where upstream shares the
-   card wants the same veto), and `banana::Menu`, the interface the fork's theme implements:
-   when it changes, `git diff $OLD main -- ui/src/carts.cpp` shows how upstream changed its own theme to match).
+   (the systems list, whose `ext` lines `kiwami/post-build.sh` adds `7z` to on seven systems (the build stops if
+   one of them is gone; a new cartridge system may want it too), the defconfigs the fork adds to, the share script
+   whose `veto files` `kiwami/post-build.sh` adds tailscaled's state to (the build stops if the line changes shape; a
+   new place where upstream shares the card wants the same veto), and `banana::Menu`, the interface the fork's theme
+   implements: when it changes, `git diff $OLD main -- ui/src/carts.cpp` shows how upstream changed its own theme to
+   match).
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

@@ -447,5 +447,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 1. Mesen, a second NES core | done | More cores: Mesen, a second NES core, in the image |
 | 2. SameBoy, a second Game Boy and Game Boy Color core | done | More cores: SameBoy, a second Game Boy and Game Boy Color core, in the image |
 | 3. Genesis Plus GX, a second Mega Drive core | done | More cores: Genesis Plus GX, a second Mega Drive core, in the image |
-| 4. A row per system in Settings > Other systems | todo | |
+| 4. A row per system in Settings > Other systems | done | More cores: a row per system in Settings > Other systems for the fork's cores |
 | 5. Final check | todo | |

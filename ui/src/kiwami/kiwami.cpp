@@ -36,15 +36,55 @@ namespace banana
 		return q + "'";
 	}
 
+	// the libretro cores' folder: KIWAMI_LIBRETRO in the environment (the headless test's stand-in), else the image's
+	static std::string libretro()
+	{
+		const char* e = getenv("KIWAMI_LIBRETRO");
+		return e && *e ? e : "/usr/lib/libretro";
+	}
+
+	// Other systems: the fork's second cores, a row per system shown when the core is in the image. Upstream's
+	// core.<system> keys (run-retroarch reads them) as upstream's Game Boy Advance row has, so upstream loads, saves
+	// and resets them as any choice row; upstream's core first, its default
+	static const struct { const char* key; const char* label; const char* help; const char* names[2]; const char* values[2]; } CORES[] = {
+		{ "core.nes", "NES", "The emulator for NES games. FCEUmm: light and fast. Mesen: the most accurate, and heavier. "
+			"Each keeps its own saves and save states: switching back finds them again.", { "FCEUmm", "Mesen" }, { "fceumm", "mesen" } },
+		{ "core.gb", "Game Boy", "The emulator for Game Boy games. Gambatte: light and accurate. SameBoy: the most accurate, "
+			"and heavier. Each keeps its own saves and save states: switching back finds them again.", { "Gambatte", "SameBoy" }, { "gambatte", "sameboy" } },
+		{ "core.gbc", "Game Boy Color", "The emulator for Game Boy Color games. Gambatte: light and accurate. SameBoy: the most "
+			"accurate, and heavier. Each keeps its own saves and save states: switching back finds them again.", { "Gambatte", "SameBoy" }, { "gambatte", "sameboy" } },
+		{ "core.megadrive", "Mega Drive", "The emulator for Mega Drive games. PicoDrive: the fastest. Genesis Plus GX: more "
+			"accurate, with the better sound, and heavier. Each keeps its own saves and save states: switching back finds them "
+			"again.", { "PicoDrive", "Genesis Plus GX" }, { "picodrive", "genesis_plus_gx" } },
+	};
+
 	void Settings::Kiwami::rows(Settings& s, const char* group)
 	{
 		if (!s.kw) s.kw = std::make_shared<Kiwami>(s);	// (at the first build(), in Settings' constructor)
-		Item it;
-		it.section = group; it.icon = "phone"; it.label = "Tailscale"; it.key = "kiwami.tailscale"; it.kind = Item::PAGE;
-		it.help = "The handheld in your tailnet, Tailscale's private network of your devices: reachable from them wherever "
-			"it is, and reaching them. A opens Tailscale's page: on or off, the login (a QR code to scan with your phone), "
-			"the devices.";
-		s.items.push_back(it);
+		std::string keys;
+		if (strcmp(group, "Other systems") == 0)
+			for (auto& c : CORES)
+			{
+				if (access((libretro() + "/" + c.values[1] + "_libretro.so").c_str(), F_OK) != 0) continue;
+				Item it;
+				it.section = group; it.icon = "gamepad"; it.label = c.label; it.help = c.help;
+				it.file = s.data + "/settings.conf"; it.key = c.key;
+				it.names = { c.names[0], c.names[1] }; it.values = { c.values[0], c.values[1] };
+				s.items.push_back(it);
+				keys += std::string(keys.empty() ? "" : " ") + c.key;
+			}
+		else if (strcmp(group, "Network") == 0)
+		{
+			Item it;
+			it.section = group; it.icon = "phone"; it.label = "Tailscale"; it.key = "kiwami.tailscale"; it.kind = Item::PAGE;
+			it.help = "The handheld in your tailnet, Tailscale's private network of your devices: reachable from them wherever "
+				"it is, and reaching them. A opens Tailscale's page: on or off, the login (a QR code to scan with your phone), "
+				"the devices.";
+			s.items.push_back(it);
+			keys = it.key;
+		}
+		// (the tests read it, and on the device it says which of the fork's cores the image has)
+		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
 	}
 
 	std::string Settings::Kiwami::helper() const

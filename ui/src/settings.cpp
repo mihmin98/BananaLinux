@@ -400,6 +400,7 @@ namespace banana
 			menu, "ra_vsync", { "On", "Off" }, { "on", "off" });
 		if (access("/usr/lib/libretro/mgba_libretro.so", F_OK) == 0)
 			add(O, "gamepad", "Game Boy Advance", "The emulator for GBA games. gpSP: the fastest. mGBA: the most accurate, and the one RetroAchievements accepts for hardcore.", menu, "core.gba", { "gpSP", "mGBA" }, { "gpsp", "mgba" });
+		Kiwami::rows(*this, O);	// kiwami: the fork's cores
 		const char* W = "Network";
 		add(W, "phone", "Wi-Fi", "", menu, "wifi", { "On", "Off" }, { "on", "off" });
 		add(W, "phone", "Network", "The networks around: A on one joins it, with a password typed on the keyboard here (or by touch).", "", "network", {}, {}, Item::PAGE);

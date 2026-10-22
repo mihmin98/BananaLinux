@@ -113,6 +113,15 @@ off the fork behaves, and renders, as `main` does.
 - Subjects in the repository's style (plain descriptive English, a component prefix where it helps: `kiwami:`,
   `banana-ui:`, `tailscale:`), no conventional-commit prefixes.
 - No reformatting, reindenting or reordering of upstream's code in a hook commit: only the lines the hook needs.
+- No references to upstream's (or any other repository's) issues and pull requests in commit messages, issues, pull
+  requests or comments: no `<owner>/<repo>#12`, `GH-12` or link to one, and no `@` mention of their people. GitHub
+  lists each one on that issue's or pull request's page, where the fork's customizations don't belong. A bare `#12`
+  can resolve to either repository, so `#<n>` is written only for this fork's own issues and an upstream subject's
+  "(#12)" isn't copied; upstream's work is named by what it does, or by its commit's short SHA.
+- What the fork can't avoid: upstream's own commits carry their numbers ("(#13)" from a squash-merge), and pushing
+  them to the fork (`main`, or `kiwami` after a merge) has GitHub record "<you> added a commit that references this
+  issue" on upstream's item, with upstream's own commit subject. Their messages can't be changed without breaking
+  `main` as a mirror; only the fork's own commits and texts are kept free of references.
 
 ## Taking in upstream
 

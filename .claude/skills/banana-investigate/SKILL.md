@@ -74,6 +74,10 @@ Write the issue's text, in a code block ready to paste:
 - a **title** in the repository's prose style (plain descriptive English, no conventional-commit prefix);
 - a **description**: what and why, in a few short paragraphs, plus what is out of scope if that was decided.
 
+Neither refers to upstream's or another repository's issues and pull requests (no `<owner>/<repo>#12`, `GH-12` or
+link to one), nor `@` mentions their people: GitHub would show the fork's issue on theirs (`CLAUDE.md`, *This fork*).
+Upstream's work is named by what it does, or by its commit's short SHA.
+
 Propose the feature's `<name>`. Then **stop and wait**: the user creates the issue by hand on this fork (not
 upstream; `gh` isn't used) and the branch `k/<NNNN>-<name>` off `kiwami`, and replies with the number. If the issue
 already existed, check its text against what step 2 settled and offer an updated text if it no longer matches.

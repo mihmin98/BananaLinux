@@ -18,6 +18,14 @@ possible, marked with a `kiwami:` comment, with no reformatting around it. Chang
 whose default is upstream's. Every external dependency the fork adds (a package, a library, a toolchain) goes in
 `kiwami/DEPENDENCIES.md` with its version and where it's pinned, in the same commit that adds or bumps it.
 
+Nothing the fork writes where GitHub reads it (commit messages, issue and pull request titles and descriptions,
+comments) refers to upstream's or any other repository's issues and pull requests: no `<owner>/<repo>#12`, `GH-12` or
+link to one, and no `@` mention of their people. GitHub shows each such reference on that issue's or pull request's
+page, and the fork's customizations don't belong there. A bare `#12` can resolve to either repository (in a fork,
+GitHub has recorded an upstream commit's `#13` on upstream's item 13), so `#<n>` is used only for this fork's own
+issues, and upstream's numbers (an upstream commit's "(#12)") aren't copied. Upstream's work is named by what it does,
+or by its commit's short SHA.
+
 ## Git: the user commits, not Claude
 
 Never commit, amend, merge, rebase, cherry-pick, reset, checkout/switch branches, stash, tag, push, or otherwise

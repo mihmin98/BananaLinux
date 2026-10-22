@@ -181,7 +181,10 @@ weaken a test to get green.
    merge commit's message in a code block: the subject `Merge branch 'main' into kiwami`, and a body in the
    repository's style (plain descriptive English, understood from `git log` alone, no `Co-Authored-By` or other AI
    attribution lines): what upstream brought in a few lines, how the conflicts were settled, what the fork changed to
-   follow upstream, and the report's path. For example:
+   follow upstream, and the report's path. Upstream's changes are named by what they do (or a commit's short SHA),
+   never by their pull request or issue: an upstream subject's "(#12)" copied here would link this fork's issue 12 or
+   upstream's item 12, and an `<owner>/<repo>#12` or a link would show the fork's merge on upstream's page
+   (`CLAUDE.md`, *This fork*). For example:
 
    ```
    Merge branch 'main' into kiwami

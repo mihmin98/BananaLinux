@@ -154,7 +154,9 @@ with the owner and repository taken from `git remote get-url origin` (`git@githu
 In the repository's style (`CLAUDE.md`, *Conventions*), written to be understood from `git log` alone: the subject is
 the step's commit subject from the plan (adjusted only if the step deviated), the body says what the change does and
 why, and how where the diff doesn't make it obvious. Plain descriptive English, no conventional-commit prefixes, and no
-`Co-Authored-By` or other AI attribution lines. For example:
+`Co-Authored-By` or other AI attribution lines. Neither these nor the pull request's text refer to upstream's or
+another repository's issues and pull requests, nor `@` mention their people (`CLAUDE.md`, *This fork*): a bare `#<n>`
+is written only for this fork's own issues, never with an upstream number. For example:
 
 ```
 7z ROMs: the cartridge systems list .7z games

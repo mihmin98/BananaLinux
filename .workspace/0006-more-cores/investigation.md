@@ -244,3 +244,6 @@ but RetroArch's go to `/data/saves/<core>/` (oversight 1).
 4. How to pick a core? *Answered*: a row per system in Settings > Other systems, shown when the core is installed.
 5. Clocks for the heavier cores? *Answered*: measure on the device first.
 6. Additions? *Answered*: hash files, a headless test of the rows, a note on offering the packages upstream.
+7. (Planning) How to split the packages into commits? *Answered*: one step per core.
+8. (Planning) SameBoy's `hexdump`? *Answered*: the boot ROMs converted with `od` in a pre-build hook, no host
+   requirement.

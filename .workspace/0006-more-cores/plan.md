@@ -15,7 +15,9 @@ The approach chosen in the investigation: one small package per core in the fork
 (`kiwami/package/kiwami-libretro-<core>/`, pinned by commit, with a `.hash`), switched on in
 `kiwami/configs/kiwami.fragment`. The rows are in `ui/src/kiwami/kiwami.cpp`, reached through one new hook line in
 `ui/src/settings.cpp`. Upstream's code saves, loads and resets them, since they're plain choice rows on upstream's
-keys. No change to `systems.conf`, `run-retroarch` or upstream's core packages; the existing cores are not bumped.
+keys. No change to `systems.conf` or upstream's core packages; the existing cores are not bumped. (Since M3, 22 Oct
+2026: one `kiwami:` hook in `run-retroarch` runs Mesen at the top clock, and SameBoy's sound is at 96 kHz; see
+*Deviations*.)
 
 ### Refinements over the investigation
 
@@ -70,9 +72,13 @@ keys. No change to `systems.conf`, `run-retroarch` or upstream's core packages; 
 - **A9** (runs): given a row set to the fork's core, a game of that system starts with it (`banana-ui.log`:
   `run-retroarch: core mesen (Settings > Other systems), not fceumm`). It plays with sound and the controls, and
   quitting goes back to the menu.
-- **A10** (speed): under the systems' `powersave` profile, demanding games run at full speed (60 fps, sound without
-  crackle) with each of the fork's cores. Any shortfall is recorded and handled as a deviation before the feature is
-  merged.
+- **A10** (speed): demanding games run at full speed (60 fps, sound without crackle) with each of the fork's cores,
+  under the profile each runs at: the systems' `powersave` for Genesis Plus GX and SameBoy (at 96 kHz, step 5), the
+  top clock for Mesen (step 6). Any shortfall is recorded and handled as a deviation before the feature is merged.
+  (Changed on 22 Oct 2026, see *Deviations*: all three under `powersave` before.)
+- **A16** (clocks): while a Mesen game runs, the CPU is at its top clock and the GPU on demand (`banana-perf
+  superdrastic`), from its start to its end, a sleep included; once it ends, the menu's clocks are back. Every other
+  core runs at its system's profile as upstream has it.
 - **A11** (saves per core): after switching a system to the other core and back, the first core's in-game saves and
   states are found again. A Quick resume state of one core is never loaded by the other.
 - **A12** (sleep and screens): closing the lid mid-game with each of the fork's cores sleeps, and opening it carries
@@ -373,26 +379,82 @@ Each step is one commit, and leaves the tree building and `make test` passing.
   four rows looked at in the review.
 - **Commit**: `More cores: a row per system in Settings > Other systems for the fork's cores`
 
-### 5. Final check
+### 5. SameBoy's sound at 96 kHz
+
+Added on 22 Oct 2026 (*Deviations*).
+
+- **Files**: `kiwami/package/kiwami-libretro-sameboy/0001-libretro-sound-at-96-kHz.patch` (new), `kiwami/DEPENDENCIES.md`
+  (changed).
+- **Change**:
+  - The patch, in the shape of Tailscale's (a header saying what and why, `Upstream: not sent`): `libretro/libretro.c`'s
+    `#define AUDIO_FREQUENCY 384000` becomes `96000`, the rate SameBoy's own macOS frontend uses
+    (`Cocoa/Document.m:403`). The sound chip is emulated per cycle whatever the rate; the rate is only how often a
+    sample is written out (`Core/apu.c`, `render()`), and the high-pass filter and DAC fade follow it
+    (`GB_set_sample_rate`). At 384 kHz RetroArch resamples 8x more audio than it plays, and SameBoy renders 8x more
+    samples: about 12x Gambatte's 32.8 kHz. 96 kHz is a quarter of that and keeps an anti-aliasing margin over 48 kHz.
+    Buildroot applies the package folder's patches itself.
+  - `kiwami/DEPENDENCIES.md`, SameBoy's row: the patch, that a bump checks it still applies and the define is still
+    there, and why (M3).
+- **Tests**: `make kiwami-libretro-sameboy-dirclean-rgds-plus kiwami-libretro-sameboy-rgds-plus`, one at a time (a
+  call with several board targets built only the first, 22 Oct 2026): the log shows the patch applied, the built
+  `libretro/libretro.c` has `#define AUDIO_FREQUENCY 96000`, and the step 2 checks on the `.so` still hold;
+  `kiwami/tests/ci.sh .buildroot`. Then an update built (`make rgds-plus`) and M10's SameBoy part run on it, which
+  settles step 6's SameBoy entry.
+- **Commit**: `More cores: SameBoy's sound at 96 kHz, a quarter of the resampling`
+
+### 6. Mesen at the top clock
+
+Added on 22 Oct 2026 (*Deviations*).
+
+- **Files**: `kiwami/rootfs/usr/libexec/kiwami/core-clock` (new), `system/rootfs/usr/libexec/banana/run-retroarch`
+  (hook), `kiwami/tests/core-clock.sh` (new), `kiwami/tests/ci.sh` (changed), `ui/src/kiwami/kiwami.cpp` (changed),
+  `docs/FORK.md` (changed).
+- **Change**:
+  - `run-retroarch`, the hook: one line after the `run-retroarch: core …` log line (`:21`), once the core that runs is
+    known (`$c`):
+    ```sh
+    [ -x /usr/libexec/kiwami/core-clock ] && /usr/libexec/kiwami/core-clock "$c"	# kiwami: the fork's heavier cores' clocks
+    ```
+    banana-ui has set the system's profile just before (`main.cpp:1348`) and puts `ui` back when the game ends
+    (`:1399`); nothing in sleep changes the clocks, so the profile set here holds for the game's whole length.
+  - `core-clock <core>`: Mesen → `banana-perf superdrastic` (upstream's profile for the DS: the CPU's `performance`
+    governor at its top clock, the GPU on demand), and a line on stderr for banana-ui's log
+    (`kiwami: core-clock: mesen at the top clock`); any other core → nothing. SameBoy joins Mesen with 1608 MHz only if
+    M10 shows 96 kHz falling short under `powersave` (then a profile of the script's own, written as `banana-perf`
+    writes them: `performance` at the highest frequency up to 1608 MHz, the GPU on demand), recorded as a deviation.
+  - `kiwami/tests/core-clock.sh`: a stand-in `banana-perf` on `PATH` records its arguments. `core-clock` with each of
+    `mesen`, `sameboy`, `genesis_plus_gx`, `fceumm`, `gambatte`, `picodrive`, `gpsp`, `mgba`, `snes9x`: only `mesen`
+    calls it, with `superdrastic`. `run-retroarch` has the hook after the core's log line (a `grep`). Run by `ci.sh`.
+  - `kiwami.cpp`, the NES row's help: Mesen "the most accurate, and the heaviest: it runs the handheld at its top
+    clock, so the battery lasts less" (the user's choice; SameBoy's too if it gets 1608 MHz).
+  - `docs/FORK.md`, the merge checks: `system/rootfs/usr/bin/banana-perf` joins the list read by hand (a change to the
+    `superdrastic` profile changes Mesen's clocks), and the hook in `run-retroarch` with it.
+- **Tests**: `kiwami/tests/core-clock.sh` through `ci.sh`; `sh -n` on both scripts; `kiwami/tests/cores-ui.sh` (the
+  help's text, its shots looked at); `make test`; then M10 on an update built from this step.
+- **Commit**: `More cores: Mesen runs at the top clock, as it needs for 60 fps`
+
+### 7. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
-- The fork's tests in `kiwami/tests/`: `cores-ui.sh`, `tailscale-ui.sh`, `7z-ui.sh`, the helper and unit tests
-  (through `ci.sh`).
+- The fork's tests in `kiwami/tests/`: `cores-ui.sh`, `core-clock.sh`, `tailscale-ui.sh`, `7z-ui.sh`, the helper
+  and unit tests (through `ci.sh`).
 - The hooks: `git diff --stat main...HEAD` and `git grep -n 'kiwami:'` (the commands in `docs/FORK.md`) agree. The
-  only new hook is `settings.cpp`'s `Kiwami::rows(*this, O);	// kiwami: the fork's cores`.
+  only new hooks are `settings.cpp`'s `Kiwami::rows(*this, O);	// kiwami: the fork's cores` and `run-retroarch`'s
+  `core-clock` line (step 6).
 - `make test`'s renders in `ui/tests/out/` match `kiwami`'s from before the feature (the branch's base, rendered from a
   `git worktree` of it in the same minute: the clock differs otherwise, as in 0003's deviation). Also the Other
   systems list (`home 0; press start; press r; press r; press r; press a; shot other`), rendered by both binaries
   with no core installed: identical (A5, A15).
-- `kiwami/DEPENDENCIES.md` lists the three cores (steps 1-3) and RetroArch's per-core saves (step 4).
-- `docs/FORK.md` updated (step 4). `docs/ARCHITECTURE.md` describes `core.<system>` only as upstream has it (`:86`),
+- `kiwami/DEPENDENCIES.md` lists the three cores (steps 1-3), SameBoy's patch (step 5) and RetroArch's per-core saves
+  (step 4).
+- `docs/FORK.md` updated (steps 4 and 6). `docs/ARCHITECTURE.md` describes `core.<system>` only as upstream has it (`:86`),
   unchanged; `CLAUDE.md` doesn't list cores; upstream's `README.md` (its cores list) is upstream's, left alone.
 - `make rgds-plus` from scratch for the three packages (`make kiwami-libretro-mesen-dirclean-rgds-plus` and the
   other two first). `output/rgds-plus/target/usr/lib/libretro/` has the three `.so` (A1), and their sizes are noted.
   The size of `output/rgds-plus/images/rootfs.squashfs` is compared with the baseline's 169,390,080 bytes and with
   the slot's 256 MB (A14). `banana-rgds-plus-<version>.update.tar` is installed on the RG DS Plus.
-- `make rgds` configures and builds the three packages (`make kiwami-libretro-mesen-rgds` and the other two), as no
-  RG DS is at hand to run them.
+- `make rgds` configures and builds the three packages (`make kiwami-libretro-mesen-rgds` and the other two, one call
+  each), as no RG DS is at hand to run them.
 - The manual tests below all passed.
 - Every acceptance criterion is met: each is listed by at least one automated or manual test, and those passed.
 - **Commit**: `More cores: the final check done`
@@ -408,6 +470,7 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 | Upstream's own | `make test` | Passing; renders identical to `kiwami` before the feature; frame bench unchanged | A14, A15 |
 | Other systems as before | the final check (two binaries, one shot) | With no core installed, the Other systems list renders as it did before the feature | A5, A15 |
 | Footprint | the final check (`make rgds-plus`) | The `.so` sizes and the squashfs's against the baseline and the slot | A14 |
+| The cores' clocks | `kiwami/tests/core-clock.sh` (run by `ci.sh`, step 6) | Only Mesen gets a profile of its own (`banana-perf superdrastic`), every other core none; `run-retroarch` calls `core-clock` after the core's log line | A16 |
 
 ## Manual tests
 
@@ -424,19 +487,50 @@ test: `cp /run/banana/retroarch.log /data/banana/logs/cores-M2-mesen.log`. banan
 |---|---|---|---|---|---|---|
 | M1 | rgds-plus | Install the update; open Settings > Other systems and go down the list; read each new row's help; change each row and back. | After Game Boy Advance: NES (FCEUmm), Game Boy (Gambatte), Game Boy Color (Gambatte), Mega Drive (PicoDrive), each offering the fork's core; the help as reviewed in step 4 | `banana-ui.log` (the `rows in Other systems` line); `grep '^core\.' /data/banana/settings.conf` after each change | A1, A2, A3, A4 | not run |
 | M2 | rgds-plus | Set the four rows to Mesen, SameBoy, SameBoy, Genesis Plus GX. Start a game of each system, play a minute with sound, quit from RetroArch's menu. | Each starts with the fork's core, plays with sound and the controls, quits back to the menu | `banana-ui.log` (`run-retroarch: core mesen (Settings > Other systems), not fceumm` and the others); `retroarch.log` after each (`cores-M2-<core>.log`: the core's name and version, the content loaded) | A9 | not run |
-| M3 | rgds-plus | With RetroArch's frame counter on (its menu: Settings > On-Screen Display > On-Screen Notifications > Notification Visibility > Display Statistics), play a demanding scene for each core: NES (e.g. Battletoads, Kirby's Adventure), Game Boy Color (e.g. a game with raster effects, Shantae), Mega Drive (e.g. Sonic 3, Vectorman, Virtua Racing). Meanwhile, over SSH: `P=$(pidof retroarch); for i in $(seq 30); do cat /sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq; top -b -n 1 \| grep -w retroarch; sleep 1; done > /data/banana/logs/cores-M3-<core>.txt; grep VmHWM /proc/$P/status >> /data/banana/logs/cores-M3-<core>.txt`. The same scene with the upstream core, for comparison. | 60 fps throughout with each fork core, no crackle; the CPU clock and load, and the peak memory, noted against the upstream core's. A shortfall is a deviation (A10) | `cores-M3-<core>.txt` for each fork and upstream core; the fps seen, noted | A10, A14 | not run |
+| M3 | rgds-plus | With RetroArch's frame counter on (its menu: Settings > On-Screen Display > On-Screen Notifications > Notification Visibility > Display Statistics), play a demanding scene for each core: NES (e.g. Battletoads, Kirby's Adventure), Game Boy Color (e.g. a game with raster effects, Shantae), Mega Drive (e.g. Sonic 3, Vectorman, Virtua Racing). Meanwhile, over SSH: `P=$(pidof retroarch); for i in $(seq 30); do cat /sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq; top -b -n 1 \| grep -w retroarch; sleep 1; done > /data/banana/logs/cores-M3-<core>.txt; grep VmHWM /proc/$P/status >> /data/banana/logs/cores-M3-<core>.txt`. The same scene with the upstream core, for comparison. | 60 fps throughout with each fork core, no crackle; the CPU clock and load, and the peak memory, noted against the upstream core's. A shortfall is a deviation (A10) | `cores-M3-<core>.txt` for each fork and upstream core; the fps seen, noted | A10, A14 | failed (22 Oct 2026, 0.4.1 from `e25ebf0`): Mesen and SameBoy below 60 under `powersave`; see the notes. Fixed by steps 5 and 6, checked again by M10 |
 | M4 | rgds-plus | A NES game with a battery save (e.g. The Legend of Zelda): save in game with FCEUmm, quit. Switch NES to Mesen, start it, save something else, quit. Switch back to FCEUmm, start it. The same for a Game Boy game (Gambatte / SameBoy, e.g. Pokémon, whose clock is in the save) and a Mega Drive one with SRAM (PicoDrive / Genesis Plus GX, e.g. Phantasy Star IV). | Mesen starts with no save; back on FCEUmm, the first save is there. The same for the others | `ls -lR /data/saves /data/states > /data/banana/logs/cores-M4.txt` at the end | A11 | not run |
 | M5 | rgds-plus | Quick resume on (Settings > Other systems). A NES game with Mesen: quit mid-level, start again. Switch to FCEUmm and start it. | Mesen resumes mid-level; FCEUmm starts the game from its title (it doesn't load Mesen's state) | `ls -lR /data/states >> /data/banana/logs/cores-M5.txt`; `retroarch.log` of each start | A11 | not run |
 | M6 | rgds-plus | During a game with each fork core: close the lid, wait 10 s, open it. | It sleeps; the game carries on with sound after opening | `bananad.log` | A12 | not run |
 | M7 | rgds-plus | Other systems > Screen: Bottom, start a Mesen game; Second screen: Off, start a SameBoy game; back to Top and Game panel, a Genesis Plus GX game. | Each plays on the chosen panel, the other one showing the game panel or dark as set | `banana-ui.log`; `retroarch.log` where the game panel is on | A12 | not run |
 | M8 | rgds-plus | Over SSH, set `core.nes = nestopia` in `/data/banana/settings.conf` (a core the image hasn't got); start a NES game. Then look at the NES row. | The game starts with FCEUmm; the row shows `nestopia` as it is (upstream's handling of a value it doesn't list) | `banana-ui.log` (`run-retroarch: core fceumm`) | A6 | not run |
 | M9 | rgds-plus | Only with a RetroAchievements account set: a game with achievements on each fork core. | The game is identified: its achievements on the game panel, `[RCHEEVOS]` lines naming it | `retroarch.log` of each | A13 | not run |
+| M10 | rgds-plus | M3 again with the fixes, the frame counter on. SameBoy (on step 5's update, under `powersave`): Link's Awakening DX and Castlevania: The Adventure, and a minute of each on headphones next to Gambatte. Mesen (on step 6's update): Castlevania and Super Mario Bros, then the lid closed mid-game for 10 s and opened, then quit. Over SSH during each, the `m3` measurement of the notes below (named `cores-M10-<core>-<game>.txt`), and for Mesen once after the sleep and once back in the menu: `cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq $(ls -d /sys/class/devfreq/*.gpu)/governor`. | SameBoy: 60 fps under `powersave`, no audible difference from Gambatte's sound beyond the cores' own. Mesen: 60 fps; `performance`, 1992000 and `simple_ondemand` in the game and after the sleep, `schedutil` and 1416000 back in the menu. A shortfall is a deviation (A10) | `cores-M10-*.txt`; the fps seen and what was heard, noted; `banana-ui.log` (`kiwami: core-clock: mesen at the top clock`) | A10, A16 | not run |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- **M3, 22 Oct 2026** (0.4.1 from `e25ebf0`, `logs/cores-M3-*.txt` and `logs/cores-M4clock-*.txt`). The fps seen on
+  RetroArch's counter, the clock each phase held (`scaling_cur_freq`, every second):
+
+  | Core, game | `powersave` (≤1416) | fixed 1608 | fixed 1800 | `balanced` (≤1992) | `performance` (1992) |
+  |---|---|---|---|---|---|
+  | Mesen, Castlevania | 30 | 30 | 33 | 30 (stayed at 1416) | 60 |
+  | Mesen, Super Mario Bros | 30 | 30 | 50-52 | | |
+  | SameBoy, Link's Awakening DX | 30 | 60 | 60 | 60 (at 1992) | 60 |
+  | SameBoy, Castlevania: The Adventure | 55 | 60 | 60 | | |
+  | FCEUmm, Castlevania | 60 | | | 60 | 60 |
+  | Gambatte, Link's Awakening DX | 60 | | | 60 | 60 |
+  | Genesis Plus GX, Sonic 1 / Sonic 3 & Knuckles | 60 / 60 | | | 60 | 60 |
+
+  The fixed clocks were `performance` with `scaling_max_freq` capped and the GPU on demand; `performance` (the last
+  column) had the GPU at its top clock too. A frame over 16.7 ms misses the refresh and VSync halves it to 30. The
+  governor can't climb out of that: at 30 fps the CPU waits half the time and looks idle (Mesen under `balanced` stayed
+  at 1416 MHz). Peak memory (`VmHWM`) 37-41 MB for every core. Mesen's sound is at 48 kHz and it is built `-O3` with
+  LTO: it is heavy as it is. SameBoy's libretro port sends 384 kHz (`libretro/libretro.c:11`), which RetroArch
+  resamples to 48 kHz each frame (Gambatte sends 32.8 kHz). ROCKNIX ships SameBoy unpatched and runs every game at
+  `performance` unless a governor is set (`runemu.sh:14`, `:437-439`).
 
 ## Deviations
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
+
+- **22 Oct 2026: Mesen and SameBoy fall short under `powersave` (M3); two steps added before the final check.** Mesen
+  needs the top clock (1992 MHz) for 60 fps, SameBoy 1608 MHz as built; Genesis Plus GX holds 60 under `powersave`. The
+  user's choices: Mesen stays, at the top clock (step 6: a `kiwami:` hook in `run-retroarch` calls the fork's
+  `core-clock`, which sets `banana-perf superdrastic` for it), and its help says the battery lasts less; SameBoy's
+  sound goes to 96 kHz (step 5, a patch), measured under `powersave` before step 6 settles whether it needs a clock
+  too. A10 now names each core's profile, A16 is new, M10 checks the fixes. Considered and left out: a governor that
+  steers the clock from RetroArch's frame times, for every core behind a setting, which is its own feature (an issue
+  of its own); Nestopia instead of Mesen; SameBoy at 48 kHz. The old step 5 (the final check) is now step 7.
 
 ## Progress
 
@@ -448,4 +542,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 2. SameBoy, a second Game Boy and Game Boy Color core | done | More cores: SameBoy, a second Game Boy and Game Boy Color core, in the image |
 | 3. Genesis Plus GX, a second Mega Drive core | done | More cores: Genesis Plus GX, a second Mega Drive core, in the image |
 | 4. A row per system in Settings > Other systems | done | More cores: a row per system in Settings > Other systems for the fork's cores |
-| 5. Final check | todo | |
+| 5. SameBoy's sound at 96 kHz | todo | |
+| 6. Mesen at the top clock | todo | |
+| 7. Final check | todo | |

@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This repository is a personal fork of upstream BananaLinux. `main` tracks the upstream repo; `kiwami` carries this
 fork's own customizations, which upstream does not have. Do customization work on `kiwami` (or branches off it), keep
 `main` as a clean mirror of upstream, and bring upstream changes in by updating `main` and merging it into `kiwami`.
-When comparing against "upstream" behaviour, `main` is the reference.
+When comparing against "upstream" behaviour, `main` is the reference. Merging `main` into `kiwami` is carried out by
+the skill `banana-merge-upstream`: the user brings `main` up to date, runs the merge and commits it.
 
 `docs/FORK.md` is the fork's workflow; follow it for any customization. In short: the fork's code goes in its own
 files (`kiwami/` for Buildroot packages, defconfig/kernel fragments, the rootfs overlay and post-build; `ui/src/kiwami/`

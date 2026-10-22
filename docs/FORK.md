@@ -54,7 +54,8 @@ The rule: a new file of the fork's own wherever the build allows one; an upstrea
 | banana-ui | `ui/src/kiwami/` (inside `ui/`: the package builds only that folder): its own theme behind `banana::Menu`, its own settings rows, its own handlers for the host's events |
 | Tests of the fork's features | `kiwami/tests/` (a one-line `kiwami:` hook if `make test` has to run them) |
 | A feature's investigation and plan | `.workspace/<NNNN>-<name>/` |
-| The skills of the feature workflow | `.claude/skills/banana-*/` |
+| The skills of the feature workflow and of taking in upstream | `.claude/skills/banana-*/` |
+| The report of a merge from upstream | `.workspace/merges/<YYYY-MM-DD>-<main's short sha>.md` |
 | Settings only | `/data/banana/` on the card (`settings.conf`, `bananad.conf`, `systems.conf`): nothing in the repo |
 | External code and its versions | `kiwami/DEPENDENCIES.md`: every dependency the fork adds, its version and where it is pinned, updated in the commit that adds or bumps it; and upstream's that the fork's code relies on (Buildroot, its Go, Linux) |
 
@@ -124,7 +125,13 @@ git switch kiwami && git merge main
 ```
 
 Conflicts are then in hooks, and resolving one is putting its line back where upstream's code now is (rerere repeats
-it next time). After the merge:
+it next time).
+
+The skill `banana-merge-upstream` (`.claude/skills/`) carries this out once `main` is up to date: before the merge it
+predicts the textual conflicts (`git merge-tree`) and the logic ones (upstream changes that merge cleanly but break or
+duplicate what the fork relies on, unmerged `k/*` branches included) and settles each with the user; the merge then
+runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's adaptations and the report
+(`.workspace/merges/<date>-<main's sha>.md`) all go into the merge commit. After the merge:
 
 1. **Builds and tests**: `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, and
    `kiwami/tests/ci.sh .buildroot` (the fork's shell scripts, and every board configured with the fork's options). If

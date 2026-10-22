@@ -10,3 +10,4 @@ BR2_PACKAGE_HOST_GO_BIN=y
 # The fork's second cores, each a choice in Settings > Other systems next to upstream's core for the system
 BR2_PACKAGE_KIWAMI_LIBRETRO_MESEN=y
 BR2_PACKAGE_KIWAMI_LIBRETRO_SAMEBOY=y
+BR2_PACKAGE_KIWAMI_LIBRETRO_GENESIS_PLUS_GX=y

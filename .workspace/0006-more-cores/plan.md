@@ -445,7 +445,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. Mesen, a second NES core | done | More cores: Mesen, a second NES core, in the image |
-| 2. SameBoy, a second Game Boy and Game Boy Color core | todo | |
+| 2. SameBoy, a second Game Boy and Game Boy Color core | done | More cores: SameBoy, a second Game Boy and Game Boy Color core, in the image |
 | 3. Genesis Plus GX, a second Mega Drive core | todo | |
 | 4. A row per system in Settings > Other systems | todo | |
 | 5. Final check | todo | |

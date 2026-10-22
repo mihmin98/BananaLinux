@@ -17,8 +17,9 @@ so a branch `kiwami` and a branch `kiwami/x` can't both exist.
 
 A small change goes on `kiwami` directly. A feature has a GitHub issue on this fork, and the issue's number, four
 digits, is its ID: issue #7 about Tailscale is the branch `k/0007-tailscale`, and its investigation and plan are in
-`kiwami/docs/0007-tailscale/` (templates in `kiwami/docs/templates/`; the stages are in `CLAUDE.md`). Two features on
-the same subject stay apart by their numbers.
+`.workspace/0007-tailscale/` (the stages are in `CLAUDE.md`, carried out by the skills `banana-investigate`,
+`banana-architect` and `banana-develop` in `.claude/skills/`, which hold the templates). Two features on the same
+subject stay apart by their numbers.
 
 A feature branch comes back through a pull request in GitHub's UI. Opened from a fork, a pull request's base is the
 parent repository by default: set it to this fork's `kiwami`. Merge with "Create a merge commit" (not squash or
@@ -52,7 +53,8 @@ The rule: a new file of the fork's own wherever the build allows one; an upstrea
 | Boot and network services | hook folders that run every file in them: `/etc/banana/sleep.d/` (around a suspend), `/usr/share/udhcpc/default.script.d/` (on an address from DHCP) |
 | banana-ui | `ui/src/kiwami/` (inside `ui/`: the package builds only that folder): its own theme behind `banana::Menu`, its own settings rows, its own handlers for the host's events |
 | Tests of the fork's features | `kiwami/tests/` (a one-line `kiwami:` hook if `make test` has to run them) |
-| A feature's investigation and plan | `kiwami/docs/<NNNN>-<name>/` |
+| A feature's investigation and plan | `.workspace/<NNNN>-<name>/` |
+| The skills of the feature workflow | `.claude/skills/banana-*/` |
 | Settings only | `/data/banana/` on the card (`settings.conf`, `bananad.conf`, `systems.conf`): nothing in the repo |
 | External code and its versions | `kiwami/DEPENDENCIES.md`: every dependency the fork adds, its version and where it is pinned, updated in the commit that adds or bumps it; and upstream's that the fork's code relies on (Buildroot, its Go, Linux) |
 
@@ -91,8 +93,8 @@ SRC += $(wildcard src/kiwami/*.cpp)	# kiwami: the fork's sources
 Every hook carries `kiwami:` in its comment. Everything the fork changes in upstream's files:
 
 ```sh
-git diff --stat main...kiwami -- . ':!kiwami' ':!ui/src/kiwami' ':!docs/FORK.md' ':!CLAUDE.md'
-git grep -n 'kiwami:' -- . ':!kiwami' ':!ui/src/kiwami' ':!docs/FORK.md' ':!CLAUDE.md'
+git diff --stat main...kiwami -- . ':!kiwami' ':!ui/src/kiwami' ':!.workspace' ':!.claude' ':!docs/FORK.md' ':!CLAUDE.md'
+git grep -n 'kiwami:' -- . ':!kiwami' ':!ui/src/kiwami' ':!.workspace' ':!.claude' ':!docs/FORK.md' ':!CLAUDE.md'
 ```
 
 The first list should stay short and the two should agree: a file in the diff with no `kiwami:` in it is a change that

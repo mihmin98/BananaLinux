@@ -1,6 +1,6 @@
 # <NNNN> <Feature>: investigation
 
-Issue: #<N> · Branch: `k/<NNNN>-<name>` · Status: draft | refined
+Issue: #<N> · Branch: `k/<NNNN>-<name>` · Status: draft | refined · Confidence: <NN>% (proceed | needs clarification | insufficient)
 
 ## The request
 
@@ -45,6 +45,7 @@ What can be tested headless (`kiwami/tests/`, `make test`), what only on the dev
 
 ## Open questions
 
-Questions for the user, each answered here once settled (and the answer moved into the sections above).
+Questions for the user, each answered here once settled (and the answer moved into the sections above). One still
+open is marked *unanswered* (planning can go ahead without it) or *blocking* (planning waits for it).
 
 1. ...

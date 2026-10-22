@@ -10,7 +10,7 @@ and could never save a login. Banana keeps the state on its exFAT data
 partition: an EPERM from the chmod is not an error, the file or directory
 is used with the mode the filesystem gives it.
 
-Upstream: not sent (the fork's own; see kiwami/docs/0001-tailscale/plan.md)
+Upstream: not sent (the fork's own; see .workspace/0001-tailscale/plan.md)
 ---
 --- a/atomicfile/atomicfile.go
 +++ b/atomicfile/atomicfile.go

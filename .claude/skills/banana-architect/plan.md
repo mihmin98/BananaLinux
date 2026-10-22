@@ -6,6 +6,17 @@ Issue: #<N> · Branch: `k/<NNNN>-<name>` · Investigation: [investigation.md](in
 
 What the feature does once done, and the approach chosen in the investigation, in a few lines.
 
+## Acceptance criteria
+
+What has to be true when the feature is done, each one checked by an automated test or a manual test below.
+
+- **A1**: given ..., when ..., then ...
+
+## Risks
+
+What could break and what guards it: the tests that cover it, or why a risk no test covers is acceptable. Performance
+and footprint, and conflicts with upstream, always get a line.
+
 ## Steps
 
 Each step is one commit, and leaves the tree building and `make test` passing.
@@ -27,21 +38,22 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 - `kiwami/DEPENDENCIES.md` lists every dependency the feature adds or bumps, with its version.
 - `docs/FORK.md`, `docs/ARCHITECTURE.md`, `CLAUDE.md` updated where the feature changes what they describe.
 - The manual tests below all passed.
+- Every acceptance criterion is met: each is listed by at least one automated or manual test, and those passed.
 
 ## Automated tests
 
-| Test | Where | What it checks |
-|---|---|---|
-| | `kiwami/tests/...` | |
+| Test | Where | What it checks | Criteria |
+|---|---|---|---|
+| | `kiwami/tests/...` | | A1 |
 
 ## Manual tests
 
 On the device, for what headless tests can't reach. Logs are fetched over SSH/SFTP (Settings > System > SSH) or from
 the card on a computer (`banana/logs/` on the card is `/data/banana/logs/` on the device).
 
-| # | Board | Steps | Expected | Logs to collect | Outcome |
-|---|---|---|---|---|---|
-| M1 | rgds / rgds-plus | | | `/data/banana/logs/...` | not run |
+| # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
+|---|---|---|---|---|---|---|
+| M1 | rgds / rgds-plus | | | `/data/banana/logs/...` | A1 | not run |
 
 Notes from the runs (what the logs showed, what was fixed):
 

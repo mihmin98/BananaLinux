@@ -36,23 +36,27 @@ feature branch. The user approves or decides otherwise.
   them: describe it in a few lines with the files it touches, make it, stage it, give a commit message.
 - A *feature* gets a GitHub issue, a branch and the stages below.
 
+Each stage of a feature has a skill in `.claude/skills/` that carries it out in detail: `banana-investigate` (the
+issue and stage 1), `banana-architect` (stage 2), `banana-develop` (stages 3 and 4). The rules below hold whether the
+skill is used or not.
+
 **Issue.** Write the issue's text (title, a short description of what and why); the user creates it by hand. Its
 number is the feature's ID: issue #7 about Tailscale is `0007-tailscale`, the branch `k/0007-tailscale` (the user
-creates it, off `kiwami`) and the folder `kiwami/docs/0007-tailscale/`.
+creates it, off `kiwami`) and the folder `.workspace/0007-tailscale/`, committed with the feature.
 
 **1. Investigation.** Find out the project's current state for the feature, what has to change, and what the user
 wants. Read the user's requirements critically: point out what they overlook (cases not covered, conflicts with
 existing behaviour or with upstream, sleep, both boards, both panels, first boot, updates, a missing card or network,
 cost in performance and footprint) and suggest what would make the feature better (simpler approaches, additions
-worth having, things worth leaving out). Write `kiwami/docs/<NNNN>-<name>/investigation.md` from `kiwami/docs/templates/investigation.md`, present it,
-refine it with the user until they're happy, then stage it and give a commit message. The user gives the go-ahead for
-planning.
+worth having, things worth leaving out). Write `.workspace/<NNNN>-<name>/investigation.md` from
+`.claude/skills/banana-investigate/investigation.md`, present it, refine it with the user until they're happy, then
+stage it and give a commit message. The user gives the go-ahead for planning.
 
 **2. Plan.** Work out the exact changes, step by step, each step one commit. Write `plan.md` next to the investigation
-from `kiwami/docs/templates/plan.md`: the steps, the automated tests (the fork's tests live in `kiwami/tests/`), a
-manual test checklist for what headless tests can't reach (sleep, hardware, Wi-Fi), with what to collect from the
-device's logs for analysis, and the progress section. The last step is always the final check. Present it, discuss,
-and once it's approved stage it and give a commit message.
+from `.claude/skills/banana-architect/plan.md`: the acceptance criteria, the steps, the automated tests (the fork's
+tests live in `kiwami/tests/`), a manual test checklist for what headless tests can't reach (sleep, hardware, Wi-Fi),
+with what to collect from the device's logs for analysis, and the progress section. The last step is always the final
+check. Present it, discuss, and once it's approved stage it and give a commit message.
 
 **3. Implementation.** Ask permission to start. Then one step at a time: implement it, mark it done in the plan's
 progress section (in the same commit), stage the files, give a short overview and a commit message, and stop until

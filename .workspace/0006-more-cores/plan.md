@@ -16,8 +16,8 @@ The approach chosen in the investigation: one small package per core in the fork
 `kiwami/configs/kiwami.fragment`. The rows are in `ui/src/kiwami/kiwami.cpp`, reached through one new hook line in
 `ui/src/settings.cpp`. Upstream's code saves, loads and resets them, since they're plain choice rows on upstream's
 keys. No change to `systems.conf` or upstream's core packages; the existing cores are not bumped. (Since M3, 22 Oct
-2026: one `kiwami:` hook in `run-retroarch` runs Mesen at the top clock, and SameBoy's sound is at 96 kHz; see
-*Deviations*.)
+2026: SameBoy's sound is at 96 kHz, and one `kiwami:` hook in `run-retroarch` gives Mesen RetroArch's threaded video
+through its per-core override; see *Deviations*.)
 
 ### Refinements over the investigation
 
@@ -73,12 +73,13 @@ keys. No change to `systems.conf` or upstream's core packages; the existing core
   `run-retroarch: core mesen (Settings > Other systems), not fceumm`). It plays with sound and the controls, and
   quitting goes back to the menu.
 - **A10** (speed): demanding games run at full speed (60 fps, sound without crackle) with each of the fork's cores,
-  under the profile each runs at: the systems' `powersave` for Genesis Plus GX and SameBoy (at 96 kHz, step 5), the
-  top clock for Mesen (step 6). Any shortfall is recorded and handled as a deviation before the feature is merged.
-  (Changed on 22 Oct 2026, see *Deviations*: all three under `powersave` before.)
-- **A16** (clocks): while a Mesen game runs, the CPU is at its top clock and the GPU on demand (`banana-perf
-  superdrastic`), from its start to its end, a sleep included; once it ends, the menu's clocks are back. Every other
-  core runs at its system's profile as upstream has it.
+  under the systems' `powersave` profile: SameBoy with its sound at 96 kHz (step 5), Mesen with RetroArch's threaded
+  video (step 6). Any shortfall is recorded and handled as a deviation before the feature is merged. (Changed on
+  22 Oct 2026, see *Deviations*.)
+- **A16** (Mesen's threaded video): a Mesen game runs with `video_threaded = "true"` from Mesen's own override file
+  (`/data/retroarch/config/Mesen/Mesen.cfg`), written by the fork when the file has no `video_threaded` line, so a
+  user's own choice there is kept. The card's `retroarch.cfg` keeps `video_threaded = "false"`, and every other core
+  runs with it. No core gets clocks of its own: each runs at its system's profile as upstream has it.
 - **A11** (saves per core): after switching a system to the other core and back, the first core's in-game saves and
   states are found again. A Quick resume state of one core is never loaded by the other.
 - **A12** (sleep and screens): closing the lid mid-game with each of the fork's cores sleeps, and opening it carries
@@ -402,45 +403,56 @@ Added on 22 Oct 2026 (*Deviations*).
   settles step 6's SameBoy entry.
 - **Commit**: `More cores: SameBoy's sound at 96 kHz, a quarter of the resampling`
 
-### 6. Mesen at the top clock
+### 6. Mesen's threaded video
 
 Added on 22 Oct 2026 (*Deviations*).
 
-- **Files**: `kiwami/rootfs/usr/libexec/kiwami/core-clock` (new), `system/rootfs/usr/libexec/banana/run-retroarch`
-  (hook), `kiwami/tests/core-clock.sh` (new), `kiwami/tests/ci.sh` (changed), `ui/src/kiwami/kiwami.cpp` (changed),
+- **Files**: `kiwami/rootfs/usr/libexec/kiwami/core-overrides` (new), `system/rootfs/usr/libexec/banana/run-retroarch`
+  (hook), `kiwami/tests/core-overrides.sh` (new), `kiwami/tests/ci.sh` (changed), `kiwami/DEPENDENCIES.md` (changed),
   `docs/FORK.md` (changed).
 - **Change**:
   - `run-retroarch`, the hook: one line after the `run-retroarch: core …` log line (`:21`), once the core that runs is
-    known (`$c`):
+    known (`$c`), before RetroArch starts:
     ```sh
-    [ -x /usr/libexec/kiwami/core-clock ] && /usr/libexec/kiwami/core-clock "$c"	# kiwami: the fork's heavier cores' clocks
+    [ -x /usr/libexec/kiwami/core-overrides ] && /usr/libexec/kiwami/core-overrides "$c"	# kiwami: the fork's cores' RetroArch settings
     ```
-    banana-ui has set the system's profile just before (`main.cpp:1348`) and puts `ui` back when the game ends
-    (`:1399`); nothing in sleep changes the clocks, so the profile set here holds for the game's whole length.
-  - `core-clock <core>`: Mesen → `banana-perf superdrastic` (upstream's profile for the DS: the CPU's `performance`
-    governor at its top clock, the GPU on demand), and a line on stderr for banana-ui's log
-    (`kiwami: core-clock: mesen at the top clock`); any other core → nothing. SameBoy joins Mesen with 1608 MHz only if
-    M10 shows 96 kHz falling short under `powersave` (then a profile of the script's own, written as `banana-perf`
-    writes them: `performance` at the highest frequency up to 1608 MHz, the GPU on demand), recorded as a deviation.
-  - `kiwami/tests/core-clock.sh`: a stand-in `banana-perf` on `PATH` records its arguments. `core-clock` with each of
-    `mesen`, `sameboy`, `genesis_plus_gx`, `fceumm`, `gambatte`, `picodrive`, `gpsp`, `mgba`, `snes9x`: only `mesen`
-    calls it, with `superdrastic`. `run-retroarch` has the hook after the core's log line (a `grep`). Run by `ci.sh`.
-  - `kiwami.cpp`, the NES row's help: Mesen "the most accurate, and the heaviest: it runs the handheld at its top
-    clock, so the battery lasts less" (the user's choice; SameBoy's too if it gets 1608 MHz).
-  - `docs/FORK.md`, the merge checks: `system/rootfs/usr/bin/banana-perf` joins the list read by hand (a change to the
-    `superdrastic` profile changes Mesen's clocks), and the hook in `run-retroarch` with it.
-- **Tests**: `kiwami/tests/core-clock.sh` through `ci.sh`; `sh -n` on both scripts; `kiwami/tests/cores-ui.sh` (the
-  help's text, its shots looked at); `make test`; then M10 on an update built from this step.
-- **Commit**: `More cores: Mesen runs at the top clock, as it needs for 60 fps`
+  - `core-overrides <core>`: for `mesen`, RetroArch's per-core override `<dir>/Mesen/Mesen.cfg` (`<dir>` is
+    `retroarch.cfg`'s `rgui_config_directory`, `/data/retroarch/config`; `KIWAMI_RA_CONFIG` in the environment, the
+    test's stand-in), the folder and file named after the core's `library_name` (`Libretro/libretro.cpp:1162`), as
+    RetroArch looks for it (`configuration.c:4631`). When the file has no `video_threaded` line, the line
+    `video_threaded = "true"` is appended (the folder and file made if missing) and one line goes to stderr for
+    banana-ui's log (`kiwami: core-overrides: mesen draws on its own thread (…/Mesen/Mesen.cfg)`); a file that has
+    one, whatever its value (the user's, from RetroArch's Quick Menu > Overrides), is left as it is. Any other core:
+    nothing. SameBoy joins (`SameBoy/SameBoy.cfg`) only if M10 shows 96 kHz falling short, recorded as a deviation.
+    Why threaded video: drawing and the wait for the panel move to a second thread, so the core's frame no longer has
+    to fit in one refresh together with them (M3's notes: Mesen 60 fps under `powersave` with it, 30 without). It
+    costs up to a frame of input delay, not noticed in M3's run; RetroArch stacks the override over
+    `run-retroarch`'s `--appendconfig` files (`configuration.c:4637`), so the game panel's settings stay.
+  - `kiwami/tests/core-overrides.sh`, against a temporary `KIWAMI_RA_CONFIG`: `mesen` on an empty folder makes
+    `Mesen/Mesen.cfg` with exactly the line, and logs; a second run changes nothing (byte for byte) and logs nothing;
+    a file with `video_threaded = "false"` is left as it is; a file with other lines gets the line appended, the others
+    kept; `sameboy`, `genesis_plus_gx`, `fceumm`, `gambatte`, `picodrive`, `gpsp`, `mgba`, `snes9x` make nothing;
+    `run-retroarch` has the hook after the core's log line (a `grep`). Run by `ci.sh`.
+  - `kiwami/DEPENDENCIES.md`, RetroArch's row: Mesen's threaded video relies on its per-core overrides
+    (`auto_overrides_enable`, on by default in `config.def.h:911`, and `rgui_config_directory` in Banana's
+    `retroarch.cfg`), and on overrides stacking over `--appendconfig`.
+  - `docs/FORK.md`, the merge checks: the hook in `run-retroarch` (already in the list read by hand since step 4) and
+    `system/rootfs/etc/banana/retroarch.cfg` (`video_threaded`, `rgui_config_directory`): if upstream turns threaded
+    video on for every core, the fork's override is no longer needed.
+  - The rows' help is unchanged: Mesen is already "the most accurate, and heavier", and with no clock change there's
+    no battery cost to tell.
+- **Tests**: `kiwami/tests/core-overrides.sh` through `ci.sh`; `sh -n` on both scripts; `make test`; then M10 on an
+  update built from this step.
+- **Commit**: `More cores: Mesen draws on its own thread, as it needs for 60 fps`
 
 ### 7. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
-- The fork's tests in `kiwami/tests/`: `cores-ui.sh`, `core-clock.sh`, `tailscale-ui.sh`, `7z-ui.sh`, the helper
+- The fork's tests in `kiwami/tests/`: `cores-ui.sh`, `core-overrides.sh`, `tailscale-ui.sh`, `7z-ui.sh`, the helper
   and unit tests (through `ci.sh`).
 - The hooks: `git diff --stat main...HEAD` and `git grep -n 'kiwami:'` (the commands in `docs/FORK.md`) agree. The
   only new hooks are `settings.cpp`'s `Kiwami::rows(*this, O);	// kiwami: the fork's cores` and `run-retroarch`'s
-  `core-clock` line (step 6).
+  `core-overrides` line (step 6).
 - `make test`'s renders in `ui/tests/out/` match `kiwami`'s from before the feature (the branch's base, rendered from a
   `git worktree` of it in the same minute: the clock differs otherwise, as in 0003's deviation). Also the Other
   systems list (`home 0; press start; press r; press r; press r; press a; shot other`), rendered by both binaries
@@ -470,7 +482,7 @@ Added on 22 Oct 2026 (*Deviations*).
 | Upstream's own | `make test` | Passing; renders identical to `kiwami` before the feature; frame bench unchanged | A14, A15 |
 | Other systems as before | the final check (two binaries, one shot) | With no core installed, the Other systems list renders as it did before the feature | A5, A15 |
 | Footprint | the final check (`make rgds-plus`) | The `.so` sizes and the squashfs's against the baseline and the slot | A14 |
-| The cores' clocks | `kiwami/tests/core-clock.sh` (run by `ci.sh`, step 6) | Only Mesen gets a profile of its own (`banana-perf superdrastic`), every other core none; `run-retroarch` calls `core-clock` after the core's log line | A16 |
+| Mesen's override | `kiwami/tests/core-overrides.sh` (run by `ci.sh`, step 6) | Mesen's override file gets `video_threaded = "true"` once, a user's own value kept, other lines kept, no other core touched; `run-retroarch` calls `core-overrides` after the core's log line | A16 |
 
 ## Manual tests
 
@@ -494,7 +506,7 @@ test: `cp /run/banana/retroarch.log /data/banana/logs/cores-M2-mesen.log`. banan
 | M7 | rgds-plus | Other systems > Screen: Bottom, start a Mesen game; Second screen: Off, start a SameBoy game; back to Top and Game panel, a Genesis Plus GX game. | Each plays on the chosen panel, the other one showing the game panel or dark as set | `banana-ui.log`; `retroarch.log` where the game panel is on | A12 | not run |
 | M8 | rgds-plus | Over SSH, set `core.nes = nestopia` in `/data/banana/settings.conf` (a core the image hasn't got); start a NES game. Then look at the NES row. | The game starts with FCEUmm; the row shows `nestopia` as it is (upstream's handling of a value it doesn't list) | `banana-ui.log` (`run-retroarch: core fceumm`) | A6 | not run |
 | M9 | rgds-plus | Only with a RetroAchievements account set: a game with achievements on each fork core. | The game is identified: its achievements on the game panel, `[RCHEEVOS]` lines naming it | `retroarch.log` of each | A13 | not run |
-| M10 | rgds-plus | M3 again with the fixes, the frame counter on. SameBoy (on step 5's update, under `powersave`): Link's Awakening DX and Castlevania: The Adventure, and a minute of each on headphones next to Gambatte. Mesen (on step 6's update): Castlevania and Super Mario Bros, then the lid closed mid-game for 10 s and opened, then quit. Over SSH during each, the `m3` measurement of the notes below (named `cores-M10-<core>-<game>.txt`), and for Mesen once after the sleep and once back in the menu: `cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq $(ls -d /sys/class/devfreq/*.gpu)/governor`. | SameBoy: 60 fps under `powersave`, no audible difference from Gambatte's sound beyond the cores' own. Mesen: 60 fps; `performance`, 1992000 and `simple_ondemand` in the game and after the sleep, `schedutil` and 1416000 back in the menu. A shortfall is a deviation (A10) | `cores-M10-*.txt`; the fps seen and what was heard, noted; `banana-ui.log` (`kiwami: core-clock: mesen at the top clock`) | A10, A16 | not run |
+| M10 | rgds-plus | M3 again with the fixes, the frame counter on, under `powersave` and with the card's `video_threaded = "false"`. SameBoy (on step 5's update): Link's Awakening DX and Castlevania: The Adventure, and a minute of each on headphones next to Gambatte. Mesen (on step 6's update): Castlevania and Super Mario Bros, normally and fast-forwarded, a jump felt against FCEUmm's; the lid closed mid-game for 10 s and opened; quit. Over SSH during each, the `m3` measurement of the notes below (named `cores-M10-<core>-<game>.txt`); after Mesen, `cat /data/retroarch/config/Mesen/Mesen.cfg; grep '^video_threaded' /data/retroarch/retroarch.cfg`. Then a Gambatte game: not threaded. | SameBoy: 60 fps unthreaded, no audible difference beyond the two cores' own. Mesen: 60 fps, the controls as FCEUmm's; `Mesen.cfg` holds `video_threaded = "true"`, `retroarch.cfg` still `"false"`; `retroarch.log` has `[Override] Core-specific overrides found at "/data/retroarch/config/Mesen/Mesen.cfg"`, Gambatte's none. A shortfall is a deviation (A10) | `cores-M10-*.txt`; the fps seen, what was heard and felt, noted; `banana-ui.log` (`kiwami: core-overrides: mesen draws on its own thread`); `retroarch.log` of the Mesen and Gambatte games (`cores-M10-mesen.log`, `cores-M10-gambatte.log`) | A10, A16 | not run |
 
 Notes from the runs (what the logs showed, what was fixed):
 
@@ -516,21 +528,28 @@ Notes from the runs (what the logs showed, what was fixed):
   governor can't climb out of that: at 30 fps the CPU waits half the time and looks idle (Mesen under `balanced` stayed
   at 1416 MHz). Peak memory (`VmHWM`) 37-41 MB for every core. Mesen's sound is at 48 kHz and it is built `-O3` with
   LTO: it is heavy as it is. SameBoy's libretro port sends 384 kHz (`libretro/libretro.c:11`), which RetroArch
-  resamples to 48 kHz each frame (Gambatte sends 32.8 kHz). ROCKNIX ships SameBoy unpatched and runs every game at
-  `performance` unless a governor is set (`runemu.sh:14`, `:437-439`).
+  resamples to 48 kHz each frame (Gambatte sends 32.8 kHz). ROCKNIX ships both cores unpatched (the same commits
+  and tarballs) and runs every game at `performance` unless a governor is set (`runemu.sh:14`, `:437-439`), with
+  RetroArch's `video_threaded = "true"` on the RK3566 (`retroarch/sources/RK3566/retroarch.cfg`); Banana has it off
+  and two swapchain images, for the lowest latency.
+- **Threaded video, 22 Oct 2026** (the same image, turned on in RetroArch's menu, under `powersave`): Mesen
+  (Castlevania) 60 fps, 75-80 fast-forwarded; SameBoy the same (60 fps). The controls on Mesen didn't feel slower.
 
 ## Deviations
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
 
 - **22 Oct 2026: Mesen and SameBoy fall short under `powersave` (M3); two steps added before the final check.** Mesen
-  needs the top clock (1992 MHz) for 60 fps, SameBoy 1608 MHz as built; Genesis Plus GX holds 60 under `powersave`. The
-  user's choices: Mesen stays, at the top clock (step 6: a `kiwami:` hook in `run-retroarch` calls the fork's
-  `core-clock`, which sets `banana-perf superdrastic` for it), and its help says the battery lasts less; SameBoy's
-  sound goes to 96 kHz (step 5, a patch), measured under `powersave` before step 6 settles whether it needs a clock
-  too. A10 now names each core's profile, A16 is new, M10 checks the fixes. Considered and left out: a governor that
-  steers the clock from RetroArch's frame times, for every core behind a setting, which is its own feature (an issue
-  of its own); Nestopia instead of Mesen; SameBoy at 48 kHz. The old step 5 (the final check) is now step 7.
+  needs the top clock (1992 MHz) for 60 fps as Banana runs RetroArch, SameBoy 1608 MHz as built; Genesis Plus GX holds
+  60 under `powersave`. With RetroArch's threaded video both hold 60 under `powersave` (the notes). The user's choices:
+  SameBoy's sound goes to 96 kHz (step 5, a patch), which costs no input delay, measured unthreaded before deciding
+  whether it needs threaded video too; Mesen gets threaded video through its per-core override, written by the fork's
+  `core-overrides` from a `kiwami:` hook in `run-retroarch` (step 6). No core gets clocks of its own. A10 now names the
+  fixes, A16 is new, M10 checks them. Considered and left out: Mesen at the top clock through `banana-perf
+  superdrastic` (planned first, the battery note in its help with it, replaced once threaded video was measured);
+  threaded video for every core (upstream's latency choice); a governor steering the clock from RetroArch's frame
+  times, its own feature (an issue of its own); Nestopia instead of Mesen; SameBoy at 48 kHz. The old step 5 (the
+  final check) is now step 7.
 
 ## Progress
 
@@ -543,5 +562,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 3. Genesis Plus GX, a second Mega Drive core | done | More cores: Genesis Plus GX, a second Mega Drive core, in the image |
 | 4. A row per system in Settings > Other systems | done | More cores: a row per system in Settings > Other systems for the fork's cores |
 | 5. SameBoy's sound at 96 kHz | todo | |
-| 6. Mesen at the top clock | todo | |
+| 6. Mesen's threaded video | todo | |
 | 7. Final check | todo | |

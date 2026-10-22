@@ -327,5 +327,15 @@ No settings, no banana-ui changes, nothing in `ui/rnds/`, `ui/assets/` or the RO
 7. The bar for shipping? *Answered*: no regression anywhere.
 8. If the TLS client fails? *Answered*: fall back to Buildroot's mbedTLS, as a deviation.
 9. Which built-ins to turn off? *Answered*: network servers and clients, media decoders, the RAR reader, GameMode.
-10. Which games make up the measurement set (a demanding scene per system)? *Unanswered*: the plan proposes them
-    (0006's NES, GB/GBC and Mega Drive games, plus one each for GBA, SNES, N64 and PS1), for the user to adjust.
+10. Which games make up the measurement set (a demanding scene per system)? *Answered* (planning, 22 Oct 2026): NES
+    Castlevania and Super Mario Bros, Game Boy Color Link's Awakening DX, Mega Drive Sonic 3 & Knuckles, GBA Pokémon
+    Emerald, SNES Super Mario World.
+11. N64 and PS1, not in the set? *Answered* (planning): left out, so not verified on master. No check of their own.
+12. Which cores run the games of systems with two? *Answered* (planning): both: FCEUmm and Mesen, Gambatte and
+    SameBoy, PicoDrive and Genesis Plus GX. Mesen and SameBoy also unthreaded on master (suggestion 3).
+13. At which clocks are fps and load compared, given that GBA runs under `balanced` and SNES under `performance`
+    (`systems.conf`), not `powersave`? *Answered* (planning): at each system's own profile (the bar). GBA and SNES
+    also under `powersave`, as information only.
+14. What's at hand for the device tests? *Answered* (planning): a computer on the network and a RetroAchievements
+    account. No headphones and no external pad: the headphone jack and an external pad's autoconfig are not verified
+    on the device. The jack's `AUDIO_REINIT` gets a stand-in, the command written to RetroArch's FIFO by hand.

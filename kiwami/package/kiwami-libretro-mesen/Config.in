@@ -1,0 +1,9 @@
+config BR2_PACKAGE_KIWAMI_LIBRETRO_MESEN
+	bool "kiwami-libretro-mesen"
+	depends on BR2_PACKAGE_RETROARCH
+	depends on BR2_INSTALL_LIBSTDCPP
+	help
+	  Mesen, the NES and Famicom, accurate: a second core for the NES, chosen in Settings > Other systems > NES.
+	  Upstream's FCEUmm stays the default.
+
+	  https://github.com/libretro/Mesen

@@ -1,0 +1,8 @@
+config BR2_PACKAGE_KIWAMI_LIBRETRO_SAMEBOY
+	bool "kiwami-libretro-sameboy"
+	depends on BR2_PACKAGE_RETROARCH
+	help
+	  SameBoy, the Game Boy and Game Boy Color, accurate, with its own open boot ROMs (no BIOS needed): a second
+	  core for both, chosen per system in Settings > Other systems. Upstream's Gambatte stays the default.
+
+	  https://github.com/libretro/SameBoy

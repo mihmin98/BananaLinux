@@ -1,8 +1,12 @@
 #pragma once
 // banana-ui (kiwami): the fork's rows and pages in Settings. Settings::Kiwami is nested in upstream's Settings (one
 // line in settings.h), so it reads the screen's state and draws with its own helpers (box, text, face...), and
-// settings.cpp calls it through one-line hooks marked "kiwami:". Its rows' keys start with "kiwami."; its pages are
-// Settings' page KIWAMI, and its texts typed on upstream's keyboard come back as ENTRY_KIWAMI.
+// settings.cpp calls it through one-line hooks marked "kiwami:". Its own rows' keys start with "kiwami." (the core
+// rows are on upstream's core.<system>, handled by upstream as its own); its pages are Settings' page KIWAMI, and its
+// texts typed on upstream's keyboard come back as ENTRY_KIWAMI.
+//   Other systems > NES, Game Boy, Game Boy Color, Mega Drive (core.nes, core.gb, core.gbc, core.megadrive): upstream's
+//   core or the fork's second one (Mesen, SameBoy, Genesis Plus GX), each row shown when its core is in
+//   /usr/lib/libretro (or KIWAMI_LIBRETRO in the environment: the test's stand-in folder).
 //   Network > Tailscale (kiwami.tailscale): the state, from the Tailscale helper (/usr/libexec/kiwami/tailscale, or
 //   KIWAMI_TAILSCALE in the environment: the test's stand-in), asked once when Settings opens and only while
 //   settings.conf has tailscale = on. A opens Tailscale's page (tailscale.cpp).

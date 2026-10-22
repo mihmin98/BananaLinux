@@ -142,14 +142,21 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    changes are read by hand:
    ```sh
    git diff $OLD main -- system/rootfs/etc/banana/systems.conf buildroot/configs/ ui/src/menu.h \
-       system/rootfs/usr/libexec/banana/share
+       system/rootfs/usr/libexec/banana/share buildroot/package/retroarch/cores.in \
+       system/rootfs/usr/libexec/banana/run-retroarch system/rootfs/etc/banana/retroarch.cfg
    ```
    (the systems list, whose `ext` lines `kiwami/post-build.sh` adds `7z` to on seven systems (the build stops if
    one of them is gone; a new cartridge system may want it too), the defconfigs the fork adds to, the share script
    whose `veto files` `kiwami/post-build.sh` adds tailscaled's state to (the build stops if the line changes shape; a
-   new place where upstream shares the card wants the same veto), and `banana::Menu`, the interface the fork's theme
+   new place where upstream shares the card wants the same veto), `banana::Menu`, the interface the fork's theme
    implements: when it changes, `git diff $OLD main -- ui/src/carts.cpp` shows how upstream changed its own theme to
-   match).
+   match, and upstream's cores and the launcher that picks one: a core upstream adds that the fork already has
+   (Mesen, SameBoy, Genesis Plus GX) means the fork drops its package and row, and a change to how `run-retroarch`
+   reads `core.<system>`, or a row upstream adds for the NES, Game Boy, Game Boy Color or Mega Drive in
+   `ui/src/settings.cpp`, means the fork's rows have to follow; the fork's `core-overrides` hook sits after
+   `run-retroarch`'s core log line and gives Mesen and SameBoy threaded video, so RetroArch's settings matter too:
+   if upstream's `retroarch.cfg` turns `video_threaded` on for every core, the fork's overrides are no longer
+   needed, and a moved `rgui_config_directory` moves where they are written).
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

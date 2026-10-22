@@ -1,0 +1,27 @@
+From: kiwami <kiwami@localhost>
+Subject: [PATCH] libretro: sound at 96 kHz
+
+The libretro port hands RetroArch its sound at 384 kHz, eight times the
+48 kHz the handheld plays: SameBoy renders eight times the samples, and
+RetroArch resamples all of them down every frame. On the RG DS Plus that
+work alone keeps a Game Boy Color game from 60 fps under Banana's
+powersave clocks (schedutil up to 1416 MHz); Gambatte sends 32.8 kHz.
+The sound chip is emulated cycle by cycle whatever the rate: the rate is
+only how often a sample is written out (Core/apu.c, render()), and the
+high-pass filter and the DAC's fade follow it (GB_set_sample_rate). 96 kHz
+is what SameBoy's own macOS frontend uses (Cocoa/Document.m), a quarter of
+the work, with an anti-aliasing margin over the 48 kHz played.
+
+Upstream: not sent (the fork's own; see .workspace/0006-more-cores/plan.md)
+---
+--- a/libretro/libretro.c
++++ b/libretro/libretro.c
+@@ -8,7 +8,7 @@
+ #include <stdarg.h>
+ #include <stdlib.h>
+ #ifndef WIIU
+-#define AUDIO_FREQUENCY 384000
++#define AUDIO_FREQUENCY 96000
+ #else
+ /* Use the internal sample rate for the Wii U */
+ #define AUDIO_FREQUENCY 48000

@@ -19,6 +19,7 @@ fi
 # the core that really runs, in banana-ui's log (its "starting" line names systems.conf's)
 c=${CORE##*/}; c=${c%_libretro.so}
 [ "$c" != "$1" ] && echo "run-retroarch: core $c (Settings > Other systems), not $1" >&2 || echo "run-retroarch: core $c" >&2
+[ -x /usr/libexec/kiwami/core-overrides ] && /usr/libexec/kiwami/core-overrides "$c"	# kiwami: the fork's cores' RetroArch settings
 CFG=/data/retroarch/retroarch.cfg
 [ -f $CFG ] || { mkdir -p /data/retroarch; cp /etc/banana/retroarch.cfg $CFG; }
 mkdir -p /data/saves /data/states /data/screenshots

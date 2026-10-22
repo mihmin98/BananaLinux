@@ -1,0 +1,8 @@
+config BR2_PACKAGE_KIWAMI_LIBRETRO_GENESIS_PLUS_GX
+	bool "kiwami-libretro-genesis-plus-gx"
+	depends on BR2_PACKAGE_RETROARCH
+	help
+	  Genesis Plus GX, the Mega Drive, accurate (its sound in particular): a second core for the Mega Drive,
+	  chosen in Settings > Other systems > Mega Drive. Upstream's PicoDrive stays the default.
+
+	  https://github.com/libretro/Genesis-Plus-GX

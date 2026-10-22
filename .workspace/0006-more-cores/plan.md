@@ -561,6 +561,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 2. SameBoy, a second Game Boy and Game Boy Color core | done | More cores: SameBoy, a second Game Boy and Game Boy Color core, in the image |
 | 3. Genesis Plus GX, a second Mega Drive core | done | More cores: Genesis Plus GX, a second Mega Drive core, in the image |
 | 4. A row per system in Settings > Other systems | done | More cores: a row per system in Settings > Other systems for the fork's cores |
-| 5. SameBoy's sound at 96 kHz | todo | |
+| 5. SameBoy's sound at 96 kHz | done | More cores: SameBoy's sound at 96 kHz, a quarter of the resampling |
 | 6. Mesen's threaded video | todo | |
 | 7. Final check | todo | |

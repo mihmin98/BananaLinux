@@ -1,0 +1,31 @@
+#!/bin/sh
+# The fork's cores' RetroArch settings, through RetroArch's per-core overrides: run-retroarch calls it (a kiwami: hook)
+# with the core that is about to run, before RetroArch starts.
+#   core-overrides <core>        e.g. core-overrides mesen
+# Mesen and SameBoy draw on their own thread (video_threaded): drawing and the wait for the panel go to a second
+# thread, so the core's frame no longer has to fit in one refresh with them. Without it, under their systems'
+# powersave clocks, they miss the refresh and VSync halves them to 30 fps (.workspace/0006-more-cores/plan.md, M3 and
+# M10). The line goes in the core's override file when the file has no video_threaded line, so a value set there in
+# RetroArch (Quick Menu > Overrides) is kept; the card's retroarch.cfg and every other core stay unthreaded.
+# KIWAMI_RA_CONFIG moves RetroArch's config folder and KIWAMI_RA_CFG its retroarch.cfg, for the tests only.
+CFG=${KIWAMI_RA_CFG:-/data/retroarch/retroarch.cfg}
+# the folder RetroArch looks for overrides in: the card's rgui_config_directory when it is an absolute path, else
+# Banana's (retroarch.cfg's), also on a first start, before run-retroarch has copied retroarch.cfg to the card
+dir() {
+    [ -n "$KIWAMI_RA_CONFIG" ] && { echo "$KIWAMI_RA_CONFIG"; return; }
+    d=$(sed -n 's/^rgui_config_directory = "\(.*\)"$/\1/p' "$CFG" 2>/dev/null | tail -n 1)
+    case $d in /*) echo "$d" ;; *) echo /data/retroarch/config ;; esac
+}
+# the override file is named after the core's library_name, as RetroArch looks for it: <dir>/<name>/<name>.cfg
+case $1 in
+mesen) NAME=Mesen ;;
+sameboy) NAME=SameBoy ;;
+*) exit 0 ;;
+esac
+F=$(dir)/$NAME/$NAME.cfg
+grep -q '^video_threaded *=' "$F" 2>/dev/null && exit 0
+mkdir -p "${F%/*}" || exit 0
+# (a last line with no newline, as an editor may leave it, gets one first: the line isn't glued onto it)
+[ -s "$F" ] && [ -n "$(tail -c 1 "$F")" ] && echo >> "$F"
+printf 'video_threaded = "true"\n' >> "$F" || exit 0
+echo "kiwami: core-overrides: $1 draws on its own thread ($F)" >&2

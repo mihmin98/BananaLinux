@@ -13,6 +13,9 @@ done
 # the Tailscale helper, against stand-ins
 kiwami/tests/tailscale-helper.sh
 
+# the fork's cores' RetroArch overrides, in a made-up config folder, and run-retroarch's hook
+kiwami/tests/core-overrides.sh
+
 # banana-ui's code of the fork's that needs no screen (the JSON reader, Tailscale's status, the name, the QR code),
 # with the host's g++
 T=$(mktemp -d)

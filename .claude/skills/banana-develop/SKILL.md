@@ -135,9 +135,17 @@ or accept it. When it all holds, mark the final check done in *Progress*, stage 
 After the final check is committed, give the user the pull request's text: a **title** in the repository's style (it
 becomes the merge commit's subject, e.g. `7z ROMs: .7z games listed and played on the seven cartridge systems`) and a
 **description** (what the feature does, how, what was tested on which board, anything left for later), ending with
-`Closes #<issue>`. Remind the user:
+`Closes #<issue>`. Give the **link** that opens the pull request with this fork's `kiwami` as its base and the
+feature's branch as its head:
 
-- the base must be this fork's `kiwami`, not upstream's repository (GitHub defaults to the parent);
+```
+https://github.com/<owner>/<repo>/compare/kiwami...k/<NNNN>-<name>
+```
+
+with the owner and repository taken from `git remote get-url origin` (`git@github.com:<owner>/<repo>.git` or
+`https://github.com/<owner>/<repo>.git`). Remind the user:
+
+- the base must be this fork's `kiwami`, not upstream's repository (GitHub defaults to the parent; the link sets it);
 - merge with "Create a merge commit" (not squash or rebase), so the step commits that *Progress* names stay in the
   history.
 

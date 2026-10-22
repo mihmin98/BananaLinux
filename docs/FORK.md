@@ -22,9 +22,11 @@ digits, is its ID: issue #7 about Tailscale is the branch `k/0007-tailscale`, an
 subject stay apart by their numbers.
 
 A feature branch comes back through a pull request in GitHub's UI. Opened from a fork, a pull request's base is the
-parent repository by default: set it to this fork's `kiwami`. Merge with "Create a merge commit" (not squash or
-rebase), so the feature's step commits, which its plan's progress section points to, stay in the history. The
-description ends with `Closes #<issue>`.
+parent repository by default: set it to this fork's `kiwami`, or open it from
+`https://github.com/<owner>/<repo>/compare/kiwami...k/<NNNN>-<name>`, which sets both. Merge with "Create a merge
+commit" (not squash or rebase), so the feature's step commits, which its plan's progress section points to, stay in
+the history. The description ends with `Closes #<issue>`: `kiwami` is the fork's default branch on GitHub, and GitHub
+closes an issue that way only on a merge into the default branch.
 
 A change meant for upstream (a fix, or a hook upstream could use too) is a branch off `main`, not `kiwami`, so it
 carries nothing of the fork.

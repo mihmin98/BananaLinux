@@ -70,9 +70,11 @@ the card on a computer. The user passes the logs back for analysis, and the outc
 table.
 
 **4. Merge.** The user merges the branch into `kiwami` through a pull request in GitHub's UI. Give the PR's title (it
-becomes the merge commit's subject) and description, ending with `Closes #<issue>`, and remind the user that the base
-must be this fork's `kiwami`, not upstream's repository (GitHub defaults to the parent), and to merge with "Create a
-merge commit", which keeps the step commits the plan's progress points to.
+becomes the merge commit's subject) and description, ending with `Closes #<issue>`, and the link that opens it against
+this fork's `kiwami`, `https://github.com/<owner>/<repo>/compare/kiwami...k/<NNNN>-<name>` (the owner and repository
+from `git remote get-url origin`). Remind the user that the base must be this fork's `kiwami`, not upstream's
+repository (GitHub defaults to the parent; the link sets it), and to merge with "Create a merge commit", which keeps
+the step commits the plan's progress points to.
 
 ## The project
 

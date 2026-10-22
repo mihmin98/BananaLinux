@@ -1,3 +1,4 @@
 menu "Kiwami"
 source "$BR2_EXTERNAL_KIWAMI_PATH/package/kiwami-tailscale/Config.in"
+source "$BR2_EXTERNAL_KIWAMI_PATH/package/kiwami-libretro-mesen/Config.in"
 endmenu

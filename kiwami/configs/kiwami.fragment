@@ -6,3 +6,6 @@
 # stages of it from source
 BR2_PACKAGE_KIWAMI_TAILSCALE=y
 BR2_PACKAGE_HOST_GO_BIN=y
+
+# The fork's second cores, each a choice in Settings > Other systems next to upstream's core for the system
+BR2_PACKAGE_KIWAMI_LIBRETRO_MESEN=y

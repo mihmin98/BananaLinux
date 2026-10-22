@@ -569,6 +569,37 @@ Where the implementation turned out different from this plan, why, and what chan
   `powersave` (M10 (a)), short of 60: step 6's fallback applies, and `core-overrides` writes `SameBoy/SameBoy.cfg` as
   it does Mesen's. The user's choice: the 96 kHz patch stays (about a sixth less of SameBoy's work, for headroom and
   battery) rather than going back to 384 kHz or down to 48 kHz. A10, A16, step 6 and M10 follow.
+- **22 Oct 2026: the final check closed with A6, A11 and A13 not verified on the device.** M4, M5, M8 and M9 were
+  skipped (the user's choice), so the final check's "the manual tests all passed" doesn't hold as planned. The user
+  accepted it: A6 is partly covered (`cores-ui.sh` keeps a missing core's `core.<system>`; the fallback is upstream's
+  `run-retroarch` code, unchanged but for the hook line after it), A11 rests on RetroArch's per-core save and state
+  folders (`DEPENDENCIES.md`), and A13 is untested. The pull request says so.
+
+## Final check
+
+Run on 22 Oct 2026 at `fb146ba` (the code as of `afb82f9`).
+
+- `make test`: passed. Its 132 renders identical to `kiwami`'s (`d535ca8`, the branch's base: its `ui/` exported with
+  `git archive` and built under `/tmp`, both suites run side by side so their clocks agree); the frame bench's average
+  unchanged (0.01 ms; one worst frame 0.08 against 0.05 ms, the two suites sharing the CPU).
+- Other systems, no fork core installed (`home 0; press start; press r; press r; press r; press a`, its top and its
+  end): identical to `kiwami`'s at 640x480 and 1024x768; the log has `rows in Other systems: none` (A5, A15).
+- `make -C ui` (with ALSA) and `make -C system/bananad CFLAGS="-O2 -Werror"`: built, no warnings.
+- `kiwami/tests/ci.sh .buildroot`: passed (`core-overrides` 33 checks, `cores-ui`, `tailscale-ui`, `7z-ui`, the
+  helper's 69, the units' 248, post-build; `rgds`, `rgds_plus` and `universal` configured with the three options).
+- The hooks: `git diff --stat main...HEAD` and `git grep -n 'kiwami:'` agree (every file in the diff has its
+  `kiwami:` lines). This feature's, against `kiwami`: `settings.cpp`'s `Kiwami::rows(*this, O);	// kiwami: the fork's
+  cores` and `run-retroarch`'s `core-overrides` line, nothing else.
+- `rgds`: the three cores built (one call each), SameBoy with its patch applied (`AUDIO_FREQUENCY 96000`); aarch64,
+  `NEEDED` only the toolchain's libraries, `retro_init` and `retro_run` exported.
+- `rgds-plus` (the update from `afb82f9`; Mesen and Genesis Plus GX built from scratch at `e25ebf0`, SameBoy at step
+  5): stripped, Mesen 3,167,512, SameBoy 342,728, Genesis Plus GX 12,560,264 bytes. `rootfs.squashfs` 172,720,128
+  bytes, 3,330,048 (2.0%) over the baseline's 169,390,080, 95.7 MB free in the 268,435,456-byte slot (A14).
+- `kiwami/DEPENDENCIES.md` (the three cores, SameBoy's patch, RetroArch's per-core saves and overrides) and
+  `docs/FORK.md` (the merge checks) are up to date; `docs/ARCHITECTURE.md` and `CLAUDE.md` need nothing.
+- The criteria: A1 (configure, the builds), A2-A5, A7 (`cores-ui.sh`, M1), A8 (`tailscale-ui.sh`, `cores-ui.sh`),
+  A9 (M2), A10 (M3, M10), A12 (M6, M7), A14 (the sizes, the bench), A15 (the renders), A16 (`core-overrides.sh`,
+  M10) met; A6, A11, A13 not verified on the device (*Deviations*).
 
 ## Progress
 
@@ -582,4 +613,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 4. A row per system in Settings > Other systems | done | More cores: a row per system in Settings > Other systems for the fork's cores |
 | 5. SameBoy's sound at 96 kHz | done | More cores: SameBoy's sound at 96 kHz, a quarter of the resampling |
 | 6. Mesen's and SameBoy's threaded video | done | More cores: Mesen and SameBoy draw on their own thread, as they need for 60 fps |
-| 7. Final check | todo | |
+| 7. Final check | done | More cores: the final check done |

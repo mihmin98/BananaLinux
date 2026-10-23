@@ -102,7 +102,7 @@ Each step, in the template's form:
 - **Manual**: what only the device (or QEMU) can show: sleep and the lid, hardware, Wi-Fi, a real update, timings.
   Each row with the board, the exact steps, what's expected, the logs to collect and the criteria it covers. Where
   the feature has no log of its own to show it, plan for it to log to `/data/banana/logs/`; say how to fetch each log
-  (over SSH/SFTP, Settings > System > SSH, or from the card on a computer). Ask the user which boards they can test
+  (over SSH/SFTP, Settings > Network > SSH, or from the card on a computer). Ask the user which boards they can test
   on if you don't know.
 - With the fork's options off, the fork must look as `main` does: the final check compares `make test`'s renders.
 

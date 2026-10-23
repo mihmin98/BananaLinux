@@ -48,7 +48,7 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 
 ## Manual tests
 
-On the device, for what headless tests can't reach. Logs are fetched over SSH/SFTP (Settings > System > SSH) or from
+On the device, for what headless tests can't reach. Logs are fetched over SSH/SFTP (Settings > Network > SSH) or from
 the card on a computer (`banana/logs/` on the card is `/data/banana/logs/` on the device).
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |

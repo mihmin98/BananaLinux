@@ -102,7 +102,7 @@ builds and flashes, or that you build when the user asks (it takes over an hour;
 plan reaches them:
 
 - Give the user the checklist: each test's board, steps, what's expected, and the logs to fetch, how (over SSH/SFTP,
-  Settings > System > SSH, or from the card on a computer; `/data/banana/logs/` is `banana/logs/` on the card) and
+  Settings > Network > SSH, or from the card on a computer; `/data/banana/logs/` is `banana/logs/` on the card) and
   under which name.
 - When the user passes logs or outcomes back, analyse them against the expected behaviour, and say what they show
   with the lines that show it. A failure is diagnosed from the logs; a fix is a change to the plan agreed with the

@@ -73,7 +73,7 @@ the user has committed and says to go on. If a step turns out different from the
 the plan (its *Deviations* section) before going further.
 
 Where a manual test needs information from the device, the feature logs to `/data/banana/logs/` (or the test says
-which existing log to read), and the checklist says what to fetch: over SSH/SFTP (Settings > System > SSH) or from
+which existing log to read), and the checklist says what to fetch: over SSH/SFTP (Settings > Network > SSH) or from
 the card on a computer. The user passes the logs back for analysis, and the outcome goes in the plan's manual test
 table.
 

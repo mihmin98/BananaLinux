@@ -1042,11 +1042,11 @@ namespace rnds
 				startInsert();
 				render(false);
 			}
-			else if (ui->mView == LAUNCH && !launched && now - launchT0 < INS_LIFT + INS_SLIDE)
+			else if (ui->mView == LAUNCH && !launched && now - launchT0 < (INS_LIFT + INS_SLIDE) / INS_SPEED)
 			{
 				// A again: straight to the click
-				launchT0 = now - (INS_LIFT + INS_SLIDE);
-				launchAt = now + (LAUNCH_DELAY - INS_LIFT - INS_SLIDE);
+				launchT0 = now - (INS_LIFT + INS_SLIDE) / INS_SPEED;
+				launchAt = now + (LAUNCH_DELAY - (INS_LIFT + INS_SLIDE) / INS_SPEED);
 			}
 		}
 
@@ -1382,13 +1382,29 @@ namespace rnds
 			std::string bmode = src->batteryMode();
 			float lvl = src->battery();
 			bool pctText = bmode == "text" && lvl >= 0;
+			bool charging = src->charging();
 			auto battery = [&](float bx)		// the 26x14 icon, its level 3 px in
 			{
 				drawSprite(still("batt", batt, false), bx, 25 + ry, nullptr, INK);
 				float l = lvl < 0 ? 0.75f : lvl;
 				float fw = std::round(16 * std::min(1.0f, std::max(0.0f, l)) * s) / s;
+				// on the charger: the level in the accent colour (the amber of the charging LED) and a bolt over it,
+				// in ink with a dark edge left and right so it reads over the level and over the empty part alike
+				Color lc = charging ? Color::hex(accent.base) : INK;
 				if (fw > 0)
-					be->fill(std::round(X(bx + 3)), std::round(X(28 + ry)), std::round(X(fw)), std::round(X(8)), INK);
+					be->fill(std::round(X(bx + 3)), std::round(X(28 + ry)), std::round(X(fw)), std::round(X(8)), lc);
+				if (charging)
+				{
+					static const int BOLT[8][2] = { { 4, 2 }, { 3, 2 }, { 2, 2 }, { 1, 5 }, { 3, 2 }, { 2, 2 }, { 1, 2 }, { 0, 2 } };	// x, length per row
+					float x0 = bx + 3 + 5, y0 = 28 + ry;
+					auto run = [&](float x, float y, float w, Color c)
+					{
+						float a = std::round(X(x)), b = std::round(X(x + w)), t = std::round(X(y)), u = std::round(X(y + 1));
+						be->fill(a, t, b - a, u - t, c);
+					};
+					for (int r = 0; r < 8; r++) run(x0 + BOLT[r][0] - 1, y0 + r, BOLT[r][1] + 2, BLACKISH);
+					for (int r = 0; r < 8; r++) run(x0 + BOLT[r][0], y0 + r, BOLT[r][1], INK);
+				}
 			};
 			// on the left after the Wi-Fi: "icon only" the battery icon; "icon and text" the percentage and then the icon
 			// ("78% [battery]"), the percentage right-aligned in room for "100%" so nothing moves as it changes, and
@@ -1934,12 +1950,15 @@ namespace rnds
 
 		// ---- the ready screen: the cartridge goes into the console ----
 		static constexpr double INS_LIFT = 120, INS_SLIDE = 400, INS_CLICK = 90, INS_SETTLE = 110;
+		// Banana: played 3x as fast (the game started 920 ms after A, now ~300 ms); the times above are the drawing's,
+		// in ROCKNIXDS's speed
+		static constexpr double INS_SPEED = 3;
 		// then the game starts, once the click has been heard (ES closes its audio as it launches)
-		static constexpr double LAUNCH_DELAY = INS_LIFT + INS_SLIDE + INS_CLICK + INS_SETTLE + 200;
+		static constexpr double LAUNCH_DELAY = (INS_LIFT + INS_SLIDE + INS_CLICK + INS_SETTLE) / INS_SPEED + 120;
 
 		void drawInsert(float ry)
 		{
-			double t = now - launchT0;
+			double t = (now - launchT0) * INS_SPEED;	// (the drawing's time)
 			// the console under it: a face with the slot's mouth and a power light
 			float mouthY = ry + 170, clipY = mouthY + 9;
 			// Banana: the back of the console as pixel art, 560 wide, its slot where the box's mouth is (tools/make-console.py)

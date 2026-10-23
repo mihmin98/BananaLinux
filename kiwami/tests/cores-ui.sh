@@ -84,9 +84,10 @@ for size in 640x480 1024x768; do
     run $size back all "$OTHER; $DOWN7; press right; press down; press right; press down; press left; press down; press left"
     has "core.nes = fceumm" "core.gb = gambatte" "core.gbc = gambatte" "core.megadrive = picodrive"
 
-    # Mega Drive is the list's last row (Up from Screen goes round to it), no Tailscale row after it
+    # Mega Drive is the last core row, before upstream's RetroArch hotkeys and Reset RetroArch (Up three times from
+    # Screen goes round to it), no Tailscale row after it
     card
-    run $size last all "$OTHER; press up; wait 400; shot last; press right"
+    run $size last all "$OTHER; press up; press up; press up; wait 400; shot last; press right"
     shown last
     changed "core.megadrive = genesis_plus_gx "
 
@@ -96,9 +97,10 @@ for size in 640x480 1024x768; do
     rows "Other systems: core.gb core.gbc|Network: kiwami.tailscale|"
     changed "core.gbc = sameboy core.gb = sameboy "
 
-    # none of them: upstream's rows only (VSync last), and a card's core naming a missing one kept
+    # none of them: upstream's rows only (VSync last before RetroArch hotkeys and Reset RetroArch), and a card's core
+    # naming a missing one kept
     card "core.nes = mesen"
-    run $size none none "$OTHER; press up; press right"
+    run $size none none "$OTHER; press up; press up; press up; press right"
     rows "Other systems: none|Network: kiwami.tailscale|"
     has "ra_vsync = off" "core.nes = mesen"
     changed "ra_vsync = off "

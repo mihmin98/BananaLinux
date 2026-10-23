@@ -18,9 +18,11 @@
 #include "library.h"
 #include "soft.h"
 #include "splash.h"
+#include "lang.h"
 #include "settings.h"
 #include "settings_defaults.h"
 #include "theme.h"
+#include "colors.h"
 #include "zip.h"
 #include "sound.h"
 #include "menu.h"
@@ -49,6 +51,8 @@
 #include <sys/resource.h>
 #include <sys/syscall.h>
 #include <sys/inotify.h>
+#include <sys/socket.h>
+#include <linux/netlink.h>
 #include <sys/wait.h>
 #include <thread>
 #include <time.h>
@@ -489,10 +493,12 @@ static int runHeadless(const Options& o, Host& lib, const std::string& variant, 
 			if (it == keys.end()) { logf("unknown button %s", b.c_str()); return 2; }
 			if (low.hide(now)) logf("press %s: notice hidden", b.c_str());
 			if (!settings.isOpen() && it->second == Key::SELECT) { settings.openSearch(lib.searchQuery()); logf("press select: search open"); continue; }
-			if (!settings.isOpen() && it->second == Key::X && ui.view() == rnds::UI::LIBRARY && ui.gameIndex() >= 0 && lib.systemOf(ui.gameIndex()).id == "nds")
+			if (!settings.isOpen() && it->second == Key::X && ui.view() == rnds::UI::LIBRARY && ui.gameIndex() >= 0)
 			{
 				const std::string& path = lib.gameAt(ui.gameIndex()).path;
-				settings.openGame(lib.gameAt(ui.gameIndex()).title, path.substr(path.rfind('/') + 1));
+				std::string key = lib.gameKey(ui.gameIndex());
+				auto t = lib.gameTitles(key);
+				settings.openGame(lib.gameAt(ui.gameIndex()).title, path.substr(path.rfind('/') + 1), lib.systemOf(ui.gameIndex()).id == "nds", key, t.name, t.sort, path, lib.gameAt(ui.gameIndex()).scraped);
 				logf("press x: game page for %s", path.c_str());
 				continue;
 			}
@@ -500,6 +506,15 @@ static int runHeadless(const Options& o, Host& lib, const std::string& variant, 
 			{
 				if (!settings.isOpen()) { settings.open(); logf("press %s: settings open", b.c_str()); continue; }
 				int r = (int)settings.press(it->second);
+				if (r == Settings::TITLES)
+				{
+					int sys = ui.systemIndex(), g = ui.gameIndex();
+					std::string path = g >= 0 && g < lib.gameCount() ? lib.gameAt(g).path : "";
+					lib.setGameTitles(settings.gameKey, settings.gameName, settings.gameSort);
+					ui.dataChanged();
+					for (int i = 0; i < lib.gameCount(); i++) if (lib.gameAt(i).path == path) { ui.setLibrary(sys, i); break; }
+					logf("titles %s: \"%s\" / \"%s\"", settings.gameKey.c_str(), settings.gameName.c_str(), settings.gameSort.c_str());
+				}
 				if (r == Settings::SEARCH)
 				{
 					lib.setSearch(settings.searchText);
@@ -690,7 +705,9 @@ struct Iris
 	int W, H, block;
 	size_t n;
 	float full;
-	static constexpr double CLOSE = 360, HOLD = 70, OPEN = 450;
+	// the boot's (the user: the boot animation keeps its length, only the boot itself gets faster); after a game the
+	// opening is GAME_OPEN, 3x as fast
+	static constexpr double CLOSE = 360, HOLD = 70, OPEN = 450, GAME_OPEN = 150;
 	Iris(Display& d, SoftBackend& b) : disp(d), be(b), W(b.width()), H(b.height())
 	{
 		n = (size_t)W * H;
@@ -725,7 +742,7 @@ struct Iris
 	// black for a moment, then the circle opening on the menu: fast at first, settling. The menu as it will be 300 ms
 	// on (before the opening ends, so its clock never goes back), opened on as a still picture: a live menu frame
 	// (16-20 ms) each refresh made the opening miss refreshes
-	void openOn(Menu& ui, double hold)
+	void openOn(Menu& ui, double hold, double open = OPEN)
 	{
 		const double t1 = nowMs();
 		std::vector<uint32_t> menu[2] = { std::vector<uint32_t>(n), std::vector<uint32_t>(n) };
@@ -740,7 +757,7 @@ struct Iris
 		const double t2 = nowMs();
 		for (;;)
 		{
-			double p = (nowMs() - t2) / OPEN;
+			double p = (nowMs() - t2) / open;
 			if (p >= 1) break;
 			float e = (float)p; e = 1 - (1 - e) * (1 - e) * (1 - e);
 			frame(menu, full * e);
@@ -783,7 +800,7 @@ static void irisFromGame(Display& disp, SoftBackend& be, Menu& ui)
 	for (int sc = 0; sc < 2; sc++) std::fill(be.canvas(sc), be.canvas(sc) + iris.n, 0xff000000u);
 	be.invalidate();
 	showFrame(disp, be, -1);
-	iris.openOn(ui, 120);
+	iris.openOn(ui, 40, Iris::GAME_OPEN);
 }
 
 // The CPU's lowest clock raised to the menu's highest (banana-perf ui: schedutil up to 1416 MHz) from a press and while
@@ -952,6 +969,24 @@ int main(int argc, char** argv)
 	// the card's settings.conf made whole (missing keys added, invalid values put back): first boot and after an update
 	normalizeSettings(o.data);
 	auto settings = readSettings(o.data);
+	// the menu's language (Settings > System > Language): every text laid out goes through its translations; the lines
+	// with none stay English and are listed in /run/banana/lang-missing.txt (for the translator's next round)
+	const std::string langDir = o.assets + "/../lang";
+	if (lang::load(langDir, settings["language"], { "menu", "settings", "systems" }) && lang::active())
+	{
+		lang::missingLog(envOr("BANANA_LANG_MISSING", "/run/banana/lang-missing.txt"));
+		rnds::setTranslator(lang::tr32);
+		logf("language: %s (%s), translated by %s", lang::current().name.c_str(), lang::current().code.c_str(), lang::current().by.c_str());
+	}
+	// the characters Pixelify Sans lacks (CJK) from Fusion Pixel 12px, a pixel font drawn at whole multiples of 12 px;
+	// only read for a language that needs it (7 MB). scale: device px per CSS px
+	auto cjkFont = [&](float scale)
+	{
+		if (!lang::active()) return;
+		auto f = rnds::Font::load(o.assets + "/fonts/fusion-pixel-12px-proportional-zh_hans.ttf");
+		if (f) rnds::setFallbackFont(f, 12, scale);
+		else logf("language: no CJK font in %s/fonts", o.assets.c_str());
+	};
 	// banana/themes on the card, for themes of one's own: the image's README and examples to start from (once)
 	if (access((o.data + "/themes").c_str(), F_OK) != 0 && access("/usr/share/banana/themes", F_OK) == 0)
 		if (system(("mkdir -p '" + o.data + "/themes' && cp -r /usr/share/banana/themes/. '" + o.data + "/themes/' 2>/dev/null").c_str()) != 0) {}	// (-r: a theme's folder of pictures too)
@@ -977,6 +1012,7 @@ int main(int argc, char** argv)
 
 	if (!o.headless.empty())
 	{
+		cjkFont(o.h / 480.0f);
 		lib.scan();
 		return runHeadless(o, lib, variant, settings["theme"]);
 	}
@@ -1001,6 +1037,15 @@ int main(int argc, char** argv)
 	SoftBackend be(disp.width(), disp.height());
 	logf("panels %dx%d", disp.width(), disp.height());
 	bootMark("banana-ui: panels open");
+	// the screen colours (Settings > Display & sound > Screen colours): the one colour table, on the screen it corrects
+	auto applyColors = [&](const char* when)
+	{
+		ScreenColors c = ScreenColors::load(o.data + "/screen-colors.conf");
+		std::string e = disp.setColors(c);
+		if (!e.empty()) logf("screen colours (%s): %s", when, e.c_str());
+		else if (!c.neutral()) logf("screen colours (%s): the %s screen corrected", when, c.screen == 0 ? "top" : "bottom");
+	};
+	applyColors("start");
 
 	Sound sound(o.assets + "/sounds");
 	FrameStats fstat;
@@ -1020,6 +1065,7 @@ int main(int argc, char** argv)
 	std::thread loader([&]
 	{
 		double t0 = nowMs();
+		cjkFont(disp.height() / 480.0f);	// (here, off the boot animation's thread)
 		lib.scan();
 		logf("library: %d shelves in %.0f ms", lib.systemCount(), nowMs() - t0);
 		int startSys = 0;
@@ -1068,6 +1114,7 @@ int main(int argc, char** argv)
 	int lastMinute = -1;
 	float scale = disp.height() / 480.0f;
 	Settings settingsView(&be, o.assets, o.data, scale, variant);
+	settingsView.setColors = [&](const ScreenColors& c) { std::string e = disp.setColors(c); if (!e.empty()) logf("screen colours: %s", e.c_str()); return e; };
 	settingsView.setFontDir(o.banana + "/fonts");
 	settingsView.searchCount = [&](const std::string& q) { return lib.countMatches(q); };
 	settingsView.setVariant(settings["theme"]);	// (Carts: Inter)
@@ -1095,6 +1142,12 @@ int main(int argc, char** argv)
 		switch (r)
 		{
 		case Settings::MOVED: sound.play("scroll"); break;
+		case Settings::LANGUAGE:
+			// every text cached in the menus is in the old language: banana-ui starts again (init runs it anew)
+			logf("language changed to %s: starting again", getConfValue(o.data + "/settings.conf", "language", "en").c_str());
+			sound.play("select");
+			quit = true;
+			break;
 		case Settings::CHANGED:
 		{
 			settings = readSettings(o.data);
@@ -1123,6 +1176,18 @@ int main(int argc, char** argv)
 			break;
 		}
 		case Settings::CLOSED: sound.play("back"); break;
+		case Settings::TITLES:
+		{
+			// a game's own name or sort title typed on its page: the library again, the cursor on the same game
+			int sys = ui->systemIndex(), g = ui->gameIndex();
+			std::string path = g >= 0 && g < lib.gameCount() ? lib.gameAt(g).path : "";
+			lib.setGameTitles(settingsView.gameKey, settingsView.gameName, settingsView.gameSort);
+			ui->dataChanged();
+			for (int i = 0; i < lib.gameCount(); i++) if (lib.gameAt(i).path == path) { ui->setLibrary(sys, i); break; }
+			logf("titles %s: \"%s\" / \"%s\"", settingsView.gameKey.c_str(), settingsView.gameName.c_str(), settingsView.gameSort.c_str());
+			sound.play("select");
+			break;
+		}
 		case Settings::SEARCH:
 		{
 			// the Search collection first on the shelf, opened on its first game (an empty text takes it away)
@@ -1165,15 +1230,18 @@ int main(int argc, char** argv)
 		}
 		if (ev.type == InputEvent::PRESS && ev.key == Key::X)
 		{
-			// X on a DS game in the library: the emulator for this game (Settings' game page)
+			// X on a game in the library: its own page (Settings' game page): a DS game's emulator and shader, and any
+			// game's name and sort title
 			std::lock_guard<std::mutex> l(worker.uiLock);
 			int g = ui->gameIndex();
-			if (ui->view() == rnds::UI::LIBRARY && g >= 0 && g < lib.gameCount() && lib.systemOf(g).id == "nds")
+			if (ui->view() == rnds::UI::LIBRARY && g >= 0 && g < lib.gameCount())
 			{
 				const std::string& path = lib.gameAt(g).path;
+				std::string key = lib.gameKey(g);
+				auto t = lib.gameTitles(key);
 				ui->touchCancel();
 				settingsView.setVariant(settings["theme"]);
-				settingsView.openGame(lib.gameAt(g).title, path.substr(path.rfind('/') + 1));
+				settingsView.openGame(lib.gameAt(g).title, path.substr(path.rfind('/') + 1), lib.systemOf(g).id == "nds", key, t.name, t.sort, path, lib.gameAt(g).scraped);
 				rep.key = Key::NONE;
 				sound.play("select");
 				dirty = true;
@@ -1399,6 +1467,16 @@ int main(int argc, char** argv)
 		if (system("banana-perf ui") != 0) {}
 		logf("game ended after %ld s (status %d)", secs, status);
 		for (int tries = 0; !disp.open(o.top, err) && tries < 100; tries++) usleep(50000);
+		// the display controller's interrupt storm (from the game's panel, or the lease given back): counted over the
+		// iris instead of a 200 ms wait before it (every game's way back waited for it); the full check only if it storms
+		const char* forceStorm = getenv("BANANA_STORM_MIN");	// (tests: the full check as before)
+		if (forceStorm) disp.stormCheck();
+		long long stormIrqs = Display::vopIrqCount();
+		double stormFrom = nowMs();
+		// (a game's own modeset may have dropped it; the Screen colours page, still up after a game started through the
+		// launch file, draws the values itself: no table under it then)
+		if (settingsView.colorsOpen()) disp.setColors(ScreenColors());
+		else applyColors("after the game");
 		be.invalidate();
 		input.open(o.touch, disp.width(), disp.height());
 		bottomIdle.setOwned(false, nowMs());	// the game session is over: the menu keeps the bottom screen awake
@@ -1411,6 +1489,12 @@ int main(int argc, char** argv)
 		ui->dataChanged();
 		ui->setLibrary(lib.currentShelf(), game);
 		if (disp.isOpen()) irisFromGame(disp, be, *ui);
+		if (!forceStorm && stormIrqs >= 0 && disp.isOpen())
+		{
+			long long c = Display::vopIrqCount();
+			double ms = nowMs() - stormFrom;
+			if (c >= 0 && ms > 50 && (c - stormIrqs) * 1000 / ms > 20000) disp.stormCheck();	// (calm: ~120 a second)
+		}
 		dirty = true;
 		batteryDue = true;	// a step passed during the game shows now
 	};
@@ -1418,6 +1502,16 @@ int main(int argc, char** argv)
 	if (system("banana-perf ui") != 0) {}
 	// the launch hook (below) wakes the menu when it is written: an idle menu sleeps in poll() until a press otherwise,
 	// and a launch written then started its game only at the next press, in the middle of whatever came next
+	// the kernel's uevents for the charger (as bananad listens to them): the bolt on the battery icon as the cable goes in
+	// or out, not at the next minute's redraw
+	int uevent = socket(AF_NETLINK, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, NETLINK_KOBJECT_UEVENT);
+	{
+		sockaddr_nl a = {};
+		a.nl_family = AF_NETLINK;
+		a.nl_groups = 1;
+		if (uevent >= 0 && bind(uevent, (sockaddr*)&a, sizeof a) < 0) { close(uevent); uevent = -1; }
+	}
+	bool charging = lib.power().charging;
 	int launchWatch = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
 	if (launchWatch >= 0 && inotify_add_watch(launchWatch, "/run/banana", IN_CLOSE_WRITE | IN_MOVED_TO) < 0)
 	{
@@ -1437,6 +1531,19 @@ int main(int argc, char** argv)
 			if (rearrange(lib, *ui)) dirty = true;
 		}
 		if (input.rescanDue()) input.open(o.touch, disp.width(), disp.height());	// a pad came or went
+		{
+			// the display controller's interrupt storm, looked at every 10 s without waiting: over 20000 a second on
+			// average since the last look, the full check (it measures again and switches the panels off and on)
+			static double stormAt = 0;
+			static long long stormIrqs = -1;
+			if (now >= stormAt)
+			{
+				long long c = Display::vopIrqCount();
+				if (stormIrqs >= 0 && c >= 0 && stormAt > 0 && (c - stormIrqs) / 10 > 20000) disp.stormCheck();
+				stormIrqs = Display::vopIrqCount();
+				stormAt = now + 10000;
+			}
+		}
 		if (settingsView.isOpen())
 		{
 			std::lock_guard<std::mutex> l(worker.uiLock);
@@ -1578,6 +1685,7 @@ int main(int argc, char** argv)
 		fds.push_back({ worker.wakeFd, POLLIN, 0 });
 		if (roms.fd >= 0) fds.push_back({ roms.fd, POLLIN, 0 });
 		if (launchWatch >= 0) fds.push_back({ launchWatch, POLLIN, 0 });
+		if (uevent >= 0) fds.push_back({ uevent, POLLIN, 0 });
 		if (disp.isOpen()) fds.push_back({ disp.pollFd(), POLLIN, 0 });
 		for (int fd : input.fds()) fds.push_back({ fd, POLLIN, 0 });
 		int n = poll(fds.data(), fds.size(), timeout);
@@ -1618,6 +1726,23 @@ int main(int argc, char** argv)
 			{
 				alignas(inotify_event) char buf[1024];
 				while (read(launchWatch, buf, sizeof buf) > 0) {}	// (the loop's next pass looks for the launch file)
+			}
+			else if (p.fd == uevent)
+			{
+				char buf[4096];
+				ssize_t got;
+				bool power = false;
+				while ((got = recv(uevent, buf, sizeof buf - 1, 0)) > 0)
+				{
+					buf[got] = 0;
+					for (char* s = buf; s < buf + got; s += strlen(s) + 1) if (!strcmp(s, "SUBSYSTEM=power_supply")) power = true;
+				}
+				if (power)
+				{
+					lib.powerChanged();
+					bool c = lib.power().charging;
+					if (c != charging) { charging = c; dirty = true; batteryDue = true; logf("charger %s", c ? "in" : "out"); }
+				}
 			}
 			else if (p.fd == worker.wakeFd)
 			{

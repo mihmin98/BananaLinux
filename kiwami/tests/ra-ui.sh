@@ -2,8 +2,10 @@
 # The RetroAchievements group in banana-ui's Settings, headless at both panel sizes: its rows (Account, Mode) after
 # System; the groups' grid showing two rows, the first two exactly as with six groups (KIWAMI_RA_GROUP=0 leaves the
 # group out: upstream's grid), scrolling one row to the trophy's and back, wrapping with a short last row; taps on what
-# shows; Mode and Other systems > RetroAchievements kept in step. Needs ui/banana-ui (make ui) and ImageMagick (the
-# test library's art).
+# shows; Mode and Other systems > RetroAchievements kept in step. The Account page against the stand-in server
+# (ra-server.py): signing in (accepted, refused, with no connection and the token fetched later), out (A twice, the
+# scrub first), back in from the remembered accounts, removing one (X twice), an account adopted from accounts.conf;
+# no password or token in the log. Needs ui/banana-ui (make ui), python3 and ImageMagick (the test library's art).
 # Run by kiwami/tests/ci.sh when banana-ui is built, or by hand:
 #   kiwami/tests/ra-ui.sh        (the shots in $OUT, /tmp/kiwami-ra by default)
 set -e
@@ -14,6 +16,22 @@ FX=$OUT/fixture
 rm -rf "$OUT"; mkdir -p "$OUT"
 "$UI/tests/fixture.sh" "$FX" >/dev/null 2>&1
 fail=0
+# the stand-in RetroAchievements server, and one that never answers (no connection); every run talks to them only
+SLOG=$OUT/server.log
+python3 kiwami/tests/ra-server.py "$OUT/port" "$SLOG" & SERVER=$!
+KIWAMI_RA_SERVER_DOWN=1 python3 kiwami/tests/ra-server.py "$OUT/port-down" "$OUT/server-down.log" & DOWN=$!
+trap 'kill $SERVER $DOWN 2>/dev/null' EXIT
+for i in $(seq 50); do [ -s "$OUT/port" ] && [ -s "$OUT/port-down" ] && break; sleep 0.1; done
+[ -s "$OUT/port" ] && [ -s "$OUT/port-down" ] || { echo "FAIL: the stand-in server didn't start"; exit 1; }
+URL=http://127.0.0.1:$(cat "$OUT/port")
+export KIWAMI_RA_URL=$URL KIWAMI_RA_MEDIA=$URL
+URL_DOWN=http://127.0.0.1:$(cat "$OUT/port-down")
+# the card beside Settings' data folder: RetroArch's settings and the DS emulators' tokens, which signing out clears;
+# the scrub's stand-in notes whether the account was still there when it ran
+D=$FX/data
+mkdir -p "$FX/retroarch" "$FX/superdrastic" "$FX/bananads"
+printf 'if grep -q "^ra_password=" "%s/accounts.conf"; then echo keys; else echo none; fi >> "%s/scrubbed"\n' "$D" "$OUT" > "$OUT/scrub.sh"
+export KIWAMI_RA_SCRUB="sh $OUT/scrub.sh"
 # Settings opens on its groups (Display & sound, Sleep & power, Nintendo DS / Other systems, Network, System /
 # RetroAchievements): R five times is System, four Network. (A shot draws, and the grid's rows shown follow the
 # selection when it is drawn or tapped. The pick slides to the selection over the frames after a move, and a shot is
@@ -45,8 +63,23 @@ shown() {
 }
 same() { cmp -s "$OUT/$size-$1-$3.png" "$OUT/$size-$2-$3.png" || { echo "FAIL $size $name: $1 and $2 differ ($3)"; fail=1; }; }
 differ() { cmp -s "$OUT/$size-$1-$3.png" "$OUT/$size-$2-$3.png" && { echo "FAIL $size $name: $1 and $2 are the same ($3)"; fail=1; }; true; }
+# a file's content is exactly $2 (printf's format), or the file isn't there ($2 "-")
+holds() {
+    if [ "$2" = - ]; then [ ! -e "$1" ] || { echo "FAIL $size $name: $1 is there"; fail=1; }; return; fi
+    [ "$(cat "$1" 2>/dev/null)" = "$(printf "$2")" ] || { echo "FAIL $size $name: $1 is '$(cat "$1" 2>/dev/null | tr '\n' '|')'"; fail=1; }
+}
+# the stand-in server's requests since the last check, exactly these (one a line, "|" after each)
+served() {
+    got=$(tr '\n' '|' < "$SLOG"); : > "$SLOG"
+    [ "$got" = "$1" ] || { echo "FAIL $size $name: the server had '$got', not '$1'"; fail=1; }
+}
+# upstream's keyboard by touch (ui/tests/run.sh's): row,column of each key
+key() { for rc in "$@"; do awk -v rc=$rc 'BEGIN { split(rc, a, ","); printf "touch 1 %.0f %.0f; ", 18 + a[2] * 60.4 + 27, 80 + a[1] * 66 + 29 }'; done; }
+ALICE=$(key 2,0 2,8 1,7 3,2 1,2) BOB=$(key 3,4 1,8 3,4) PW1=$(key 1,9 1,1 0,0) PW2=$(key 1,9 1,1 0,1) PW3=$(key 1,9 1,1 0,2)
 
 for size in 640x480 1024x768; do
+    rm -rf "$D/accounts.conf" "$D/ra-accounts" "$D/cache/ra-avatars" "$D/cache/ra-stats" "$FX/retroarch/retroarch.cfg" "$OUT/scrubbed"
+    : > "$SLOG"
     # the group's rows, after System; the first two rows of the grid as with six groups, pixel for pixel
     run $size groups "$SET; shot g0"
     logged "banana-ui: kiwami: rows in RetroAchievements: kiwami.ra.account cheevos_hardcore_mode_enable"
@@ -73,7 +106,7 @@ for size in 640x480 1024x768; do
     lines "groups from row" "banana-ui: kiwami: groups from row 1|banana-ui: kiwami: groups from row 0|"
     same g7 g7d bot
     run $size list "$SET; $R4; press down; press a; shot ra-list; press a"
-    logged "banana-ui: ra: account page (to come)"
+    logged "banana-ui: ra: account page: not signed in, 0 remembered"
     shown ra-list
 
     # UP on Sleep & power: the third row's last tile (its column is empty); then a tap on the empty slot beside it does
@@ -102,6 +135,104 @@ for size in 640x480 1024x768; do
     run $size mode-back "$SET; press r; press r; press r; press a; press down; press down; press right; wait 1; press left; wait 1; shot ora2; press r; press r; press r; press down; wait 1; shot mode2"
     lines "in both rows" "banana-ui: kiwami: Mode Hardcore in both rows|banana-ui: kiwami: Mode Softcore in both rows|"
     same ora0 ora2 bot; same mode0 mode2 bot
+
+    # ---- the Account page (Settings, R four times, DOWN: RetroAchievements; A: its list; A: Account) ----
+    ACCT="$SET; $R4; press down; press a; press a"
+    # a fresh card: not signed in, nothing remembered, nothing written and nothing asked by looking
+    run $size fresh "$SET; $R4; press down; press a; shot fresh-list; press a; shot fresh"
+    logged "banana-ui: ra: account page: not signed in, 0 remembered"
+    holds "$D/accounts.conf" -; holds "$D/ra-accounts" -
+    served ""
+    shown fresh-list fresh
+    printf 'smb_user=me\n' > "$D/accounts.conf"
+
+    # New account: alice, pw1, typed by touch; the server's yes keeps the three keys, the token and the avatar
+    run $size signin "$ACCT; press a; shot kb-name; $ALICE press start; $PW1 shot typed; press start; shot acct-in; press b; shot in-list"
+    logged "banana-ui: ra: signed in as alice (token kept)"
+    holds "$D/accounts.conf" 'smb_user=me\nra_user=alice\nra_password=pw1\nra_retroarch_token=tok1'
+    holds "$D/ra-accounts" 'current\talice'
+    served "r=login2 u=alice p=1 t=0|GET /UserPic/alice.png|"
+    [ -s "$D/cache/ra-avatars/alice.png" ] || { echo "FAIL $size $name: no avatar"; fail=1; }
+    shown acct-in in-list
+    differ fresh-list in-list bot
+
+    # bob with a wrong password: refused, nothing changed
+    cp "$D/accounts.conf" "$OUT/accounts.before"
+    run $size wrong "$ACCT; press down; press down; press a; $BOB press start; $PW3 press start; shot wrong"
+    logged "banana-ui: ra: sign in refused for bob"
+    holds "$D/accounts.conf" "$(cat "$OUT/accounts.before")"
+    holds "$D/ra-accounts" 'current\talice'
+    served "r=login2 u=bob p=1 t=0|"
+    # bob with his own: alice remembered (signed out, her password gone)
+    run $size bob "$ACCT; press down; press down; press a; $BOB press start; $PW2 press start; shot bob"
+    logged "banana-ui: ra: signed in as bob (token kept)"
+    holds "$D/accounts.conf" 'smb_user=me\nra_user=bob\nra_password=pw2\nra_retroarch_token=tok2'
+    holds "$D/ra-accounts" 'current\tbob\nremembered\talice'
+    served "r=login2 u=bob p=1 t=0|GET /UserPic/bob.png|"
+
+    # A on alice, remembered: her password asked; signed in, she leaves the list and bob joins it
+    run $size again "$ACCT; press down; press down; shot alice-row; press a; shot pw-alice; $PW1 press start; shot again"
+    logged "banana-ui: ra: password asked for alice"
+    logged "banana-ui: ra: signed in as alice (token kept)"
+    holds "$D/ra-accounts" 'current\talice\nremembered\tbob'
+    served "r=login2 u=alice p=1 t=0|GET /UserPic/alice.png|"
+    shown alice-row pw-alice
+
+    # X on bob, then DOWN: still there; X, X: gone, with his avatar
+    run $size keep "$ACCT; press down; press down; press x; shot x-armed; press down"
+    unlogged "removed"
+    holds "$D/ra-accounts" 'current\talice\nremembered\tbob'
+    [ -s "$D/cache/ra-avatars/bob.png" ] || { echo "FAIL $size $name: bob's avatar gone"; fail=1; }
+    run $size remove "$ACCT; press down; press down; press x; press x; shot removed"
+    logged "banana-ui: ra: removed bob"
+    holds "$D/ra-accounts" 'current\talice'
+    holds "$D/cache/ra-avatars/bob.png" -
+
+    # Sign out: A, then B, changes nothing; A, A runs the scrub (the account still there), then the keys,
+    # retroarch.cfg's two lines and both tokens go, and alice is remembered
+    printf 'video_driver = "kms"\ncheevos_enable = "true"\ncheevos_username = "alice"\n' > "$FX/retroarch/retroarch.cfg"
+    printf 'alice\ntok1\n' > "$FX/superdrastic/ra.token"; printf 'alice\ntok1\n' > "$FX/bananads/ra.token"
+    cp "$D/accounts.conf" "$OUT/accounts.before"
+    run $size out-b "$ACCT; press down; press a; shot out-armed; press b"
+    unlogged "signed out"
+    holds "$D/accounts.conf" "$(cat "$OUT/accounts.before")"
+    holds "$OUT/scrubbed" -
+    [ -e "$FX/superdrastic/ra.token" ] && [ -e "$FX/bananads/ra.token" ] || { echo "FAIL $size $name: a token gone"; fail=1; }
+    run $size out "$ACCT; press down; press a; press a; shot out"
+    logged "banana-ui: ra: signed out alice"
+    holds "$OUT/scrubbed" keys
+    holds "$D/accounts.conf" 'smb_user=me'
+    holds "$FX/retroarch/retroarch.cfg" 'video_driver = "kms"\ncheevos_enable = "false"\ncheevos_username = ""'
+    holds "$FX/superdrastic/ra.token" -; holds "$FX/bananads/ra.token" -
+    holds "$D/ra-accounts" 'remembered\talice'
+    differ out-armed out bot
+    served ""
+
+    # signing in with no connection: kept unchecked, no token; the next opening with the server there gets it, once
+    KIWAMI_RA_URL=$URL_DOWN run $size offline "$ACCT; press a; $PW1 press start; shot offline"
+    logged "banana-ui: ra: signed in as alice, not checked: no connection"
+    holds "$D/accounts.conf" 'smb_user=me\nra_user=alice\nra_password=pw1'
+    holds "$D/ra-accounts" 'current\talice'
+    run $size later "$ACCT; shot later"
+    logged "banana-ui: ra: no token for alice yet: asking for it"
+    logged "banana-ui: ra: token kept for alice"
+    holds "$D/accounts.conf" 'smb_user=me\nra_user=alice\nra_password=pw1\nra_retroarch_token=tok1'
+    served "r=login2 u=alice p=1 t=0|GET /UserPic/alice.png|"
+    # (opened again: nothing asked) a tap on New account selects it, a second opens the keyboard for its name
+    run $size kept "$ACCT; touch 1 320 238; touch 1 320 238; shot kept-kb"
+    served ""
+    lines "touch " "banana-ui: touch 320 238: settings result 1|banana-ui: touch 320 238: settings result 1|"
+    same kb-name kept-kb bot
+
+    # the account in accounts.conf changed behind the page's back (the setup's step): adopted when Settings opens
+    printf 'ra_user=bob\nra_password=pw2\n' > "$D/accounts.conf"
+    run $size adopt "$SET; shot adopt"
+    logged "banana-ui: ra: adopted bob, alice remembered"
+    holds "$D/ra-accounts" 'current\tbob\nremembered\talice'
+    served ""
+
+    # no password or token in any of this size's logs
+    ! grep -lE 'pw[123]|tok[12]' "$OUT/$size"-*.log || { echo "FAIL $size: a password or a token in the log"; fail=1; }
 done
 [ $fail = 0 ] && echo "ra-ui: all checks passed ($OUT)"
 exit $fail

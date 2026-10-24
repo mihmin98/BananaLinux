@@ -1,6 +1,7 @@
 // banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing, each page
-// hook going to the page that is open, and the groups' grid; the pages are in their own files (tailscale.cpp).
-#include "kiwami.h"
+// hook going to the page that is open, and the groups' grid; the pages are in their own files (tailscale.cpp,
+// ra-account.cpp).
+#include "ra.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -114,49 +115,52 @@ namespace banana
 		modeAt = -1;
 		for (auto& it : st.items) if (it.key == MODE) modeAt = it.at;	// (both rows as just read, from the one file)
 		tsOpened();
+		raOpened();
 	}
 
 	Settings::Result Settings::Kiwami::open(const std::string& key)
 	{
 		if (key == "kiwami.tailscale") { pageOpen = Page::TAILSCALE; return tsOpen(); }
-		if (key == "kiwami.ra.account") { fprintf(stderr, "banana-ui: ra: account page (to come)\n"); return NONE; }
+		if (key == "kiwami.ra.account") { pageOpen = Page::RA_ACCOUNT; return raOpen(); }
 		return NONE;
 	}
 
 	Settings::Result Settings::Kiwami::press(Key k)
 	{
-		return pageOpen == Page::TAILSCALE ? tsPress(k) : NONE;
+		return pageOpen == Page::TAILSCALE ? tsPress(k) : pageOpen == Page::RA_ACCOUNT ? raPress(k) : NONE;
 	}
 
 	Settings::Result Settings::Kiwami::touch(float cx, float cy)
 	{
-		return pageOpen == Page::TAILSCALE ? tsTouch(cx, cy) : NONE;
+		return pageOpen == Page::TAILSCALE ? tsTouch(cx, cy) : pageOpen == Page::RA_ACCOUNT ? raTouch(cx, cy) : NONE;
 	}
 
 	void Settings::Kiwami::render()
 	{
 		if (pageOpen == Page::TAILSCALE) tsRender();
+		else if (pageOpen == Page::RA_ACCOUNT) raRender();
 	}
 
 	std::string Settings::Kiwami::entryHelp() const
 	{
-		return pageOpen == Page::TAILSCALE ? tsEntryHelp() : "";
+		return pageOpen == Page::TAILSCALE ? tsEntryHelp() : pageOpen == Page::RA_ACCOUNT ? raEntryHelp() : "";
 	}
 
 	Settings::Result Settings::Kiwami::entered(std::string& text)
 	{
-		return pageOpen == Page::TAILSCALE ? tsEntered(text) : NONE;
+		return pageOpen == Page::TAILSCALE ? tsEntered(text) : pageOpen == Page::RA_ACCOUNT ? raEntered(text) : NONE;
 	}
 
 	bool Settings::Kiwami::update(double t)
 	{
-		bool mode = syncMode();
-		return tsUpdate(t) || mode;
+		bool mode = syncMode(), ra = raUpdate();
+		return tsUpdate(t) || mode || ra;
 	}
 
 	int Settings::Kiwami::wake(double t, bool shown) const
 	{
-		return tsWake(t, shown && pageOpen == Page::TAILSCALE);
+		int w = tsWake(t, shown && pageOpen == Page::TAILSCALE), r = raWake();
+		return w < 0 ? r : r < 0 ? w : std::min(w, r);
 	}
 
 	// ---- the groups' grid: the first row shown follows the selection (grid.h); logged when it moves, for the tests ---
@@ -254,7 +258,7 @@ namespace banana
 
 	std::string Settings::Kiwami::value(const std::string& key) const
 	{
-		return key == "kiwami.tailscale" ? word : "";
+		return key == "kiwami.tailscale" ? word : key == "kiwami.ra.account" ? raValue() : "";
 	}
 
 	// a program of the fork's, its own session; detached so that it outlives a game the menu starts next, waited for

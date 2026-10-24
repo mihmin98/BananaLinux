@@ -868,6 +868,24 @@ Where the implementation turned out different from this plan, why, and what chan
   - The stats cache is `cache/ra-stats/<name in lower case>`, lines `when`, `score`, `softscore`, `messages` and one
     per system (`<system> <started> <completed> <mastered> <unlocked>`), read and written by `saveStats` and
     `loadStats` here so that `remove` has something to delete; step 7 fills it.
+- **2026-10-24, step 5: details the plan left open.**
+  - The pages' shared part of the hooks is in `ra-account.cpp`: the account adopted when Settings opens (only when the
+    group's rows were built, so `KIWAMI_RA_GROUP=0` leaves the card alone), the Account row's value (read from the card
+    when Settings opens and after each change, not at every frame), the request on a thread and its answer taken in by
+    `update()`. A sign-in holds A and X until it is answered. The token fetch on opening doesn't, and a sign-in started
+    meanwhile replaces it (its answer is dropped).
+  - A sign-in keeps the name as the server writes it. An answer that isn't the server's yes or no (a 5xx, JSON cut
+    short) is treated as no connection: kept unchecked, the page saying "Not checked: <why>".
+  - A password kept on the card that the server refuses when the page fetches its token stays. The page says to sign
+    out and in again.
+  - The page's own log lines, besides the plan's and rastore's: `ra: account page: <signed in as alice | not signed
+    in>, <n> remembered`, `ra: checking the account <name>`, `ra: password asked for <name>`, `ra: no token for <name>
+    yet: asking for it`, `ra: token kept for <name>` and `ra: the password kept for <name> was refused`.
+  - The keyboard's title naming alice is checked by `password asked for alice` and the shot `pw-alice`. The fresh
+    card's "Not signed in" is checked by the list's shot differing from the signed-in one, and the request-free open.
+    "No connection" is a second stand-in started with `KIWAMI_RA_SERVER_DOWN`, `KIWAMI_RA_URL` pointing at it for that
+    run. `ra-ui.sh` also taps the page's rows (A21): a first tap selects New account, a second opens the same keyboard
+    as A.
 
 ## Progress
 
@@ -879,7 +897,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 2. The RetroAchievements group, the scrolling grid and the trophy, with Mode | done | RetroAchievements: a group in Settings, the grid scrolling to its row, with Mode |
 | 3. RetroAchievements' requests, and a stand-in server for the tests | done | RetroAchievements: the server's requests, and a stand-in server for the tests |
 | 4. The account on the card: signing in, out, and the remembered accounts | done | RetroAchievements: the account on the card, signed in, out and remembered |
-| 5. The Account page | todo | |
+| 5. The Account page | done | RetroAchievements: the Account page, signing in, out and back with remembered accounts |
 | 6. The game panel takes the token Banana keeps (a bug fix) | todo | |
 | 7. The Stats page | todo | |
 | 8. The games on this card, from the library | todo | |

@@ -13,8 +13,10 @@
 //   RetroAchievements (a seventh group, after System; KIWAMI_RA_GROUP=0 in the environment leaves it out, for the
 //   tests): Account (kiwami.ra.account) and Mode (upstream's cheevos_hardcore_mode_enable, the same setting as Other
 //   systems > RetroAchievements, the two rows kept in step). Its tile has the fork's trophy (ra-icon.cpp), and the
-//   grid, three tiles a row, shows two rows at a time, scrolling to the third (grid.h).
+//   grid, three tiles a row, shows two rows at a time, scrolling to the third (grid.h). A on Account opens the Account
+//   page (ra-account.cpp): sign in, sign out, and the accounts signed out, remembered.
 #include "../settings.h"
+#include <functional>
 #include "grid.h"
 #include "tsstatus.h"
 
@@ -46,7 +48,7 @@ namespace banana
 	private:
 		Settings& st;
 		// the page that shows while Settings' page is KIWAMI: open() sets it, and the page hooks go to its own functions
-		enum class Page { NONE, TAILSCALE } pageOpen = Page::NONE;
+		enum class Page { NONE, TAILSCALE, RA_ACCOUNT } pageOpen = Page::NONE;
 		int row0 = 0;								// the groups' first row shown, kept as the selection moves
 		int modeAt = -1;							// Mode's value as both its rows last had it
 		bool syncMode();							// a change to one of Mode's two rows shown in the other
@@ -104,5 +106,33 @@ namespace banana
 		void renderMenu();
 		void renderDevices();
 		float para(const std::string& t, float top, int maxLines, const rnds::Color& c, float x = 50, float width = 540);
+
+		// RetroAchievements' pages (ra.h: their state, made when Settings first opens with the group). Their part of the
+		// hooks: the account adopted when Settings opens, the Account row's value, the request's answer taken in
+		struct Ra;
+		std::shared_ptr<Ra> ra;
+		void raOpened();
+		std::string raValue() const;
+		bool raUpdate();
+		int raWake() const;
+		void raRead();								// the account and the list, from the card
+		void raRun(std::function<void()> work, std::function<void()> then, bool signingIn);	// a request (Ra::task)
+		// the Account page (ra-account.cpp): the account signed in (avatar, name, points) and Sign out, the remembered
+		// accounts, New account, on the bottom panel; the selected one in full on the top one
+		Result raOpen();
+		Result raPress(Key k);
+		Result raTouch(float cx, float cy);
+		void raRender();
+		std::string raEntryHelp() const;
+		Result raEntered(std::string& text);
+		std::vector<std::string> raRows() const;
+		int raSelected(const std::vector<std::string>& rows);	// the selected row's index, the scroll kept on it
+		void raSignIn(const std::string& name, const std::string& password);
+		void raFetchToken();						// a password with no token yet: the server's token for it
+		void raSignOut();
+		void raRemove(const std::string& name);
+		void raAvatar(const std::string& name, float x, float y, float size);	// its picture, or the trophy
+		void raTop(const std::string& title, const std::string& accent, const std::string& state, const std::string& help,
+			const std::string& avatar);
 	};
 }

@@ -781,8 +781,8 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 
 ## Manual tests
 
-These are on the device, for what headless tests can't reach. Logs are fetched over SSH/SFTP (Settings > Network >
-SSH) or from the card on a computer (`banana/logs/` on the card is `/data/banana/logs/` on the device). Only the RG DS
+These are on the device, for what headless tests can't reach. Logs are fetched over SSH with `scp -O` (Settings > Network >
+SSH; dropbear has no SFTP), over File sharing, or from the card on a computer (`banana/logs/` on the card is `/data/banana/logs/` on the device). Only the RG DS
 Plus is at hand, so every test runs on it.
 
 Two images, one card:
@@ -811,7 +811,7 @@ A run's `<name>` is `<image>-<game>-<core>`, e.g. `v122-cv-fceumm` or `master-cv
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus, v1.22.2 | The baseline's speed. For each of the 10 game-core pairs, choose the core in Settings > Other systems, start the game, reach the scene, run `measure.sh run v122-<game>-<core>`, then quit and run `measure.sh log v122-<game>-<core>`. The pairs: `cv` and `smb` on FCEUmm and Mesen, `ladx` on Gambatte and SameBoy, `s3k` on PicoDrive and Genesis Plus GX, `emerald` on gpSP, `smw` on Snes9x. Then `cv` on FCEUmm once more, as `v122-cv-fceumm-2` (the spread). Then `emerald` and `smw` again with `measure.sh powersave` before `run` (`v122-<game>-ps`). | Every run recorded; Mesen and SameBoy threaded (0006's overrides, shown in the header) | `ra-v122-*.txt`, `ra-v122-*.log`; the lowest fps of each run, noted | A10 (the baseline) | not run |
+| M1 | rgds-plus, v1.22.2 | The baseline's speed. For each of the 10 game-core pairs, choose the core in Settings > Other systems, start the game, reach the scene, run `measure.sh run v122-<game>-<core>`, then quit and run `measure.sh log v122-<game>-<core>`. The pairs: `cv` and `smb` on FCEUmm and Mesen, `ladx` on Gambatte and SameBoy, `s3k` on PicoDrive and Genesis Plus GX, `emerald` on gpSP, `smw` on Snes9x. Then `cv` on FCEUmm once more, as `v122-cv-fceumm-2` (the spread). Then `emerald` and `smw` again with `measure.sh powersave` before `run` (`v122-<game>-ps`). | Every run recorded; Mesen and SameBoy threaded (0006's overrides, shown in the header) | `ra-v122-*.txt`, `ra-v122-*.log`; the lowest fps of each run, noted | A10 (the baseline) | passed, in part (24 Oct 2026, 0.4.2 at `82010f7`): the 10 pairs at 60 fps, plus mGBA. Not run: `v122-cv-fceumm-2`, `v122-emerald-ps`, `v122-smw-ps` (notes) |
 | M2 | rgds-plus, v1.22.2 | The baseline of the rest, on `s3k` with PicoDrive unless said otherwise. Audio: Settings > Other systems > Audio latency 32, 64 and 128, a minute each on the speakers; at 64, `measure.sh reinit` mid-game. VSync off on `smw`: speed and tearing; then VSync back on. Fast-forward (the game panel's tile) on `cv` FCEUmm: the fps it reaches. On a game with achievements (`smb` FCEUmm), the game panel's achievements list as it shows. RetroArch's menu > Online Updater: the entries listed (a photo or a list). After a game-panel game, `measure.sh card v122`. | Recorded as v1.22.2 does it. The panel's list may show an error (oversight 5), and is recorded as it is | `ra-v122-lat32.log` ... `ra-v122-ff.log`, `ra-v122-panel.log`, `ra-reinit.txt`, `ra-v122-card.txt`; what was heard and seen, noted | A11, A14, A15, A18 (the baseline) | not run |
 | M3 | rgds-plus, v1.22.2 | The baseline of 0.4.2's paths. **Hotkeys**: with RetroArch hotkeys On, in RetroArch's menu (Settings > Input > Hotkeys) bind Save State to Y (a hotkey, so with F held), then Configuration File > Save Current Configuration, and quit. Settings > Other systems > RetroArch hotkeys: Off. In `cv` FCEUmm, press F + L, F + R, F + Y, F + L2, F + R2, then F + X (menu) and F + Start (quit). During the game, `measure.sh hotkeys v122-off`; after it, `measure.sh card v122-off`. Hotkeys back On: F + L/R/Y/L2/R2 once each (F + Y now saves a state). **Dark on the charger**: on the charger, `s3k` PicoDrive with the game panel on; close the lid for 30 s and open it; play 20 s; press the power button, wait 30 s, press it again; play 20 s; quit, `measure.sh log v122-charger`. **Reset RetroArch**: after a game with the account, Settings > Other systems > Reset RetroArch; `measure.sh card v122-reset`; start `smb` FCEUmm. Finally, unbind Save State from Y again in RetroArch's menu. | Hotkeys Off: only F + X and F + Start do anything; the save-state line is `nul` during the game and back as Y after it, with `.banana-hotkeys.keep` gone. On: each works as before. Dark on the charger: the screens dark, the handheld awake, the game back with sound, no button stuck, the tiles answer. Reset: the backup has no password, token or keychain, and the next game logs in. All recorded as the baseline | `ra-v122-off-hotkeys.txt`, `ra-v122-off-card.txt`, `ra-v122-charger.log`, `ra-v122-reset-card.txt`, `sleep.log` (the `dark on the charger` lines), `banana-ui.log` | A9, A13, A17 (the baseline) | not run |
 | M4 | rgds-plus, master | Install master's update. M1 again, with `master-` names. | Every run meets the bar against M1 (*Refinements*). A shortfall is a deviation | `ra-master-*.txt`, `ra-master-*.log` (each header says `(Git 71f521e)`); the lowest fps, noted | A10 | not run |
@@ -840,6 +840,30 @@ Notes from the runs (what the logs showed, what was fixed):
   - `NEEDED`: `liblzma.so.5 libasound.so.2 libfreetype.so.6 libudev.so.1 libgbm.so.1 libdrm.so.2 libGLESv2.so.2
     libEGL.so.1 libstdc++.so.6 libm.so.6 libmvec.so.1 libgcc_s.so.1 libc.so.6` (13).
   - Joypad autoconfig files (`usr/share/libretro/autoconfig/udev`): 91.
+- **M1** (24 Oct 2026, the baseline image above, on the RG DS Plus). The logs are in `logs/` (`ra-v122-*.txt`,
+  `ra-v122-*.log`). Every run was at its system's profile: `schedutil` up to 1416 MHz for NES, Game Boy Color and
+  Mega Drive, up to 1992 MHz for GBA (`balanced`), and `performance` at 1992 MHz for SNES. Mesen's and SameBoy's
+  overrides had `video_threaded` true, and their logs say `Starting threaded video driver` (cv-mesen: 3 of 6191
+  frames dropped). The RetroArch logs have only the usual lines on every run (`[MIDI] snd_seq_open failed`, `[DRM]
+  Couldn't get device resources`), and no underrun.
+
+  | Run | Lowest fps | CPU share, average (lowest-highest second) | VmHWM (kB) |
+  |---|---|---|---|
+  | cv-fceumm | 60 | 53.1 (51.9-54.3) | 40,324 |
+  | cv-mesen | 60 | 90.0 (86.2-92.1) | 45,716 |
+  | smb-fceumm | 60 | 52.9 (47.5-56.8) | 40,288 |
+  | smb-mesen | 60 | 85.4 (83.3-88.2) | 45,088 |
+  | ladx-gambatte | 60 | 42.7 (40.1-45.0) | 41,012 |
+  | ladx-sameboy | 60 | 77.0 (74.5-79.2) | 37,696 |
+  | s3k-picodrive | 60 | 52.0 (48.5-56.3) | 45,284 |
+  | s3k-gpgx | 60 | 54.4 (49.5-59.8) | 58,712 |
+  | emerald-gpsp | 60 | 42.4 (37.2-48.0) | 54,736 |
+  | emerald-mgba (not in the set) | 60 | 55.2 (51.9-59.8) | 103,668 |
+  | smw-snes9x | 60 | 34.9 (26.4-39.2) | 53,824 |
+
+  - Not run: the second Castlevania on FCEUmm (the spread), so the CPU share's bar takes its floor of 2 points, and
+    the two `powersave` runs of GBA and SNES (information only).
+  - The mGBA run (Settings > Other systems' other GBA core) is an extra. M4 can repeat it, as information.
 
 ## Deviations
 

@@ -1,6 +1,6 @@
 # 0007 RetroArch master: plan
 
-Issue: #7 · Branch: `k/0007-retroarch-master` · Investigation: [investigation.md](investigation.md) · Status: draft
+Issue: #7 · Branch: `k/0007-retroarch-master` · Investigation: [investigation.md](investigation.md) · Status: approved
 
 Rewritten on 24 Oct 2026, after the investigation's recheck: the pin is `71f521e` instead of `a81e450`, the fork has
 taken upstream's 0.4.2, and that brings a step for master's hotkeys (oversight 9) and device tests for 0.4.2's paths
@@ -836,7 +836,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. The measurements' script | todo | |
+| 1. The measurements' script | done | RetroArch master: a script for the device measurements, the same on both versions |
 | 2. Master's credentials file folded back into retroarch.cfg | todo | |
 | 3. RetroArch's master, pinned behind a build option | todo | |
 | 4. RetroArch hotkeys Off covers master's four new hotkeys | todo | |

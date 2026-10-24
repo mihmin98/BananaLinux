@@ -921,6 +921,30 @@ Where the implementation turned out different from this plan, why, and what chan
     after.
   - A second-card game can't be reached headless (the library finds the second card through `/run/banana/sd2`). It
     goes through the same shelves, so M5 covers it on the device.
+- **2026-10-24, step 9: the SNES fixture is 512 + 8192 bytes, not 512 + 1024.** rcheevos skips a copier header only
+  when the file is 512 bytes over a whole number of 8 KB (`hash_rom.c`'s `rc_hash_snes`), as real dumps are. So the
+  plan's 1536-byte file is hashed whole, rightly, and the plan's expected value was wrong. The test now has a 512 +
+  8192-byte file (its last 8192 bytes' MD5) and also checks the rule: a 512 + 1024-byte file is hashed whole. Agreed
+  with the user.
+- **2026-10-24, step 9: details the plan left open.**
+  - `rahash` uses rcheevos 12's iterator (`rc_hash_initialize_iterator`, `rc_hash_generate`) with its own callbacks
+    (messages, readers), not the deprecated `rc_hash_generate_from_file` and global setters. The pages hash on their
+    thread, and nothing global is shared. Step 11's `.chd` reader goes into each iterator's `callbacks.cdreader`
+    instead of `rc_hash_init_custom_cdreader`.
+  - Vendored: five of `include/`'s headers (the ones the hashing includes), not the whole folder.
+  - `RC_HASH_NO_ENCRYPTED` and `RC_HASH_NO_ZIP` change `rc_hash_iterator_t`'s layout, so `rahash.cpp` defines them
+    too, before it includes `rc_hash.h`.
+  - Until steps 10 and 11, `.zip`, `.7z` and `.chd` answer "can't be identified yet". rcheevos' verbose messages are
+    logged too (`ra: hash: ...`), once a ROM.
+  - The fixtures: the PlayStation disc's boot executable `SLUS_000.01` is committed beside the images, so the test
+    computes the expected MD5 from its bytes. The ISO is unpadded (55 KB, the raw `psx.bin` 63 KB), and `psx.m3u`
+    names the MODE2 cue. The cartridges and the `.nds` are built in the test, and each expected MD5 comes from
+    `md5sum`, not rcheevos' own MD5.
+  - RetroArch's pin (`71f521e`) carries rcheevos 12.4. What 12.5.0 changed in the hashing (the PS3, arcade folders, a
+    disc handed over as a buffer) touches none of the nine systems' rules, so the IDs match. This is noted in
+    `DEPENDENCIES.md`.
+  - `ci.sh` runs `sha256sum -c` in each `third_party/*/` folder (it fails on a changed byte, tried on a copy) and
+    links `units` with the objects `make -C ui kiwami-c` built.
 
 ## Progress
 
@@ -936,7 +960,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 6. The game panel takes the token Banana keeps (a bug fix) | done | RetroAchievements: the game panel takes the token from accounts.conf, where Banana keeps it |
 | 7. The Stats page | done | RetroAchievements: the Stats page, points and progress per system, kept for offline |
 | 8. The games on this card, from the library | done | RetroAchievements: the games on this card, with the menu's titles, from the library |
-| 9. Hashing games as RetroArch does: rcheevos, and the fork's C build | todo | |
+| 9. Hashing games as RetroArch does: rcheevos, and the fork's C build | done | RetroAchievements: rcheevos' hashing, vendored, and the fork's C build in banana-ui |
 | 10. Hashing games in .zip and .7z: the LZMA SDK's 7z decoder | todo | |
 | 11. Hashing PlayStation .chd: libchdr | todo | |
 | 12. A game's achievements | todo | |

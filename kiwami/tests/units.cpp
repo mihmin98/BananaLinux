@@ -1,14 +1,18 @@
 // The fork's banana-ui code that needs no screen, checked on its own: the JSON reader, Tailscale's status, the
-// device's name, the login's QR code, the devices' list, Settings' grid of groups, RetroAchievements' replies and its
-// account on the card. Built and run by kiwami/tests/ci.sh with the host's g++:
+// device's name, the login's QR code, the devices' list, Settings' grid of groups, RetroAchievements' replies, its
+// account on the card and its games' hashes. Built and run by kiwami/tests/ci.sh with the host's g++ (the vendored C
+// first, make -C ui kiwami-c):
 //   g++ -std=c++17 -Wall -I ui/src kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp
-//       ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp -ldl -o units
+//       ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp
+//       ui/src/kiwami/rahash.cpp $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -o units
 //   ./units kiwami/tests/tailscale kiwami/tests/ra
 #include "kiwami/grid.h"
 #include "kiwami/json.h"
 #include "kiwami/raclient.h"
+#include "kiwami/rahash.h"
 #include "kiwami/rastore.h"
 #include "kiwami/tsstatus.h"
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -547,6 +551,95 @@ static void testPanelToken()
 	if (system(("rm -rf " + t).c_str()) != 0) {}
 }
 
+// a file's MD5 as md5sum computes it (not rcheevos' own MD5, which is what is tested)
+static std::string md5sum(const std::string& path)
+{
+	std::string out;
+	if (FILE* p = popen(("md5sum '" + path + "'").c_str(), "r"))
+	{
+		char b[64] = "";
+		if (fgets(b, sizeof b, p)) out.assign(b, strnlen(b, 32));
+		pclose(p);
+	}
+	return out;
+}
+static std::string md5of(const std::string& bytes, const std::string& tmp)
+{
+	spit(tmp, bytes);
+	return md5sum(tmp);
+}
+
+// the games' hashes as RetroArch computes them (rcheevos), each against an MD5 of the bytes rcheevos' rules say it
+// hashes, computed here with md5sum; the PlayStation's formats against each other
+static void testHash()
+{
+	using namespace banana::kiwami::ra;
+	const char* tmp = getenv("TMPDIR");
+	std::string tmpl = std::string(tmp && *tmp ? tmp : "/tmp") + "/kiwami-units-XXXXXX";
+	if (!mkdtemp(&tmpl[0])) { fprintf(stderr, "units: no temporary folder\n"); failed++; return; }
+	std::string t = tmpl, scratch = t + "/expected";
+	auto bytes = [](size_t n, int seed) { std::string b(n, 0); for (size_t i = 0; i < n; i++) b[i] = (char)((i * 13 + seed) % 251); return b; };
+
+	// a cartridge: the whole file (the fixture library's 1024 zero bytes, whose hash the RetroAchievements tests use)
+	spit(t + "/zero.gba", std::string(1024, 0));
+	EQ(hash(t + "/zero.gba", "gba").hash, "0f343b0931126a20f133d67c2b018a3b");
+	EQ(md5sum(t + "/zero.gba"), "0f343b0931126a20f133d67c2b018a3b");
+	std::string gb = bytes(2048, 1);
+	spit(t + "/g.gb", gb);
+	EQ(hash(t + "/g.gb", "gb").hash, md5of(gb, scratch));
+	EQ(hash(t + "/g.gb", "megadrive").hash, md5of(gb, scratch));
+	// an NES with its 16-byte header: the rest
+	std::string nes = bytes(1024, 2);
+	spit(t + "/n.nes", std::string("NES\x1a", 4) + std::string(12, 1) + nes);
+	EQ(hash(t + "/n.nes", "nes").hash, md5of(nes, scratch));
+	// a SNES with a 512-byte copier header (512 bytes over a whole number of 8 KB): the rest; a file 512 bytes over
+	// another size has no header by rcheevos' rule, and is hashed whole
+	std::string snes = bytes(8192, 3);
+	spit(t + "/s.sfc", std::string(512, 0) + snes);
+	EQ(hash(t + "/s.sfc", "snes").hash, md5of(snes, scratch));
+	spit(t + "/s2.sfc", std::string(512, 0) + bytes(1024, 3));
+	EQ(hash(t + "/s2.sfc", "snes").hash, md5sum(t + "/s2.sfc"));
+	// an N64 in its three byte orders: the big-endian one's MD5 each time
+	std::string z64 = "\x80\x37\x12\x40" + bytes(4092, 4), v64 = z64, n64 = z64;
+	for (size_t i = 0; i < z64.size(); i += 2) std::swap(v64[i], v64[i + 1]);
+	for (size_t i = 0; i < z64.size(); i += 4) { std::swap(n64[i], n64[i + 3]); std::swap(n64[i + 1], n64[i + 2]); }
+	spit(t + "/a.z64", z64); spit(t + "/a.v64", v64); spit(t + "/a.n64", n64);
+	std::string want = md5of(z64, scratch);
+	EQ(hash(t + "/a.z64", "n64").hash, want);
+	EQ(hash(t + "/a.v64", "n64").hash, want);
+	EQ(hash(t + "/a.n64", "n64").hash, want);
+	// a DS game: its header's first 0x160 bytes, the ARM9 and ARM7 code and the 0xA00 bytes of icon, where the header
+	// says they are
+	std::string nds(0xD000, 0), arm9 = bytes(0x800, 5), arm7 = bytes(0x400, 6), icon = bytes(0xA00, 7);
+	auto le = [&nds](size_t at, uint32_t v) { for (int i = 0; i < 4; i++) nds[at + i] = (char)(v >> (8 * i)); };
+	memcpy(&nds[0], "KIWAMI TEST", 11);
+	le(0x20, 0x4000); le(0x2C, 0x800); le(0x30, 0x8000); le(0x3C, 0x400); le(0x68, 0xC000);
+	nds.replace(0x4000, arm9.size(), arm9); nds.replace(0x8000, arm7.size(), arm7); nds.replace(0xC000, icon.size(), icon);
+	spit(t + "/d.nds", nds);
+	EQ(hash(t + "/d.nds", "nds").hash, md5of(nds.substr(0, 0x160) + arm9 + arm7 + icon, scratch));
+	// a PlayStation disc (kiwami/tests/ra, make-fixtures.sh): the boot executable's name and its bytes, from the ISO, a
+	// MODE1/2048 cue on it, the raw MODE2/2352 sectors and their cue, an .m3u naming that cue
+	std::string exe = slurp(raDir + "/SLUS_000.01");
+	CHECK(exe.size() == 4096);
+	want = md5of("SLUS_000.01" + exe, scratch);
+	for (const char* f : { "psx.iso", "psx-mode1.cue", "psx-mode2.cue", "psx.bin", "psx.m3u" })
+	{
+		Hash h = hash(raDir + "/" + f, "psx");
+		if (h.hash != want) fprintf(stderr, "units: %s: \"%s\" (%s)\n", f, h.hash.c_str(), h.error.c_str());
+		EQ(h.hash, want);
+	}
+	// what can't be identified says why, and nothing is read
+	spit(t + "/p.pbp", "PBP");
+	Hash h = hash(t + "/p.pbp", "psx");
+	CHECK(h.hash.empty() && h.error.find(".pbp can't be identified") != std::string::npos);
+	CHECK(hash(t + "/p.img", "psx").error.find(".img can't be identified") != std::string::npos);
+	CHECK(hash(t + "/zero.gba", "ports").error == "no achievements for this system here");
+	h = hash(t + "/missing.gba", "gba");
+	CHECK(h.hash.empty() && !h.error.empty());
+	IEQ((int)consoleOf("nds"), 18); IEQ((int)consoleOf("psx"), 12); IEQ((int)consoleOf("ports"), 0);
+	if (system(("rm -rf " + t).c_str()) != 0) {}
+}
+
 int main(int argc, char** argv)
 {
 	dir = argc > 1 ? argv[1] : "kiwami/tests/tailscale";
@@ -560,6 +653,7 @@ int main(int argc, char** argv)
 	testRa();
 	testRaCard();
 	testPanelToken();
+	testHash();
 	if (failed) { fprintf(stderr, "units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("units: %d checks passed\n", checks);
 	return 0;

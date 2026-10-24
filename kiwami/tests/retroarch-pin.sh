@@ -11,8 +11,10 @@ cd "$(dirname "$0")/../.."
 K=$PWD/kiwami
 PIN=71f521e726c2b1886ee7a2484195ab63abc92127
 OPTS='--disable-keychain'
+HOTKEYS='video_filter_toggle headset_recenter laser_pointer_toggle headset_view_toggle'
 fail() { echo "retroarch-pin: FAIL: $*" >&2; exit 1; }
-VARS='RETROARCH_VERSION RETROARCH_HASH_FILES RETROARCH_CONF_OPTS RETROARCH_TARGET_PATCH KIWAMI_TEST_LOCAL_MK'
+VARS='RETROARCH_VERSION RETROARCH_HASH_FILES RETROARCH_CONF_OPTS RETROARCH_TARGET_PATCH KIWAMI_TEST_LOCAL_MK
+    RETROARCH_POST_INSTALL_TARGET_HOOKS KIWAMI_RETROARCH_HOTKEYS'
 # resolve <output>: the variables as Buildroot resolves them, read once (each make parses all of Buildroot, ~10 s),
 # and the patch step's commands, its downloads' and its patches' (make -n on its stamp)
 resolve() {
@@ -39,6 +41,10 @@ check() {
         [ "$(dirs "$p")" = "$(printf '%s\n' "$PWD/buildroot/package/retroarch" "$K/patches/retroarch" | sort)" ] ||
             fail "${O##*/}: the patch step applies $(dirs "$p" | tr '\n' ' ')"
         [ "$(hashes "$p")" = "$K/patches/retroarch/retroarch.hash" ] || fail "${O##*/}: the downloads are checked against $(hashes "$p" | tr '\n' ' ')"
+        # master's four hotkeys, written for run-retroarch at RetroArch's install
+        [ "$(var KIWAMI_RETROARCH_HOTKEYS)" = "$HOTKEYS" ] || fail "${O##*/}: KIWAMI_RETROARCH_HOTKEYS is '$(var KIWAMI_RETROARCH_HOTKEYS)'"
+        case " $(var RETROARCH_POST_INSTALL_TARGET_HOOKS) " in *" KIWAMI_RETROARCH_HOTKEYS_INSTALL "*) ;;
+        *) fail "${O##*/}: no hotkeys hook in RETROARCH_POST_INSTALL_TARGET_HOOKS" ;; esac
     else
         [ "$v" = v1.22.2 ] || fail "off: RETROARCH_VERSION is '$v', not upstream's v1.22.2"
         [ "$h" = "$PWD/buildroot/package/retroarch/retroarch.hash $PWD/buildroot/patches/retroarch/retroarch.hash" ] ||
@@ -47,6 +53,8 @@ check() {
         [ "$ON_OPTS" = "$c $OPTS" ] || fail "off: RETROARCH_CONF_OPTS isn't the on one's without the fork's: $c"
         [ "$(dirs "$p")" = "$(printf '%s\n' "$PWD/buildroot/package/retroarch" "$PWD/buildroot/patches/retroarch" | sort)" ] ||
             fail "off: the patch step applies $(dirs "$p" | tr '\n' ' ')"
+        case " $(var RETROARCH_POST_INSTALL_TARGET_HOOKS) " in *" KIWAMI_RETROARCH_HOTKEYS_INSTALL "*)
+            fail "off: the hotkeys hook is in RETROARCH_POST_INSTALL_TARGET_HOOKS" ;; esac
     fi
 }
 

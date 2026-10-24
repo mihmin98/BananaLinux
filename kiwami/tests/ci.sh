@@ -19,6 +19,10 @@ kiwami/tests/core-overrides.sh
 # RetroArch master's credentials file folded back into retroarch.cfg, on a made-up card, and ra-secrets' hook
 kiwami/tests/ra-keychain.sh
 
+# RetroArch hotkeys Off covers master's four new hotkeys: the build script that writes them, and run-retroarch's hook
+# in a made-up root, with a stand-in retroarch
+kiwami/tests/ra-hotkeys.sh
+
 # banana-ui's code of the fork's that needs no screen (the JSON reader, Tailscale's status, the name, the QR code),
 # with the host's g++
 T=$(mktemp -d)

@@ -175,10 +175,13 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    `ui/src/settings.cpp`, means the fork's rows have to follow; the fork's `core-overrides` hook sits after
    `run-retroarch`'s core log line and gives Mesen and SameBoy threaded video, so RetroArch's settings matter too:
    if upstream's `retroarch.cfg` turns `video_threaded` on for every core, the fork's overrides are no longer
-   needed, and a moved `rgui_config_directory` moves where they are written; and RetroAchievements' secrets: the
-   fork's `ra-keychain` hook is the first line of `ra-secrets`' `scrub`, which folds RetroArch master's credentials
-   file back into `retroarch.cfg` before upstream's scrub reads it. If upstream reworks `scrub`, the hook stays first
-   in it; a new caller of the scrub gets the fold with no change).
+   needed, and a moved `rgui_config_directory` moves where they are written. The fork's second hook there sits on the
+   line after upstream's `HOTKEYS` list, and adds RetroArch master's hotkeys to it (`/usr/share/kiwami/ra-hotkeys`):
+   a change to the list conflicts next to the hook, and if upstream adds one of master's hotkeys to it, the master
+   build stops (`kiwami/retroarch-hotkeys.sh`) and the name comes out of `KIWAMI_RETROARCH_HOTKEYS`. And
+   RetroAchievements' secrets: the fork's `ra-keychain` hook is the first line of `ra-secrets`' `scrub`, which folds
+   RetroArch master's credentials file back into `retroarch.cfg` before upstream's scrub reads it. If upstream
+   reworks `scrub`, the hook stays first in it; a new caller of the scrub gets the fold with no change).
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

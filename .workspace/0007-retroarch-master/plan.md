@@ -875,6 +875,9 @@ Notes from the runs (what the logs showed, what was fixed):
   - `NEEDED`: `libasound.so.2 libfreetype.so.6 libudev.so.1 libgbm.so.1 libdrm.so.2 libGLESv2.so.2 libEGL.so.1
     libz.so.1 libstdc++.so.6 libm.so.6 libmvec.so.1 libgcc_s.so.1 libc.so.6` (13): the baseline's without
     `liblzma.so.5` and with `libz.so.1`, both already in the image (Deviations).
+- **Step 4's install** (24 Oct 2026, `make retroarch-reinstall-rgds-plus`): the hook ran `kiwami/retroarch-hotkeys.sh`
+  on the built `configuration.c`, which didn't stop, and `target/usr/share/kiwami/ra-hotkeys` holds the four names,
+  one a line. On v1.22.2's `configuration.c` the same script stops, naming each of the four as no hotkey of it.
 
 ## Deviations
 
@@ -907,7 +910,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 1. The measurements' script | done | RetroArch master: a script for the device measurements, the same on both versions |
 | 2. Master's credentials file folded back into retroarch.cfg | done | RetroArch master: ra-secrets folds master's credentials file back into retroarch.cfg |
 | 3. RetroArch's master, pinned behind a build option | done | RetroArch master: master at 71f521e behind a build option, with the fork's patches for it |
-| 4. RetroArch hotkeys Off covers master's four new hotkeys | todo | |
+| 4. RetroArch hotkeys Off covers master's four new hotkeys | done | RetroArch master: RetroArch hotkeys Off also turns off master's four new hotkeys |
 | 5. Master without the built-ins Banana can't use | todo | |
 | 6. A guard against upstream's RetroArch moving under the pin | todo | |
 | 7. Final check | todo | |

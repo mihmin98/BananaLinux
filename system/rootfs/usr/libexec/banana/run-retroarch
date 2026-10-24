@@ -114,6 +114,7 @@ preempt_toggle prev_replay_checkpoint record_replay recording_toggle replay_slot
 rewind runahead_toggle save_replay_checkpoint save_state screenshot shader_hold shader_next shader_prev shader_toggle
 state_slot_decrease state_slot_increase streaming_toggle toggle_fast_forward toggle_fullscreen toggle_slowmotion
 toggle_statistics toggle_vrr_runloop turbo_fire_toggle volume_down volume_up"
+[ -f /usr/share/kiwami/ra-hotkeys ] && HOTKEYS="$HOTKEYS $(cat /usr/share/kiwami/ra-hotkeys)"	# kiwami: RetroArch master's hotkeys too
 HK=/run/banana/retroarch-hotkeys.cfg
 HKA=
 # the lines kept for putting back, on the card (synced) so that a run cut short (power lost, a hang after RetroArch

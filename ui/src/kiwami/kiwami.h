@@ -30,6 +30,9 @@ namespace banana
 		struct Colours { rnds::Color ink, muted, line, accent, onPick, onPickAccent; };
 		static Colours colours(bool light);			// the screen's palette (defined in settings.cpp, beside it)
 		static void rows(Settings& s, const char* group);	// build(): the fork's rows in a group, after upstream's
+		// gameOpen(): the game panel's token when retroarch.cfg has none (always: ra-secrets scrubs it out), from
+		// accounts.conf, where Banana keeps it, for the panel's account
+		static std::string panelToken(const std::string& user, const std::string& data);
 		void opened();								// Settings opening: the rows' values, asked once
 		bool owns(const std::string& key) const { return key.compare(0, 7, "kiwami.") == 0; }
 		Result open(const std::string& key);		// A on a row of the fork's: its page

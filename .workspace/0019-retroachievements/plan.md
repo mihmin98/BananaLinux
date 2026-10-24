@@ -886,6 +886,13 @@ Where the implementation turned out different from this plan, why, and what chan
     "No connection" is a second stand-in started with `KIWAMI_RA_SERVER_DOWN`, `KIWAMI_RA_URL` pointing at it for that
     run. `ra-ui.sh` also taps the page's rows (A21): a first tap selects New account, a second opens the same keyboard
     as A.
+- **2026-10-24, step 6: the panel's token in `rastore`, tested there.** `units` can't link `Settings::Kiwami`, so the
+  test is written against `kiwami::ra::panelToken(card, user)`, declared in `rastore.h` (not in the step's Files). The
+  hook's expression (`retroarch.cfg`'s token, else `panelToken`) is a lambda in the test. `Settings::Kiwami::panelToken
+  (user, data)`, which the hook calls, is in `kiwami.cpp` (not in the Files either). It returns "" with no user
+  (achievements off) and logs `banana-ui: ra: game panel: the token from accounts.conf` or `... no token in
+  accounts.conf either`, the lines M6 reads. Run against the stub first, the test failed as planned, with its
+  arguments in this order: `panelToken(card, "Alice") is "", not "tok1"`.
 
 ## Progress
 
@@ -898,7 +905,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 3. RetroAchievements' requests, and a stand-in server for the tests | done | RetroAchievements: the server's requests, and a stand-in server for the tests |
 | 4. The account on the card: signing in, out, and the remembered accounts | done | RetroAchievements: the account on the card, signed in, out and remembered |
 | 5. The Account page | done | RetroAchievements: the Account page, signing in, out and back with remembered accounts |
-| 6. The game panel takes the token Banana keeps (a bug fix) | todo | |
+| 6. The game panel takes the token Banana keeps (a bug fix) | done | RetroAchievements: the game panel takes the token from accounts.conf, where Banana keeps it |
 | 7. The Stats page | todo | |
 | 8. The games on this card, from the library | todo | |
 | 9. Hashing games as RetroArch does: rcheevos, and the fork's C build | todo | |

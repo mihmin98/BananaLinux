@@ -109,6 +109,14 @@ namespace banana
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
 	}
 
+	std::string Settings::Kiwami::panelToken(const std::string& user, const std::string& data)
+	{
+		if (user.empty()) return "";	// (achievements off)
+		std::string t = kiwami::ra::panelToken(kiwami::ra::Card(data), user);
+		fprintf(stderr, "banana-ui: ra: game panel: %s\n", t.empty() ? "no token in accounts.conf either" : "the token from accounts.conf");
+		return t;
+	}
+
 	// ---- the hooks, to the page that is open (or, for the rows' values in the background, to each page's part) ------
 	void Settings::Kiwami::opened()
 	{

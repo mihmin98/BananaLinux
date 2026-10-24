@@ -3430,6 +3430,7 @@ namespace banana
 		std::string cfg = "/data/retroarch/retroarch.cfg";
 		raw->user = cfgValue(cfg, "cheevos_username");
 		raw->token = cfgValue(cfg, "cheevos_token");
+		if (raw->token.empty()) raw->token = Kiwami::panelToken(raw->user, data);	// kiwami: the token Banana keeps in accounts.conf (retroarch.cfg never has it)
 		if (cfgValue(cfg, "cheevos_enable") != "true" || raw->user.empty()) raw->state = 4;
 	}
 

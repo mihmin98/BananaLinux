@@ -37,6 +37,13 @@ namespace banana
 
 	private:
 		Settings& st;
+		// the page that shows while Settings' page is KIWAMI: open() sets it, and the page hooks go to its own functions
+		enum class Page { NONE, TAILSCALE } pageOpen = Page::NONE;
+
+		// Tailscale's part of the hooks (kiwami.cpp: the row's value, asked in the background)
+		void tsOpened();
+		bool tsUpdate(double t);
+		int tsWake(double t, bool shown) const;
 		std::string helper() const;					// the Tailscale helper, "" when there is none
 		bool tsOn() const;							// settings.conf's tailscale = on
 		wifi::Job job;								// the helper's status, in the background
@@ -48,6 +55,12 @@ namespace banana
 		// Tailscale's page (tailscale.cpp): its rows (Tailscale on / off, Devices, Device name, Log out) on the bottom
 		// panel, the state and the selected row's help on the top one; the helper's status every 2 s while it shows.
 		// Devices: the tailnet's, on the bottom panel, the selected one in full on the top one
+		Result tsOpen();
+		Result tsPress(Key k);
+		Result tsTouch(float cx, float cy);
+		void tsRender();
+		std::string tsEntryHelp() const;
+		Result tsEntered(std::string& text);
 		enum View { MENU, DEVICES } view = MENU;
 		std::string tool;							// the helper, as found when Settings opened
 		bool on = false;							// tailscale = on, as read then or set since

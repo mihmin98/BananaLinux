@@ -1,5 +1,5 @@
-// banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing; the pages
-// are in their own files (tailscale.cpp).
+// banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing, each page
+// hook going to the page that is open; the pages are in their own files (tailscale.cpp).
 #include "kiwami.h"
 #include <algorithm>
 #include <cstdio>
@@ -87,6 +87,54 @@ namespace banana
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
 	}
 
+	// ---- the hooks, to the page that is open (or, for the rows' values in the background, to each page's part) ------
+	void Settings::Kiwami::opened()
+	{
+		tsOpened();
+	}
+
+	Settings::Result Settings::Kiwami::open(const std::string& key)
+	{
+		if (key == "kiwami.tailscale") { pageOpen = Page::TAILSCALE; return tsOpen(); }
+		return NONE;
+	}
+
+	Settings::Result Settings::Kiwami::press(Key k)
+	{
+		return pageOpen == Page::TAILSCALE ? tsPress(k) : NONE;
+	}
+
+	Settings::Result Settings::Kiwami::touch(float cx, float cy)
+	{
+		return pageOpen == Page::TAILSCALE ? tsTouch(cx, cy) : NONE;
+	}
+
+	void Settings::Kiwami::render()
+	{
+		if (pageOpen == Page::TAILSCALE) tsRender();
+	}
+
+	std::string Settings::Kiwami::entryHelp() const
+	{
+		return pageOpen == Page::TAILSCALE ? tsEntryHelp() : "";
+	}
+
+	Settings::Result Settings::Kiwami::entered(std::string& text)
+	{
+		return pageOpen == Page::TAILSCALE ? tsEntered(text) : NONE;
+	}
+
+	bool Settings::Kiwami::update(double t)
+	{
+		return tsUpdate(t);
+	}
+
+	int Settings::Kiwami::wake(double t, bool shown) const
+	{
+		return tsWake(t, shown && pageOpen == Page::TAILSCALE);
+	}
+
+	// ---- Tailscale's part: the Network row's value, from the helper's status; its page is tailscale.cpp -------------
 	std::string Settings::Kiwami::helper() const
 	{
 		const char* e = getenv("KIWAMI_TAILSCALE");
@@ -99,7 +147,7 @@ namespace banana
 		return getConfValue(st.data + "/settings.conf", "tailscale", "off") == "on";
 	}
 
-	void Settings::Kiwami::opened()
+	void Settings::Kiwami::tsOpened()
 	{
 		// switched off (or no helper in this image): nothing is run, the row says Off
 		tool = helper();
@@ -125,10 +173,10 @@ namespace banana
 		return changed;
 	}
 
-	bool Settings::Kiwami::update(double t)
+	bool Settings::Kiwami::tsUpdate(double t)
 	{
 		// Tailscale's page asks again every 2 s while it shows
-		bool shown = st.page == KIWAMI;
+		bool shown = st.page == KIWAMI && pageOpen == Page::TAILSCALE;
 		if ((!shown || view != MENU) && qrTex) dropQr();	// (left another way than B or START: the keyboard, Devices)
 		if (shown && on && !tool.empty() && t >= nextPoll && !job.running())
 		{
@@ -144,7 +192,7 @@ namespace banana
 		return show(state, kiwami::rowWord(ts, hasNetwork())) || shown;
 	}
 
-	int Settings::Kiwami::wake(double t, bool shown) const
+	int Settings::Kiwami::tsWake(double t, bool shown) const
 	{
 		if (job.running()) return 100;
 		if (shown && on && !tool.empty()) return std::max(0, (int)(nextPoll - t));

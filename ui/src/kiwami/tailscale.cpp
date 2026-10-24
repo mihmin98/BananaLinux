@@ -42,9 +42,8 @@ namespace banana
 		return kiwami::defaultName(model);
 	}
 
-	Settings::Result Settings::Kiwami::open(const std::string& key)
+	Settings::Result Settings::Kiwami::tsOpen()
 	{
-		if (key != "kiwami.tailscale") return NONE;
 		st.page = KIWAMI;
 		view = MENU;
 		selKey = "on";
@@ -83,7 +82,7 @@ namespace banana
 		return NONE;
 	}
 
-	Settings::Result Settings::Kiwami::press(Key k)
+	Settings::Result Settings::Kiwami::tsPress(Key k)
 	{
 		return view == DEVICES ? pressDevices(k) : pressMenu(k);
 	}
@@ -175,11 +174,11 @@ namespace banana
 		return NONE;
 	}
 
-	Settings::Result Settings::Kiwami::touch(float, float cy)
+	Settings::Result Settings::Kiwami::tsTouch(float, float cy)
 	{
 		// where the press went down, as upstream's pages: the chips, B on the left and A on the right, then the rows
 		float dx = st.downX, dy = st.downY;
-		if (dy >= 418 && dy <= 466) return dx < 320 ? press(Key::B) : view == MENU ? press(Key::A) : NONE;
+		if (dy >= 418 && dy <= 466) return dx < 320 ? tsPress(Key::B) : view == MENU ? tsPress(Key::A) : NONE;
 		if (view == DEVICES) return touchDevices(cy);
 		std::vector<std::string> rows = menuRows();
 		for (int r = 0; r < (int)rows.size(); r++)
@@ -192,14 +191,14 @@ namespace banana
 		return NONE;
 	}
 
-	std::string Settings::Kiwami::entryHelp() const
+	std::string Settings::Kiwami::tsEntryHelp() const
 	{
 		return "A types the key, B deletes, X capitals, L symbols (the hyphen), Y a space, START when it is typed. Or tap "
 			"the keys. The handheld's name in your tailnet: letters, digits and hyphens; spaces become hyphens and capitals "
 			"lowercase. Kept in banana/settings.conf on the card.";
 	}
 
-	Settings::Result Settings::Kiwami::entered(std::string& text)
+	Settings::Result Settings::Kiwami::tsEntered(std::string& text)
 	{
 		std::string n = kiwami::normaliseName(text);
 		if (n.empty())
@@ -218,7 +217,7 @@ namespace banana
 	}
 
 	// ---- drawing ----------------------------------------------------------------------------------------------------
-	void Settings::Kiwami::render()
+	void Settings::Kiwami::tsRender()
 	{
 		if (view == DEVICES) renderDevices(); else renderMenu();
 	}

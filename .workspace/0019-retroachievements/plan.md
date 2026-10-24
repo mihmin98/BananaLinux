@@ -199,11 +199,11 @@ Each step is one commit and leaves the tree building with `make test` and `kiwam
   - `ui/src/kiwami/tailscale.cpp` (changed)
   - `.workspace/0019-retroachievements/plan.md` (changed)
 - **Change**: today every `KIWAMI` page hook goes to Tailscale's code. `Settings::Kiwami` gets
-  `enum Page { NONE, TAILSCALE } pageOpen = NONE;` (the RetroAchievements pages join in later steps):
+  `enum class Page { NONE, TAILSCALE } pageOpen = Page::NONE;` (the RetroAchievements pages join in later steps):
   - `open(key)` sets it from the key's page;
   - `press`, `touch`, `render`, `entryHelp` and `entered` dispatch on it;
   - Tailscale's functions are renamed `tsOpen`, `tsPress`, `tsTouch`, `tsRender`, `tsEntryHelp` and `tsEntered`;
-  - `update` and `wake` call each page's own part.
+  - `opened`, `update` and `wake` call each page's own part (Tailscale's `tsOpened`, `tsUpdate`, `tsWake`).
 
   No upstream file changes, and the hooks' signatures stay as they are. No behaviour changes: Tailscale's page logs and
   renders as before.
@@ -807,13 +807,20 @@ Notes from the runs (what the logs showed, what was fixed):
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
 
+- **2026-10-24, step 1: `Page` is a scoped enum.** The plan's `enum Page { NONE, TAILSCALE }` doesn't compile as
+  intended: `Kiwami` is nested in `Settings`, so an unscoped `NONE` hides `Settings::Result`'s `NONE` in every member,
+  and Tailscale's `return NONE;` would return a `Page`. It is `enum class Page { NONE, TAILSCALE } pageOpen =
+  Page::NONE;` (agreed with the user), and the later pages are `Page::RA_ACCOUNT`, `Page::RA_STATS`, `Page::RA_GAMES`
+  and `Page::RA_GAME`. `opened()` is routed like `update` and `wake` (Tailscale's part is `tsOpened`), so step 5's
+  `adopt()` call goes beside it rather than into Tailscale's code.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. The fork's Settings pages, routed by which one is open | todo | |
+| 1. The fork's Settings pages, routed by which one is open | done | RetroAchievements: the fork's Settings pages routed by which one is open |
 | 2. The RetroAchievements group, the scrolling grid and the trophy, with Mode | todo | |
 | 3. RetroAchievements' requests, and a stand-in server for the tests | todo | |
 | 4. The account on the card: signing in, out, and the remembered accounts | todo | |

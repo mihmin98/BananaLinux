@@ -1,9 +1,11 @@
 #!/bin/sh
 # The game files kiwami/tests/units.cpp hashes, made once by hand and committed (64 KB at most each):
-#   kiwami/tests/ra/make-fixtures.sh        (needs python3 and bsdtar, libarchive's)
+#   kiwami/tests/ra/make-fixtures.sh        (needs python3, bsdtar, libarchive's, and chdman, MAME's)
 # A PlayStation disc: SYSTEM.CNF naming its boot executable, SLUS_000.01, a PS-X EXE of 4 KB (its header says 2048
 # bytes of code after the header's 2048). As an ISO 9660 image (psx.iso), a cue on it as MODE1/2048
-# (psx-mode1.cue), the same sectors as raw MODE2/2352 (psx.bin, psx-mode2.cue), and an .m3u naming that cue (psx.m3u).
+# (psx-mode1.cue), the same sectors as raw MODE2/2352 (psx.bin, psx-mode2.cue), and an .m3u naming that cue (psx.m3u);
+# that cue made into a CHD by chdman with its default CD codecs (psx.chd, its hunks CD LZMA and CD Deflate), and an
+# .m3u naming it (psx-chd.m3u).
 # rcheevos hashes the executable's name and its bytes: the test computes that from SLUS_000.01, kept beside them.
 # Cartridges in archives, each hashed on the game in it: a GBA game (cart.gba, 4 KB) as cart.zip, cart-lzma.7z and
 # cart-lzma2.7z; an NES game with its 16-byte header (cart.nes) as cart-nes.7z; several.zip and several.7z (solid)
@@ -39,6 +41,8 @@ PY
 printf 'FILE "psx.iso" BINARY\n  TRACK 01 MODE1/2048\n    INDEX 01 00:00:00\n' > psx-mode1.cue
 printf 'FILE "psx.bin" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n' > psx-mode2.cue
 printf 'psx-mode2.cue\n' > psx.m3u
+chdman createcd -f -i psx-mode2.cue -o psx.chd
+printf 'psx.chd\n' > psx-chd.m3u
 python3 - "$T" <<'PY'
 import sys
 game = bytes((i * 13 + 1) % 251 for i in range(4096))
@@ -69,5 +73,5 @@ head = head.replace(b"\x0c\x90\x00", b"\x0c\xe4\x00\x00\x10")
 start = struct.pack("<QQI", off, len(head), zlib.crc32(head))
 open("big.7z", "wb").write(a[:8] + struct.pack("<I", zlib.crc32(start)) + start + a[32:32 + off] + head)
 PY
-ls -l SLUS_000.01 psx.iso psx-mode1.cue psx.bin psx-mode2.cue psx.m3u cart.gba cart.nes cart.zip cart-lzma.7z \
+ls -l SLUS_000.01 psx.iso psx-mode1.cue psx.bin psx-mode2.cue psx.m3u psx.chd psx-chd.m3u cart.gba cart.nes cart.zip cart-lzma.7z \
     cart-lzma2.7z cart-nes.7z several.zip several.7z readme.zip readme.7z big.7z

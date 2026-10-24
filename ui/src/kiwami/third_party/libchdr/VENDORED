@@ -1,0 +1,22 @@
+libchdr, the reader of MAME's CHD files (BSD-3-Clause, LICENSE.txt), the part that reads a CD image's hunks and
+metadata: include/, src/ (the library and its codecs, the dr_flac backend), and what it bundles of LZMA and zstd.
+Unchanged, at the paths of its tree.
+
+  source   https://github.com/rtissera/libchdr
+  commit   47d794151b2b64f6aba60304e6480f4f5a2bc24b (11 Oct 2026), master
+  files    as SHA256SUMS lists them, each the commit's file, but deps/zstd-1.5.7/LICENSE (sha256sum -c SHA256SUMS in this
+           folder; kiwami/tests/ci.sh runs it)
+
+  deps/lzma-26.02   the LZMA SDK 26.02's LzmaDec (public domain, its LICENSE), with libchdr's wrapper renaming its
+                    symbols CHDR_LzmaDec_*: libchdr's LZMA codecs call those names, so it is built beside
+                    ../lzma/LzmaDec.c (the same file but for two include lines) rather than sharing it
+  deps/zstd-1.5.7   zstd 1.5.7's decompressor as one file (zstddeclib.c, ZSTD_DISABLE_ASM and no legacy formats set in
+                    it; BSD or GPLv2, as its headers say). libchdr carries no licence file for it: LICENSE is zstd's own,
+                    from its tag v1.5.7 (https://github.com/facebook/zstd/blob/v1.5.7/LICENSE)
+
+Left out: miniz (zlib is the system's, with CHDR_SYSTEM_ZLIB, which ui/src/kiwami/kiwami.mk defines for these files
+and ui/src/kiwami/rachd.cpp before it includes chd.h), the micro-flac backend (src/libchdr_flac_microflac.cpp, fetched
+at build time), the LZMA SDK's assembly (Z7_LZMA_DEC_OPT isn't defined), the CMake build, the tests and the tools. The
+build options are chdconfig.h's defaults (raw sectors, subcode and each hunk's CRC verified). Built into banana-ui by
+ui/src/kiwami/kiwami.mk, used by ui/src/kiwami/rachd.cpp. A bump copies the same files from the new commit, writes
+SHA256SUMS again from them, and checks kiwami/DEPENDENCIES.md's notes.

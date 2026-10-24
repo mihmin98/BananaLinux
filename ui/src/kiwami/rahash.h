@@ -2,7 +2,7 @@
 // banana-ui (kiwami): a game's RetroAchievements hash, as RetroArch and the DS emulators compute it, for the server's
 // gameid (raclient.h). The hashing is rcheevos' own (third_party/rcheevos, built by kiwami.mk), so the IDs match: the
 // whole cartridge for most systems (an NES's header and a SNES's copier header left out, an N64 in any byte order), a
-// DS game's header, code and icon, a PlayStation disc's boot executable (.cue/.bin, .iso, an .m3u naming one). A
+// DS game's header, code and icon, a PlayStation disc's boot executable (.cue/.bin, .iso, .chd, an .m3u naming one). A
 // cartridge in a .zip or .7z is hashed on the game in it, unpacked into memory, as RetroArch does. It blocks while it
 // reads (up to a 64 MB cartridge): the pages run it on their thread. rcheevos' messages go to stderr as
 // "banana-ui: ra: hash: ..." lines.

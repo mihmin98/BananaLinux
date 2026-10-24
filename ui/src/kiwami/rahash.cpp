@@ -1,9 +1,11 @@
 // banana-ui (kiwami): a game's RetroAchievements hash (rahash.h), through rcheevos' rc_hash_generate with an iterator
-// of its own (no global state: the pages hash on their thread), its default file and disc readers. A .zip's game is
-// read through upstream's readZip, a .7z's through ra7z, into a buffer rcheevos hashes.
+// of its own (no global state: the pages hash on their thread), its default file reader and rachd's disc reader (a
+// .chd through libchdr, every other disc through rcheevos' own). A .zip's game is read through upstream's readZip, a
+// .7z's through ra7z, into a buffer rcheevos hashes.
 #include "rahash.h"
 #include "raclient.h"
 #include "ra7z.h"
+#include "rachd.h"
 #include "../zip.h"
 #include <algorithm>
 #include <cctype>
@@ -74,6 +76,7 @@ namespace banana::kiwami::ra
 			it.userdata = &r.error;
 			it.callbacks.verbose_message = onMessage;
 			it.callbacks.error_message = onError;
+			chdReader(&it.callbacks.cdreader);
 			char h[33] = "";
 			bool ok = rc_hash_generate(h, console, &it) != 0;
 			rc_hash_destroy_iterator(&it);
@@ -137,7 +140,6 @@ namespace banana::kiwami::ra
 		unsigned console = consoleOf(system);
 		std::string e = extension(path);
 		if (!console) { r.error = "no achievements for this system here"; return r; }
-		if (e == "chd") { r.error = "a .chd can't be identified yet"; return r; }
 		if (console == 12 && e == "pbp")
 		{
 			// (rcheevos reads a .pbp only for the PSP: RetroArch can't identify a PlayStation one either)

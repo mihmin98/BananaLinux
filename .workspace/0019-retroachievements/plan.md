@@ -968,6 +968,34 @@ Where the implementation turned out different from this plan, why, and what chan
   - `make-fixtures.sh` makes the PlayStation images again too, with new ISO timestamps. The committed ones were kept,
     since their hashes don't change.
   - `make banana-ui-rebuild-rgds` was run too: the decoder builds for the RK3566 with no warning.
+- **2026-10-24, step 11: libchdr's LZMA isn't shared, and its zstd is one file.**
+  - libchdr's `deps/lzma-26.02` wraps the SDK's `LzmaDec.c` (the same code but for two include lines) in a header that
+    renames its symbols `CHDR_LzmaDec_*`, and libchdr's codecs call those names. Sharing step 10's copy would mean
+    changing libchdr, so its own is built beside it, as the plan allowed. Step 10's notes, which said the two would
+    share it (`lzma/VENDORED`, `DEPENDENCIES.md`), are corrected.
+  - libchdr bundles zstd 1.5.7's decompressor as one file, `deps/zstd-1.5.7/zstddeclib.c`, with `ZSTD_DISABLE_ASM`
+    set inside it, not as `lib/{common,decompress}`. libchdr carries no licence file for it, so zstd's own `LICENSE`
+    from its tag `v1.5.7` is added beside it: the one vendored file not from libchdr's commit.
+  - `chdman` wasn't on the host: the user installed `mame-tools` 0.289. `psx.chd` is `psx-mode2.cue` made into a CHD
+    with chdman's default CD codecs (its hunks CD LZMA and CD Deflate), and `psx-chd.m3u` names it. Only those two
+    lines of `make-fixtures.sh` were run, so the committed PlayStation images kept their bytes.
+- **2026-10-24, step 11: details the plan left open.**
+  - As decided in step 9, the reader goes into each iterator's `callbacks.cdreader`. It serves every disc: a `.chd`
+    through libchdr, anything else through rcheevos' default reader, whose track it wraps. RetroArch instead swaps the
+    iterator's callbacks when it opens a `.chd`.
+  - A track is found as `chd_stream.c` and `cdfs.c` find it, checked at RetroArch `71f521e`:
+    - frames are padded to 4 per track in the file, and sectors counted on the disc without the padding;
+    - a pregap stored in the file (`PGTYPE:V...`) is passed over;
+    - a raw sector's data starts 24 bytes in when sector 16 has "CD001" at 25 (CD-XA, as on a PlayStation disc), else
+      16 bytes in;
+    - rcheevos' special tracks (first data, last, largest) are handled too.
+  - A `.chd` that can't be opened or read reports "damaged .chd: <libchdr's reason>" to the iterator's error callback
+    before rcheevos reports anything, so that is the reason the page shows. A CHD without CD metadata is "damaged
+    .chd: unsupported format".
+  - The test also checks a changed byte in a compressed hunk (the decompression error), and a file that isn't a CHD.
+  - `ci.sh` changes (not in the step's Files): `units` links `rachd.cpp`.
+  - `make banana-ui-rebuild-rgds`: no warning; banana-ui is 2,175,136 bytes unstripped, 1,961,208 after step 10. The
+    size before and after the feature is measured in step 13.
 
 ## Progress
 
@@ -985,6 +1013,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 8. The games on this card, from the library | done | RetroAchievements: the games on this card, with the menu's titles, from the library |
 | 9. Hashing games as RetroArch does: rcheevos, and the fork's C build | done | RetroAchievements: rcheevos' hashing, vendored, and the fork's C build in banana-ui |
 | 10. Hashing games in .zip and .7z: the LZMA SDK's 7z decoder | done | RetroAchievements: games in .zip and .7z hashed as RetroArch does, with the LZMA SDK's 7z decoder |
-| 11. Hashing PlayStation .chd: libchdr | todo | |
+| 11. Hashing PlayStation .chd: libchdr | done | RetroAchievements: PlayStation .chd hashed through libchdr |
 | 12. A game's achievements | todo | |
 | 13. Final check | todo | |

@@ -8,7 +8,7 @@ Bra86.c, BraIA64.c, Delta.c), CpuArch.c, and the headers they include. Unchanged
   files    as SHA256SUMS lists them, each the tag's C/ file (sha256sum -c SHA256SUMS in this folder; kiwami/tests/ci.sh runs it)
 
 Left out: PPMd (7zDec.c builds without it unless Z7_PPMD_SUPPORT is defined, which kiwami.mk doesn't), the encoders,
-AES, and the Windows-only headers (7zWindows.h, included only under _WIN32). libchdr bundles the same version, so its
-CHD reader can share LzmaDec.c. Built into banana-ui by ui/src/kiwami/kiwami.mk, used by ui/src/kiwami/ra7z.cpp. A
-bump copies the same files from the new tag's C/, writes SHA256SUMS again from them, and checks kiwami/DEPENDENCIES.md's
-notes.
+AES, and the Windows-only headers (7zWindows.h, included only under _WIN32). libchdr bundles the same version's
+LzmaDec.c with its symbols renamed (../libchdr/deps/lzma-26.02), built beside this one. Built into banana-ui by
+ui/src/kiwami/kiwami.mk, used by ui/src/kiwami/ra7z.cpp. A bump copies the same files from the new tag's C/, writes
+SHA256SUMS again from them, and checks kiwami/DEPENDENCIES.md's notes.

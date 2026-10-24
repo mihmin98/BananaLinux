@@ -618,16 +618,32 @@ static void testHash()
 	spit(t + "/d.nds", nds);
 	EQ(hash(t + "/d.nds", "nds").hash, md5of(nds.substr(0, 0x160) + arm9 + arm7 + icon, scratch));
 	// a PlayStation disc (kiwami/tests/ra, make-fixtures.sh): the boot executable's name and its bytes, from the ISO, a
-	// MODE1/2048 cue on it, the raw MODE2/2352 sectors and their cue, an .m3u naming that cue
+	// MODE1/2048 cue on it, the raw MODE2/2352 sectors and their cue, an .m3u naming that cue, the CHD chdman made of
+	// that cue (read through libchdr) and an .m3u naming it
 	std::string exe = slurp(raDir + "/SLUS_000.01");
 	CHECK(exe.size() == 4096);
 	want = md5of("SLUS_000.01" + exe, scratch);
-	for (const char* f : { "psx.iso", "psx-mode1.cue", "psx-mode2.cue", "psx.bin", "psx.m3u" })
+	for (const char* f : { "psx.iso", "psx-mode1.cue", "psx-mode2.cue", "psx.bin", "psx.m3u", "psx.chd", "psx-chd.m3u" })
 	{
 		Hash h = hash(raDir + "/" + f, "psx");
 		if (h.hash != want) fprintf(stderr, "units: %s: \"%s\" (%s)\n", f, h.hash.c_str(), h.error.c_str());
 		EQ(h.hash, want);
 	}
+	// a damaged .chd says so, from libchdr, before rcheevos says what it couldn't read: cut to half, a byte of a
+	// compressed hunk changed (its CRC, or the decoder, says so), not a CHD at all
+	std::string chd = slurp(raDir + "/psx.chd");
+	auto chdDamaged = [&](const std::string& name, const std::string& bytes)
+	{
+		spit(t + "/" + name, bytes);
+		Hash h = hash(t + "/" + name, "psx");
+		if (h.error.rfind("damaged .chd: ", 0) != 0) fprintf(stderr, "units: %s: \"%s\" (%s)\n", name.c_str(), h.hash.c_str(), h.error.c_str());
+		CHECK(h.hash.empty() && h.error.rfind("damaged .chd: ", 0) == 0);
+	};
+	chdDamaged("cut.chd", chd.substr(0, chd.size() / 2));
+	std::string bad = chd;
+	bad[bad.size() - 400] ^= 0x55;
+	chdDamaged("bad.chd", bad);
+	chdDamaged("not.chd", std::string(4096, 'x'));
 	// a cartridge in a .zip or .7z (kiwami/tests/ra, make-fixtures.sh): the game in it, unpacked, as RetroArch picks
 	// it: the first in name order, letters' case aside, of the files whose extension is the system's
 	std::vector<std::string> gbaExts = { "gba", "zip", "7z" }, nesExts = { "nes", "zip", "7z" };
@@ -654,7 +670,7 @@ static void testHash()
 	EQ(hash(t + "/cut.zip", "gba", gbaExts).error, "damaged archive");
 	spit(t + "/cut.7z", sz.substr(0, sz.size() / 2));
 	EQ(hash(t + "/cut.7z", "gba", gbaExts).error, "damaged archive");
-	std::string bad = sz;
+	bad = sz;
 	bad[32 + 40] ^= 0x55;
 	spit(t + "/bad.7z", bad);
 	EQ(hash(t + "/bad.7z", "gba", gbaExts).error, "damaged archive");

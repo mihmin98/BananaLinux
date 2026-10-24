@@ -395,6 +395,18 @@ lines (status and timing only, never `p=` or `t=`):
     RetroArch vendors) goes into `ui/src/kiwami/` and `kiwami/DEPENDENCIES.md`.
 14. The small design details (oversight 12)? *Answered*: the defaults.
 
+Asked while planning (`plan.md`):
+
+15. Which libchdr? *Answered*: libchdr's master at `47d7941` (11 Oct 2026), not PCSX-ReARMed's `9ccd3a7`. It has
+    libchdr's fix for crafted CHD files that crashed the reader, and banana-ui reads whatever is on the card. It
+    bundles the same LZMA SDK 26.02 and zstd 1.5.7. This deviates from *What has to change*, which named PCSX-ReARMed's
+    pin.
+16. Signing in from the group with no connection? *Answered*: the name and password are kept unchecked (as upstream's
+    setup does), and the token is fetched the next time the page opens online. A password the server refused is never
+    kept.
+17. Removing a remembered account? *Answered*: X twice (a chip says so), like upstream's "Press A twice".
+18. The boards for the manual tests? *Answered*: the RG DS Plus. The RG DS's 640x480 is covered by the headless runs.
+
 ### Confidence
 
 | Factor | Weight | Score |

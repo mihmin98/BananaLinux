@@ -34,6 +34,14 @@ change the repository's history, refs or branches; the user does all of that by 
 change is ready, stage it and give the user a commit message to use (subject line plus body, in the style described
 under *Conventions*), then stop. Commit messages carry no `Co-Authored-By` trailer or other AI attribution lines.
 
+The GitHub CLI `gh` is installed and may be used, read-only: viewing and listing issues, pull requests, comments,
+commits, releases, workflow runs and logs (`gh issue view`, `gh pr list`, `gh run view --log`, ...), and `gh api`
+with GET only (no `-X`/`--method` other than GET, no `-f`/`-F`/`--input`, which make it a POST). Never create, edit,
+comment on, close, reopen, label, merge or delete anything, never trigger or re-run workflows, and never change the
+repository, its settings or secrets: issues, pull requests and comments are written out as text for the user to post
+by hand. Pass `--repo <owner>/<repo>` (from `git remote get-url origin`) so `gh` reads this fork rather than the
+upstream parent it can default to; upstream is read the same way, naming its repository explicitly.
+
 ## Working on a change: the workflow
 
 Every stage waits for the user's approval; ask whenever something is unclear, at any stage, rather than guessing.

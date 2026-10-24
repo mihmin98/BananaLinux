@@ -1,6 +1,6 @@
 # 0008 RomM: investigation
 
-Issue: #8 · Branch: `kiwami` (committed there at the user's request; the implementation gets `k/0008-romm`) · Status: draft (open: not being worked on yet; rechecked 24 Oct 2026 after 0007, and again after 0019, *Rechecked*) · Confidence: 91% (proceed)
+Issue: #8 · Branch: `kiwami` (committed there at the user's request; the implementation gets `k/0008-romm`) · Status: refined (rechecked 24 Oct 2026 after 0007, and again after 0019, *Rechecked*; approved for planning the same day) · Confidence: 91% (proceed)
 
 ## The request
 

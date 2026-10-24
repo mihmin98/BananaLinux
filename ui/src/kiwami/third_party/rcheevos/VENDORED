@@ -1,0 +1,13 @@
+rcheevos v12.5.0, RetroAchievements' own library (MIT, LICENSE), the part that identifies a game by hashing it as
+RetroArch does: its hash code (src/rhash/), what that code needs of the rest (src/rc_util.c, src/rc_compat.*) and the
+headers they include. Unchanged.
+
+  source   https://github.com/RetroAchievements/rcheevos
+  tag      v12.5.0, commit 1433173220a7eaede6a9ed7a18e94117be1821e0 (14 Sep 2026)
+  files    as SHA256SUMS lists them, each the tag's file (sha256sum -c SHA256SUMS in this folder; kiwami/tests/ci.sh runs it)
+
+Left out: the encrypted hashing (src/rhash/hash_encrypted.c, aes.*: the 3DS) and the zip hashing (src/rhash/hash_zip.c:
+MS-DOS and arcade), with RC_HASH_NO_ENCRYPTED and RC_HASH_NO_ZIP, which ui/src/kiwami/kiwami.mk defines for these
+files and ui/src/kiwami/rahash.cpp before it includes rc_hash.h (the two must agree: they change rc_hash_iterator_t).
+Built into banana-ui by ui/src/kiwami/kiwami.mk. A bump copies the same files from the new tag, writes SHA256SUMS again
+from them, and checks kiwami/DEPENDENCIES.md's notes.

@@ -1,6 +1,7 @@
-// banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing; the pages
-// are in their own files (tailscale.cpp).
-#include "kiwami.h"
+// banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing, each page
+// hook going to the page that is open, and the groups' grid; the pages are in their own files (tailscale.cpp,
+// ra-account.cpp, ra-stats.cpp, ra-games.cpp, ra-game.cpp).
+#include "ra.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -43,6 +44,9 @@ namespace banana
 		return e && *e ? e : "/usr/lib/libretro";
 	}
 
+	// RetroAchievements > Mode's key: upstream's Other systems > RetroAchievements row's, in retroarch.cfg
+	static const char* const MODE = "cheevos_hardcore_mode_enable";
+
 	// Other systems: the fork's second cores, a row per system shown when the core is in the image. Upstream's
 	// core.<system> keys (run-retroarch reads them) as upstream's Game Boy Advance row has, so upstream loads, saves
 	// and resets them as any choice row; upstream's core first, its default
@@ -83,10 +87,138 @@ namespace banana
 			s.items.push_back(it);
 			keys = it.key;
 		}
+		else if (strcmp(group, "RetroAchievements") == 0 && !(getenv("KIWAMI_RA_GROUP") && strcmp(getenv("KIWAMI_RA_GROUP"), "0") == 0))
+		{
+			Item it;
+			it.section = group; it.icon = "kiwami.ra"; it.label = "Account"; it.key = "kiwami.ra.account"; it.kind = Item::PAGE;
+			it.help = "The RetroAchievements account your games unlock achievements on. A opens it: sign in, sign out, or "
+				"switch to an account used here before.";
+			s.items.push_back(it);
+			Item stats;
+			stats.section = group; stats.icon = "kiwami.ra"; stats.label = "Stats"; stats.key = "kiwami.ra.stats"; stats.kind = Item::PAGE;
+			stats.help = "The account's points, and its progress on each of Banana's systems: games started, completed and "
+				"mastered, achievements unlocked. Fetched when the page opens, and kept on the card for when there's no Wi-Fi.";
+			s.items.push_back(stats);
+			Item games;
+			games.section = group; games.icon = "cart"; games.label = "Games on this card"; games.key = "kiwami.ra.games"; games.kind = Item::PAGE;
+			games.help = "The games on this card with achievements, as far as the emulators have told Banana: unlocked of "
+				"the total for each.";
+			s.items.push_back(games);
+			// upstream's Other systems > RetroAchievements, the same setting (load and save are upstream's)
+			Item m;
+			m.section = group; m.icon = "gamepad"; m.label = "Mode"; m.key = MODE;
+			m.help = "Softcore: achievements unlock with save states, rewind and cheats still there. Hardcore: those are locked "
+				"for the game, and the unlocks count as hardcore on retroachievements.org. The same setting as Other systems > "
+				"RetroAchievements; RetroArch's own menu changes it too.";
+			m.file = "/data/retroarch/retroarch.cfg";
+			m.names = { "Softcore", "Hardcore" }; m.values = { "false", "true" };
+			s.items.push_back(m);
+			keys = it.key + " " + stats.key + " " + games.key + " " + m.key;
+		}
 		// (the tests read it, and on the device it says which of the fork's cores the image has)
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
 	}
 
+	std::string Settings::Kiwami::panelToken(const std::string& user, const std::string& data)
+	{
+		if (user.empty()) return "";	// (achievements off)
+		std::string t = kiwami::ra::panelToken(kiwami::ra::Card(data), user);
+		fprintf(stderr, "banana-ui: ra: game panel: %s\n", t.empty() ? "no token in accounts.conf either" : "the token from accounts.conf");
+		return t;
+	}
+
+	// ---- the hooks, to the page that is open (or, for the rows' values in the background, to each page's part) ------
+	void Settings::Kiwami::opened()
+	{
+		modeAt = -1;
+		for (auto& it : st.items) if (it.key == MODE) modeAt = it.at;	// (both rows as just read, from the one file)
+		tsOpened();
+		raOpened();
+	}
+
+	Settings::Result Settings::Kiwami::open(const std::string& key)
+	{
+		if (key == "kiwami.tailscale") { pageOpen = Page::TAILSCALE; return tsOpen(); }
+		if (key == "kiwami.ra.account") { pageOpen = Page::RA_ACCOUNT; return raOpen(); }
+		if (key == "kiwami.ra.stats") { pageOpen = Page::RA_STATS; return raStatsOpen(); }
+		if (key == "kiwami.ra.games") { pageOpen = Page::RA_GAMES; return raGamesOpen(); }
+		return NONE;
+	}
+
+	Settings::Result Settings::Kiwami::press(Key k)
+	{
+		return pageOpen == Page::TAILSCALE ? tsPress(k) : pageOpen == Page::RA_ACCOUNT ? raPress(k)
+			: pageOpen == Page::RA_STATS ? raStatsPress(k) : pageOpen == Page::RA_GAMES ? raGamesPress(k)
+			: pageOpen == Page::RA_GAME ? raGamePress(k) : NONE;
+	}
+
+	Settings::Result Settings::Kiwami::touch(float cx, float cy)
+	{
+		return pageOpen == Page::TAILSCALE ? tsTouch(cx, cy) : pageOpen == Page::RA_ACCOUNT ? raTouch(cx, cy)
+			: pageOpen == Page::RA_STATS ? raStatsTouch(cx, cy) : pageOpen == Page::RA_GAMES ? raGamesTouch(cx, cy)
+			: pageOpen == Page::RA_GAME ? raGameTouch(cx, cy) : NONE;
+	}
+
+	void Settings::Kiwami::render()
+	{
+		if (pageOpen == Page::TAILSCALE) tsRender();
+		else if (pageOpen == Page::RA_ACCOUNT) raRender();
+		else if (pageOpen == Page::RA_STATS) raStatsRender();
+		else if (pageOpen == Page::RA_GAMES) raGamesRender();
+		else if (pageOpen == Page::RA_GAME) raGameRender();
+	}
+
+	std::string Settings::Kiwami::entryHelp() const
+	{
+		return pageOpen == Page::TAILSCALE ? tsEntryHelp() : pageOpen == Page::RA_ACCOUNT ? raEntryHelp() : "";
+	}
+
+	Settings::Result Settings::Kiwami::entered(std::string& text)
+	{
+		return pageOpen == Page::TAILSCALE ? tsEntered(text) : pageOpen == Page::RA_ACCOUNT ? raEntered(text) : NONE;
+	}
+
+	bool Settings::Kiwami::update(double t)
+	{
+		bool mode = syncMode(), ra = raUpdate();
+		return tsUpdate(t) || mode || ra;
+	}
+
+	int Settings::Kiwami::wake(double t, bool shown) const
+	{
+		int w = tsWake(t, shown && pageOpen == Page::TAILSCALE), r = raWake();
+		return w < 0 ? r : r < 0 ? w : std::min(w, r);
+	}
+
+	// ---- the groups' grid: the first row shown follows the selection (grid.h); logged when it moves, for the tests ---
+	int Settings::Kiwami::gridTop(int gsel, int n)
+	{
+		int r = kiwami::gridTop(row0, gsel, n);
+		if (r != row0) fprintf(stderr, "banana-ui: kiwami: groups from row %d\n", r);
+		row0 = r;
+		return r;
+	}
+
+	// Mode and upstream's Other systems > RetroAchievements are two rows of one setting, each read when Settings opens:
+	// a change to one is taken into the other at the next update (they're in different groups, never on screen together)
+	bool Settings::Kiwami::syncMode()
+	{
+		if (!st.mOpen || modeAt < 0) return false;
+		int rows = 0, at = modeAt;
+		for (auto& it : st.items)
+			if (it.key == MODE && ++rows && at == modeAt) at = it.at;
+		if (rows < 2 || at == modeAt) return false;	// (one row: the group left out)
+		modeAt = at;
+		for (auto& it : st.items)
+			if (it.key == MODE)
+			{
+				it.at = at;
+				if (it.section == "RetroAchievements") fprintf(stderr, "banana-ui: kiwami: Mode %s in both rows\n", it.names[at].c_str());
+			}
+		return true;
+	}
+
+	// ---- Tailscale's part: the Network row's value, from the helper's status; its page is tailscale.cpp -------------
 	std::string Settings::Kiwami::helper() const
 	{
 		const char* e = getenv("KIWAMI_TAILSCALE");
@@ -99,7 +231,7 @@ namespace banana
 		return getConfValue(st.data + "/settings.conf", "tailscale", "off") == "on";
 	}
 
-	void Settings::Kiwami::opened()
+	void Settings::Kiwami::tsOpened()
 	{
 		// switched off (or no helper in this image): nothing is run, the row says Off
 		tool = helper();
@@ -125,10 +257,10 @@ namespace banana
 		return changed;
 	}
 
-	bool Settings::Kiwami::update(double t)
+	bool Settings::Kiwami::tsUpdate(double t)
 	{
 		// Tailscale's page asks again every 2 s while it shows
-		bool shown = st.page == KIWAMI;
+		bool shown = st.page == KIWAMI && pageOpen == Page::TAILSCALE;
 		if ((!shown || view != MENU) && qrTex) dropQr();	// (left another way than B or START: the keyboard, Devices)
 		if (shown && on && !tool.empty() && t >= nextPoll && !job.running())
 		{
@@ -144,7 +276,7 @@ namespace banana
 		return show(state, kiwami::rowWord(ts, hasNetwork())) || shown;
 	}
 
-	int Settings::Kiwami::wake(double t, bool shown) const
+	int Settings::Kiwami::tsWake(double t, bool shown) const
 	{
 		if (job.running()) return 100;
 		if (shown && on && !tool.empty()) return std::max(0, (int)(nextPoll - t));
@@ -153,7 +285,7 @@ namespace banana
 
 	std::string Settings::Kiwami::value(const std::string& key) const
 	{
-		return key == "kiwami.tailscale" ? word : "";
+		return key == "kiwami.tailscale" ? word : key.compare(0, 10, "kiwami.ra.") == 0 ? raValue(key) : "";
 	}
 
 	// a program of the fork's, its own session; detached so that it outlives a game the menu starts next, waited for

@@ -129,6 +129,18 @@ Script verbs: `home`, `press <btn>`, `touch`, `wait <ms>`, `shot <name>` (writes
 banana-ui's stderr log lines (e.g. `press a: used, view 1`), so changing log wording can break `run.sh`.
 Env hooks used by tests: `BANANA_WIFI` (stand-in `wifi` script, `ui/tests/fake-wifi.sh`), `BANANA_RA_CHECK=0`.
 
+clangd (the LSP tool) needs `compile_commands.json` at the repo root to see the whole project; without it, references
+and workspace symbols only cover the files it has opened. If `bear` is available, generate it from the real build:
+
+```sh
+bear -- make -B ui                                   # -B: make skips up-to-date files and bear then records nothing
+bear --append -- make -B -C system/bananad           # optional: adds bananad.c and banana-panel-tune.c
+```
+
+Rerun it when a source file is added. It is the host build's flags with absolute paths, so it stays local:
+`compile_commands.json` and clangd's `.cache/` are excluded in `.git/info/exclude`, not `.gitignore`, and never committed.
+If `bear` is missing, fall back to grep for cross-file searches.
+
 CI (`.github/workflows/ci.yml`) also runs `sh -n` on every shell script under `system/rootfs/{etc/init.d,usr/bin,usr/libexec/banana,etc/banana/sleep.d}`,
 `buildroot/board/rgds/*.sh` and `tools/*.sh`, and verifies each defconfig keeps every option after Buildroot
 expands it (an option silently dropped by a missing dependency fails CI). Image and QEMU-boot jobs run only on

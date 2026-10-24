@@ -870,14 +870,34 @@ Notes from the runs (what the logs showed, what was fixed):
   exactly, both from `kiwami/patches/retroarch/` (`.applied_patches_list`). `config.mk` has `HAVE_KEYCHAIN = 0`,
   `HAVE_7ZIP = 1`, `HAVE_RETROSSL = 1`, `HAVE_STDIN_CMD = 1`, `HAVE_CHD = 1`, `HAVE_RFLAC = 1` and `HAVE_RZSTD = 1`.
   The only compiler warning is master's own (`command.c:3094`, `-Wformat-truncation`).
-  - `usr/bin/retroarch`: 17,971,528 bytes, aarch64, 2,962,840 bytes (19.7%) over the baseline's; step 5 removes
-    built-ins. `strings` has `71f521e`.
+  - `usr/bin/retroarch`: 17,971,528 bytes, aarch64, not stripped (a package build doesn't reach `target-finalize`,
+    which strips), so not comparable with the baseline's stripped 15,008,688 (Deviations); its stripped size wasn't
+    taken. `strings` has `71f521e`.
   - `NEEDED`: `libasound.so.2 libfreetype.so.6 libudev.so.1 libgbm.so.1 libdrm.so.2 libGLESv2.so.2 libEGL.so.1
     libz.so.1 libstdc++.so.6 libm.so.6 libmvec.so.1 libgcc_s.so.1 libc.so.6` (13): the baseline's without
     `liblzma.so.5` and with `libz.so.1`, both already in the image (Deviations).
 - **Step 4's install** (24 Oct 2026, `make retroarch-reinstall-rgds-plus`): the hook ran `kiwami/retroarch-hotkeys.sh`
   on the built `configuration.c`, which didn't stop, and `target/usr/share/kiwami/ra-hotkeys` holds the four names,
   one a line. On v1.22.2's `configuration.c` the same script stops, naming each of the four as no hotkey of it.
+- **Step 5's build** (24 Oct 2026).
+  - `make retroarch-reconfigure-rgds-plus`: `config.mk` has `HAVE_MCP`, `HAVE_RETRONFS`, `HAVE_RETROSMB`,
+    `HAVE_SMBCLIENT`, `HAVE_RRAR`, `HAVE_GAMEMODE` and the ten decoders at `0`, and keeps `HAVE_RFLAC = 1`,
+    `HAVE_RWAV = 1`, `HAVE_CHD = 1`, `HAVE_7ZIP = 1`, `HAVE_STDIN_CMD = 1` (so `HAVE_COMMAND = 1`) and
+    `HAVE_KEYCHAIN = 0`. The binary, unstripped, went from step 3's 17,971,528 bytes to 16,563,240 (1,408,288 less,
+    7.8%), and no MCP, RAR, SMB2 or NFS3 symbol is left in it (`nm`). Step 3's objects for them were still in the build
+    folder, not rebuilt or linked (Deviations). The one new warning is master's: `task_audio_mixer_try_windowed`, now
+    unused with the decoders off.
+  - `make retroarch-dirclean-rgds-plus`, then `make rgds-plus` (RetroArch from scratch, then the image), at step 4's
+    commit plus this step's changes:
+    - the build folder has no `network/mcp_server.o`, and no RAR, SMB or NFS object;
+    - 0002 and 0003 applied from `kiwami/patches/retroarch/` (`.applied_patches_list`);
+    - `usr/bin/retroarch`: 15,224,880 bytes, stripped, aarch64: 216,192 bytes (1.4%) over the baseline's 15,008,688.
+      `strings` has `71f521e`. `NEEDED` is step 3's 13, unchanged;
+    - `rootfs.squashfs`: 176,111,616 bytes, 372,736 (0.2%) over the baseline's 175,738,880;
+    - `usr/share/kiwami/ra-hotkeys` holds the four names; 91 joypad autoconfig files, as the baseline's;
+    - the update package (`VERSION` 0.4.2) is copied as
+      `output/master-71f521e/banana-rgds-plus-0.4.2-ramaster.update.tar` (186,654,720 bytes, sha256 `f2bf5abd...`),
+      for M4-M16.
 
 ## Deviations
 
@@ -900,6 +920,15 @@ Where the implementation turned out different from this plan, why, and what chan
   its xdelta softpatching became a self-contained VCDIFF decoder. Both libraries are in the baseline image anyway
   (`libz.so.1` is linked by banana-ui and freetype), so the image ships nothing new. A3's and step 3's check
   becomes "every `NEEDED` library is one the baseline image already ships", and step 5 compares with step 3's set.
+- **24 Oct 2026, step 5: the binary's sizes are compared stripped, and the objects on a clean build folder.**
+  - A package build (`make retroarch-rgds-plus`, `-reconfigure`) leaves `target/usr/bin/retroarch` unstripped:
+    Buildroot strips at `target-finalize`, which only the image build runs. Step 3's note compared its unstripped
+    17,971,528 bytes with the baseline's stripped 15,008,688 ("19.7% over"), and is corrected. Sizes against the
+    baseline's come from a whole image (or a copy stripped as `BR2_STRIP_strip` does); package builds are compared
+    with each other, both unstripped.
+  - A reconfigure doesn't remove the objects of what was built before, so "the build folder has no
+    `network/mcp_server.o`" can't hold after `make retroarch-reconfigure-rgds-plus`. The check is made after
+    `make retroarch-dirclean-rgds-plus` and the image's `make rgds-plus`, and on the reconfigured binary with `nm`.
 
 ## Progress
 
@@ -911,6 +940,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 2. Master's credentials file folded back into retroarch.cfg | done | RetroArch master: ra-secrets folds master's credentials file back into retroarch.cfg |
 | 3. RetroArch's master, pinned behind a build option | done | RetroArch master: master at 71f521e behind a build option, with the fork's patches for it |
 | 4. RetroArch hotkeys Off covers master's four new hotkeys | done | RetroArch master: RetroArch hotkeys Off also turns off master's four new hotkeys |
-| 5. Master without the built-ins Banana can't use | todo | |
+| 5. Master without the built-ins Banana can't use | done | RetroArch master: built without the MCP server, network clients, media decoders, RAR and GameMode |
 | 6. A guard against upstream's RetroArch moving under the pin | todo | |
 | 7. Final check | todo | |

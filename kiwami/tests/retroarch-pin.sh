@@ -10,7 +10,10 @@ BR=$(cd "$1" && pwd); shift
 cd "$(dirname "$0")/../.."
 K=$PWD/kiwami
 PIN=71f521e726c2b1886ee7a2484195ab63abc92127
-OPTS='--disable-keychain'
+OPTS='--disable-keychain --disable-mcp --disable-retronfs --disable-retrosmb --disable-smbclient --disable-rav1
+    --disable-rvp9 --disable-rmp4 --disable-rwebm --disable-rmpeg1 --disable-raac --disable-ropus --disable-rvorbis
+    --disable-rmp3 --disable-rmodtracker --disable-rrar --disable-gamemode'
+OPTS=$(echo $OPTS)
 HOTKEYS='video_filter_toggle headset_recenter laser_pointer_toggle headset_view_toggle'
 fail() { echo "retroarch-pin: FAIL: $*" >&2; exit 1; }
 VARS='RETROARCH_VERSION RETROARCH_HASH_FILES RETROARCH_CONF_OPTS RETROARCH_TARGET_PATCH KIWAMI_TEST_LOCAL_MK
@@ -38,6 +41,8 @@ check() {
         [ "$v" = $PIN ] || fail "${O##*/}: RETROARCH_VERSION is '$v', not $PIN"
         [ "$h" = "$K/patches/retroarch/retroarch.hash" ] || fail "${O##*/}: RETROARCH_HASH_FILES is '$h'"
         case " $c" in *" $OPTS") ;; *) fail "${O##*/}: RETROARCH_CONF_OPTS doesn't end with the fork's '$OPTS': $c" ;; esac
+        # FLAC stays: master's CHD reader decodes CD-audio hunks with it
+        case " $c " in *" --disable-rflac "*) fail "${O##*/}: RETROARCH_CONF_OPTS turns FLAC off: $c" ;; esac
         [ "$(dirs "$p")" = "$(printf '%s\n' "$PWD/buildroot/package/retroarch" "$K/patches/retroarch" | sort)" ] ||
             fail "${O##*/}: the patch step applies $(dirs "$p" | tr '\n' ' ')"
         [ "$(hashes "$p")" = "$K/patches/retroarch/retroarch.hash" ] || fail "${O##*/}: the downloads are checked against $(hashes "$p" | tr '\n' ' ')"

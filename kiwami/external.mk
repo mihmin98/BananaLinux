@@ -20,4 +20,11 @@ define KIWAMI_RETROARCH_HOTKEYS_INSTALL
 		$(TARGET_DIR)/usr/share/kiwami/ra-hotkeys $(KIWAMI_RETROARCH_HOTKEYS)
 endef
 RETROARCH_POST_INSTALL_TARGET_HOOKS += KIWAMI_RETROARCH_HOTKEYS_INSTALL
+# what master builds in by default and Banana can't use: the MCP server, its own NFS and SMB clients (nothing that
+# listens or mounts on the network), media decoders (WAV for the menu sounds and FLAC, which CHD's CD audio needs,
+# stay), the RAR reader (RAR games aren't listed) and Feral GameMode (no daemon)
+RETROARCH_CONF_OPTS += --disable-mcp --disable-retronfs --disable-retrosmb --disable-smbclient \
+	--disable-rav1 --disable-rvp9 --disable-rmp4 --disable-rwebm --disable-rmpeg1 \
+	--disable-raac --disable-ropus --disable-rvorbis --disable-rmp3 --disable-rmodtracker \
+	--disable-rrar --disable-gamemode
 endif

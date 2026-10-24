@@ -12,6 +12,7 @@
 #include "../rnds/RndsUI.h"
 #include "input.h"
 #include "wifi.h"
+#include "colors.h"
 #include <map>
 #include <memory>
 #include <mutex>
@@ -64,12 +65,21 @@ namespace banana
 		bool takeLibraryChanged() { bool r = libChanged; libChanged = false; return r; }
 
 		// what the host has to do after an input
-		enum Result { NONE, MOVED, CHANGED, CLOSED, THEME, REBOOT, POWEROFF, SEARCH };
+		enum Result { NONE, MOVED, CHANGED, CLOSED, THEME, REBOOT, POWEROFF, SEARCH, TITLES, LANGUAGE };
 		// SELECT in the menu: the keyboard alone, for a search of the games; SEARCH when it is done, with the text in
 		// searchText (empty: the search taken away)
 		void openSearch(const std::string& start);
 		// X on a DS game in the library: which emulator runs this one game (title shown, ROM file name as the key)
-		void openGame(const std::string& title, const std::string& romName);
+		// X on a game: its own page. A DS game's emulator and shader, and every game's name and sort title (#29):
+		// TITLES when one of those was typed, with them in gameName / gameSort for gameKey ("" each: as scraped)
+		void openGame(const std::string& title, const std::string& romName, bool nds = true,
+			const std::string& key = "", const std::string& name = "", const std::string& sort = "", const std::string& path = "",
+			const std::string& scraped = "");
+		std::string gameKey, gameName, gameSort;
+		// the display's colour table (main: Display::setColors), for Screen colours: off while its page is up, the saved
+		// values when it closes
+		std::function<std::string(const ScreenColors&)> setColors;	// "" when it took, else why not
+		bool colorsOpen() const { return mOpen && page == COLORS; }
 		std::string searchText;
 		std::function<int(const std::string&)> searchCount;	// the games the text typed so far finds (the host's library)
 		Result press(Key k);
@@ -107,6 +117,7 @@ namespace banana
 		float s;
 		bool light = false, mOpen = false;
 		std::vector<Item> items;
+		std::string langHelp;	// (the Language row's help: who translated each)
 		int sel = 0, top = 0, armed = -1;			// armed: an action waiting for its second A
 		// the groups (the items' sections, in order): Settings opens on a grid of them, as the in-game menu's main page;
 		// A opens one's list, B goes back to the grid
@@ -123,12 +134,18 @@ namespace banana
 		std::string about, wifiInfo, ip;
 
 		// the Wi-Fi pages: the networks around, and the keyboard for a password (settings-wifi.cpp)
-		enum Page { LIST, NETWORKS, KEYBOARD, UPDATES, SETUP, GAME, KIWAMI } page = LIST;	// kiwami: KIWAMI, the fork's pages
+		enum Page { LIST, NETWORKS, KEYBOARD, UPDATES, SETUP, GAME, ARTPICK, COLORS, KIWAMI } page = LIST;	// kiwami: KIWAMI, the fork's pages
 		// the game page (X on a DS game in the library): its emulator, this game only (banana/nds-per-game.conf, read by
 		// run-nds: "<ROM file name> = superdrastic|bananads", no line = Settings > Nintendo DS > Emulator)
 		// the game page (X on a DS game): its own emulator and shader, each "As in Settings" (index 0) or a choice
 		std::string pgTitle, pgRom;
-		int pgRow = 0, pgEmu = 0, pgShader = 0;
+		int pgRow = 0, pgTop = 0, pgEmu = 0, pgShader = 0, pg3d = 0, pgMic = 0;	// (pg3d, pgMic: 0 as in Settings)
+		bool pgNds = true;
+		enum PgRow { PG_EMU, PG_SHADER, PG_3D, PG_MIC, PG_NAME, PG_SORT, PG_ART };
+		std::string pgPath;	// the game's file (Box art: banana-scrape --match)
+		std::string pgScraped;	// the game's title without its own name (the page's name compares with it)
+		bool pgArtDone = false;	// a cover fetched on the page: the library read again when it closes
+		std::vector<PgRow> pgRows;
 		std::vector<std::string> pgShaderNames, pgShaderValues;
 		std::string gameEmulator(const std::string& rom);
 		void setGameEmulator(const std::string& rom, const std::string& emu);
@@ -139,12 +156,18 @@ namespace banana
 		void renderGame();
 		// the keyboard types a text for a purpose: a Wi-Fi password, or an account's name or password
 		// (banana/accounts.conf: RetroAchievements for DraStic and RetroArch, ScreenScraper for the scraper to come)
-		enum Entry { ENTRY_WIFI, ENTRY_RA_USER, ENTRY_RA_PASS, ENTRY_SS_USER, ENTRY_SS_PASS, ENTRY_SEARCH, ENTRY_KIWAMI } entry = ENTRY_WIFI;	// kiwami: ENTRY_KIWAMI, a text for the fork's pages
+		enum Entry { ENTRY_WIFI, ENTRY_RA_USER, ENTRY_RA_PASS, ENTRY_SS_USER, ENTRY_SS_PASS, ENTRY_SMB_USER, ENTRY_SMB_PASS, ENTRY_GAME_NAME, ENTRY_GAME_SORT, ENTRY_ART_SEARCH, ENTRY_DS_NAME, ENTRY_SEARCH, ENTRY_KIWAMI } entry = ENTRY_WIFI;	// kiwami: ENTRY_KIWAMI, a text for the fork's pages
 		std::string entryTitle, entrySub;
 		Page entryBack = NETWORKS;
 		void startEntry(Entry e, const std::string& title, const std::string& sub, Page back, const std::string& start = "");
 		Result finishEntry();
 		std::string account(const char* key);
+		std::string shareUser();
+		static void popChar(std::string& t);
+		std::string smbNewUser;	// the sharing name typed, kept with the password (both at once, or neither)
+		std::string dsName();
+		void setDsName(const std::string& name);
+		std::string sharePassword();
 		// the RetroAchievements account typed in the setup, checked with the server at once (on a thread: libcurl)
 		struct RaCheck { std::mutex mu; bool done = false; int kind = 0; std::string l2; };	// kind: 1 ok, 2 refused, 3 no network
 		std::shared_ptr<RaCheck> raCheck;
@@ -166,11 +189,32 @@ namespace banana
 		std::string wifiTool, wifiConf;
 		bool sync = false;
 		wifi::Job scanJob, statusJob;
+		// the game page's Box art (#28): the names banana-scrape --search found for the words typed, one picked, and
+		// banana-scrape --match fetching its pictures
+		wifi::Job artJob;
+		std::vector<std::string> artNames;
+		int asel = 0, atop = 0;
+		bool artMatching = false;
+		std::string artWords;
+		Result pressArt(Key k);
+		Result touchArt(float cx, float cy);
+		void renderArt();
+		std::string scrapeTool() const;
+		// Screen colours (#N3): the values being tried (drawn in software over the test pattern of the screen they
+		// correct; the hardware table is off while the page is up) and the pattern shown
+		ScreenColors colEdit, colSaved;
+		int colRow = 0, colPattern = 0;
+		void openColors();
+		Result pressColors(Key k);
+		Result touchColors(float cx, float cy);
+		void renderColors();
+		void colorsPattern(int screen, float y0, float h);
 		std::vector<wifi::Network> nets;
 		wifi::Status wstat;
 		bool scanning = false, scannedOnce = false, wifiEnabled = true;
 		int nsel = 0, ntop = 0;
 		std::string joining, message;	// the network being joined; the last thing to tell
+		std::string failed;				// the last network that couldn't be joined: A on it asks for the password again
 		double joinStart = 0, nextStatus = 0, nextScan = 0, now = 0;
 		wifi::Network target;			// the network the keyboard is for
 		std::string pw;
@@ -246,6 +290,7 @@ namespace banana
 		static constexpr int FLASH_TAB = 5;	// gFlash index of the quick-menu button (0..4 are the tiles)
 		bool gSheet = false;				// the quick-menu sheet is open over the game panel
 		bool gTouch = true;
+		bool gHotkeys = true;	// Settings > Other systems > RetroArch hotkeys: off, F + R and the like do nothing
 		double gFlashUntil = 0;
 		int gSeen = -1;						// the watch's generation last drawn
 		std::map<std::string, rnds::TexPtr> gBadges;	// badge textures by file
@@ -258,6 +303,7 @@ namespace banana
 		void face(const std::string& key, const std::string& label, float x, float w);
 		float faceWidth(const std::string& key, const std::string& label);
 		static constexpr int ROWS = 5;
+		static constexpr int SETUP_STEPS = 6, SETUP_PITCH = 55;	// the first-time setup's steps (Wi-Fi .. Finish)
 	};
 
 	// key = value files: the line for key changed (or added), the rest kept; written beside and renamed over

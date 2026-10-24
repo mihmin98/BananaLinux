@@ -31,6 +31,7 @@ namespace banana
 		const char* const PANEL[] = { "panel", "off" };
 		const char* const BOXART[] = { "libretro", "both", "twilight" };
 		const char* const LATENCY[] = { "32", "64", "128" };
+		const char* const LOGIN[] = { "password", "guest" };
 
 		// The values /etc/banana/settings.conf documents, and the ones a card is completed with when that file is
 		// missing (the host test, or a card whose root is older than the menu). Keep in step with the template file.
@@ -50,8 +51,10 @@ namespace banana
 			{ "ra_shader", "off", ENUM, SHADERS, 0, 0, true },
 			{ "ra_audio_latency", "64", ENUM, LATENCY, 0, 0, true },
 			{ "ra_vsync", "on", ENUM, ON_OFF, 0, 0, true },
+			{ "ra_hotkeys", "on", ENUM, ON_OFF, 0, 0, true },
 			{ "nds_emulator", "superdrastic", ENUM, NDS, 0, 0, true },
 			{ "share", "off", ENUM, ON_OFF, 0, 0 },
+			{ "share_login", "password", ENUM, LOGIN, 0, 0 },
 			{ "ssh", "off", ENUM, ON_OFF, 0, 0 },
 			{ "timezone", "UTC0", TIMEZONE, nullptr, 0, 0 },
 			{ "retroarch_panel", "panel", ENUM, PANEL, 0, 0 },

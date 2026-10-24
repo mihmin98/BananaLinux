@@ -66,7 +66,8 @@ static struct {
 	int sleep_poweroff_pct;	/* found at or under this while asleep: shut down cleanly */
 	double dim_min;			/* idle minutes in the menu before the panels dim (0: never) */
 	int dim_pct;			/* dimmed to this percent of their brightness */
-} cfg = { "auto", 5, 8, 10, 1, 2000, 3, "deep", 128, 20, 5, 1, 4, 5, 2, 30 };
+	int mic_gain;			/* the rk817's microphone preamp, 0..15 (-1: left as it is) */
+} cfg = { "auto", 5, 8, 10, 1, 2000, 3, "deep", 128, 20, 5, 1, 4, 5, 2, 30, 12 };
 
 static int devfd[MAXDEV], ndev;
 static void leds_update(void);
@@ -77,6 +78,7 @@ static char bottom_bl[64];	/* the bottom panel's backlight name; banana-ui's idl
 static int headphones;
 static int fn_held, power_down, lid_closed;
 static int lid_retry_off;	/* a suspend failed with the lid shut: no retry until it opens */
+static double lid_sleep_at;	/* the lid shut in a DS game: the sleep a moment later, once the game has seen it */
 static double power_since, last_input, ignore_power_until;
 
 static volatile sig_atomic_t reload;
@@ -122,6 +124,7 @@ static void load_conf(const char *path)
 		else if (!strcmp(k, "brightness_step")) cfg.brightness_step = atoi(v);
 		else if (!strcmp(k, "autosleep_minutes")) cfg.autosleep_min = atoi(v);
 		else if (!strcmp(k, "lid_sleep")) cfg.lid_sleep = !strcmp(v, "yes") || !strcmp(v, "1");
+		else if (!strcmp(k, "mic_gain")) cfg.mic_gain = atoi(v);
 		else if (!strcmp(k, "power_long_ms")) cfg.power_long_ms = atoi(v);
 		else if (!strcmp(k, "battery_shutdown_percent")) cfg.battery_off_pct = atoi(v);
 		else if (!strcmp(k, "mem_sleep")) snprintf(cfg.mem_sleep, sizeof cfg.mem_sleep, "%s", v);
@@ -384,6 +387,59 @@ static void panel_off_again(void)
 }
 
 static int charger_online(void);
+/* dark and awake on the charger: waits up to ms for a press of the power button (on its release), the other
+ * devices' events dropped (a key while dark wakes nothing, as in a sleep) */
+static int power_pressed(int ms)
+{
+	struct pollfd pf[MAXDEV];
+	for (int i = 0; i < ndev; i++) pf[i] = (struct pollfd){ devfd[i], POLLIN, 0 };
+	if (poll(pf, ndev, ms) <= 0) return 0;
+	int got = 0, readable = 0;
+	for (int i = 0; i < ndev; i++) {
+		if (!(pf[i].revents & POLLIN)) continue;
+		readable = 1;
+		struct input_event ev[32];
+		ssize_t r;
+		while ((r = read(devfd[i], ev, sizeof ev)) > 0)
+			for (int k = 0; k < r / (ssize_t)sizeof ev[0]; k++)
+				if (ev[k].type == EV_KEY && ev[k].code == KEY_POWER && ev[k].value == 0) got = 1;
+	}
+	/* only a device's hang-up or error (a USB pad pulled out while dark): wait the time out anyway, not a busy loop */
+	if (!readable) usleep(ms * 1000);
+	return got;
+}
+/* dark on the charger: the buttons and touchscreens grabbed for bananad alone, so a press there reaches neither the
+ * menu nor a game (it looks asleep: A launched the game under the cursor, a tap hit RetroArch's game panel); the lid's
+ * hall sensor stays shared, as BananaDS and SuperDrastic must see the lid open to wake the game they put to sleep */
+static void inputs_grab(int on)
+{
+	for (int i = 0; i < ndev; i++) {
+		unsigned long sw[(SW_MAX + 8 * sizeof(long)) / (8 * sizeof(long))] = { 0 };
+		ioctl(devfd[i], EVIOCGBIT(EV_SW, sizeof sw), sw);
+		if (sw[SW_LID / (8 * sizeof(long))] >> (SW_LID % (8 * sizeof(long))) & 1) continue;
+		ioctl(devfd[i], EVIOCGRAB, on ? 1 : 0);
+	}
+}
+/* the battery's charge in percent whatever the charger says (-1: none): asleep dark on a charger too weak to keep up,
+ * it still goes down */
+static int battery_capacity(void)
+{
+	DIR *d = opendir("/sys/class/power_supply");
+	if (!d) return -1;
+	struct dirent *e;
+	int r = -1;
+	while (r < 0 && (e = readdir(d))) {
+		if (e->d_name[0] == '.') continue;
+		char p[320], t[32];
+		snprintf(p, sizeof p, "/sys/class/power_supply/%s/type", e->d_name);
+		read_str(p, t, sizeof t);
+		if (strcmp(t, "Battery")) continue;
+		snprintf(p, sizeof p, "/sys/class/power_supply/%s/capacity", e->d_name);
+		r = read_int(p, -1);
+	}
+	closedir(d);
+	return r;
+}
 static void suspend_now(const char *why)
 {
 	double t0 = mono();
@@ -393,23 +449,39 @@ static void suspend_now(const char *why)
 	hooks("pre", 0);
 	sync();
 	sleep_mode();
-	int cycles = 0, rtc_wakes = 0, failures = 0, dark = 0;
+	int cycles = 0, rtc_wakes = 0, failures = 0, dark = 0, dark_lid = 0;
 	double asleep = 0, dark_from = 0, led_at = 0;
 	const char *woke = "?";
 	for (;;) {
-		/* charging with the lid shut: no suspend, which turns the charging light off (it is a PWM LED, and the PWM
-		 * stops in suspend). Dark and awake instead, the game still paused, until the lid opens (back as from a
-		 * sleep) or the charger is pulled out (then a real sleep). */
-		if (lid_closed && charger_online()) {
+		/* charging: no suspend, which turns the charging light off (it is a PWM LED, and the PWM stops in suspend).
+		 * Dark and awake instead, the game still paused, until the lid opens or the power button is pressed (back as
+		 * from a sleep), or the charger is pulled out (then a real sleep). Since 0.4.2 a power-button sleep too, not
+		 * only the lid's (#8: the light went out when the handheld was put to sleep on the charger). */
+		if (charger_online()) {
 			if (!dark) {
-				dark = 1; dark_from = mono();
+				dark = 1; dark_from = mono(); dark_lid = lid_closed;
 				backlights_power(0);
+				inputs_grab(1);
 				sleep_log("%s while charging: dark and awake, so the charging light stays on%s", why, game ? ", game paused" : "");
 			}
-			if (mono() >= led_at) { leds_update(); led_at = mono() + 10; }	/* (it goes out when the battery is full) */
-			usleep(500000);
+			if (mono() >= led_at) {
+				leds_update(); led_at = mono() + 10;	/* (it goes out when the battery is full) */
+				/* a charger too weak for the handheld: shut down cleanly before the battery is empty */
+				int cap = battery_capacity();
+				if (cap >= 0 && cap <= cfg.sleep_poweroff_pct) {
+					sleep_log("dark on the charger, but the battery is down to %d%%: shutting down", cap);
+					inputs_grab(0);
+					if (pg > 0) kill(-pg, SIGCONT);	/* the game gets SIGTERM next, to write its saves */
+					shutdown_now("battery empty while charging");
+					return;
+				}
+			}
+			/* the power button wakes it, as from a sleep; with the lid shut it doesn't (a sleep goes back to
+			 * sleep then: a press in a bag mustn't run the game) */
+			if (power_pressed(500)) { read_lid(); if (!(lid_closed && cfg.lid_sleep)) { woke = "power button"; break; } }
 			read_lid();
-			if (!lid_closed) { woke = "lid opened"; break; }
+			if (dark_lid && !lid_closed) { woke = "lid opened"; break; }
+			if (!dark_lid && lid_closed) dark_lid = 1;	/* shut meanwhile: opening it wakes too */
 			continue;
 		}
 		time_t alarm = rtc_alarm((int)(cfg.sleep_check_hours * 3600));
@@ -458,6 +530,7 @@ static void suspend_now(const char *why)
 	double t_wake = mono();
 	/* the panels on when the lid is open: dark while charging, or dark from a lid shut with lid_sleep off before a
 	 * power-button sleep (the lid-open event that would light them is drained below) */
+	if (dark) inputs_grab(0);	/* the buttons and touchscreens shared again */
 	if (dark || !lid_closed) backlights_power(!lid_closed);
 	if (pg > 0) kill(-pg, SIGCONT);
 	pid_t ui = ui_pid();
@@ -603,18 +676,19 @@ static void audio_setup(void)
 	/* the rk817's output path: HP drives both its jack and (on the RG DS) the speaker amplifier */
 	char *argv[] = { "amixer", "-q", "-c", c, "sset", "Playback Mux", "HP", NULL };
 	run(argv);
-	/* ...and its input path, the microphone every DS emulator records from (asound.conf sends "default"'s capture
-	 * here; SuperDrastic and BananaDS both open it). Only the gains are userspace's to set: DAPM powers the ADC and
-	 * the microphone itself when a capture stream opens, and the codec has no capture mute. Set them anyway, so a
-	 * muted or turned-down state restored from another firmware's asound.state (or left by a program) can't leave a
-	 * game without a microphone. Exact hardware values, since as a percentage each reads backwards: the ADC volume's 0x00
-	 * is 0 dB (full) and 0xff is -95 dB, and the PGA "Mic Capture Gain" is -18 dB (0) to +27 dB (0xf) in 3 dB steps,
-	 * so 10 is +12 dB, a little over unity for the DS's quiet microphone. The RG DS Plus's mic is differential, which
-	 * its device tree enables in the codec (rockchip,mic-in-differential). */
-	char *mic[] = { "amixer", "-q", "-c", c, "sset", "Mic Capture Gain", "10", NULL };
-	run(mic);
-	char *cap[] = { "amixer", "-q", "-c", c, "sset", "Master Capture Volume", "0", NULL };
+	/* the microphone (#14): the rk817's "Master" is the DAC's volume AND the ADC's, and the volume keys set both, so
+	 * with the volume down the games heard next to nothing (a card saved at volume 0 recorded at -95 dB, at 43% at
+	 * -54 dB). The ADC at 0 dB always (the volume script changes playback only now), and the preamp at mic_gain: a
+	 * word from 30 cm reached an RMS of 0.01 at the old 6, 0.08 at 12 (the room's noise 0.012), where the games' and
+	 * BananaDS's thresholds expect a voice */
+	char *cap[] = { "amixer", "-q", "-c", c, "cset", "name=Master Capture Volume", "255,255", NULL };
 	run(cap);
+	if (cfg.mic_gain >= 0 && cfg.mic_gain <= 15) {
+		char g[8];
+		snprintf(g, sizeof g, "%d", cfg.mic_gain);
+		char *gain[] = { "amixer", "-q", "-c", c, "sset", "Mic Capture Gain", g, NULL };
+		run(gain);
+	}
 	audio_route();
 }
 
@@ -662,43 +736,41 @@ static void brightness(int dir)
 	if (pct >= 0) osd("brightness", pct);
 }
 
-/* both backlights at a fraction of their maximum */
-static void backlight_set_permille(int pm)
+/* The two panels' backlights, each its own level (N2): backlight1 lights the top panel (dsi1, DSI-2), backlight0 the
+ * bottom one (dsi0, DSI-1), as the device trees of both handhelds have it. The level kept in /data/banana/backlight is
+ * "<top> <bottom>" in thousandths of the maximum; a file with one number (before 0.4.2) is both. */
+static const char *BL[2] = { "backlight1", "backlight0" };	/* top, bottom */
+static void backlight_set_one(int i, int pm)
 {
-	DIR *d = opendir("/sys/class/backlight");
-	if (!d) return;
-	struct dirent *e;
-	while ((e = readdir(d))) {
-		if (e->d_name[0] == '.') continue;
-		char p[320], v[32];
-		snprintf(p, sizeof p, "/sys/class/backlight/%s/max_brightness", e->d_name);
-		int max = read_int(p, 0);
-		int nv = max * pm / 1000;
-		if (nv < 1) nv = 1;
-		snprintf(p, sizeof p, "/sys/class/backlight/%s/brightness", e->d_name);
-		snprintf(v, sizeof v, "%d", nv);
-		write_file(p, v);
-	}
-	closedir(d);
+	char p[96], v[32];
+	snprintf(p, sizeof p, "/sys/class/backlight/%s/max_brightness", BL[i]);
+	int max = read_int(p, 0);
+	if (max <= 0) return;
+	int nv = max * pm / 1000;
+	if (nv < 1) nv = 1;
+	snprintf(p, sizeof p, "/sys/class/backlight/%s/brightness", BL[i]);
+	snprintf(v, sizeof v, "%d", nv);
+	write_file(p, v);
 }
-
-/* the first backlight's level, in thousandths of its maximum */
-static int backlight_permille(void)
+static void backlight_set_pair(int top, int bottom) { backlight_set_one(0, top); backlight_set_one(1, bottom); }
+/* a level file ("<top> <bottom>" or one number for both): 0 when it has none */
+static int read_pair(const char *path, int *top, int *bottom)
 {
-	DIR *d = opendir("/sys/class/backlight");
-	if (!d) return -1;
-	struct dirent *e;
-	int r = -1;
-	while (r < 0 && (e = readdir(d))) {
-		if (e->d_name[0] == '.') continue;
-		char p[320];
-		snprintf(p, sizeof p, "/sys/class/backlight/%s/max_brightness", e->d_name);
-		int max = read_int(p, 0);
-		snprintf(p, sizeof p, "/sys/class/backlight/%s/brightness", e->d_name);
-		if (max > 0) r = read_int(p, 0) * 1000 / max;
-	}
-	closedir(d);
-	return r;
+	FILE *f = fopen(path, "r");
+	if (!f) return 0;
+	int n = fscanf(f, "%d %d", top, bottom);
+	fclose(f);
+	if (n == 1) *bottom = *top;
+	return n >= 1 && *top > 0 && *top <= 1000 && *bottom > 0 && *bottom <= 1000;
+}
+/* a panel's level now, in thousandths of its maximum (-1: no such backlight) */
+static int backlight_permille(int i)
+{
+	char p[96];
+	snprintf(p, sizeof p, "/sys/class/backlight/%s/max_brightness", BL[i]);
+	int max = read_int(p, 0);
+	snprintf(p, sizeof p, "/sys/class/backlight/%s/brightness", BL[i]);
+	return max > 0 ? read_int(p, 0) * 1000 / max : -1;
 }
 
 /* the bottom panel's backlight, from the backlight-path script (the DSI node names it, as one-panel does). While
@@ -755,10 +827,17 @@ static void dim(void)
 	dimmed = dim_count > 0;
 	/* the level before dimming, for the settings screen (opened by the press that undims) */
 	if (dimmed) {
-		char p[600];
-		snprintf(p, sizeof p, "/sys/class/backlight/%.255s/max_brightness", dim_name[0]);
-		int max = read_int(p, 0);
-		if (max > 0) { char v[16]; snprintf(v, sizeof v, "%d\n", dim_level[0] * 1000 / max); write_file("/run/banana/dim", v); }
+		/* (dim_level is per backlight already; the pair, top and bottom, from those levels before dimming) */
+		int lv[2] = { -1, -1 };
+		for (int k = 0; k < dim_count; k++)
+			for (int i = 0; i < 2; i++)
+				if (!strcmp(dim_name[k], BL[i])) {
+					char p[96];
+					snprintf(p, sizeof p, "/sys/class/backlight/%s/max_brightness", BL[i]);
+					int max = read_int(p, 0);
+					if (max > 0) lv[i] = dim_level[k] * 1000 / max;
+				}
+		if (lv[0] > 0) { char v[24]; snprintf(v, sizeof v, "%d %d\n", lv[0], lv[1] > 0 ? lv[1] : lv[0]); write_file("/run/banana/dim", v); }
 	}
 }
 static void undim(void)
@@ -778,10 +857,11 @@ static void save_settings(double now)
 {
 	if (save_backlight_at > 0 && now >= save_backlight_at) {
 		save_backlight_at = 0;
-		char v[16];
-		snprintf(v, sizeof v, "%d\n", backlight_permille());
-		FILE *f = fopen("/data/banana/backlight", "w");
-		if (f) { fputs(v, f); fclose(f); }
+		int t = backlight_permille(0), b = backlight_permille(1);
+		if (t > 0) {
+			FILE *f = fopen("/data/banana/backlight", "w");
+			if (f) { fprintf(f, "%d %d\n", t, b > 0 ? b : t); fclose(f); }
+		}
 	}
 	if (save_volume_at > 0 && now >= save_volume_at) {
 		save_volume_at = 0;
@@ -792,11 +872,10 @@ static void save_settings(double now)
 
 static void restore_settings(void)
 {
-	int pm = read_int("/data/banana/backlight", -1);
-	if (pm > 0 && pm <= 1000) backlight_set_permille(pm);
-	/* started again while the panels were dimmed (/run/banana/dim: the level before): undimmed, as the last one would */
-	int dimmed_from = read_int("/run/banana/dim", -1);
-	if (dimmed_from > 0 && dimmed_from <= 1000) { backlight_set_permille(dimmed_from); unlink("/run/banana/dim"); }
+	int t, b;
+	if (read_pair("/data/banana/backlight", &t, &b)) backlight_set_pair(t, b);
+	/* started again while the panels were dimmed (/run/banana/dim: the levels before): undimmed, as the last one would */
+	if (read_pair("/run/banana/dim", &t, &b)) { backlight_set_pair(t, b); unlink("/run/banana/dim"); }
 	if (access("/data/banana/asound.state", R_OK) == 0) {
 		char *argv[] = { "alsactl", "-f", "/data/banana/asound.state", "restore", NULL };
 		run(argv);
@@ -1034,14 +1113,34 @@ static void open_inputs(void)
 	read_lid();
 }
 
+/* the game running is a DS one (its command line): its emulator passes the lid on to the game */
+static int ds_game(void)
+{
+	pid_t g = pid_of("/run/banana/game.pid");
+	if (!g) return 0;
+	char p[64], cmd[512] = "";
+	snprintf(p, sizeof p, "/proc/%d/cmdline", (int)g);
+	FILE *f = fopen(p, "r");
+	if (!f) return 0;
+	size_t n = fread(cmd, 1, sizeof cmd - 1, f);
+	fclose(f);
+	for (size_t i = 0; i < n; i++) if (!cmd[i]) cmd[i] = ' ';
+	cmd[n] = 0;
+	/* (the launchers exec the emulator: /usr/bin/bananads, superdrastic-run then /data/drastic/drastic) */
+	return strstr(cmd, "bananads") || strstr(cmd, "drastic") || strstr(cmd, "run-nds");
+}
+
 static void handle(const struct input_event *e)
 {
 	double now = mono();
 	if (e->type == EV_KEY) { last_input = now; undim(); }
 	if (e->type == EV_SW && e->code == SW_LID) {
 		lid_closed = e->value;
-		if (!lid_closed) { undim(); lid_retry_off = 0; }
-		if (lid_closed && cfg.lid_sleep) suspend_now("lid closed");
+		if (!lid_closed) { if (lid_sleep_at > 0) say("lid opened again before the sleep"); undim(); lid_retry_off = 0; lid_sleep_at = 0; }
+		/* a DS game: the panels dark now, the sleep 1.5 s later, so the game sees its lid close first (BananaDS and
+		 * SuperDrastic read the hall sensor too: its sleep mode, its lid sound); opened before that, no sleep */
+		if (lid_closed && cfg.lid_sleep && ds_game()) { lid_sleep_at = now + 1.5; backlights_power(0); say("lid shut in a DS game: asleep in 1.5 s"); }
+		else if (lid_closed && cfg.lid_sleep) suspend_now("lid closed");
 		else if (!lid_closed || !cfg.lid_sleep) { backlights_power(!lid_closed); if (!lid_closed) panel_off_again(); }	/* no sleep: at least the panels go dark */
 		return;
 	}
@@ -1154,6 +1253,7 @@ int main(int argc, char **argv)
 		if (lid_closed && cfg.lid_sleep && !lid_retry_off) { double d = 5.0 - (tnow - last_input); if (d > 0 && d < wait) wait = d; }
 		if ((save_volume_at > 0 || save_backlight_at > 0) && wait > 0.5) wait = 0.5;
 		if (power_down && wait > 0.1) wait = 0.1;
+		if (lid_sleep_at > 0) { double d = lid_sleep_at - tnow; if (d < wait) wait = d > 0 ? d : 0; }
 		int timeout = wait <= 0 ? 20 : (int)(wait * 1000) + 20;
 		poll(pf, n, timeout);
 		double now = mono();
@@ -1193,8 +1293,9 @@ int main(int argc, char **argv)
 		if (cfg.autosleep_min > 0 && !game && now - last_input >= cfg.autosleep_min * 60.0 && !charger_online() &&
 		    !pid_of("/run/banana/awake.pid"))
 			suspend_now("idle");
+		if (lid_sleep_at > 0 && now >= lid_sleep_at) { lid_sleep_at = 0; if (lid_closed) suspend_now("lid closed"); }
 		/* started or woken with the lid shut */
-		if (lid_closed && cfg.lid_sleep && !lid_retry_off && now - last_input > 5) suspend_now("lid still closed");
+		if (lid_closed && cfg.lid_sleep && !lid_retry_off && lid_sleep_at == 0 && now - last_input > 5) suspend_now("lid still closed");
 
 		if (now >= next_battery) {
 			next_battery = now + 60;

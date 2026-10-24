@@ -1,6 +1,6 @@
 # 0008 RomM: investigation
 
-Issue: #8 · Branch: `kiwami` (committed there at the user's request; the implementation gets `k/0008-romm`) · Status: draft (open: not being worked on yet; rechecked 24 Oct 2026, *Rechecked*) · Confidence: 91% (proceed)
+Issue: #8 · Branch: `kiwami` (committed there at the user's request; the implementation gets `k/0008-romm`) · Status: draft (open: not being worked on yet; rechecked 24 Oct 2026 after 0007, and again after 0019, *Rechecked*) · Confidence: 91% (proceed)
 
 ## The request
 
@@ -29,6 +29,8 @@ Decided with the user:
   time sent to RomM (3).
 - **One feature, saves first**: the plan's steps do the login and the save sync first (usable on their own), then the
   game browser, the downloads and the BIOS.
+- **RomM is a group of its own in Settings** (decided 24 Oct, after 0019 gave RetroAchievements one), not a row under
+  Network: *What has to change*.
 
 Out of scope: save states (RetroArch's `.state`, the DS emulators' `.dss`/`.mst`), box art from RomM (Banana's own
 scraper covers it), PICO-8's and the Ports' and apps' own data, uploading games to RomM, RomM's collections and
@@ -60,7 +62,48 @@ local `main`'s `a5e65b7`), and RomM's and Grout's releases. **It still holds**: 
 - **`kiwami/post-build.sh` now has a `veto` helper** (0007) for file sharing's veto line; the wrapping of `run` lines
   goes in the same file. RomM's token stays in `accounts.conf`, already vetoed (`share:50`).
 - **RomM 5.4.1 and Grout v5.4.0.0 are still the latest releases.**
-- Line drift only: banana-ui's game-panel test is now `ui/src/main.cpp:1381` (was `:1384`).
+
+### Rechecked after RetroAchievements (24 Oct 2026)
+
+Checked again after 0019's RetroAchievements was merged into `kiwami` (`5398736`, 18 commits past `b59fab5`, where the
+recheck above was committed). Upstream's `main` on GitHub hasn't moved (still 31 commits past `a5e65b7`, the last on
+23 Oct), and RomM 5.4.1 and Grout v5.4.0.0 are still the latest releases. **The report still holds**: no decision is
+undone, and the `path:line` references below were read again on `kiwami` at `5398736`. What changed:
+
+- **The fork's Settings pages are routed by which one is open** (`a3e6f63`): `Kiwami::open()` sets `pageOpen` from the
+  row's key and `press()`, `touch()`, `render()`, `entryHelp()` and `entered()` call that page's own functions
+  (`ui/src/kiwami/kiwami.cpp:141-178`, the `Page` enum in `kiwami.h`). RomM's pages are more entries in it.
+- **A group of the fork's own is possible, and RomM gets one** (open question 15). RetroAchievements is a seventh
+  group, after System (`ui/src/settings.cpp:507`, a `kiwami:` hook line), and the groups' grid shows two rows of
+  three and scrolls to a third (`kiwami/grid.h`, the `kiwami:` lines in `settings.cpp`'s `pressGroups`, touch and
+  drawing). Settings makes a group of each item's `section` in the order they first appear (`settings.cpp:683`), so
+  `Kiwami::rows()` can add RomM's rows right after RetroAchievements' from the same hook call
+  (`ui/src/kiwami/kiwami.cpp:90`): an eighth group and still no new upstream line. Eight groups fill three rows but
+  one; `gridMove` already handles a last row that isn't full.
+- **The fork has an HTTP client in banana-ui** (`ui/src/kiwami/raclient.{h,cpp}`): libcurl `dlopen()`ed as upstream's
+  account check does, each request blocking (up to 20 s) on a thread the page starts (`Kiwami::raRun`), one log line
+  per request without secrets. The helper is still a separate program (the wrapper needs it outside banana-ui); its
+  transport follows raclient's (the same timeouts and log line), and banana-ui's RomM pages ask the helper, as decided.
+- **An MD5 in the tree**: rcheevos' `src/rhash/md5.c` is vendored and built (`ui/src/kiwami/kiwami.mk`). RomM's
+  negotiation sends each save's MD5 (`content_hash`); the helper can link that file rather than OpenSSL's libcrypto
+  (*Suggestions*, 8).
+- **accounts.conf has another writer of the fork's.** RetroAchievements' account store edits it in place, keeping
+  every other line, through `<file>.new` and a rename (`ui/src/kiwami/rastore.cpp:50-98`), and upstream's
+  `ra-secrets` edits it with `sed -i` before and after each RetroArch game (`run-retroarch:94,176`,
+  `ra-secrets:11,23-24`). RomM's keys (`romm_url`, `romm_token`, `romm_device_id`) sit beside theirs: the helper
+  writes them only when pairing and logging out, the same way as rastore's `edit`, and only reads the file around
+  games, so the push after a game never races `ra-secrets`.
+- **The library is reachable from Settings** (`kiwami::library`, `ui/src/kiwami/library.h`, set in `ui/src/main.cpp:1010`):
+  the browser can mark a game as on the card from the library's games (both cards) instead of looking at the folders.
+- **The tests have a model for a stand-in server**: `kiwami/tests/ra-server.py`, with its replies as files under
+  `kiwami/tests/ra/`, and the URLs moved by the environment (`KIWAMI_RA_URL`). RomM's fake server follows it. The
+  group changes `ra-ui.sh`'s grid shots (eight groups instead of seven): RomM's group gets a `KIWAMI_ROMM_GROUP=0` for
+  the tests, as `KIWAMI_RA_GROUP=0` leaves RetroAchievements' out.
+- **Corrected**: *Suggestions*, 7 said `banana-scrape` scans only `/data/roms`; it scans the second card's `roms` too
+  (`ui/src/scrape.cpp:501-512`) and puts the art on that card (`:441-455`), already so at `b59fab5`. A game downloaded
+  to the second card gets its cover from Banana's scraper like any other.
+- Line drift only: `ui/src/main.cpp` moved by two lines (`runGame` `:1363-1499`, the game-panel test `:1383`),
+  upstream's libcurl check is `ui/src/settings.cpp:2877`, the fork's cores `ui/src/kiwami/kiwami.cpp:53-63`.
 
 ## Oversights in the requirements
 
@@ -100,7 +143,7 @@ local `main`'s `a5e65b7`), and RomM's and Grout's releases. **It still holds**: 
 
 5. **A card with its own `systems.conf` gets no automatic sync.** `/data/banana/systems.conf` replaces the image's
    file whole (`system/rootfs/etc/banana/systems.conf:2`), and the wrapper is in the image's copy. *Proposed*: accept
-   it, as 0003's `.7z` did; Sync now still covers that card, and the RomM page says why the automatic sync is off when
+   it, as 0003's `.7z` did; Sync now still covers that card, and the RomM group says why the automatic sync is off when
    the card's `systems.conf` has no wrapper.
 
 6. **No Wi-Fi at launch time.** After a wake, Wi-Fi comes back in the background (`sleep.d/10-wifi`, `post`), so a
@@ -175,22 +218,24 @@ local `main`'s `a5e65b7`), and RomM's and Grout's releases. **It still holds**: 
      next RetroArch start, unless something runs `retroarch --cloudsync` after it.
    - It covers RetroArch only, not the DS, and only while `BR2_PACKAGE_KIWAMI_RETROARCH_MASTER` is on. Conflicts are
      resolved in RetroArch's menu, not Banana's Settings.
-7. **Not now, worth an issue later**: covers for downloaded games from RomM (a game downloaded to the second card
-   gets none from `banana-scrape`, which scans only `/data/roms`, `ui/src/scrape.cpp:388`); save states; RomM's
-   "install to device" pushes from the web UI.
+7. **Not now, worth an issue later**: save states; RomM's "install to device" pushes from the web UI. (Covers for
+   downloaded games need nothing: `banana-scrape` covers both cards, `ui/src/scrape.cpp:501-512`.)
+8. **The save's MD5 from rcheevos' `md5.c`** (*proposed*, 24 Oct): already vendored and built for RetroAchievements
+   (`ui/src/kiwami/third_party/rcheevos/src/rhash/md5.c`), so the helper needs no libcrypto for it. For the plan to
+   settle, with how the helper's build picks up that file.
 
 ## Current state
 
 **Nothing of RomM in the fork or upstream** (`git grep -i romm` finds nothing; `main` neither).
 
 **Games and their launch.** `systems.conf` (`system/rootfs/etc/banana/systems.conf`) lists the systems; games are
-found in `/data/roms/<folder>` and the second card's `roms` (`ui/src/library.cpp:485-492`, `Library::roots()`, the
-second root from `/run/banana/sd2/roms`). banana-ui's `runGame` (`ui/src/main.cpp:1361-1497`) replaces `%ROM%`
-and `%SYSTEM%` in the system's `run` (`:1365`), decides from that string whether it is RetroArch, which gets the game
-panel (`:1384`, `find("run-retroarch")`, `run-ps1`, `run-pico8`), closes the display (Mode B) or leases one panel
-(Mode A), forks, `setsid()`, exports `BANANA_ROM` and `BANANA_SYSTEM` (`:1433-1434`), runs `sh -c <run>` and writes
-its pid to `/run/banana/game.pid` (`:1447`; the game-panel test is now at `:1381`). After the game: `banana-perf ui`, the panels back, `lib.recordPlay`
-(`:1487`) with the seconds played. The library picks up games copied into ROM folders through inotify, read again
+found in `/data/roms/<folder>` and the second card's `roms` (`ui/src/library.cpp:486-493`, `Library::roots()`, the
+second root from `/run/banana/sd2/roms`). banana-ui's `runGame` (`ui/src/main.cpp:1363-1499`) replaces `%ROM%`
+and `%SYSTEM%` in the system's `run` (`:1367`), decides from that string whether it is RetroArch, which gets the game
+panel (`:1383`, `find("run-retroarch")`, `run-ps1`, `run-pico8`), closes the display (Mode B) or leases one panel
+(Mode A), forks, `setsid()`, exports `BANANA_ROM` and `BANANA_SYSTEM` (`:1435-1436`), runs `sh -c <run>` and writes
+its pid to `/run/banana/game.pid` (`:1449`). After the game: `banana-perf ui`, the panels back, `lib.recordPlay`
+(`:1489`) with the seconds played. The library picks up games copied into ROM folders through inotify, read again
 once the copying has been quiet for 2 s (`ui/src/main.cpp:341-375`; the second card's folders are watched too).
 banana-ui's headless test prints a launch line instead of running the command (`kiwami/tests/7z-ui.sh:30-36`).
 
@@ -198,7 +243,7 @@ banana-ui's headless test prints a launch line instead of running the command (`
 - RetroArch: `/data/saves/<library_name>/<rom stem>.srm` (*Oversights*, 2), the stem of the `.zip`/`.7z` for an
   archive. The core: `systems.conf`'s, or `core.<system>` in `settings.conf` when it names an installed core
   (`system/rootfs/usr/libexec/banana/run-retroarch:14-19`); the fork adds Mesen, SameBoy and Genesis Plus GX
-  (`ui/src/kiwami/kiwami.cpp:44-55`, `kiwami/DEPENDENCIES.md`). PlayStation: `run-ps1` ends in `run-retroarch` with
+  (`ui/src/kiwami/kiwami.cpp:53-63`, `kiwami/DEPENDENCIES.md`). PlayStation: `run-ps1` ends in `run-retroarch` with
   PCSX-ReARMed (memory card per game, `<stem>.srm`).
 - DS: `run-nds` picks DraStic or BananaDS (`nds_emulator`, `nds-per-game.conf`); `nds-saves` reconciles
   `drastic/backup/<g>.dsv` and `saves/nds/<g>.sav` before each start (*Oversights*, 3), takes a ROCKNIX-style `.dsv`
@@ -209,14 +254,17 @@ banana-ui's headless test prints a launch line instead of running the command (`
 comes back after it in the background (`system/rootfs/etc/banana/sleep.d/10-wifi`). The first-time setup keeps
 accounts in `/data/banana/accounts.conf`, which file sharing hides (`system/rootfs/usr/libexec/banana/share:50`,
 `veto files = /*host_key_ed25519/*accounts.conf/*ra.token/*wifi.conf/`). libcurl (with OpenSSL and the CA bundle) is
-in the image; upstream's code `dlopen`s it (`ui/src/settings.cpp:2873`; busybox's `wget` has no HTTPS). There is no
+in the image; upstream's code `dlopen`s it (`ui/src/settings.cpp:2877`; busybox's `wget` has no HTTPS), and so does
+the fork's RetroAchievements client (`ui/src/kiwami/raclient.cpp:33`). There is no
 `curl` command and no `jq`; `unzip` is busybox's (`/usr/bin/unzip`). Python 3.14 is in the image for PortMaster
 (17 MB).
 
 **What the fork already has to build on.**
 - Settings pages of its own: `Settings::Kiwami` (`ui/src/kiwami/kiwami.h`) adds rows to a group (`rows()`, hooked in
-  `ui/src/settings.cpp:458,466`), a page per row (`page == KIWAMI`), upstream's keyboard (`ENTRY_KIWAMI`), and a
-  background job polled while the page shows (`wifi::Job`, `update()`/`wake()`). Tailscale's page
+  `ui/src/settings.cpp:458,466`) and a group of its own after System (`:507`, RetroAchievements), a page per row
+  (`page == KIWAMI`, routed to the page open by `pageOpen`, `ui/src/kiwami/kiwami.cpp:141-178`), upstream's keyboard
+  (`ENTRY_KIWAMI`), a background job polled while the page shows (`wifi::Job`, `update()`/`wake()`), and requests run
+  on a thread (`raRun`). Tailscale's page
   (`ui/src/kiwami/tailscale.cpp`) is the model: a helper program, a status, a login by a QR code on the top panel
   (`qrFor()`, `renderLogin()`, Nayuki's QR generator, `ui/src/kiwami/qrcodegen.cpp`).
 - A JSON reader (`ui/src/kiwami/json.h`), unit-tested (`kiwami/tests/units.cpp`). Upstream now has its own
@@ -225,6 +273,10 @@ in the image; upstream's code `dlopen`s it (`ui/src/settings.cpp:2873`; busybox'
   `BR2_PACKAGE_KIWAMI_RETROARCH_MASTER`: the same save and state layout as v1.22.2 (*Rechecked*).
 - `kiwami/post-build.sh` already edits the image's `systems.conf` (0003's `7z`), failing the build if a section it
   expects isn't there.
+- From 0019's RetroAchievements: an HTTP client in banana-ui (`ui/src/kiwami/raclient.{h,cpp}`), the account kept in
+  `accounts.conf` by an in-place edit that keeps the other keys (`ui/src/kiwami/rastore.cpp:50-98`), the library
+  reachable from Settings (`ui/src/kiwami/library.h`), rcheevos' `md5.c` built (`ui/src/kiwami/kiwami.mk`), and a
+  stand-in server for the tests (`kiwami/tests/ra-server.py`).
 - Upstream's `banana-scrape` (`ui/src/scrape.cpp`) is the model for a long network job: a separate program started
   detached from Settings, its progress in a status file (`/run/banana/scrape.status`), `awake.pid` held while it runs.
 
@@ -256,7 +308,8 @@ All of it is in the fork's own files; no upstream file changes.
   new package `kiwami/package/kiwami-romm` whose local site is `ui/`, as `banana-ui`'s is, so neither `ui/Makefile`
   nor `banana-ui.mk` changes; libcurl from the image). Verbs, for the wrapper and the Settings page:
   - `pair <url>` / `pair-poll`: the device flow; the token and device id written to `accounts.conf`
-    (`romm_url`, `romm_token`, `romm_device_id`).
+    (`romm_url`, `romm_token`, `romm_device_id`), edited in place as rastore's `edit` does (the other keys kept);
+  the helper writes the file only here and when logging out.
   - `pull <system> <rom>` / `push <system> <rom> <start> <end>`: one game's save (the core's folder from
     `systems.conf` and `core.<system>`; the DS through `nds-saves`), with the timeouts of *Oversights*, 6; pending
     pushes and play sessions in `/data/banana/romm/pending`.
@@ -276,13 +329,16 @@ All of it is in the fork's own files; no upstream file changes.
 - **`kiwami/post-build.sh`**: each game system's `run` line (`nds gba gbc gb nes snes megadrive psx n64`; not the
   apps, PICO-8 or Ports) prefixed with `/usr/libexec/kiwami/romm-game`, idempotently, and the build stopped if one of
   those sections or its `run` line is missing. The command still contains `run-retroarch`/`run-ps1`, so banana-ui's
-  game panel test (`ui/src/main.cpp:1384`) is unchanged.
-- **Settings > Network > RomM** (`ui/src/kiwami/`, a row added in `Kiwami::rows()` for `Network` next to Tailscale,
-  and its page): RomM on/off; Server (the keyboard); Pair (the QR code and the code on the top panel, as Tailscale's
-  login); Sync around games on/off; Downloads to: Main card / Second card; Sync now (progress, then what was sent and
-  fetched, the conflicts to resolve); Games (RomM's platforms that map to Banana's systems, then their games, paged,
-  a search through the keyboard, A downloads with progress, a game already on a card marked); BIOS (download); Log out.
-  The row's value: Off, Not paired, Synced, *n* conflicts, No server.
+  game panel test (`ui/src/main.cpp:1383`) is unchanged.
+- **Settings > RomM, a group of its own** (decided 24 Oct; `ui/src/kiwami/`): its rows added by `Kiwami::rows()` after
+  RetroAchievements' from the existing hook call (`ui/src/settings.cpp:507`; no new upstream line), so it is the eighth
+  group, after RetroAchievements; its pages are entries in the `Page` routing. The rows, roughly (the plan settles them):
+  RomM on/off; Server (the keyboard); Pair (the QR code and the code on the top panel, as Tailscale's login) and Log
+  out; Sync around games on/off; Downloads to: Main card / Second card; Sync now (progress, then what was sent and
+  fetched; its value Synced, *n* conflicts, No server) and the conflicts to resolve; Games (RomM's platforms that map
+  to Banana's systems, then their games, paged, a search through the keyboard, A downloads with progress, a game
+  already on a card marked from the library); BIOS (download). The group shows whether RomM is on or off, as
+  RetroAchievements' does; with RomM off its rows say so and nothing runs.
 - **Settings** in `/data/banana/settings.conf`, defaults keeping upstream's behaviour: `romm = off`,
   `romm_autosync = on` (only used once RomM is on), `romm_target = main` (`main` or `sd2`).
 - **Docs**: the client in `docs/FORK.md`'s shadowed files (the `run` lines `post-build.sh` wraps, as for `7z`), and
@@ -319,7 +375,7 @@ of the fork's is needed for it.
 ## Risks
 
 - **Performance and footprint.** Nothing runs while idle: the helper runs for a pull, a push, a sync or a download,
-  and Settings polls its status only while the RomM page shows (every 0.5 s, as banana-scrape's). The menu's frames
+  and Settings polls its status only while a RomM page shows (every 0.5 s, as banana-scrape's). The menu's frames
   don't change. A game's start gets one request (the negotiation) and, when the server has a newer save, one download:
   tens of milliseconds on the LAN, up to the 3 s cap without a network. With RomM off the wrapper is one `exec`. Rootfs:
   the helper and the script, well under 1 MB. The push after a game runs while the menu is back (Wi-Fi and one core
@@ -360,8 +416,9 @@ of the fork's is needed for it.
   - `post-build.sh` over upstream's `systems.conf`: the nine `run` lines wrapped once (idempotent), the apps left
     alone, a missing section failing the build; banana-ui headless over that file, every shelf launching (as
     `7z-ui.sh`).
-  - banana-ui headless: the RomM row and page with the fake helper (as `tailscale-ui.sh` does with
-    `fake-tailscale.sh`), at 640x480 and 1024x768, the log lines checked.
+  - banana-ui headless: the RomM group and its pages with the fake helper (as `tailscale-ui.sh` does with
+    `fake-tailscale.sh`), at 640x480 and 1024x768, the log lines checked; the groups' grid with eight groups, and
+    `ra-ui.sh`'s shots kept as they are with `KIWAMI_ROMM_GROUP=0`.
   - `kiwami/tests/ci.sh` runs all of it; `make test`'s renders unchanged with RomM off (upstream's look).
 - **QEMU** (`tools/qemu-boot.sh`): the image boots, the wrapped `run` lines start a game's launcher, the helper
   runs on the target; it has no Wi-Fi, so the network is QEMU's user network to a fake server on the host.
@@ -394,3 +451,5 @@ of the fork's is needed for it.
     stays; RetroArch's WebDAV isn't used (*Suggestions*, 6).
 14. **Which JSON reader the helper uses, now that upstream has one** (24 Oct). *Answered*: the fork's
     (`ui/src/kiwami/json.h`).
+15. **Where RomM goes in Settings, now that the fork has a group of its own** (24 Oct, after 0019). *Answered*: a group
+    of its own, after RetroAchievements, rather than a row under Network.

@@ -16,7 +16,8 @@
 //   grid, three tiles a row, shows two rows at a time, scrolling to the third (grid.h). A on Account opens the Account
 //   page (ra-account.cpp): sign in, sign out, and the accounts signed out, remembered. Stats (kiwami.ra.stats): points
 //   and progress per system (ra-stats.cpp), fetched when the page opens or on Y, kept on the card for offline. Games on
-//   this card (kiwami.ra.games): the library's games the emulators recorded achievements for (ra-games.cpp).
+//   this card (kiwami.ra.games): the library's games the emulators recorded achievements for (ra-games.cpp), A on one
+//   its achievements, locked and unlocked (ra-game.cpp), the game identified by hashing it as RetroArch does.
 #include "../settings.h"
 #include <functional>
 #include "grid.h"
@@ -53,7 +54,7 @@ namespace banana
 	private:
 		Settings& st;
 		// the page that shows while Settings' page is KIWAMI: open() sets it, and the page hooks go to its own functions
-		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS, RA_GAMES } pageOpen = Page::NONE;
+		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS, RA_GAMES, RA_GAME } pageOpen = Page::NONE;
 		int row0 = 0;								// the groups' first row shown, kept as the selection moves
 		int modeAt = -1;							// Mode's value as both its rows last had it
 		bool syncMode();							// a change to one of Mode's two rows shown in the other
@@ -153,5 +154,14 @@ namespace banana
 		Result raGamesPress(Key k);
 		Result raGamesTouch(float cx, float cy);
 		void raGamesRender();
+		// a game's achievements (ra-game.cpp), A on one of the games on this card: the game identified (rahash.h, its
+		// hash and ID kept on the card), its achievements and the account's unlocks asked, the badges fetched once
+		Result raGameOpen(int i);
+		Result raGamePress(Key k);
+		Result raGameTouch(float cx, float cy);
+		void raGameRender();
+		void raGameLoad();
+		void raGameBadges();
+		void raBadge(const std::string& name, float x, float y, float size, bool dim);
 	};
 }

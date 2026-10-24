@@ -81,6 +81,8 @@ namespace banana
 		// the avatars only while the page or its keyboard shows
 		bool shown = (pageOpen == Page::RA_ACCOUNT || pageOpen == Page::RA_STATS) && (st.page == KIWAMI || st.page == KEYBOARD);
 		if (!shown && !ra->avatars.empty()) ra->avatars.clear();
+		// a game's badges only while its page shows
+		if (!(pageOpen == Page::RA_GAME && st.page == KIWAMI) && !ra->badges.empty()) ra->badges.clear();
 		if (!ra->task) return false;
 		{
 			std::lock_guard<std::mutex> l(ra->task->mu);

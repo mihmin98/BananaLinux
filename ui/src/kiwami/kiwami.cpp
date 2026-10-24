@@ -1,6 +1,6 @@
 // banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing, each page
 // hook going to the page that is open, and the groups' grid; the pages are in their own files (tailscale.cpp,
-// ra-account.cpp, ra-stats.cpp, ra-games.cpp).
+// ra-account.cpp, ra-stats.cpp, ra-games.cpp, ra-game.cpp).
 #include "ra.h"
 #include <algorithm>
 #include <cstdio>
@@ -148,13 +148,15 @@ namespace banana
 	Settings::Result Settings::Kiwami::press(Key k)
 	{
 		return pageOpen == Page::TAILSCALE ? tsPress(k) : pageOpen == Page::RA_ACCOUNT ? raPress(k)
-			: pageOpen == Page::RA_STATS ? raStatsPress(k) : pageOpen == Page::RA_GAMES ? raGamesPress(k) : NONE;
+			: pageOpen == Page::RA_STATS ? raStatsPress(k) : pageOpen == Page::RA_GAMES ? raGamesPress(k)
+			: pageOpen == Page::RA_GAME ? raGamePress(k) : NONE;
 	}
 
 	Settings::Result Settings::Kiwami::touch(float cx, float cy)
 	{
 		return pageOpen == Page::TAILSCALE ? tsTouch(cx, cy) : pageOpen == Page::RA_ACCOUNT ? raTouch(cx, cy)
-			: pageOpen == Page::RA_STATS ? raStatsTouch(cx, cy) : pageOpen == Page::RA_GAMES ? raGamesTouch(cx, cy) : NONE;
+			: pageOpen == Page::RA_STATS ? raStatsTouch(cx, cy) : pageOpen == Page::RA_GAMES ? raGamesTouch(cx, cy)
+			: pageOpen == Page::RA_GAME ? raGameTouch(cx, cy) : NONE;
 	}
 
 	void Settings::Kiwami::render()
@@ -163,6 +165,7 @@ namespace banana
 		else if (pageOpen == Page::RA_ACCOUNT) raRender();
 		else if (pageOpen == Page::RA_STATS) raStatsRender();
 		else if (pageOpen == Page::RA_GAMES) raGamesRender();
+		else if (pageOpen == Page::RA_GAME) raGameRender();
 	}
 
 	std::string Settings::Kiwami::entryHelp() const

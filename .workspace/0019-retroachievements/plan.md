@@ -996,6 +996,37 @@ Where the implementation turned out different from this plan, why, and what chan
   - `ci.sh` changes (not in the step's Files): `units` links `rachd.cpp`.
   - `make banana-ui-rebuild-rgds`: no warning; banana-ui is 2,175,136 bytes unstripped, 1,961,208 after step 10. The
     size before and after the feature is measured in step 13.
+- **2026-10-24, step 12: signed out, a game is identified and the page asks to sign in.** The plan had the list shown
+  without unlocks. But the server gives a game's list (`r=patch`) only to an account: rcheevos sends it with `u` and
+  `t`, as upstream's game panel does. Signed out, the game is hashed and its ID asked (`gameid` needs no account), both
+  kept, and the page says to sign in on the Account page, with the game's ID (logged `ra: game <id> identified, not
+  signed in`). Chosen by the user. `ra-ui.sh` checks that nothing is asked when the ID is on the card.
+- **2026-10-24, step 12: the files the page touches.**
+  - `kiwami.h` (`Page::RA_GAME`, the page's functions), `kiwami.cpp` (the page hooks' dispatch) and `ra-account.cpp`
+    (`raUpdate` drops the badges when the page doesn't show) change, as for the earlier pages.
+  - `rastore.h` declares the hash cache (`cachedHash`, `cacheHash`) and the card's `hashes` and `badges` paths.
+  - `kiwami/tests/ra/` doesn't change: step 3's `gameid`, `patch` and `unlocks` replies serve the page as they are.
+- **2026-10-24, step 12: details the plan left open.**
+  - The hash cache keeps a line once the game is hashed, with an empty ID until the server knows one. A hash the
+    server doesn't know (ID 0) is asked again next time, since the set may be added. A path with a tab or a newline
+    isn't kept. A line is replaced when the file changes (its size or modification time), and the threads' writes are
+    serialised.
+  - With a password and no token, the request logs in with the password first and keeps the token it gets, as the
+    Stats page does.
+  - An unlocked achievement is in either `unlocks` answer (the softcore one lists them all), H when the hardcore one
+    has it. A locked badge is the unlocked one, dimmed: no `_lock` pictures are fetched.
+  - The badges are fetched after the list shows, as a second request. Each row draws the trophy until its badge is on
+    the card.
+  - An answer for an earlier opening of the page is dropped (`gameRun`).
+  - Log lines besides the plan's: `ra: hashed <file> in <ms> ms: <hash>` (M5's time), `ra: <file>: hash <md5> unknown
+    to RetroAchievements`, `ra: no achievements for <file>: <why>`.
+  - The games page: A, and a second tap on the selected game, open its achievements. Its top panel says so, and an A
+    chip shows on its bottom panel.
+  - The bench in `ra-ui.sh` follows a warm-up run. The test's game files change the card just before, and the first
+    run after that rescans the library, which would make it the slower of the two. With the warm-up, the groups take
+    the same time with the group as without it: 0.27 ms at 1024x768, 0.13 ms at 640x480.
+  - `ra-ui.sh` also checks that the hash is kept on the card with its ID, that B goes back to the games as they were,
+    and the login with no token yet.
 
 ## Progress
 
@@ -1014,5 +1045,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 9. Hashing games as RetroArch does: rcheevos, and the fork's C build | done | RetroAchievements: rcheevos' hashing, vendored, and the fork's C build in banana-ui |
 | 10. Hashing games in .zip and .7z: the LZMA SDK's 7z decoder | done | RetroAchievements: games in .zip and .7z hashed as RetroArch does, with the LZMA SDK's 7z decoder |
 | 11. Hashing PlayStation .chd: libchdr | done | RetroAchievements: PlayStation .chd hashed through libchdr |
-| 12. A game's achievements | todo | |
+| 12. A game's achievements | done | RetroAchievements: a game's achievements, locked and unlocked, from the games on this card |
 | 13. Final check | todo | |

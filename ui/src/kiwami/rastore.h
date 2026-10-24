@@ -7,6 +7,8 @@
 //                                 secrets
 //   <data>/cache/ra-avatars/      <name in lower case>.png (raclient's avatar)
 //   <data>/cache/ra-stats/        <name in lower case>: the Stats page's numbers and when they were fetched
+//   <data>/cache/ra-hashes        each game identified: "<path>\t<size>\t<mtime>\t<hash>\t<id>" (a game's page)
+//   <data>/cache/ra-badges/       <badge>.png, the achievements' pictures (upstream's game panel keeps them there too)
 //   <data>/../retroarch/retroarch.cfg, <data>/../superdrastic/ra.token, <data>/../bananads/ra.token: what signing out
 //                                 also clears
 // <data> is Settings' data folder, /data/banana on the device. Names are compared without case, as the server does.
@@ -18,7 +20,7 @@ namespace banana::kiwami::ra
 {
 	struct Card
 	{
-		std::string data, accounts, list, avatars, stats, retroarch, superdrastic, bananads;
+		std::string data, accounts, list, avatars, stats, hashes, badges, retroarch, superdrastic, bananads;
 		explicit Card(const std::string& data);
 	};
 
@@ -66,4 +68,10 @@ namespace banana::kiwami::ra
 	};
 	bool saveStats(const Card& c, const std::string& name, const Stats& s, std::string& error);
 	Stats loadStats(const Card& c, const std::string& name);
+
+	// a game's hash and RetroAchievements ID, kept by its path, size and modification time, so a game is hashed once and
+	// again only when its file changes. id 0: not known yet (asked again: a hash the server doesn't know may be added)
+	struct GameHash { std::string hash; unsigned id = 0; };
+	bool cachedHash(const Card& c, const std::string& path, GameHash& h);	// false: none for the file as it is now
+	bool cacheHash(const Card& c, const std::string& path, const GameHash& h, std::string& error);
 }

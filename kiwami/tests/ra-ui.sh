@@ -7,7 +7,10 @@
 # scrub first), back in from the remembered accounts, removing one (X twice), an account adopted from accounts.conf.
 # The Stats page: the requests it makes on opening and on Y and none otherwise, the card's copy when the server can't
 # be reached, nothing asked when signed out. The games on this card: the library's games with achievements, under the
-# menu's titles. No password or token in the log. Needs ui/banana-ui (make ui), python3 and ImageMagick (the test library's art).
+# menu's titles. A game's achievements: the game hashed and identified once (kept on the card), its list and unlocks,
+# the badges fetched once; a game that can't be identified, one the server doesn't know, no connection, signed out.
+# The groups' frame time with the group and without. No password or token in the log. Needs ui/banana-ui (make ui),
+# python3 and ImageMagick (the test library's art).
 # Run by kiwami/tests/ci.sh when banana-ui is built, or by hand:
 #   kiwami/tests/ra-ui.sh        (the shots in $OUT, /tmp/kiwami-ra by default)
 set -e
@@ -80,7 +83,8 @@ key() { for rc in "$@"; do awk -v rc=$rc 'BEGIN { split(rc, a, ","); printf "tou
 ALICE=$(key 2,0 2,8 1,7 3,2 1,2) BOB=$(key 3,4 1,8 3,4) PW1=$(key 1,9 1,1 0,0) PW2=$(key 1,9 1,1 0,1) PW3=$(key 1,9 1,1 0,2)
 
 for size in 640x480 1024x768; do
-    rm -rf "$D/accounts.conf" "$D/ra-accounts" "$D/cache/ra-avatars" "$D/cache/ra-stats" "$FX/retroarch/retroarch.cfg" "$OUT/scrubbed"
+    rm -rf "$D/accounts.conf" "$D/ra-accounts" "$D/cache/ra-avatars" "$D/cache/ra-stats" "$D/cache/ra-hashes" "$D/cache/ra-badges" \
+        "$FX/retroarch/retroarch.cfg" "$OUT/scrubbed"
     : > "$SLOG"
     # the group's rows, after System; the first two rows of the grid as with six groups, pixel for pixel
     run $size groups "$SET; shot g0"
@@ -283,7 +287,71 @@ for size in 640x480 1024x768; do
     run $size games-none "$GAMES; shot games-none"
     logged "banana-ui: ra: games on this card: 0"
     shown games-none
-    cp "$OUT/playstats.before" "$D/playstats.tsv"; rm -f "$D/game-titles.tsv"
+    rm -f "$D/game-titles.tsv"
+
+    # ---- a game's achievements (A on one of the games on this card), alice signed in with her token ----
+    # Orchard Tactics (1024 zero bytes: the stand-in knows its hash as game 1446), a game the stand-in doesn't know, a
+    # PlayStation .pbp (which can't be identified)
+    mkdir -p "$FX/roms/psx"
+    head -c 2048 /dev/zero | tr '\0' x > "$FX/roms/gba/Unknown Orchard.gba"; printf 'PBP' > "$FX/roms/psx/Peel Racer.pbp"
+    printf 'gba/Orchard Tactics.gba\t2\t900\t%s\t3\t10\ngba/Unknown Orchard.gba\t1\t60\t%s\t0\t4\npsx/Peel Racer.pbp\t1\t60\t%s\t0\t8\n' \
+        $((now - 100)) $((now - 200)) $((now - 300)) > "$D/playstats.tsv"
+    printf 'ra_user=alice\nra_password=pw1\nra_retroarch_token=tok1\n' > "$D/accounts.conf"
+    ZERO=0f343b0931126a20f133d67c2b018a3b
+    LIST="r=patch u=alice p=0 t=1 g=1446|r=unlocks u=alice p=0 t=1 g=1446 h=0|r=unlocks u=alice p=0 t=1 g=1446 h=1|"
+    # the first time: hashed (and kept with its ID), the list, the unlocks in either mode, the three badges
+    run $size game "$GAMES; shot game-list; press a; shot game; press down; press down; shot game-3; press b; shot game-back"
+    grep -q "^banana-ui: ra: hashed Orchard Tactics.gba in [0-9]* ms: $ZERO\$" "$log" || { echo "FAIL $size $name: no hash line"; fail=1; }
+    logged 'banana-ui: ra: game 1446 "Orchard Tactics": 3 achievements, 2 unlocked (1 hardcore)'
+    served "r=gameid u= p=0 t=0 m=$ZERO|${LIST}GET /Badge/101234.png|GET /Badge/101235.png|GET /Badge/101236.png|"
+    grep -q "^$FX/roms/gba/Orchard Tactics.gba	1024	[0-9]*	$ZERO	1446\$" "$D/cache/ra-hashes" \
+        || { echo "FAIL $size $name: the hash kept: $(tr '\n' '|' < "$D/cache/ra-hashes")"; fail=1; }
+    for b in 101234 101235 101236; do [ -s "$D/cache/ra-badges/$b.png" ] || { echo "FAIL $size $name: no badge $b"; fail=1; }; done
+    shown game game-3
+    differ game game-3 top; differ game game-3 bot
+    same game-list game-back bot
+    # again: the hash and the ID from the card, the badges too: the list and the unlocks only
+    run $size game-again "$GAMES; press a; shot game-again"
+    unlogged "hashed"
+    served "$LIST"
+    same game game-again bot
+    # a game the server doesn't know: hashed, gameid answers 0, the page says so (with the hash)
+    UNKNOWN=$(head -c 2048 /dev/zero | tr '\0' x | md5sum | cut -c1-32)
+    run $size game-unknown "$GAMES; press down; press a; shot game-unknown"
+    logged "banana-ui: ra: Unknown Orchard.gba: hash $UNKNOWN unknown to RetroAchievements"
+    served "r=gameid u= p=0 t=0 m=$UNKNOWN|"
+    shown game-unknown
+    # a .pbp: refused, nothing asked
+    run $size game-pbp "$GAMES; press down; press down; press a; shot game-pbp"
+    logged "banana-ui: ra: can't identify Peel Racer.pbp: a PlayStation .pbp can't be identified, by RetroArch either"
+    served ""
+    shown game-pbp
+    # no connection, the game identified before: no list
+    KIWAMI_RA_URL=$URL_DOWN run $size game-down "$GAMES; press a; shot game-down"
+    logged "banana-ui: ra: no achievements for Orchard Tactics.gba: no connection"
+    differ game game-down bot
+    # a password with no token yet: login2 with it first, and the token it gives kept
+    printf 'ra_user=alice\nra_password=pw1\n' > "$D/accounts.conf"
+    run $size game-token "$GAMES; press a"
+    logged "banana-ui: ra: token kept for alice"
+    holds "$D/accounts.conf" 'ra_user=alice\nra_password=pw1\nra_retroarch_token=tok1'
+    served "r=login2 u=alice p=1 t=0|$LIST"
+    # signed out: identified from the card, nothing asked, the page asks to sign in
+    printf 'smb_user=me\n' > "$D/accounts.conf"
+    run $size game-out "$GAMES; press a; shot game-out"
+    logged "banana-ui: ra: game 1446 identified, not signed in"
+    served ""
+    shown game-out
+    rm -f "$FX/roms/gba/Unknown Orchard.gba" "$FX/roms/psx/Peel Racer.pbp"
+    cp "$OUT/playstats.before" "$D/playstats.tsv"
+
+    # the groups' frame time with the fork's group as without it (bench's average, each under a millisecond, the
+    # group's within twice the other's and 0.05 ms), after a run that rescans the card the games above changed
+    run $size bench-warm "home 0"
+    run $size bench-ra "$SET; bench 120"; ra_ms=$(sed -n 's/^banana-ui: bench: [0-9]* frames, \([0-9.]*\) ms average.*/\1/p' "$log")
+    KIWAMI_RA_GROUP=0 run $size bench-six "$SET; bench 120"; six_ms=$(sed -n 's/^banana-ui: bench: [0-9]* frames, \([0-9.]*\) ms average.*/\1/p' "$log")
+    awk -v a="$ra_ms" -v b="$six_ms" 'BEGIN { exit !(a != "" && b != "" && a < 1 && b < 1 && a <= 2 * b + 0.05) }' \
+        || { echo "FAIL $size bench: the groups take $ra_ms ms with the group, $six_ms ms without"; fail=1; }
 
     # no password or token in any of this size's logs
     ! grep -lE 'pw[123]|tok[12]' "$OUT/$size"-*.log || { echo "FAIL $size: a password or a token in the log"; fail=1; }

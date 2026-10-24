@@ -7,6 +7,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <fstream>
+#include <mutex>
 #include <sstream>
 #include <strings.h>
 #include <sys/stat.h>
@@ -151,6 +152,8 @@ namespace banana::kiwami::ra
 		list = data + "/ra-accounts";
 		avatars = data + "/cache/ra-avatars";
 		stats = data + "/cache/ra-stats";
+		hashes = data + "/cache/ra-hashes";
+		badges = data + "/cache/ra-badges";
 		retroarch = up + "/retroarch/retroarch.cfg";
 		superdrastic = up + "/superdrastic/ra.token";
 		bananads = up + "/bananads/ra.token";
@@ -341,5 +344,56 @@ namespace banana::kiwami::ra
 					}
 		}
 		return s;
+	}
+
+	// ---- the games' hashes -----------------------------------------------------------------------------------------
+	namespace
+	{
+		std::mutex hashesMu;	// (the pages' threads: one game's hash kept while another's is read)
+
+		// the file's line's first three fields, "" for one that can't be a line (a tab or a newline in its path)
+		std::string hashKey(const std::string& path)
+		{
+			struct stat sb;
+			if (path.find_first_of("\t\n") != std::string::npos || stat(path.c_str(), &sb) != 0) return "";
+			return path + "\t" + std::to_string((long long)sb.st_size) + "\t" + std::to_string((long long)sb.st_mtime);
+		}
+	}
+
+	bool cachedHash(const Card& c, const std::string& path, GameHash& h)
+	{
+		std::string key = hashKey(path);
+		if (key.empty()) return false;
+		std::lock_guard<std::mutex> l(hashesMu);
+		std::ifstream in(c.hashes);
+		std::string ln;
+		while (std::getline(in, ln))
+		{
+			if (ln.size() <= key.size() || ln.compare(0, key.size(), key) != 0 || ln[key.size()] != '\t') continue;
+			std::string rest = ln.substr(key.size() + 1);
+			size_t tab = rest.find('\t');
+			if (tab != 32) continue;
+			h.hash = rest.substr(0, 32);
+			h.id = (unsigned)strtoul(rest.c_str() + 33, nullptr, 10);
+			return true;
+		}
+		return false;
+	}
+
+	bool cacheHash(const Card& c, const std::string& path, const GameHash& h, std::string& error)
+	{
+		std::string key = hashKey(path);
+		if (key.empty() || h.hash.size() != 32) return true;	// (not kept: hashed again next time)
+		std::lock_guard<std::mutex> l(hashesMu);
+		std::string old, out, ln;
+		bool there = false;
+		slurp(c.hashes, old, there);
+		// the file's earlier lines dropped (the same path, as it was before a change too)
+		std::istringstream in(old);
+		while (std::getline(in, ln))
+			if (ln.compare(0, path.size() + 1, path + "\t") != 0) out += ln + "\n";
+		out += key + "\t" + h.hash + "\t" + (h.id ? std::to_string(h.id) : "") + "\n";
+		if (!makeDir(c.data + "/cache")) { error = "can't make " + c.data + "/cache: " + strerror(errno); return false; }
+		return replace(c.hashes, out, error);
 	}
 }

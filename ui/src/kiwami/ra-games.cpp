@@ -3,7 +3,7 @@
 // systems' shelves (the second card's too) that an emulator recorded achievements for (play stats' unlocked and total:
 // BananaDS and SuperDrastic after each game, RetroArch through the game panel, with Second screen on), under the title
 // the menu shows. The bottom panel lists them, the last played first, with unlocked / total and a bar; the top one
-// shows the selected game. Nothing is asked of the server here.
+// shows the selected game. Nothing is asked of the server here: A on a game opens its achievements (ra-game.cpp).
 #include "library.h"
 #include "ra.h"
 #include "../library.h"
@@ -39,6 +39,7 @@ namespace banana
 				if (g.achB <= 0) continue;
 				Ra::Game r;
 				r.title = g.title; r.system = sh.def.id; r.systemName = con->name; r.path = g.path; r.rel = g.rel;
+				r.exts = sh.def.exts;
 				r.unlocked = std::max(0, g.achA); r.total = g.achB; r.last = g.last;
 				ra->games.push_back(r);
 			}
@@ -69,6 +70,7 @@ namespace banana
 			if (ra->gsel < ra->gtop) ra->gtop = ra->gsel;
 			if (ra->gsel >= ra->gtop + ROWS) ra->gtop = ra->gsel - ROWS + 1;
 			return MOVED;
+		case Key::A: return n ? raGameOpen(ra->gsel) : NONE;
 		case Key::B: st.page = LIST; return MOVED;
 		case Key::START: st.page = LIST; st.mOpen = false; return CLOSED;
 		default: return NONE;
@@ -79,12 +81,12 @@ namespace banana
 	{
 		float dx = st.downX, dy = st.downY;
 		int n = (int)ra->games.size();
-		if (dy >= 418 && dy <= 466) return dx < 320 ? raGamesPress(Key::B) : NONE;
+		if (dy >= 418 && dy <= 466) return raGamesPress(dx < 320 ? Key::B : Key::A);
 		for (int r = 0; r < ROWS && ra->gtop + r < n; r++)
 		{
 			float ry = 82 + r * 64;
 			if (dy < ry || dy > ry + 56) continue;
-			if (ra->gtop + r == ra->gsel) return NONE;
+			if (ra->gtop + r == ra->gsel) return raGameOpen(ra->gsel);	// (a second tap opens it)
 			ra->gsel = ra->gtop + r;
 			return MOVED;
 		}
@@ -115,7 +117,7 @@ namespace banana
 			std::string file = g.rel.substr(g.rel.rfind('/') == std::string::npos ? 0 : g.rel.rfind('/') + 1);
 			std::string where = g.rel.compare(0, 5, "@sd2/") == 0 ? ", on the second card" : "";
 			raTop(g.title, std::to_string(g.unlocked) + " / " + std::to_string(g.total) + " achievements",
-				g.systemName + ": " + file + where + ".", help, "");
+				g.systemName + ": " + file + where + ". A shows its achievements.", help, "");
 		}
 
 		// ---- bottom: the games ----
@@ -151,6 +153,11 @@ namespace banana
 		if (n == 0) st.text("No games with achievements yet.", true, 20, 38, 98, p.muted);
 		float bw = st.faceWidth("B", "Back");
 		st.face("B", "Back", 18, bw);
+		if (n)
+		{
+			float aw = st.faceWidth("A", "Achievements");
+			st.face("A", "Achievements", 622 - aw, aw);
+		}
 		be->endScreen();
 	}
 }

@@ -893,6 +893,23 @@ Where the implementation turned out different from this plan, why, and what chan
   (achievements off) and logs `banana-ui: ra: game panel: the token from accounts.conf` or `... no token in
   accounts.conf either`, the lines M6 reads. Run against the stub first, the test failed as planned, with its
   arguments in this order: `panelToken(card, "Alice") is "", not "tok1"`.
+- **2026-10-24, step 7: the files the Stats row touches.**
+  - `kiwami.h` gets `Page::RA_STATS` and the page's functions, which every page needs (not in the step's Files).
+  - `rastore.cpp` doesn't change: step 4 already reads and writes the stats cache.
+  - `ra-account.cpp`: `raValue` takes the row's key (Stats' value is the points), the points' wording moved to `ra.h`
+    (`raPoints`), and the avatars stay while either page shows.
+  - The group's rows line gains `kiwami.ra.stats`, so `cores-ui.sh` changes (as in step 2). In `ra-ui.sh`, Mode is the
+    group's third row.
+- **2026-10-24, step 7: details the plan left open.**
+  - The fixtures are `allprogress-c18.json` (DS: one game mastered, one started) and `allprogress-c2.json` (N64: none).
+    The other systems get `allprogress.json`.
+  - A fetch stops at the first request that fails, and the card's copy shows ("No connection: the stats as of
+    <date>."). With none, it says "No connection.", logged `ra: no stats for alice: <why>`. A refused token says to
+    sign in again on the Account page.
+  - A fetch made with the password (no token yet) keeps the token it gets, and `ra-ui.sh` checks it.
+  - An answer that comes back after the account changed is dropped.
+  - Each system's row has two lines: its name and achievements unlocked, then started, completed and mastered. The
+    top panel spells out the selected system's numbers.
 
 ## Progress
 
@@ -906,7 +923,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 4. The account on the card: signing in, out, and the remembered accounts | done | RetroAchievements: the account on the card, signed in, out and remembered |
 | 5. The Account page | done | RetroAchievements: the Account page, signing in, out and back with remembered accounts |
 | 6. The game panel takes the token Banana keeps (a bug fix) | done | RetroAchievements: the game panel takes the token from accounts.conf, where Banana keeps it |
-| 7. The Stats page | todo | |
+| 7. The Stats page | done | RetroAchievements: the Stats page, points and progress per system, kept for offline |
 | 8. The games on this card, from the library | todo | |
 | 9. Hashing games as RetroArch does: rcheevos, and the fork's C build | todo | |
 | 10. Hashing games in .zip and .7z: the LZMA SDK's 7z decoder | todo | |

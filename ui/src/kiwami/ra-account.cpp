@@ -15,11 +15,6 @@ namespace banana
 	using rnds::Color;
 	namespace ra = kiwami::ra;
 
-	static std::string points(long n)
-	{
-		return std::to_string(n) + (n == 1 ? " point" : " points");
-	}
-
 	// ---- the group's part of the hooks ---------------------------------------------------------------------------
 	void Settings::Kiwami::raOpened()
 	{
@@ -48,9 +43,13 @@ namespace banana
 		}
 	}
 
-	std::string Settings::Kiwami::raValue() const
+	// the rows' values: Account the name, Stats the points (as last known)
+	std::string Settings::Kiwami::raValue(const std::string& key) const
 	{
-		return !ra ? "" : ra->user.empty() ? "Not signed in" : ra->user;
+		if (!ra) return "";
+		if (key == "kiwami.ra.account") return ra->user.empty() ? "Not signed in" : ra->user;
+		auto it = ra->points.find(ra::fileName(ra->user));
+		return ra->user.empty() || it == ra->points.end() ? "" : raPoints(it->second.score);
 	}
 
 	void Settings::Kiwami::raRun(std::function<void()> work, std::function<void()> then, bool signingIn)
@@ -78,7 +77,7 @@ namespace banana
 	{
 		if (!ra) return false;
 		// the avatars only while the page or its keyboard shows
-		bool shown = pageOpen == Page::RA_ACCOUNT && (st.page == KIWAMI || st.page == KEYBOARD);
+		bool shown = (pageOpen == Page::RA_ACCOUNT || pageOpen == Page::RA_STATS) && (st.page == KIWAMI || st.page == KEYBOARD);
 		if (!shown && !ra->avatars.empty()) ra->avatars.clear();
 		if (!ra->task) return false;
 		{
@@ -117,7 +116,7 @@ namespace banana
 				ra->points[ra::fileName(l->user)] = { l->score, l->softScore, l->messages };
 				ra->avatars.erase(ra::fileName(l->user));
 				st.message.clear();
-				st.toast("RetroAchievements", "Signed in as " + l->user + " \xc2\xb7 " + points(l->score), 0x6ad07a, 1, 5000);
+				st.toast("RetroAchievements", "Signed in as " + l->user + " \xc2\xb7 " + raPoints(l->score), 0x6ad07a, 1, 5000);
 				ra->selKey = "account";
 			}
 			else if (l->refused)
@@ -412,7 +411,7 @@ namespace banana
 		if (key == "account" || key == "signout")
 		{
 			title = avatar = ra->user;
-			if (const Ra::Points* q = pts(ra->user)) accent = points(q->score) + " \xc2\xb7 " + std::to_string(q->softScore) + " softcore";
+			if (const Ra::Points* q = pts(ra->user)) accent = raPoints(q->score) + " \xc2\xb7 " + std::to_string(q->softScore) + " softcore";
 			if (key == "account")
 			{
 				state = "Signed in. RetroArch, SuperDrastic and BananaDS unlock achievements on this account.";
@@ -434,7 +433,7 @@ namespace banana
 		else
 		{
 			title = avatar = key.substr(2);
-			if (const Ra::Points* q = pts(title)) accent = points(q->score) + " \xc2\xb7 " + std::to_string(q->softScore) + " softcore";
+			if (const Ra::Points* q = pts(title)) accent = raPoints(q->score) + " \xc2\xb7 " + std::to_string(q->softScore) + " softcore";
 			state = "Signed out. A signs in again: its password is asked.";
 			help = ra->rmArmed == title ? "Press X again to remove " + title + " from this list." :
 				"X twice removes it from this list, with its picture and its stats kept on the card.";
@@ -467,7 +466,7 @@ namespace banana
 				label = k == "account" ? ra->user : k.substr(2);
 				raAvatar(label, 30, y + 8, 40);
 				lx = 82;
-				if (k == "account") { if (const Ra::Points* q = pts(label)) v = points(q->score); }
+				if (k == "account") { if (const Ra::Points* q = pts(label)) v = raPoints(q->score); }
 				else if (ra->rmArmed == label) { v = "Press X again"; vc = sel ? p.onPickAccent : p.muted; }
 				else v = "Signed out";
 				if (k == "account") c = vc = sel ? p.onPick : p.ink;

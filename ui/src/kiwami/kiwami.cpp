@@ -1,6 +1,6 @@
 // banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing, each page
 // hook going to the page that is open, and the groups' grid; the pages are in their own files (tailscale.cpp,
-// ra-account.cpp).
+// ra-account.cpp, ra-stats.cpp).
 #include "ra.h"
 #include <algorithm>
 #include <cstdio>
@@ -94,6 +94,11 @@ namespace banana
 			it.help = "The RetroAchievements account your games unlock achievements on. A opens it: sign in, sign out, or "
 				"switch to an account used here before.";
 			s.items.push_back(it);
+			Item stats;
+			stats.section = group; stats.icon = "kiwami.trophy"; stats.label = "Stats"; stats.key = "kiwami.ra.stats"; stats.kind = Item::PAGE;
+			stats.help = "The account's points, and its progress on each of Banana's systems: games started, completed and "
+				"mastered, achievements unlocked. Fetched when the page opens, and kept on the card for when there's no Wi-Fi.";
+			s.items.push_back(stats);
 			// upstream's Other systems > RetroAchievements, the same setting (load and save are upstream's)
 			Item m;
 			m.section = group; m.icon = "gamepad"; m.label = "Mode"; m.key = MODE;
@@ -103,7 +108,7 @@ namespace banana
 			m.file = "/data/retroarch/retroarch.cfg";
 			m.names = { "Softcore", "Hardcore" }; m.values = { "false", "true" };
 			s.items.push_back(m);
-			keys = it.key + " " + m.key;
+			keys = it.key + " " + stats.key + " " + m.key;
 		}
 		// (the tests read it, and on the device it says which of the fork's cores the image has)
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
@@ -130,23 +135,27 @@ namespace banana
 	{
 		if (key == "kiwami.tailscale") { pageOpen = Page::TAILSCALE; return tsOpen(); }
 		if (key == "kiwami.ra.account") { pageOpen = Page::RA_ACCOUNT; return raOpen(); }
+		if (key == "kiwami.ra.stats") { pageOpen = Page::RA_STATS; return raStatsOpen(); }
 		return NONE;
 	}
 
 	Settings::Result Settings::Kiwami::press(Key k)
 	{
-		return pageOpen == Page::TAILSCALE ? tsPress(k) : pageOpen == Page::RA_ACCOUNT ? raPress(k) : NONE;
+		return pageOpen == Page::TAILSCALE ? tsPress(k) : pageOpen == Page::RA_ACCOUNT ? raPress(k)
+			: pageOpen == Page::RA_STATS ? raStatsPress(k) : NONE;
 	}
 
 	Settings::Result Settings::Kiwami::touch(float cx, float cy)
 	{
-		return pageOpen == Page::TAILSCALE ? tsTouch(cx, cy) : pageOpen == Page::RA_ACCOUNT ? raTouch(cx, cy) : NONE;
+		return pageOpen == Page::TAILSCALE ? tsTouch(cx, cy) : pageOpen == Page::RA_ACCOUNT ? raTouch(cx, cy)
+			: pageOpen == Page::RA_STATS ? raStatsTouch(cx, cy) : NONE;
 	}
 
 	void Settings::Kiwami::render()
 	{
 		if (pageOpen == Page::TAILSCALE) tsRender();
 		else if (pageOpen == Page::RA_ACCOUNT) raRender();
+		else if (pageOpen == Page::RA_STATS) raStatsRender();
 	}
 
 	std::string Settings::Kiwami::entryHelp() const
@@ -266,7 +275,7 @@ namespace banana
 
 	std::string Settings::Kiwami::value(const std::string& key) const
 	{
-		return key == "kiwami.tailscale" ? word : key == "kiwami.ra.account" ? raValue() : "";
+		return key == "kiwami.tailscale" ? word : key.compare(0, 10, "kiwami.ra.") == 0 ? raValue(key) : "";
 	}
 
 	// a program of the fork's, its own session; detached so that it outlives a game the menu starts next, waited for

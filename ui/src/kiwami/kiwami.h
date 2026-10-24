@@ -11,10 +11,11 @@
 //   KIWAMI_TAILSCALE in the environment: the test's stand-in), asked once when Settings opens and only while
 //   settings.conf has tailscale = on. A opens Tailscale's page (tailscale.cpp).
 //   RetroAchievements (a seventh group, after System; KIWAMI_RA_GROUP=0 in the environment leaves it out, for the
-//   tests): Account (kiwami.ra.account) and Mode (upstream's cheevos_hardcore_mode_enable, the same setting as Other
+//   tests): Account (kiwami.ra.account), Stats (kiwami.ra.stats) and Mode (upstream's cheevos_hardcore_mode_enable, the same setting as Other
 //   systems > RetroAchievements, the two rows kept in step). Its tile has the fork's trophy (ra-icon.cpp), and the
 //   grid, three tiles a row, shows two rows at a time, scrolling to the third (grid.h). A on Account opens the Account
-//   page (ra-account.cpp): sign in, sign out, and the accounts signed out, remembered.
+//   page (ra-account.cpp): sign in, sign out, and the accounts signed out, remembered. Stats (kiwami.ra.stats): points
+//   and progress per system (ra-stats.cpp), fetched when the page opens or on Y, kept on the card for offline.
 #include "../settings.h"
 #include <functional>
 #include "grid.h"
@@ -51,7 +52,7 @@ namespace banana
 	private:
 		Settings& st;
 		// the page that shows while Settings' page is KIWAMI: open() sets it, and the page hooks go to its own functions
-		enum class Page { NONE, TAILSCALE, RA_ACCOUNT } pageOpen = Page::NONE;
+		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS } pageOpen = Page::NONE;
 		int row0 = 0;								// the groups' first row shown, kept as the selection moves
 		int modeAt = -1;							// Mode's value as both its rows last had it
 		bool syncMode();							// a change to one of Mode's two rows shown in the other
@@ -115,7 +116,7 @@ namespace banana
 		struct Ra;
 		std::shared_ptr<Ra> ra;
 		void raOpened();
-		std::string raValue() const;
+		std::string raValue(const std::string& key) const;
 		bool raUpdate();
 		int raWake() const;
 		void raRead();								// the account and the list, from the card
@@ -137,5 +138,12 @@ namespace banana
 		void raAvatar(const std::string& name, float x, float y, float size);	// its picture, or the trophy
 		void raTop(const std::string& title, const std::string& accent, const std::string& state, const std::string& help,
 			const std::string& avatar);
+		// the Stats page (ra-stats.cpp): the account's points and messages on the top panel, the nine systems' progress on
+		// the bottom one; fetched when it opens and on Y (login2, the avatar, allprogress per system), else the card's
+		Result raStatsOpen();
+		Result raStatsPress(Key k);
+		Result raStatsTouch(float cx, float cy);
+		void raStatsRender();
+		void raStatsFetch();
 	};
 }

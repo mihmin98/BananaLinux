@@ -1,7 +1,8 @@
 #pragma once
 // banana-ui (kiwami): the state of Settings > RetroAchievements' pages, kept by Settings::Kiwami while Settings lives:
 // the account on the card (rastore.h), what the server last said of each account, the avatars on screen, and the one
-// request running in the background (raclient.h: each blocks, up to 20 s). The Account page is ra-account.cpp.
+// request running in the background (raclient.h: each blocks, up to 20 s). The Account page is ra-account.cpp, the
+// Stats page ra-stats.cpp.
 #include "kiwami.h"
 #include "raclient.h"
 #include "rastore.h"
@@ -11,6 +12,8 @@
 
 namespace banana
 {
+	inline std::string raPoints(long n) { return std::to_string(n) + (n == 1 ? " point" : " points"); }
+
 	struct Settings::Kiwami::Ra
 	{
 		explicit Ra(const std::string& data) : card(data) {}
@@ -40,5 +43,11 @@ namespace banana
 		enum Typing { NAME, PASSWORD } typing = NAME;	// what the keyboard is typing for the page
 		std::string typedName;				// the account the password is for
 		std::map<std::string, rnds::TexPtr> avatars;	// by name in lower case, null for none (the trophy instead)
+
+		// the Stats page: the numbers shown, fetched now or kept on the card (cached: as of stats.when)
+		kiwami::ra::Stats stats;
+		bool statsCached = false;
+		std::string statsError;				// why the last fetch failed, "" when it didn't
+		int ssel = 0, stop = 0;				// the selected system, the first one shown
 	};
 }

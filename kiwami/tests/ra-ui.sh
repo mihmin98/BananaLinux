@@ -4,8 +4,9 @@
 # group out: upstream's grid), scrolling one row to the trophy's and back, wrapping with a short last row; taps on what
 # shows; Mode and Other systems > RetroAchievements kept in step. The Account page against the stand-in server
 # (ra-server.py): signing in (accepted, refused, with no connection and the token fetched later), out (A twice, the
-# scrub first), back in from the remembered accounts, removing one (X twice), an account adopted from accounts.conf;
-# no password or token in the log. Needs ui/banana-ui (make ui), python3 and ImageMagick (the test library's art).
+# scrub first), back in from the remembered accounts, removing one (X twice), an account adopted from accounts.conf.
+# The Stats page: the requests it makes on opening and on Y and none otherwise, the card's copy when the server can't
+# be reached, nothing asked when signed out. No password or token in the log. Needs ui/banana-ui (make ui), python3 and ImageMagick (the test library's art).
 # Run by kiwami/tests/ci.sh when banana-ui is built, or by hand:
 #   kiwami/tests/ra-ui.sh        (the shots in $OUT, /tmp/kiwami-ra by default)
 set -e
@@ -82,7 +83,7 @@ for size in 640x480 1024x768; do
     : > "$SLOG"
     # the group's rows, after System; the first two rows of the grid as with six groups, pixel for pixel
     run $size groups "$SET; shot g0"
-    logged "banana-ui: kiwami: rows in RetroAchievements: kiwami.ra.account cheevos_hardcore_mode_enable"
+    logged "banana-ui: kiwami: rows in RetroAchievements: kiwami.ra.account kiwami.ra.stats cheevos_hardcore_mode_enable"
     unlogged "groups from row"
     mv "$OUT/$size-g0-top.png" "$OUT/$size-g0-ra-top.png"; mv "$OUT/$size-g0-bot.png" "$OUT/$size-g0-ra-bot.png"
     KIWAMI_RA_GROUP=0 run $size six "$SET; shot g0"
@@ -123,16 +124,16 @@ for size in 640x480 1024x768; do
     lines "touch " "banana-ui: touch 116 327: settings result 1|"
     same g7 t7 bot
 
-    # Mode: RIGHT on it is Hardcore, and Other systems > RetroAchievements (L three times, its third row) says the
+    # Mode (the group's third row): RIGHT on it is Hardcore, and Other systems > RetroAchievements (L three times, its third row) says the
     # same; the other way round too. (Upstream's rows write /data/retroarch/retroarch.cfg, which the test machine
     # hasn't got: their values are checked on screen, the file on the device, M1.)
     OTHER_RA="press l; press l; press l; press down; press down; wait 1"
-    run $size mode-before "$SET; $R4; press down; press a; press down; shot mode0; $OTHER_RA; shot ora0"
+    run $size mode-before "$SET; $R4; press down; press a; press down; press down; shot mode0; $OTHER_RA; shot ora0"
     unlogged "in both rows"
-    run $size mode "$SET; $R4; press down; press a; press down; press right; wait 1; shot mode1; $OTHER_RA; shot ora1"
+    run $size mode "$SET; $R4; press down; press a; press down; press down; press right; wait 1; shot mode1; $OTHER_RA; shot ora1"
     logged "banana-ui: kiwami: Mode Hardcore in both rows"
     differ mode0 mode1 bot; differ ora0 ora1 bot
-    run $size mode-back "$SET; press r; press r; press r; press a; press down; press down; press right; wait 1; press left; wait 1; shot ora2; press r; press r; press r; press down; wait 1; shot mode2"
+    run $size mode-back "$SET; press r; press r; press r; press a; press down; press down; press right; wait 1; press left; wait 1; shot ora2; press r; press r; press r; press down; press down; wait 1; shot mode2"
     lines "in both rows" "banana-ui: kiwami: Mode Hardcore in both rows|banana-ui: kiwami: Mode Softcore in both rows|"
     same ora0 ora2 bot; same mode0 mode2 bot
 
@@ -230,6 +231,40 @@ for size in 640x480 1024x768; do
     logged "banana-ui: ra: adopted bob, alice remembered"
     holds "$D/ra-accounts" 'current\tbob\nremembered\talice'
     served ""
+
+    # ---- the Stats page (the group's second row), alice signed in with her token ----
+    STATS="$SET; $R4; press down; press a; press down; press a"
+    ROUND="r=login2 u=alice p=0 t=1|GET /UserPic/alice.png|"
+    for c in 18 5 6 4 7 3 1 12 2; do ROUND="${ROUND}r=allprogress u=alice p=0 t=1 c=$c|"; done
+    printf 'ra_user=alice\nra_password=pw1\nra_retroarch_token=tok1\n' > "$D/accounts.conf"
+    # opening it asks once: login2 with the token, the avatar, the nine systems in the page's order; kept on the card
+    run $size stats "$STATS; shot stats"
+    logged "banana-ui: ra: stats for alice: 9 systems"
+    served "$ROUND"
+    shown stats
+    grep -qx 'nds 2 0 1 52' "$D/cache/ra-stats/alice" && grep -qx 'gba 3 1 1 18' "$D/cache/ra-stats/alice" \
+        && grep -qx 'n64 0 0 0 0' "$D/cache/ra-stats/alice" && grep -qx 'score 1234' "$D/cache/ra-stats/alice" \
+        || { echo "FAIL $size $name: the stats kept: $(tr '\n' '|' < "$D/cache/ra-stats/alice")"; fail=1; }
+    # Y asks once more; scrolling to the last system asks nothing; nothing after the page closes (5 s)
+    run $size stats-y "$STATS; press y; press up; shot stats-n64; press b; wait 5000"
+    served "$ROUND$ROUND"
+    differ stats stats-n64 bot
+    # no connection: the card's copy, with its date
+    KIWAMI_RA_URL=$URL_DOWN run $size stats-cached "$STATS; shot stats-cached"
+    grep -q "^banana-ui: ra: stats for alice from the cache (as of [0-9]*)\$" "$log" || { echo "FAIL $size $name: the cache not shown"; fail=1; }
+    differ stats stats-cached top
+    # a password with no token yet: login2 with it, and the token it gives kept
+    printf 'ra_user=alice\nra_password=pw1\n' > "$D/accounts.conf"
+    run $size stats-token "$STATS"
+    logged "banana-ui: ra: token kept for alice"
+    holds "$D/accounts.conf" 'ra_user=alice\nra_password=pw1\nra_retroarch_token=tok1'
+    served "r=login2 u=alice p=1 t=0|GET /UserPic/alice.png|$(echo "$ROUND" | cut -d'|' -f3-)"
+    # signed out: the page says so and asks nothing
+    printf 'smb_user=me\n' > "$D/accounts.conf"
+    run $size stats-none "$STATS; shot stats-none"
+    logged "banana-ui: ra: stats page: not signed in"
+    served ""
+    shown stats-none
 
     # no password or token in any of this size's logs
     ! grep -lE 'pw[123]|tok[12]' "$OUT/$size"-*.log || { echo "FAIL $size: a password or a token in the log"; fail=1; }

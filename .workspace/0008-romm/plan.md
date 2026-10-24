@@ -751,7 +751,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. The helper, its package, and pairing | todo | |
+| 1. The helper, its package, and pairing | done | RomM: a helper of the fork's own, its package, and pairing by RomM's device flow |
 | 2. A game's save: its RomM id, the pull before it and the push after | todo | |
 | 3. Sync now and the conflicts resolved | todo | |
 | 4. The wrapper around the games, put into the image's systems.conf | todo | |

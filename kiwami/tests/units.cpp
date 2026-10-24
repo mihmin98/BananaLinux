@@ -1,16 +1,19 @@
 // The fork's banana-ui code that needs no screen, checked on its own: the JSON reader, Tailscale's status, the
 // device's name, the login's QR code, the devices' list, Settings' grid of groups, RetroAchievements' replies, its
-// account on the card and its games' hashes. Built and run by kiwami/tests/ci.sh with the host's g++ (the vendored C
-// first, make -C ui kiwami-c):
+// account on the card and its games' hashes, RomM's replies and RomM on the card. Built and run by kiwami/tests/ci.sh
+// with the host's g++ (the vendored C first, make -C ui kiwami-c):
 //   g++ -std=c++17 -Wall -I ui/src kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp
 //       ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp
-//       ui/src/kiwami/rahash.cpp $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -o units
+//       ui/src/kiwami/rahash.cpp ui/src/kiwami/conf.cpp ui/src/kiwami/rommcard.cpp ui/src/kiwami/romm/api.cpp
+//       ui/src/kiwami/romm/http.cpp $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -o units
 //   ./units kiwami/tests/tailscale kiwami/tests/ra
 #include "kiwami/grid.h"
 #include "kiwami/json.h"
 #include "kiwami/raclient.h"
 #include "kiwami/rahash.h"
 #include "kiwami/rastore.h"
+#include "kiwami/romm/api.h"
+#include "kiwami/rommcard.h"
 #include "kiwami/tsstatus.h"
 #include <cstdint>
 #include <cstdio>
@@ -704,6 +707,115 @@ static void testHash()
 	if (system(("rm -rf " + t).c_str()) != 0) {}
 }
 
+// RomM's replies as RomM 5.4.1 sends them (backend/endpoints/device/auth.py, endpoints/heartbeat.py, FastAPI's
+// {"detail": ...} errors), the server's version against the client's, and RomM's keys on a made-up card
+static void testRomm()
+{
+	using namespace banana::kiwami::romm;
+	// the version: refused below 5.4.0, 5.4.x, newer above (and a development build, which isn't a version)
+	CHECK(versionOk("5.4.1") == OK && versionOk("5.4.0") == OK && versionOk("v5.4.12") == OK);
+	CHECK(versionOk("5.3.2") == OLD && versionOk("4.9.0") == OLD && versionOk("5.0") == OLD);
+	CHECK(versionOk("5.5.0") == NEWER && versionOk("6.0.0") == NEWER && versionOk("development") == NEWER && versionOk("") == NEWER);
+
+	Heartbeat h = parseHeartbeat("{\"SYSTEM\": {\"VERSION\": \"5.4.1\", \"GIT_BRANCH\": null}, \"FILESYSTEM\": {}}", 200);
+	CHECK(h.ok);
+	EQ(h.version, "5.4.1");
+	CHECK(!parseHeartbeat("{\"SYSTEM\": {}}", 200).ok);
+	CHECK(!parseHeartbeat("<html>not RomM</html>", 200).ok);
+	EQ(parseHeartbeat("", 0).error, "no connection");
+	EQ(parseHeartbeat("{\"detail\": \"Not Found\"}", 404).error, "unreadable answer (404)");
+
+	DeviceInit d = parseDeviceInit("{\"device_code\": \"abc123\", \"user_code\": \"K7QM2P9X\", \"verification_path\": "
+		"\"/pair/device\", \"verification_path_complete\": \"/pair/device?user_code=K7QM2P9X\", \"expires_in\": 600, \"interval\": 5}", 201);
+	CHECK(d.ok);
+	EQ(d.deviceCode, "abc123"); EQ(d.userCode, "K7QM2P9X"); EQ(d.path, "/pair/device?user_code=K7QM2P9X");
+	IEQ(d.expiresIn, 600); IEQ(d.interval, 5);
+	d = parseDeviceInit("{\"device_code\": \"abc\", \"user_code\": \"K7\", \"verification_path\": \"/pair/device\"}", 201);
+	CHECK(d.ok);
+	EQ(d.path, "/pair/device"); IEQ(d.expiresIn, 600); IEQ(d.interval, 5);
+	CHECK(!parseDeviceInit("{\"user_code\": \"K7\"}", 201).ok);
+	d = parseDeviceInit("{\"detail\": \"Too many requests\"}", 429);
+	CHECK(!d.ok);
+	EQ(d.error, "Too many requests (429)");
+	EQ(parseDeviceInit("", 0).error, "no connection");
+
+	DeviceToken t = parseDeviceToken("{\"access_token\": \"rmm_x1\", \"device_id\": \"d-1\", \"scopes\": [], \"expires_at\": null}", 200);
+	CHECK(t.state == DeviceToken::GRANTED);
+	EQ(t.token, "rmm_x1"); EQ(t.deviceId, "d-1");
+	CHECK(parseDeviceToken("{\"detail\": \"authorization_pending\"}", 400).state == DeviceToken::PENDING);
+	CHECK(parseDeviceToken("{\"detail\": \"slow_down\"}", 400).state == DeviceToken::SLOW_DOWN);
+	CHECK(parseDeviceToken("{\"detail\": \"Too many requests\"}", 429).state == DeviceToken::SLOW_DOWN);
+	CHECK(parseDeviceToken("{\"detail\": \"access_denied\"}", 400).state == DeviceToken::DENIED);
+	CHECK(parseDeviceToken("{\"detail\": \"expired_token\"}", 400).state == DeviceToken::EXPIRED);
+	CHECK(parseDeviceToken("{\"access_token\": \"rmm_x1\"}", 200).state == DeviceToken::FAILED);
+	CHECK(parseDeviceToken("{\"detail\": \"something else\"}", 400).state == DeviceToken::FAILED);
+	CHECK(parseDeviceToken("{not json", 400).state == DeviceToken::FAILED);
+	t = parseDeviceToken("", 0);
+	CHECK(t.state == DeviceToken::FAILED);
+	EQ(t.error, "no connection");
+	EQ(jsonString("BananaOS on \"RG\" DS\\\n\x01"), "\"BananaOS on \\\"RG\\\" DS\\\\\\n\\u0001\"");
+
+	// the server as typed
+	EQ(normalServer("192.168.1.20:8080"), "http://192.168.1.20:8080");
+	EQ(normalServer("  http://romm.lan/ "), "http://romm.lan");
+	EQ(normalServer("https://romm.example.com//"), "https://romm.example.com");
+	EQ(normalServer("100.64.0.7:3000/romm/"), "http://100.64.0.7:3000/romm");
+	EQ(normalServer("   "), "");
+	EQ(host("http://192.168.1.20:8080"), "192.168.1.20:8080");
+	EQ(host("https://user:pw@romm.example.com/romm"), "romm.example.com");
+	EQ(host(""), "");
+
+	// the keys on a made-up card: each edit keeps every other line of accounts.conf
+	const char* tmp = getenv("TMPDIR");
+	std::string tmpl = std::string(tmp && *tmp ? tmp : "/tmp") + "/kiwami-units-XXXXXX";
+	if (!mkdtemp(&tmpl[0])) { fprintf(stderr, "units: no temporary folder\n"); failed++; return; }
+	std::string t0 = tmpl;
+	mkdir((t0 + "/banana").c_str(), 0755);
+	mkdir((t0 + "/etc").c_str(), 0755);
+	setenv("KIWAMI_ROMM_CARD", (t0 + "/").c_str(), 1);
+	setenv("KIWAMI_ROMM_ETC", (t0 + "/etc").c_str(), 1);
+	setenv("KIWAMI_RUN", "/tmp/run-x/", 1);
+	Card c;
+	EQ(c.accounts, t0 + "/banana/accounts.conf");
+	EQ(c.status, "/tmp/run-x/romm.status");
+	EQ(c.dir, t0 + "/banana/romm");
+	std::string error;
+	spit(c.accounts, "ra_user=alice\nsmb_user=me\n");
+	CHECK(setServer(c, "romm.lan:8080/", error));
+	EQ(slurp(c.accounts), "ra_user=alice\nsmb_user=me\nromm_url=http://romm.lan:8080\n");
+	CHECK(paired(c, "rmm_t", "d-9", error));
+	EQ(slurp(c.accounts), "ra_user=alice\nsmb_user=me\nromm_url=http://romm.lan:8080\nromm_token=rmm_t\nromm_device_id=d-9\n");
+	romm::Account a = romm::account(c);
+	EQ(a.url, "http://romm.lan:8080"); EQ(a.token, "rmm_t"); EQ(a.deviceId, "d-9");
+	CHECK(setServer(c, "http://192.168.1.5", error));
+	EQ(slurp(c.accounts), "ra_user=alice\nsmb_user=me\nromm_url=http://192.168.1.5\nromm_token=rmm_t\nromm_device_id=d-9\n");
+	CHECK(forget(c, error));
+	EQ(slurp(c.accounts), "ra_user=alice\nsmb_user=me\nromm_url=http://192.168.1.5\n");
+	CHECK(setServer(c, "", error));
+	EQ(slurp(c.accounts), "ra_user=alice\nsmb_user=me\n");
+	// a card with no accounts.conf: forgetting writes none, a server makes it
+	unlink(c.accounts.c_str());
+	CHECK(forget(c, error) && !exists(c.accounts));
+	CHECK(setServer(c, "romm.lan", error));
+	EQ(slurp(c.accounts), "romm_url=http://romm.lan\n");
+
+	// settings: the card's, else the image's, else the default
+	spit(t0 + "/etc/settings.conf", "romm = off\nromm_autosync = on\n");
+	spit(c.settings, "romm = on\n");
+	EQ(setting(c, "romm", "off"), "on");
+	EQ(setting(c, "romm_autosync", "off"), "on");
+	EQ(setting(c, "romm_target", "main"), "main");
+
+	// the handheld's id: made once, 16 hex digits, the same afterwards
+	std::string id = deviceIdentifier(c);
+	IEQ((int)id.size(), 16);
+	CHECK(id.find_first_not_of("0123456789abcdef") == std::string::npos);
+	EQ(deviceIdentifier(c), id);
+	EQ(slurp(c.dir + "/identifier"), id + "\n");
+	unsetenv("KIWAMI_ROMM_CARD"); unsetenv("KIWAMI_ROMM_ETC"); unsetenv("KIWAMI_RUN");
+	if (system(("rm -rf " + t0).c_str()) != 0) {}
+}
+
 int main(int argc, char** argv)
 {
 	dir = argc > 1 ? argv[1] : "kiwami/tests/tailscale";
@@ -718,6 +830,7 @@ int main(int argc, char** argv)
 	testRaCard();
 	testPanelToken();
 	testHash();
+	testRomm();
 	if (failed) { fprintf(stderr, "units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("units: %d checks passed\n", checks);
 	return 0;

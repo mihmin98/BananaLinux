@@ -1,0 +1,9 @@
+config BR2_PACKAGE_KIWAMI_ROMM
+	bool "kiwami-romm"
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_LIBCURL # dlopen()ed at run time
+	help
+	  The fork's RomM client: /usr/libexec/kiwami/romm, the helper that pairs with a RomM server (5.4) and syncs
+	  the games' saves with it, built from ui/src/kiwami/romm/.
+
+	  https://github.com/rommapp/romm

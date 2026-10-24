@@ -1,5 +1,6 @@
 // banana-ui (kiwami): the RetroAchievements account on the card (rastore.h).
 #include "rastore.h"
+#include "conf.h"
 #include "raclient.h"
 #include <cerrno>
 #include <cstdio>
@@ -18,84 +19,22 @@ namespace banana::kiwami::ra
 {
 	namespace
 	{
-		// a line's value when its key is key (spaces round both), else false
-		bool keyed(const std::string& ln, const std::string& key, std::string* value = nullptr)
-		{
-			size_t i = ln.find_first_not_of(" \t");
-			if (i == std::string::npos || ln.compare(i, key.size(), key) != 0) return false;
-			i = ln.find_first_not_of(" \t", i + key.size());
-			if (i == std::string::npos || ln[i] != '=') return false;
-			if (value)
-			{
-				size_t b = ln.find_first_not_of(" \t", i + 1), e = ln.find_last_not_of(" \t\r");
-				*value = b == std::string::npos || e < b ? "" : ln.substr(b, e - b + 1);
-				if (value->size() >= 2 && (*value)[0] == '"' && value->back() == '"') *value = value->substr(1, value->size() - 2);
-			}
-			return true;
-		}
+		// the card's files through conf.h, each failure in the log
+		bool slurp(const std::string& path, std::string& s, bool& there) { return readFile(path, s, there); }
 
-		// the whole file into s; false when it is there but can't be read (a card error), or (with s "") isn't there
-		bool slurp(const std::string& path, std::string& s, bool& there)
-		{
-			s.clear();
-			there = access(path.c_str(), F_OK) == 0;
-			std::ifstream f(path, std::ios::binary);
-			if (!f) return false;
-			std::stringstream ss;
-			ss << f.rdbuf();
-			s = ss.str();
-			return true;
-		}
-
-		// the file replaced by text: through <path>.new and a rename, so a full card or an error keeps the old one
 		bool replace(const std::string& path, const std::string& text, std::string& error)
 		{
-			std::string tmp = path + ".new";
-			int fd = open(tmp.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
-			bool ok = fd >= 0;
-			ok = ok && write(fd, text.data(), text.size()) == (ssize_t)text.size();
-			ok = ok && fsync(fd) == 0;
-			int err = errno;
-			if (fd >= 0 && close(fd) != 0 && ok) { ok = false; err = errno; }
-			if (ok && rename(tmp.c_str(), path.c_str()) != 0) { ok = false; err = errno; }
-			if (ok) return true;
-			if (fd >= 0) unlink(tmp.c_str());
-			error = "can't write " + path + ": " + strerror(err);
+			if (replaceFile(path, text, error)) return true;
 			fprintf(stderr, "banana-ui: ra: %s\n", error.c_str());
 			return false;
 		}
 
-		// key=value files: each key set (its first line replaced, the others dropped, or a line added at the end) or,
-		// with del, every line of it dropped; every other line kept in its order. A file that isn't there is made only
-		// when create; one that doesn't change isn't written
-		struct Edit { std::string key, value; bool del = false; };
+		using Edit = ConfEdit;
 		bool edit(const std::string& path, const std::vector<Edit>& edits, const char* sep, bool create, std::string& error)
 		{
-			std::string old;
-			bool there = false;
-			if (!slurp(path, old, there) && there)
-			{
-				error = "can't read " + path;
-				fprintf(stderr, "banana-ui: ra: %s\n", error.c_str());
-				return false;
-			}
-			if (!there && !create) return true;
-			std::vector<bool> done(edits.size(), false);
-			std::string out, ln;
-			std::istringstream in(old);
-			while (std::getline(in, ln))
-			{
-				size_t e = 0;
-				while (e < edits.size() && !keyed(ln, edits[e].key)) e++;
-				if (e == edits.size()) { out += ln + "\n"; continue; }
-				if (edits[e].del || done[e]) continue;
-				out += edits[e].key + sep + edits[e].value + "\n";
-				done[e] = true;
-			}
-			for (size_t e = 0; e < edits.size(); e++)
-				if (!edits[e].del && !done[e]) out += edits[e].key + sep + edits[e].value + "\n";
-			if (there && out == old) return true;
-			return replace(path, out, error);
+			if (confEdit(path, edits, sep, create, error)) return true;
+			fprintf(stderr, "banana-ui: ra: %s\n", error.c_str());
+			return false;
 		}
 
 		bool makeDir(const std::string& dir)
@@ -162,15 +101,6 @@ namespace banana::kiwami::ra
 	bool sameName(const std::string& a, const std::string& b)
 	{
 		return a.size() == b.size() && strncasecmp(a.c_str(), b.c_str(), a.size()) == 0;
-	}
-
-	std::string confGet(const std::string& path, const std::string& key)
-	{
-		std::ifstream f(path);
-		std::string ln, v, r;
-		while (std::getline(f, ln))
-			if (keyed(ln, key, &v)) r = v;
-		return r;
 	}
 
 	Account account(const Card& c)

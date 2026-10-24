@@ -1,0 +1,13 @@
+{
+  "_comment": "The stand-in RomM server's library (kiwami/tests/romm-server.py): its platforms, their ROMs (each file's bytes made up from its seed and size, so nothing large is kept here) and firmware.",
+  "platforms": [
+    { "id": 1, "slug": "gba", "name": "Game Boy Advance" }
+  ],
+  "roms": [
+    { "id": 101, "platform_id": 1, "name": "Pocket Adventure", "fs_name": "Pocket Adventure (USA).gba",
+      "files": [ { "file_name": "Pocket Adventure (USA).gba", "size": 4096, "seed": 101 } ] }
+  ],
+  "firmware": [
+    { "id": 501, "platform_id": 1, "file_name": "gba_bios.bin", "size": 16384, "seed": 501 }
+  ]
+}

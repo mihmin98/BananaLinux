@@ -13,6 +13,7 @@
 //                                 also clears
 // <data> is Settings' data folder, /data/banana on the device. Names are compared without case, as the server does.
 // Each change logs a "banana-ui: ra: ..." line with names only, never a password or a token.
+#include "conf.h"
 #include <string>
 #include <vector>
 
@@ -23,10 +24,6 @@ namespace banana::kiwami::ra
 		std::string data, accounts, list, avatars, stats, hashes, badges, retroarch, superdrastic, bananads;
 		explicit Card(const std::string& data);
 	};
-
-	// accounts.conf's value for key as upstream's share script reads it (spaces round the key and the value, quotes,
-	// the last line winning), "" when there is none
-	std::string confGet(const std::string& path, const std::string& key);
 
 	// the account in accounts.conf
 	struct Account { std::string user, password, token; };

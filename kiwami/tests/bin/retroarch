@@ -1,0 +1,27 @@
+#!/bin/sh
+# Stand-in retroarch for kiwami/tests/ra-hotkeys.sh: what run-retroarch handed it, copied into $KR_SEEN (each
+# --appendconfig file, the folder an appended joypad_autoconfig_dir names as autoconfig/, the card's
+# .banana-hotkeys.keep beside --config while the game runs). Then what RetroArch does on exit: the binds it ran with,
+# the appended hotkeys config's lines (the one naming joypad_autoconfig_dir), written into the --config file.
+mkdir -p "$KR_SEEN"
+while [ $# -gt 0 ]; do
+    case $1 in
+    --config) CFG=$2; shift ;;
+    --appendconfig) APP=$2; shift ;;
+    esac
+    shift
+done
+IFS='|'
+for f in $APP; do
+    [ -f "$f" ] || continue
+    cp "$f" "$KR_SEEN/${f##*/}"
+    d=$(sed -n 's/^joypad_autoconfig_dir = "\(.*\)"$/\1/p' "$f")
+    [ -n "$d" ] && cp -r "$d" "$KR_SEEN/autoconfig" && HK=$f
+done
+unset IFS
+[ -f "${CFG%/*}/.banana-hotkeys.keep" ] && cp "${CFG%/*}/.banana-hotkeys.keep" "$KR_SEEN/keep"
+if [ -n "$HK" ]; then
+    sed 's/ = .*//' "$HK" | while read -r k; do sed -i "/^$k = /d" "$CFG"; done
+    cat "$HK" >> "$CFG"
+fi
+exit 0

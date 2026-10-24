@@ -49,6 +49,7 @@ The rule: a new file of the fork's own wherever the build allows one; an upstrea
 |---|---|
 | Packages (Tailscale, emulators, cores, Grout...) | `kiwami/package/`, a second Buildroot external tree (`kiwami/external.desc`, `Config.in`, `external.mk`) |
 | Image options | `kiwami/configs/kiwami.fragment`, merged over upstream's `banana_*_defconfig` at build time; upstream's defconfigs are not edited |
+| Another version of one of upstream's packages | `kiwami/local.mk` (Buildroot's package override file, set by the fragment; `override <PKG>_VERSION`), its patches and hash in `kiwami/patches/<package>/`, its options in `kiwami/external.mk`, behind an option in `kiwami/Config.in` |
 | Kernel options | `kiwami/linux.fragment`, listed after upstream's (the last one wins); busybox and U-Boot the same way when needed |
 | Files in the image | `kiwami/rootfs/`, a second rootfs overlay (copied after upstream's, so it can also replace an upstream file) |
 | Additions to upstream's files in the image (`systems.conf`, the theme's `systems.cfg`) | `kiwami/post-build.sh`, appending or inserting into the copy in `$TARGET_DIR`, rather than a whole replacement in the overlay |
@@ -74,6 +75,11 @@ appends the fork's rootfs overlay, post-build script and kernel fragment to upst
 `kiwami/configs/kiwami.fragment`, lets Buildroot resolve the dependencies and fails if an option of the fork's was
 dropped. A board's output is configured again when the fragment or the script change; packages already built aren't
 rebuilt by that (`make linux-reconfigure-rgds` after a change to `linux.fragment`, for example).
+
+The fragment also sets Buildroot's package override file (`BR2_PACKAGE_OVERRIDE_FILE`) to `kiwami/local.mk`, which
+Buildroot reads after `.config` and before any package: that is where the fork pins another version of an upstream
+package (RetroArch's master). It still reads the output's own override file, Buildroot's default
+(`output/<board>/local.mk`, for a `<PKG>_OVERRIDE_SRCDIR` while working on a package), so that keeps working.
 
 `kiwami/tests/ci.sh <buildroot dir>` checks the fork's shell scripts and configures every board that way; CI runs it
 after upstream's checks (one `kiwami:` step in `.github/workflows/ci.yml`), and `kiwami/tests/ci.sh .buildroot` runs it
@@ -154,12 +160,15 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    ```sh
    git diff $OLD main -- system/rootfs/etc/banana/systems.conf buildroot/configs/ ui/src/menu.h \
        system/rootfs/usr/libexec/banana/share buildroot/package/retroarch/cores.in \
-       system/rootfs/usr/libexec/banana/run-retroarch system/rootfs/etc/banana/retroarch.cfg
+       system/rootfs/usr/libexec/banana/run-retroarch system/rootfs/etc/banana/retroarch.cfg \
+       system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
+       buildroot/patches/retroarch/
    ```
    (the systems list, whose `ext` lines `kiwami/post-build.sh` adds `7z` to on seven systems (the build stops if
    one of them is gone; a new cartridge system may want it too), the defconfigs the fork adds to, the share script
-   whose `veto files` `kiwami/post-build.sh` adds tailscaled's state to (the build stops if the line changes shape; a
-   new place where upstream shares the card wants the same veto), `banana::Menu`, the interface the fork's theme
+   whose `veto files` `kiwami/post-build.sh` adds tailscaled's state and RetroArch master's credentials files
+   (`*retroarch-keychain.*`) to (the build stops if the line changes shape; a new place where upstream shares the card
+   wants the same veto), `banana::Menu`, the interface the fork's theme
    implements: when it changes, `git diff $OLD main -- ui/src/carts.cpp` shows how upstream changed its own theme to
    match, and upstream's cores and the launcher that picks one: a core upstream adds that the fork already has
    (Mesen, SameBoy, Genesis Plus GX) means the fork drops its package and row, and a change to how `run-retroarch`
@@ -167,7 +176,18 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    `ui/src/settings.cpp`, means the fork's rows have to follow; the fork's `core-overrides` hook sits after
    `run-retroarch`'s core log line and gives Mesen and SameBoy threaded video, so RetroArch's settings matter too:
    if upstream's `retroarch.cfg` turns `video_threaded` on for every core, the fork's overrides are no longer
-   needed, and a moved `rgui_config_directory` moves where they are written).
+   needed, and a moved `rgui_config_directory` moves where they are written. The fork's second hook there sits on the
+   line after upstream's `HOTKEYS` list, and adds RetroArch master's hotkeys to it (`/usr/share/kiwami/ra-hotkeys`):
+   a change to the list conflicts next to the hook, and if upstream adds one of master's hotkeys to it, the master
+   build stops (`kiwami/retroarch-hotkeys.sh`) and the name comes out of `KIWAMI_RETROARCH_HOTKEYS`. And
+   RetroAchievements' secrets: the fork's `ra-keychain` hook is the first line of `ra-secrets`' `scrub`, which folds
+   RetroArch master's credentials file back into `retroarch.cfg` before upstream's scrub reads it. If upstream
+   reworks `scrub`, the hook stays first in it; a new caller of the scrub gets the fold with no change. And upstream's
+   RetroArch itself: while `BR2_PACKAGE_KIWAMI_RETROARCH_MASTER` is on, the fork's pin (`kiwami/local.mk`) and patches
+   (`kiwami/patches/retroarch/`) shadow upstream's version and patches, so a change upstream makes there never
+   reaches the image. `kiwami/tests/ci.sh` stops when upstream's `RETROARCH_VERSION`, `RETROARCH_JOYPADS_VERSION` or
+   patches differ from what the fork last checked, and what to do is in the comment above the stamps in
+   `kiwami/tests/retroarch-pin.sh`).
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

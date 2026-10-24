@@ -1,0 +1,103 @@
+[INFO] === Build =======================================
+[INFO] Capabilities: ASIMD 
+[INFO] Version: 1.22.2
+[INFO] Built: Oct 24 2026
+[INFO] =================================================
+[INFO] [Input] Found input driver: "udev".
+[INFO] [Core] Loading dynamic libretro core from: "/usr/lib/libretro/gambatte_libretro.so".
+[INFO] [Config] Loading config: "/data/retroarch/retroarch.cfg".
+[INFO] [Config] Appending config: "/run/banana/retroarch-panel.cfg".
+[INFO] [Config] Appending config: "/run/banana/retroarch-account.cfg".
+[INFO] [Override] Redirecting save file to "/data/saves/Gambatte/Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (SGB Enhanced) (GB Compatible).srm".
+[INFO] [Override] Redirecting save state to "/data/states/Gambatte/Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (SGB Enhanced) (GB Compatible).state".
+[INFO] [Environ] GET_CORE_OPTIONS_VERSION.
+[INFO] [Environ] GET_LANGUAGE: "0".
+[INFO] [Environ] SET_CORE_OPTIONS_V2_INTL.
+[INFO] [Environ] GET_VFS_INTERFACE. Core requested version >= V2, providing V3.
+[INFO] [Environ] GET_LOG_INTERFACE.
+[INFO] [Environ] SET_PERFORMANCE_LEVEL: 4.
+[INFO] [Environ] GET_LANGUAGE: "0".
+[INFO] [Content] Loading content file: "/run/sd2/roms/gbc/Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (SGB Enhanced) (GB Compatible).7z#Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (SGB Enhanced) (GB Compatible).gbc".
+[INFO] [Content] CRC32: 0x6887a34.
+[INFO] [Environ] GET_CAN_DUPE: true.
+[INFO] [Environ] GET_RUMBLE_INTERFACE.
+[libretro INFO] [Gambatte] Rumble environment supported.
+[INFO] [Environ] SET_INPUT_DESCRIPTORS.
+[INFO] [Environ] SET_PIXEL_FORMAT: RGB565.
+[INFO] [Environ] GET_SYSTEM_DIRECTORY: "/data/bios".
+[libretro INFO] [Gambatte] MBC5 ROM+RAM+BATTERY loaded.
+[libretro INFO] [Gambatte] rambanks: 4
+[libretro INFO] [Gambatte] rombanks: 64
+[INFO] [Environ] GET_SYSTEM_DIRECTORY: "/data/bios".
+[libretro INFO] [Gambatte] Got internal game name: ZELDA.
+[INFO] [Environ] SET_MEMORY_MAPS.
+[INFO] [Environ] SET_SUPPORT_ACHIEVEMENTS: yes.
+[INFO] [Core] Version of libretro API: 1, Compiled against API: 1
+[INFO] [Core] Geometry: 160x144, Aspect: 1.111, FPS: 59.73, Sample rate: 32768.00 Hz.
+[INFO] [Video] Set video size to: fullscreen.
+[WARN] [DRM] Couldn't get device resources.
+[WARN] [DRM] Couldn't get device resources.
+[INFO] [DRM] Found 1 connectors.
+[INFO] [DRM] Connector 0 connected: yes
+[INFO] [DRM] Connector 0 has 1 modes.
+[INFO] [DRM] Connector 0 assigned to monitor index: #1.
+[INFO] [DRM] Mode 0: (1024x768) 1024 x 768, 59.999352 Hz
+[INFO] [GL] Found GL context: "kms".
+[INFO] [GL] Detecting screen resolution: 1024x768.
+[INFO] [EGL] Found EGL_EXT_platform_base, trying eglGetPlatformDisplayEXT.
+[INFO] [EGL] EGL version: 1.5.
+[INFO] [EGL] Current context: 0x5592c0c2a0.
+[INFO] [KMS] New FB: 1024x768 (stride: 4096).
+[INFO] [GL] Vendor: Mesa, Renderer: Mali-G52 r1 (Panfrost).
+[INFO] [GL] Version: OpenGL ES 3.1 Mesa 25.0.7.
+[INFO] [GL] Using resolution 1024x768.
+[INFO] [GL] Default shader backend found: glsl.
+[INFO] [GL] Using GLSL shader backend.
+[WARN] [GLSL] Stock GLSL shaders will be used.
+[INFO] [GLSL] Found GLSL vertex shader.
+[INFO] [GLSL] Found GLSL fragment shader.
+[INFO] [GLSL] Linking GLSL program.
+[INFO] [GLSL] Found GLSL vertex shader.
+[INFO] [GLSL] Found GLSL fragment shader.
+[INFO] [GLSL] Linking GLSL program.
+[INFO] [GLSL] Found GLSL vertex shader.
+[INFO] [GLSL] Found GLSL fragment shader.
+[INFO] [GLSL] Linking GLSL program.
+[INFO] [GL] Using 4 textures.
+[INFO] [GL] Loaded 1 program(s).
+[WARN] [udev] Fullscreen pointer won't be available.
+[INFO] [udev] Keyboard #0: "rk805 pwrkey" (/dev/input/event0).
+[INFO] [udev] Keyboard #1: "Goodix Capacitive TouchScreen" (/dev/input/event1).
+[INFO] [udev] Keyboard #2: "gpio-keys-volume" (/dev/input/event5).
+[INFO] [udev] Pad #0 (/dev/input/event6) supports force feedback.
+[INFO] [udev] Pad #0 (/dev/input/event6) supports 16 force feedback effects.
+[INFO] [Input] Found joypad driver: "udev".
+[INFO] [Video] Found display server: "kms".
+[INFO] [Audio] Set audio input rate to: 32917.50 Hz.
+[INFO] [ALSA] Using ALSA version 1.2.15.3.
+[INFO] [ALSA] Using FLOAT_LE sample format for PLAYBACK device "default".
+[INFO] [Autoconf] retrogame_joypad configured in port 1.
+[INFO] [ALSA] Period: 4 periods per buffer (768 frames, 6144 bytes).
+[INFO] [ALSA] Buffer size: 3072 frames (24576 bytes).
+[INFO] [ALSA] Can pause: no.
+[INFO] [ALSA] Initialized PLAYBACK device "default".
+[INFO] [Audio] Started synchronous audio driver.
+[INFO] [ALSA] Using ALSA version 1.2.15.3
+[INFO] [Microphone] Initialized microphone driver.
+[INFO] [Display] Found display driver: "gl".
+[ERROR] [MIDI] snd_seq_open failed with error -2.
+[ERROR] [MIDI] Initialization failed.
+[INFO] [Playlist] Loading favorites file: "/data/retroarch/playlists/builtin/content_favorites.lpl".
+[INFO] [Playlist] Loading history file: "/data/retroarch/playlists/builtin/content_history.lpl".
+[INFO] [Playlist] Loading history file: "/data/retroarch/playlists/builtin/content_image_history.lpl".
+[INFO] [Playlist] Loading history file: "/data/retroarch/playlists/builtin/content_music_history.lpl".
+[INFO] [Playlist] Written to file: "/data/retroarch/playlists/builtin/content_history.lpl".
+[INFO] [KMS] New FB: 1024x768 (stride: 4096).
+[INFO] [Config] Saved config to "/data/retroarch/retroarch.cfg".
+[INFO] [SRAM] Saving RAM type #0 to "/data/saves/Gambatte/Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (SGB Enhanced) (GB Compatible).srm".
+[INFO] [SRAM] Saved successfully to "/data/saves/Gambatte/Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (SGB Enhanced) (GB Compatible).srm".
+[INFO] [Runtime] Content ran for a total of: 00 hours, 01 minutes, 05 seconds.
+[INFO] [Core] Unloading game...
+[INFO] [Core] Unloading core...
+[INFO] [Core] Unloading core symbols...
+[INFO] [Core] Saved core options file to "/data/retroarch/config/Gambatte/Gambatte.opt".

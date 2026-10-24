@@ -853,6 +853,21 @@ Where the implementation turned out different from this plan, why, and what chan
     `unavailable`.
   - `units` takes the `ra/` folder as a second argument and links with `-ldl`. `ci.sh` compiles `ra-server.py`
     with its bytecode in the temporary folder.
+- **2026-10-24, step 4: details the plan left open.**
+  - The card's operations log their own lines: `ra: account <name> on the card (token kept|no token)`,
+    `ra: signed out <name>`, `ra: removed <name>`, `ra: adopted <new>, <old> remembered` (`ra: adopted <new>` with
+    none before, `ra: <old> no longer on the card, remembered` when `accounts.conf` lost its account) and, after each
+    change to the list, `ra: remembered: <names>`. Step 5's page adds only its own (`signed in as`, `refused`, `not
+    checked`).
+  - `signedIn` takes the account before from `accounts.conf` when `ra-accounts` names none yet (`adopt()` not run).
+  - `signOut` clears every place even when one fails, and says the first error. If `accounts.conf` can't be written,
+    the list keeps the account current, since its password is still on the card. A scrub that fails is logged
+    (`ra: the scrub failed (<status>), signing out all the same`) and the sign-out goes on. If the scrub brought in
+    another account (RetroArch's own login), both are remembered, the one shown first.
+  - `remove` refuses the account signed in.
+  - The stats cache is `cache/ra-stats/<name in lower case>`, lines `when`, `score`, `softscore`, `messages` and one
+    per system (`<system> <started> <completed> <mastered> <unlocked>`), read and written by `saveStats` and
+    `loadStats` here so that `remove` has something to delete; step 7 fills it.
 
 ## Progress
 
@@ -863,7 +878,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 1. The fork's Settings pages, routed by which one is open | done | RetroAchievements: the fork's Settings pages routed by which one is open |
 | 2. The RetroAchievements group, the scrolling grid and the trophy, with Mode | done | RetroAchievements: a group in Settings, the grid scrolling to its row, with Mode |
 | 3. RetroAchievements' requests, and a stand-in server for the tests | done | RetroAchievements: the server's requests, and a stand-in server for the tests |
-| 4. The account on the card: signing in, out, and the remembered accounts | todo | |
+| 4. The account on the card: signing in, out, and the remembered accounts | done | RetroAchievements: the account on the card, signed in, out and remembered |
 | 5. The Account page | todo | |
 | 6. The game panel takes the token Banana keeps (a bug fix) | todo | |
 | 7. The Stats page | todo | |

@@ -1,18 +1,22 @@
 // The fork's banana-ui code that needs no screen, checked on its own: the JSON reader, Tailscale's status, the
-// device's name, the login's QR code, the devices' list, Settings' grid of groups and RetroAchievements' replies.
-// Built and run by kiwami/tests/ci.sh with the host's g++:
+// device's name, the login's QR code, the devices' list, Settings' grid of groups, RetroAchievements' replies and its
+// account on the card. Built and run by kiwami/tests/ci.sh with the host's g++:
 //   g++ -std=c++17 -Wall -I ui/src kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp
-//       ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp -ldl -o units
+//       ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp -ldl -o units
 //   ./units kiwami/tests/tailscale kiwami/tests/ra
 #include "kiwami/grid.h"
 #include "kiwami/json.h"
 #include "kiwami/raclient.h"
+#include "kiwami/rastore.h"
 #include "kiwami/tsstatus.h"
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
+#include <unistd.h>
 
 using namespace banana::kiwami;
 
@@ -376,6 +380,138 @@ static void testRa()
 	EQ(fileName(""), "");
 }
 
+static std::string slurp(const std::string& path)
+{
+	std::ifstream f(path);
+	std::stringstream ss;
+	ss << f.rdbuf();
+	return ss.str();
+}
+static void spit(const std::string& path, const std::string& text) { std::ofstream(path) << text; }
+static bool exists(const std::string& path) { return access(path.c_str(), F_OK) == 0; }
+
+// the account on a made-up card (<tmp>/banana as Settings' data folder, retroarch/, superdrastic/ and bananads/ beside
+// it): signing in, out, removing and adopting, what each leaves in each file
+static void testRaCard()
+{
+	using namespace banana::kiwami::ra;
+	const char* tmp = getenv("TMPDIR");
+	std::string tmpl = std::string(tmp && *tmp ? tmp : "/tmp") + "/kiwami-units-XXXXXX";
+	if (!mkdtemp(&tmpl[0])) { fprintf(stderr, "units: no temporary folder\n"); failed++; return; }
+	std::string t = tmpl, data = t + "/banana";
+	for (const char* d : { "/banana", "/banana/cache", "/banana/cache/ra-avatars", "/retroarch", "/superdrastic", "/bananads" })
+		mkdir((t + d).c_str(), 0755);
+	Card c(data + "/");
+	EQ(c.accounts, data + "/accounts.conf");
+	EQ(c.retroarch, t + "/retroarch/retroarch.cfg");
+	EQ(c.superdrastic, t + "/superdrastic/ra.token");
+	EQ(c.bananads, t + "/bananads/ra.token");
+
+	// a fresh card: no account, nothing remembered, nothing written by looking
+	CHECK(!adopt(c));
+	CHECK(accounts(c).current.empty() && accounts(c).remembered.empty());
+	CHECK(!exists(c.list) && !exists(c.accounts));
+	CHECK(!needsToken(c));
+
+	// read as the share script reads it: spaces round the key and the value, quotes, the last line winning
+	spit(c.accounts, "smb_user=me\n  ra_user = \"Bob\" \r\nra_user_x=no\n# ra_user=comment\nsmb_password=x\n");
+	EQ(confGet(c.accounts, "ra_user"), "Bob");
+	spit(c.accounts, "smb_user=me\nra_user=old\nra_user=Bob\nsmb_password=x\n");
+	EQ(confGet(c.accounts, "ra_user"), "Bob");
+	EQ(confGet(c.accounts, "ra_password"), "");
+
+	// signing in writes the three keys, Bob's lines replaced and the others kept in their order; Bob, the account
+	// before, is remembered
+	std::string error;
+	CHECK(signedIn(c, "alice", "pw1", "tok1", error));
+	EQ(slurp(c.accounts), "smb_user=me\nra_user=alice\nsmb_password=x\nra_password=pw1\nra_retroarch_token=tok1\n");
+	EQ(slurp(c.list), "current\talice\nremembered\tBob\n");
+	CHECK(!needsToken(c));
+	// a second account: the first remembered, in front; no token, no token line
+	CHECK(signedIn(c, "carol", "pw3", "", error));
+	EQ(slurp(c.accounts), "smb_user=me\nra_user=carol\nsmb_password=x\nra_password=pw3\n");
+	EQ(slurp(c.list), "current\tcarol\nremembered\talice\nremembered\tBob\n");
+	CHECK(needsToken(c));
+	// names differing only in case are one account: ALICE leaves the list, carol joins it
+	CHECK(signedIn(c, "ALICE", "pw1", "tok1", error));
+	Accounts a = accounts(c);
+	EQ(a.current, "ALICE");
+	CHECK(a.remembered.size() == 2);
+	if (a.remembered.size() == 2) { EQ(a.remembered[0], "carol"); EQ(a.remembered[1], "Bob"); }
+	CHECK(sameName("Alice", "aLICE") && !sameName("alice", "alice2") && sameName("", ""));
+
+	// signing out: the scrub first, the keys still there when it runs; then the keys gone, retroarch.cfg's two lines,
+	// both tokens deleted, the account remembered first
+	spit(t + "/scrub.sh", "grep -q '^ra_password=pw1$' \"$1\" && echo keys > \"$2\" || echo no keys > \"$2\"\n");
+	setenv("KIWAMI_RA_SCRUB", ("sh " + t + "/scrub.sh " + c.accounts + " " + t + "/scrubbed").c_str(), 1);
+	spit(c.retroarch, "video_driver = \"kms\"\ncheevos_enable = \"true\"\ncheevos_username = \"ALICE\"\ncheevos_username = \"x\"\n");
+	spit(c.superdrastic, "ALICE\ntok1\n");
+	spit(c.bananads, "ALICE\ntok1\n");
+	CHECK(signOut(c, error));
+	EQ(slurp(t + "/scrubbed"), "keys\n");
+	EQ(slurp(c.accounts), "smb_user=me\nsmb_password=x\n");
+	EQ(slurp(c.retroarch), "video_driver = \"kms\"\ncheevos_enable = \"false\"\ncheevos_username = \"\"\n");
+	CHECK(!exists(c.superdrastic) && !exists(c.bananads));
+	EQ(slurp(c.list), "remembered\tALICE\nremembered\tcarol\nremembered\tBob\n");
+	CHECK(!adopt(c));	// (nothing on the card, nothing current: nothing to adopt)
+
+	// with no retroarch.cfg, signing out makes none; a scrub that fails signs out all the same
+	unlink(c.retroarch.c_str());
+	CHECK(signedIn(c, "carol", "pw3", "tok3", error));
+	setenv("KIWAMI_RA_SCRUB", "false", 1);
+	CHECK(signOut(c, error));
+	CHECK(!exists(c.retroarch));
+	EQ(slurp(c.accounts), "smb_user=me\nsmb_password=x\n");
+	EQ(accounts(c).remembered[0], "carol");
+	setenv("KIWAMI_RA_SCRUB", "true", 1);
+
+	// removing: off the list, with its avatar and its cached stats; the account signed in can't be removed
+	Stats s;
+	s.when = 1792370530; s.score = 1234; s.softScore = 56; s.messages = 2;
+	s.systems[1] = { 3, 1, 1, 18 };
+	s.systems[8] = { 1, 0, 0, 4 };
+	CHECK(saveStats(c, "Bob", s, error));
+	Stats r = loadStats(c, "BOB");
+	CHECK(r.when == 1792370530 && r.score == 1234 && r.softScore == 56 && r.messages == 2);
+	IEQ(r.systems[1].started, 3); IEQ(r.systems[1].completed, 1); IEQ(r.systems[1].mastered, 1); IEQ(r.systems[1].unlocked, 18);
+	IEQ(r.systems[8].unlocked, 4); IEQ(r.systems[0].started, 0);
+	CHECK(loadStats(c, "nobody").when == 0);
+	spit(c.avatars + "/bob.png", "png");
+	CHECK(remove(c, "BOB", error));
+	CHECK(!exists(c.avatars + "/bob.png") && !exists(c.stats + "/bob"));
+	EQ(slurp(c.list), "remembered\tcarol\nremembered\tALICE\n");
+	CHECK(signedIn(c, "alice", "pw1", "tok1", error));
+	CHECK(!remove(c, "Alice", error));
+	EQ(accounts(c).current, "alice");
+
+	// adopting the account accounts.conf names (the setup's step, RetroArch's own login): the old one remembered
+	spit(c.accounts, "smb_user=me\nra_user=carol\nra_password=pw3\n");
+	CHECK(adopt(c));
+	EQ(slurp(c.list), "current\tcarol\nremembered\talice\n");
+	CHECK(!adopt(c));
+	spit(c.accounts, "ra_user=CAROL\n");
+	CHECK(!adopt(c));
+	spit(c.accounts, "smb_user=me\n");
+	CHECK(adopt(c));
+	EQ(slurp(c.list), "remembered\tcarol\nremembered\talice\n");
+
+	// a folder that can't be written: signing in fails, with the files as they were (root writes anywhere: skipped)
+	if (geteuid() != 0)
+	{
+		std::string conf = slurp(c.accounts), list = slurp(c.list);
+		chmod(data.c_str(), 0555);
+		error.clear();
+		CHECK(!signedIn(c, "dave", "pw4", "tok4", error));
+		CHECK(error.find("can't write") == 0);
+		EQ(slurp(c.accounts), conf);
+		EQ(slurp(c.list), list);
+		CHECK(!exists(c.accounts + ".new"));
+		chmod(data.c_str(), 0755);
+	}
+	unsetenv("KIWAMI_RA_SCRUB");
+	if (system(("rm -rf " + t).c_str()) != 0) {}
+}
+
 int main(int argc, char** argv)
 {
 	dir = argc > 1 ? argv[1] : "kiwami/tests/tailscale";
@@ -387,6 +523,7 @@ int main(int argc, char** argv)
 	testDevices();
 	testGrid();
 	testRa();
+	testRaCard();
 	if (failed) { fprintf(stderr, "units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("units: %d checks passed\n", checks);
 	return 0;

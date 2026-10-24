@@ -24,10 +24,10 @@ kiwami/tests/ra-keychain.sh
 kiwami/tests/ra-hotkeys.sh
 
 # banana-ui's code of the fork's that needs no screen (the JSON reader, Tailscale's status, the name, the QR code,
-# Settings' grid of groups, RetroAchievements' replies), with the host's g++
+# Settings' grid of groups, RetroAchievements' replies and its account on the card), with the host's g++
 T=$(mktemp -d)
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp \
-    ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp -ldl
+    ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp -ldl
 "$T/units" kiwami/tests/tailscale kiwami/tests/ra
 # the stand-in RetroAchievements server the UI tests run against (its bytecode in $T, not beside it)
 PYTHONPYCACHEPREFIX="$T" python3 -m py_compile kiwami/tests/ra-server.py

@@ -1,6 +1,6 @@
 # 0008 RomM: plan
 
-Issue: #8 · Branch: `k/0008-romm` · Investigation: [investigation.md](investigation.md) · Status: draft
+Issue: #8 · Branch: `k/0008-romm` · Investigation: [investigation.md](investigation.md) · Status: approved
 
 ## Summary
 

@@ -828,25 +828,54 @@ and they never carry a password or token.
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | Settings: RIGHT from System, DOWN/UP through the rows, taps on tiles of both scroll positions; open RetroAchievements; switch Mode, then look at Other systems > RetroAchievements, and switch it back there | The grid scrolls one row at a time, the logo's tile looks like the others, taps hit what shows; both Mode rows always agree, and `retroarch.cfg` follows | `banana-ui.log` (`groups from row`), `/data/retroarch/retroarch.cfg`'s `cheevos_hardcore_mode_enable` | A1, A3, A21 | not run |
-| M2 | rgds-plus | Account: sign in with the real account (typed, then by touch); then sign in with a wrong password; then with Wi-Fi off, then on again and reopen the page | Signed in with avatar and points; the wrong one refused and nothing changed; offline kept unchecked, the token got on reopening | `banana-ui.log`; `banana/accounts.conf` (check its keys, don't share its values) | A4, A5, A6 | not run |
-| M3 | rgds-plus | Sign out (A, A); start a RetroArch game and a DS game (BananaDS, then DraStic); sign back in from the remembered list; sign in to a second account, then switch back; remove the second with X, X | After sign-out: no achievement pop-up or login in either game, both `ra.token` gone, `retroarch.cfg` `cheevos_enable = "false"`; the lists behave as A7-A9 | `banana-ui.log`, `/run/banana/retroarch.log` (Second screen on), `banana/logs/superdrastic/`, BananaDS's log in `banana/logs/`; `ls /data/superdrastic/ra.token /data/bananads/ra.token` | A7, A8, A9 | not run |
-| M4 | rgds-plus | Stats: open, compare with the account's page on retroachievements.org; Y; Wi-Fi off and reopen; sleep (lid) while "Updating...", open the lid | Points, completed/mastered and unlocked per system match the site; offline shows the cache with its date; after the lid, the page shows the result or the failure and works | `banana-ui.log` (the `ra:` request lines and times) | A11, A12, A22 | not run |
-| M5 | rgds-plus | Games on this card: A on a GBA game, a `.7z` SNES or N64 game, a `.nds`, a PlayStation `.chd` and a `.cue`, each played before with Second screen on (so the panel identified it); time the first open of the `.7z` and the `.chd` | Each game's list matches the site's, the IDs match the game panel's (`Identified game:` in RetroArch's log), and the first open takes a few seconds at most | `banana-ui.log` (`ra: hash`, `ra: game` lines with the time), `/run/banana/retroarch.log` from each game's last run | A14, A15, A16 | not run |
-| M6 | rgds-plus | Second screen on: play a game with achievements (a GBA game on mGBA, or `smb` on FCEUmm) | The game panel's achievement list loads (it showed "This game has no achievements" before step 6) | `banana-ui.log` (`game panel:` lines), `/run/banana/retroarch.log` (copy it before the next game: it's in `/run`) | A17 | not run |
-| M7 | rgds-plus | The menu with Settings closed after using the pages, then `bench`-like use: scroll the library 30 s; `top -b -n 1` over SSH | No banana-ui thread beyond upstream's, no network activity; the menu as smooth as before. banana-ui's size recorded | `top` output, `ls -l /usr/bin/banana-ui` | A19 | not run |
+| M1 | rgds-plus | Settings: RIGHT from System, DOWN/UP through the rows, taps on tiles of both scroll positions; open RetroAchievements; switch Mode, then look at Other systems > RetroAchievements, and switch it back there | The grid scrolls one row at a time, the logo's tile looks like the others, taps hit what shows; both Mode rows always agree, and `retroarch.cfg` follows | `banana-ui.log` (`groups from row`), `/data/retroarch/retroarch.cfg`'s `cheevos_hardcore_mode_enable` | A1, A3, A21 | passed (2026-10-24, the user; see the notes) |
+| M2 | rgds-plus | Account: sign in with the real account (typed, then by touch); then sign in with a wrong password; then with Wi-Fi off, then on again and reopen the page | Signed in with avatar and points; the wrong one refused and nothing changed; offline kept unchecked, the token got on reopening | `banana-ui.log`; `banana/accounts.conf` (check its keys, don't share its values) | A4, A5, A6 | passed (2026-10-24, the user; see the notes) |
+| M3 | rgds-plus | Sign out (A, A); start a RetroArch game and a DS game (BananaDS, then DraStic); sign back in from the remembered list; sign in to a second account, then switch back; remove the second with X, X | After sign-out: no achievement pop-up or login in either game, both `ra.token` gone, `retroarch.cfg` `cheevos_enable = "false"`; the lists behave as A7-A9 | `banana-ui.log`, `/run/banana/retroarch.log` (Second screen on), `banana/logs/superdrastic/`, BananaDS's log in `banana/logs/`; `ls /data/superdrastic/ra.token /data/bananads/ra.token` | A7, A8, A9 | passed (2026-10-24, the user; see the notes) |
+| M4 | rgds-plus | Stats: open, compare with the account's page on retroachievements.org; Y; Wi-Fi off and reopen; sleep (lid) while "Updating...", open the lid | Points, completed/mastered and unlocked per system match the site; offline shows the cache with its date; after the lid, the page shows the result or the failure and works | `banana-ui.log` (the `ra:` request lines and times) | A11, A12, A22 | passed (2026-10-24, the user; see the notes) |
+| M5 | rgds-plus | Games on this card: A on a GBA game, a `.7z` SNES or N64 game, a `.nds`, a PlayStation `.chd` and a `.cue`, each played before with Second screen on (so the panel identified it); time the first open of the `.7z` and the `.chd` | Each game's list matches the site's, the IDs match the game panel's (`Identified game:` in RetroArch's log), and the first open takes a few seconds at most | `banana-ui.log` (`ra: hash`, `ra: game` lines with the time), `/run/banana/retroarch.log` from each game's last run | A14, A15, A16 | passed (2026-10-24, the user; see the notes) |
+| M6 | rgds-plus | Second screen on: play a game with achievements (a GBA game on mGBA, or `smb` on FCEUmm) | The game panel's achievement list loads (it showed "This game has no achievements" before step 6) | `banana-ui.log` (`game panel:` lines), `/run/banana/retroarch.log` (copy it before the next game: it's in `/run`) | A17 | passed (2026-10-24, the user; see the notes) |
+| M7 | rgds-plus | The menu with Settings closed after using the pages, then `bench`-like use: scroll the library 30 s; `top -b -n 1` over SSH | No banana-ui thread beyond upstream's, no network activity; the menu as smooth as before. banana-ui's size recorded | `top` output, `ls -l /usr/bin/banana-ui` | A19 | passed (2026-10-24, the user; see the notes) |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- **M1-M7, 2026-10-24: passed, on the user's word.** The user ran them on the RG DS Plus with the 0.4.2 update built
+  from `d8fbbc0` (step 12), and reported that everything works. No logs were passed back, so none were analysed, and
+  the notes have no log lines. The one change the user asked for after that run, RetroAchievements' logo instead of the
+  trophy, is step 13. It was checked headless (`ra-ui.sh`, and the renders at both sizes), and the image built from
+  `92cbd22` has it.
 
 - **banana-ui's size (A19), 2026-10-24.** Built for the RG DS Plus with its Buildroot toolchain, flags as
   `banana-ui.mk`'s, stripped with `aarch64-linux-strip`:
   - before, `kiwami` at `b59fab5`: 1,357,928 bytes (1,594,416 unstripped);
-  - after, this branch at `d8fbbc0`: 1,919,352 bytes (2,231,784 unstripped), +561,424 (+41%).
+  - after, this branch at `d8fbbc0`: 1,919,352 bytes (2,231,784 unstripped), +561,424 (+41%);
+  - after step 13, at `92cbd22` (`make banana-ui-rebuild-rgds-plus`): 1,919,880 bytes (2,232,360 unstripped),
+    +561,952 (+41%) over the before. The logo's map adds 528 bytes. The image's copy, stripped by Buildroot, is
+    1,919,760.
 
   `make banana-ui-rebuild-rgds-plus` gave the same binary as the hand cross-build of `d8fbbc0`, to the byte, so the
   before (which Buildroot can't build without checking it out) was measured the same way. The three libraries are
   about 279 KB of the growth (rcheevos 54 KB, the LZMA SDK 40 KB, libchdr with zstd 185 KB, `size` of their objects),
   under the investigation's 300-400 KB. The rest, about 282 KB, is the fork's pages, requests and card code.
+- **The final check's automated part, 2026-10-24, at `92cbd22`.**
+  - All pass: `make test`, `make -B -C ui` and `make -B -C system/bananad CFLAGS="-O2 -Werror"` (no warnings), and
+    `kiwami/tests/ci.sh .buildroot`. That covers `units` 556 checks, the tailscale, 7z, cores and RetroAchievements UI
+    tests, the three boards configured and the RetroArch pin. Every `third_party/` folder matches its `SHA256SUMS`.
+  - The hooks: this feature's (`git diff b59fab5 HEAD`) are the plan's 15 lines, every added line marked `kiwami:`.
+    `docs/FORK.md`'s two commands, run against `main` and `release-0.4.2` merged (`dc6eab9`), agree, but for
+    `README.md`, `nds-saves` and `settings_defaults.cpp`. This feature doesn't touch them: they are how the release's
+    merge (`9a8e35e`) settled `main` against the release, recorded in `.workspace/merges/2026-10-23-e1b2ac4.md`.
+  - The renders: four `make test` suites ran side by side (22:25:55-22:26:20): this branch, this branch with
+    `KIWAMI_RA_GROUP=0`, `kiwami` at `b59fab5`, and `release-0.4.2` at `e1b2ac4`, each exported with `git archive`.
+    - With the group out, all 192 PNGs are identical to `b59fab5`'s.
+    - With it, 191 are. The one left, `640x480-setup-bot.png`, differs in the time zone row's clock only (19:26 against
+      19:25, 10x14 pixels): the suites crossed a minute. Before step 13 (21:38:01-21:38:27), all 192 were identical.
+    - `release-0.4.2`'s renders differ from `b59fab5`'s in 26 PNGs, and it has no reset screens (8). This branch differs
+      from it in the same PNGs, plus the clock's one: upstream's `main`, which `kiwami` took, not this feature.
+  - The docs: `kiwami/DEPENDENCIES.md` lists rcheevos v12.5.0, the LZMA SDK 26.02, libchdr `47d7941` and zstd 1.5.7,
+    each with its licence. `docs/FORK.md` names `ui/src/kiwami/third_party/` and `kiwami.mk`. `docs/ARCHITECTURE.md`
+    and `CLAUDE.md` need no change.
+  - The image: `make rgds-plus` from `92cbd22` (0.4.2), `banana-rgds-plus.img.gz` and
+    `banana-rgds-plus-0.4.2.update.tar`.
 
 ## Deviations
 
@@ -1101,4 +1130,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 11. Hashing PlayStation .chd: libchdr | done | RetroAchievements: PlayStation .chd hashed through libchdr |
 | 12. A game's achievements | done | RetroAchievements: a game's achievements, locked and unlocked, from the games on this card |
 | 13. The group's icon: RetroAchievements' logo | done | RetroAchievements: the group's icon is RetroAchievements' logo, pixelated |
-| 14. Final check | todo | |
+| 14. Final check | done | RetroAchievements: the final check done |

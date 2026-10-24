@@ -2,12 +2,13 @@
 // banana-ui (kiwami): the state of Settings > RetroAchievements' pages, kept by Settings::Kiwami while Settings lives:
 // the account on the card (rastore.h), what the server last said of each account, the avatars on screen, and the one
 // request running in the background (raclient.h: each blocks, up to 20 s). The Account page is ra-account.cpp, the
-// Stats page ra-stats.cpp.
+// Stats page ra-stats.cpp, the games on this card ra-games.cpp.
 #include "kiwami.h"
 #include "raclient.h"
 #include "rastore.h"
 #include <functional>
 #include <map>
+#include <ctime>
 #include <mutex>
 
 namespace banana
@@ -49,5 +50,11 @@ namespace banana
 		bool statsCached = false;
 		std::string statsError;				// why the last fetch failed, "" when it didn't
 		int ssel = 0, stop = 0;				// the selected system, the first one shown
+
+		// the games on this card: the library's games with achievements, copied when Settings or the page opens (a
+		// rescan can't take them from under the page), the last played first
+		struct Game { std::string title, system, systemName, path, rel; int unlocked = 0, total = 0; time_t last = 0; };
+		std::vector<Game> games;
+		int gsel = 0, gtop = 0;
 	};
 }

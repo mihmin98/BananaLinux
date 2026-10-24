@@ -27,6 +27,7 @@
 #include "sound.h"
 #include "menu.h"
 #include "carts.h"
+#include "kiwami/library.h"	// kiwami: the library, for Settings' RetroAchievements pages
 
 #include <algorithm>
 #include <atomic>
@@ -1006,6 +1007,7 @@ int main(int argc, char** argv)
 		if (!v.empty()) rnds::brandNote = stage + " " + v.substr(0, v.find('-'));
 	}
 	Host lib(o.systems, o.roms, o.data, o.assets);
+	kiwami::library = &lib;	// kiwami: the library, for Settings' RetroAchievements pages
 	lib.motion = settings["motion"] != "off";
 	lib.twelveHour = settings["clock"] == "12h";
 	lib.batteryShown = settings["battery"] == "percent" ? "text" : "icon";

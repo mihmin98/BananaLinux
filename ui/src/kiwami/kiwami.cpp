@@ -1,6 +1,6 @@
 // banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing, each page
 // hook going to the page that is open, and the groups' grid; the pages are in their own files (tailscale.cpp,
-// ra-account.cpp, ra-stats.cpp).
+// ra-account.cpp, ra-stats.cpp, ra-games.cpp).
 #include "ra.h"
 #include <algorithm>
 #include <cstdio>
@@ -99,6 +99,11 @@ namespace banana
 			stats.help = "The account's points, and its progress on each of Banana's systems: games started, completed and "
 				"mastered, achievements unlocked. Fetched when the page opens, and kept on the card for when there's no Wi-Fi.";
 			s.items.push_back(stats);
+			Item games;
+			games.section = group; games.icon = "cart"; games.label = "Games on this card"; games.key = "kiwami.ra.games"; games.kind = Item::PAGE;
+			games.help = "The games on this card with achievements, as far as the emulators have told Banana: unlocked of "
+				"the total for each.";
+			s.items.push_back(games);
 			// upstream's Other systems > RetroAchievements, the same setting (load and save are upstream's)
 			Item m;
 			m.section = group; m.icon = "gamepad"; m.label = "Mode"; m.key = MODE;
@@ -108,7 +113,7 @@ namespace banana
 			m.file = "/data/retroarch/retroarch.cfg";
 			m.names = { "Softcore", "Hardcore" }; m.values = { "false", "true" };
 			s.items.push_back(m);
-			keys = it.key + " " + stats.key + " " + m.key;
+			keys = it.key + " " + stats.key + " " + games.key + " " + m.key;
 		}
 		// (the tests read it, and on the device it says which of the fork's cores the image has)
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
@@ -136,19 +141,20 @@ namespace banana
 		if (key == "kiwami.tailscale") { pageOpen = Page::TAILSCALE; return tsOpen(); }
 		if (key == "kiwami.ra.account") { pageOpen = Page::RA_ACCOUNT; return raOpen(); }
 		if (key == "kiwami.ra.stats") { pageOpen = Page::RA_STATS; return raStatsOpen(); }
+		if (key == "kiwami.ra.games") { pageOpen = Page::RA_GAMES; return raGamesOpen(); }
 		return NONE;
 	}
 
 	Settings::Result Settings::Kiwami::press(Key k)
 	{
 		return pageOpen == Page::TAILSCALE ? tsPress(k) : pageOpen == Page::RA_ACCOUNT ? raPress(k)
-			: pageOpen == Page::RA_STATS ? raStatsPress(k) : NONE;
+			: pageOpen == Page::RA_STATS ? raStatsPress(k) : pageOpen == Page::RA_GAMES ? raGamesPress(k) : NONE;
 	}
 
 	Settings::Result Settings::Kiwami::touch(float cx, float cy)
 	{
 		return pageOpen == Page::TAILSCALE ? tsTouch(cx, cy) : pageOpen == Page::RA_ACCOUNT ? raTouch(cx, cy)
-			: pageOpen == Page::RA_STATS ? raStatsTouch(cx, cy) : NONE;
+			: pageOpen == Page::RA_STATS ? raStatsTouch(cx, cy) : pageOpen == Page::RA_GAMES ? raGamesTouch(cx, cy) : NONE;
 	}
 
 	void Settings::Kiwami::render()
@@ -156,6 +162,7 @@ namespace banana
 		if (pageOpen == Page::TAILSCALE) tsRender();
 		else if (pageOpen == Page::RA_ACCOUNT) raRender();
 		else if (pageOpen == Page::RA_STATS) raStatsRender();
+		else if (pageOpen == Page::RA_GAMES) raGamesRender();
 	}
 
 	std::string Settings::Kiwami::entryHelp() const

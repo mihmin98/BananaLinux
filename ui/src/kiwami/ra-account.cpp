@@ -24,6 +24,7 @@ namespace banana
 		if (!ra) ra = std::make_shared<Ra>(st.data);
 		ra::adopt(ra->card);	// (an account the setup or RetroArch put there since)
 		raRead();
+		raGamesRead();	// (the row's count)
 	}
 
 	void Settings::Kiwami::raRead()
@@ -43,11 +44,12 @@ namespace banana
 		}
 	}
 
-	// the rows' values: Account the name, Stats the points (as last known)
+	// the rows' values: Account the name, Stats the points (as last known), Games on this card their number
 	std::string Settings::Kiwami::raValue(const std::string& key) const
 	{
 		if (!ra) return "";
 		if (key == "kiwami.ra.account") return ra->user.empty() ? "Not signed in" : ra->user;
+		if (key == "kiwami.ra.games") return std::to_string(ra->games.size());
 		auto it = ra->points.find(ra::fileName(ra->user));
 		return ra->user.empty() || it == ra->points.end() ? "" : raPoints(it->second.score);
 	}

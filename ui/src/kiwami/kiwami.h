@@ -11,11 +11,12 @@
 //   KIWAMI_TAILSCALE in the environment: the test's stand-in), asked once when Settings opens and only while
 //   settings.conf has tailscale = on. A opens Tailscale's page (tailscale.cpp).
 //   RetroAchievements (a seventh group, after System; KIWAMI_RA_GROUP=0 in the environment leaves it out, for the
-//   tests): Account (kiwami.ra.account), Stats (kiwami.ra.stats) and Mode (upstream's cheevos_hardcore_mode_enable, the same setting as Other
+//   tests): Account (kiwami.ra.account), Stats (kiwami.ra.stats), Games on this card (kiwami.ra.games) and Mode (upstream's cheevos_hardcore_mode_enable, the same setting as Other
 //   systems > RetroAchievements, the two rows kept in step). Its tile has the fork's trophy (ra-icon.cpp), and the
 //   grid, three tiles a row, shows two rows at a time, scrolling to the third (grid.h). A on Account opens the Account
 //   page (ra-account.cpp): sign in, sign out, and the accounts signed out, remembered. Stats (kiwami.ra.stats): points
-//   and progress per system (ra-stats.cpp), fetched when the page opens or on Y, kept on the card for offline.
+//   and progress per system (ra-stats.cpp), fetched when the page opens or on Y, kept on the card for offline. Games on
+//   this card (kiwami.ra.games): the library's games the emulators recorded achievements for (ra-games.cpp).
 #include "../settings.h"
 #include <functional>
 #include "grid.h"
@@ -52,7 +53,7 @@ namespace banana
 	private:
 		Settings& st;
 		// the page that shows while Settings' page is KIWAMI: open() sets it, and the page hooks go to its own functions
-		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS } pageOpen = Page::NONE;
+		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS, RA_GAMES } pageOpen = Page::NONE;
 		int row0 = 0;								// the groups' first row shown, kept as the selection moves
 		int modeAt = -1;							// Mode's value as both its rows last had it
 		bool syncMode();							// a change to one of Mode's two rows shown in the other
@@ -145,5 +146,12 @@ namespace banana
 		Result raStatsTouch(float cx, float cy);
 		void raStatsRender();
 		void raStatsFetch();
+		// the games on this card (ra-games.cpp): the games with achievements the library has (kiwami/library.h), their
+		// progress, the last played first
+		void raGamesRead();
+		Result raGamesOpen();
+		Result raGamesPress(Key k);
+		Result raGamesTouch(float cx, float cy);
+		void raGamesRender();
 	};
 }

@@ -910,6 +910,17 @@ Where the implementation turned out different from this plan, why, and what chan
   - An answer that comes back after the account changed is dropped.
   - Each system's row has two lines: its name and achievements unlocked, then started, completed and mastered. The
     top panel spells out the selected system's numbers.
+- **2026-10-24, step 8: the games' row and page.**
+  - As in step 7, `kiwami.h` (`Page::RA_GAMES`, the page's functions), `ra-account.cpp` (the row's count, read when
+    Settings opens) and `cores-ui.sh` (the rows line) change too. Mode is now the group's fourth row in `ra-ui.sh`.
+  - The row's icon is upstream's `cart`.
+  - A on a game does nothing until step 12, so the top panel doesn't mention it yet.
+  - The page logs each game it lists: `ra: game <system>/<rel> "<title>" <unlocked> / <total>`. The test reads the
+    renamed title there.
+  - The fixture's play stats and `game-titles.tsv` are written by `ra-ui.sh` (`fixture.sh` is upstream's) and put back
+    after.
+  - A second-card game can't be reached headless (the library finds the second card through `/run/banana/sd2`). It
+    goes through the same shelves, so M5 covers it on the device.
 
 ## Progress
 
@@ -924,7 +935,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 5. The Account page | done | RetroAchievements: the Account page, signing in, out and back with remembered accounts |
 | 6. The game panel takes the token Banana keeps (a bug fix) | done | RetroAchievements: the game panel takes the token from accounts.conf, where Banana keeps it |
 | 7. The Stats page | done | RetroAchievements: the Stats page, points and progress per system, kept for offline |
-| 8. The games on this card, from the library | todo | |
+| 8. The games on this card, from the library | done | RetroAchievements: the games on this card, with the menu's titles, from the library |
 | 9. Hashing games as RetroArch does: rcheevos, and the fork's C build | todo | |
 | 10. Hashing games in .zip and .7z: the LZMA SDK's 7z decoder | todo | |
 | 11. Hashing PlayStation .chd: libchdr | todo | |

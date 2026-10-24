@@ -6,7 +6,8 @@
 # (ra-server.py): signing in (accepted, refused, with no connection and the token fetched later), out (A twice, the
 # scrub first), back in from the remembered accounts, removing one (X twice), an account adopted from accounts.conf.
 # The Stats page: the requests it makes on opening and on Y and none otherwise, the card's copy when the server can't
-# be reached, nothing asked when signed out. No password or token in the log. Needs ui/banana-ui (make ui), python3 and ImageMagick (the test library's art).
+# be reached, nothing asked when signed out. The games on this card: the library's games with achievements, under the
+# menu's titles. No password or token in the log. Needs ui/banana-ui (make ui), python3 and ImageMagick (the test library's art).
 # Run by kiwami/tests/ci.sh when banana-ui is built, or by hand:
 #   kiwami/tests/ra-ui.sh        (the shots in $OUT, /tmp/kiwami-ra by default)
 set -e
@@ -83,7 +84,7 @@ for size in 640x480 1024x768; do
     : > "$SLOG"
     # the group's rows, after System; the first two rows of the grid as with six groups, pixel for pixel
     run $size groups "$SET; shot g0"
-    logged "banana-ui: kiwami: rows in RetroAchievements: kiwami.ra.account kiwami.ra.stats cheevos_hardcore_mode_enable"
+    logged "banana-ui: kiwami: rows in RetroAchievements: kiwami.ra.account kiwami.ra.stats kiwami.ra.games cheevos_hardcore_mode_enable"
     unlogged "groups from row"
     mv "$OUT/$size-g0-top.png" "$OUT/$size-g0-ra-top.png"; mv "$OUT/$size-g0-bot.png" "$OUT/$size-g0-ra-bot.png"
     KIWAMI_RA_GROUP=0 run $size six "$SET; shot g0"
@@ -124,16 +125,16 @@ for size in 640x480 1024x768; do
     lines "touch " "banana-ui: touch 116 327: settings result 1|"
     same g7 t7 bot
 
-    # Mode (the group's third row): RIGHT on it is Hardcore, and Other systems > RetroAchievements (L three times, its third row) says the
+    # Mode (the group's fourth row): RIGHT on it is Hardcore, and Other systems > RetroAchievements (L three times, its third row) says the
     # same; the other way round too. (Upstream's rows write /data/retroarch/retroarch.cfg, which the test machine
     # hasn't got: their values are checked on screen, the file on the device, M1.)
     OTHER_RA="press l; press l; press l; press down; press down; wait 1"
-    run $size mode-before "$SET; $R4; press down; press a; press down; press down; shot mode0; $OTHER_RA; shot ora0"
+    run $size mode-before "$SET; $R4; press down; press a; press down; press down; press down; shot mode0; $OTHER_RA; shot ora0"
     unlogged "in both rows"
-    run $size mode "$SET; $R4; press down; press a; press down; press down; press right; wait 1; shot mode1; $OTHER_RA; shot ora1"
+    run $size mode "$SET; $R4; press down; press a; press down; press down; press down; press right; wait 1; shot mode1; $OTHER_RA; shot ora1"
     logged "banana-ui: kiwami: Mode Hardcore in both rows"
     differ mode0 mode1 bot; differ ora0 ora1 bot
-    run $size mode-back "$SET; press r; press r; press r; press a; press down; press down; press right; wait 1; press left; wait 1; shot ora2; press r; press r; press r; press down; press down; wait 1; shot mode2"
+    run $size mode-back "$SET; press r; press r; press r; press a; press down; press down; press right; wait 1; press left; wait 1; shot ora2; press r; press r; press r; press down; press down; press down; wait 1; shot mode2"
     lines "in both rows" "banana-ui: kiwami: Mode Hardcore in both rows|banana-ui: kiwami: Mode Softcore in both rows|"
     same ora0 ora2 bot; same mode0 mode2 bot
 
@@ -265,6 +266,24 @@ for size in 640x480 1024x768; do
     logged "banana-ui: ra: stats page: not signed in"
     served ""
     shown stats-none
+
+    # ---- the games on this card (the group's third row): the library's games with achievements recorded, the last
+    # played first, under the menu's titles (Orchard Tactics renamed on its game page); Pocket Peel has none recorded
+    GAMES="$SET; $R4; press down; press a; press down; press down; press a"
+    cp "$D/playstats.tsv" "$OUT/playstats.before"
+    now=$(date +%s)
+    printf 'gba/Orchard Tactics.gba\t2\t900\t%s\t3\t10\nsnes/Super Smoothie World.sfc\t1\t600\t%s\t0\t5\ngb/Pocket Peel.gb\t4\t300\t%s\n' \
+        $((now - 100)) $((now - 50)) $((now - 10)) > "$D/playstats.tsv"
+    printf 'gba/Orchard Tactics.gba\tOrchard Tactics DX\t\n' > "$D/game-titles.tsv"
+    run $size games "$GAMES; shot games; press down; shot games-2"
+    lines "banana-ui: ra: game" 'banana-ui: ra: games on this card: 2|banana-ui: ra: game snes/Super Smoothie World.sfc "Super Smoothie World" 0 / 5|banana-ui: ra: game gba/Orchard Tactics.gba "Orchard Tactics DX" 3 / 10|'
+    shown games games-2
+    differ games games-2 top
+    : > "$D/playstats.tsv"
+    run $size games-none "$GAMES; shot games-none"
+    logged "banana-ui: ra: games on this card: 0"
+    shown games-none
+    cp "$OUT/playstats.before" "$D/playstats.tsv"; rm -f "$D/game-titles.tsv"
 
     # no password or token in any of this size's logs
     ! grep -lE 'pw[123]|tok[12]' "$OUT/$size"-*.log || { echo "FAIL $size: a password or a token in the log"; fail=1; }

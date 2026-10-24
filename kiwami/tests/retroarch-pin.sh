@@ -3,10 +3,12 @@
 # fork's options (kiwami/tests/ci.sh's): on, the pin (kiwami/local.mk), only the fork's hash file, the fork's patches
 # instead of upstream's (the patch step's folders, from make -n: nothing is downloaded or built) and the fork's
 # configure options after upstream's; off (a copy of the first output), upstream's RetroArch as it is. The output's own
-# local.mk is read both ways. Run by kiwami/tests/ci.sh:
+# local.mk is read both ways. First, a guard: upstream's RetroArch (its version, its joypads' commit and its patches)
+# is the one the pin was last checked against. Run by kiwami/tests/ci.sh:
 #   kiwami/tests/retroarch-pin.sh <buildroot dir> <output dir>...
+#   kiwami/tests/retroarch-pin.sh --self-test     the guard on copies of upstream's RetroArch, each move caught
 set -e
-BR=$(cd "$1" && pwd); shift
+[ "$1" = --self-test ] || { BR=$(cd "$1" && pwd); shift; }
 cd "$(dirname "$0")/../.."
 K=$PWD/kiwami
 PIN=71f521e726c2b1886ee7a2484195ab63abc92127
@@ -16,6 +18,57 @@ OPTS='--disable-keychain --disable-mcp --disable-retronfs --disable-retrosmb --d
 OPTS=$(echo $OPTS)
 HOTKEYS='video_filter_toggle headset_recenter laser_pointer_toggle headset_view_toggle'
 fail() { echo "retroarch-pin: FAIL: $*" >&2; exit 1; }
+
+# Upstream's RetroArch as it was when the fork's pin was last checked against it. When upstream moves one of these,
+# the fork's pin hides it: look at what upstream changed, then rebase or drop kiwami/patches/retroarch/, move the
+# pin (kiwami/local.mk) or turn it off, and update the stamp here.
+UP_VERSION=v1.22.2
+UP_JOYPADS=f3b62b847ed21939b668b897b18bbc1defbaae05
+UP_PATCHES=0a6ab4470613449b3910ca1788386257a32381a6aae1efeef0ae909be1c7f94f
+# guard: upstream's RetroArch in $KIWAMI_TREE (the repository by default) against the stamps
+guard() {
+    t=${KIWAMI_TREE:-.}/buildroot
+    v=$(sed -n 's/^RETROARCH_VERSION = //p' "$t/package/retroarch/retroarch.mk")
+    j=$(sed -n 's/^RETROARCH_JOYPADS_VERSION = //p' "$t/package/retroarch/retroarch.mk")
+    [ "$v" = $UP_VERSION ] || fail "upstream's RETROARCH_VERSION is $v, the pin was checked against $UP_VERSION:" \
+        "see what upstream changed (buildroot/package/retroarch/, buildroot/patches/retroarch/) and the stamps in $0"
+    [ "$j" = $UP_JOYPADS ] || fail "upstream's RETROARCH_JOYPADS_VERSION is $j, the pin was checked against" \
+        "$UP_JOYPADS: kiwami/patches/retroarch/retroarch.hash lists upstream's joypad tarball, so add the new one's" \
+        "sha256 there, and see the stamps in $0"
+    f=$(cd "$t" && { find patches/retroarch -type f; find package/retroarch -name '*.patch'; } | LC_ALL=C sort)
+    [ "$(cd "$t" && echo "$f" | xargs sha256sum | sha256sum | cut -c1-64)" = $UP_PATCHES ] ||
+        fail "upstream's RetroArch patches changed since the pin was checked (now $(echo $f)): the fork applies" \
+            "kiwami/patches/retroarch/ instead, so see what upstream changed and the stamps in $0"
+}
+
+# --self-test: the guard on copies of upstream's RetroArch: an unchanged copy passes, and each move fails with its
+# own message
+if [ "$1" = --self-test ]; then
+    T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+    copy() {
+        rm -rf "$T/buildroot"; mkdir -p "$T/buildroot/package" "$T/buildroot/patches"
+        cp -a buildroot/package/retroarch "$T/buildroot/package/"; cp -a buildroot/patches/retroarch "$T/buildroot/patches/"
+    }
+    # moved <what> <words the message has>: the guard on the changed copy fails, naming what moved
+    moved() {
+        if (KIWAMI_TREE=$T; guard) 2> "$T/err"; then fail "self-test: the guard missed $1"; fi
+        grep -qF -- "$2" "$T/err" || fail "self-test: $1: the message doesn't say '$2': $(cat "$T/err")"
+    }
+    copy; (KIWAMI_TREE=$T; guard) || fail "self-test: the guard fails on an unchanged copy"
+    copy; sed -i 's/^RETROARCH_VERSION = .*/RETROARCH_VERSION = v1.23.0/' "$T/buildroot/package/retroarch/retroarch.mk"
+    moved "a new version" "RETROARCH_VERSION is v1.23.0"
+    copy; sed -i 's/^RETROARCH_JOYPADS_VERSION = .*/RETROARCH_JOYPADS_VERSION = 0123456789abcdef0123456789abcdef01234567/' \
+        "$T/buildroot/package/retroarch/retroarch.mk"
+    moved "a new joypads commit" "RETROARCH_JOYPADS_VERSION is 0123456789abcdef0123456789abcdef01234567"
+    copy; echo x > "$T/buildroot/patches/retroarch/0004-x.patch"
+    moved "a new patch" "patches/retroarch/0004-x.patch"
+    copy; echo x > "$T/buildroot/package/retroarch/x.patch"
+    moved "a patch in the package's folder" "package/retroarch/x.patch"
+    echo "retroarch-pin: self-test: the guard caught all 4 moves"
+    exit 0
+fi
+guard
+echo "retroarch-pin: upstream's RetroArch is the one the pin was checked against"
 VARS='RETROARCH_VERSION RETROARCH_HASH_FILES RETROARCH_CONF_OPTS RETROARCH_TARGET_PATCH KIWAMI_TEST_LOCAL_MK
     RETROARCH_POST_INSTALL_TARGET_HOOKS KIWAMI_RETROARCH_HOTKEYS'
 # resolve <output>: the variables as Buildroot resolves them, read once (each make parses all of Buildroot, ~10 s),

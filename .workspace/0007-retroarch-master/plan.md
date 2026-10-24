@@ -706,7 +706,8 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 
 ### 6. A guard against upstream's RetroArch moving under the pin
 
-- **Files**: `kiwami/tests/retroarch-pin.sh` (changed), `docs/FORK.md` (changed).
+- **Files**: `kiwami/tests/retroarch-pin.sh` (changed), `kiwami/tests/ci.sh` (changed; Deviations, 24 Oct 2026),
+  `docs/FORK.md` (changed).
 - **Change**:
   - **`retroarch-pin.sh`**, first, before any Buildroot call:
     ```sh
@@ -929,6 +930,9 @@ Where the implementation turned out different from this plan, why, and what chan
   - A reconfigure doesn't remove the objects of what was built before, so "the build folder has no
     `network/mcp_server.o`" can't hold after `make retroarch-reconfigure-rgds-plus`. The check is made after
     `make retroarch-dirclean-rgds-plus` and the image's `make rgds-plus`, and on the reconfigured binary with `nm`.
+- **24 Oct 2026, step 6: `kiwami/tests/ci.sh` joins the step's files.** The step's Tests have `retroarch-pin.sh
+  --self-test` run by `ci.sh`, which its Files didn't list: `ci.sh` calls it just before the pin's run. The guard's
+  check of upstream's own tree runs at the start of that run, before any Buildroot call.
 
 ## Progress
 
@@ -941,5 +945,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 3. RetroArch's master, pinned behind a build option | done | RetroArch master: master at 71f521e behind a build option, with the fork's patches for it |
 | 4. RetroArch hotkeys Off covers master's four new hotkeys | done | RetroArch master: RetroArch hotkeys Off also turns off master's four new hotkeys |
 | 5. Master without the built-ins Banana can't use | done | RetroArch master: built without the MCP server, network clients, media decoders, RAR and GameMode |
-| 6. A guard against upstream's RetroArch moving under the pin | todo | |
+| 6. A guard against upstream's RetroArch moving under the pin | done | RetroArch master: CI stops when upstream's RetroArch moves under the fork's pin |
 | 7. Final check | todo | |

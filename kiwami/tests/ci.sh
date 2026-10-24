@@ -89,6 +89,8 @@ for b in rgds rgds_plus universal; do
 done
 
 # RetroArch's master as each board resolves it with the fork's options (the pin, the fork's hash file, patches and
-# options), and upstream's v1.22.2 with the option off
+# options), and upstream's v1.22.2 with the option off; first the guard, on copies of upstream's RetroArch (each move
+# caught), then on upstream's own (it hasn't moved under the pin)
+kiwami/tests/retroarch-pin.sh --self-test
 kiwami/tests/retroarch-pin.sh "$BR" ${TMPDIR:-/tmp}/kiwami-config-rgds ${TMPDIR:-/tmp}/kiwami-config-rgds_plus \
     ${TMPDIR:-/tmp}/kiwami-config-universal

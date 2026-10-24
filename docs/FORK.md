@@ -161,7 +161,8 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    git diff $OLD main -- system/rootfs/etc/banana/systems.conf buildroot/configs/ ui/src/menu.h \
        system/rootfs/usr/libexec/banana/share buildroot/package/retroarch/cores.in \
        system/rootfs/usr/libexec/banana/run-retroarch system/rootfs/etc/banana/retroarch.cfg \
-       system/rootfs/usr/libexec/banana/ra-secrets
+       system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
+       buildroot/patches/retroarch/
    ```
    (the systems list, whose `ext` lines `kiwami/post-build.sh` adds `7z` to on seven systems (the build stops if
    one of them is gone; a new cartridge system may want it too), the defconfigs the fork adds to, the share script
@@ -181,7 +182,12 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    build stops (`kiwami/retroarch-hotkeys.sh`) and the name comes out of `KIWAMI_RETROARCH_HOTKEYS`. And
    RetroAchievements' secrets: the fork's `ra-keychain` hook is the first line of `ra-secrets`' `scrub`, which folds
    RetroArch master's credentials file back into `retroarch.cfg` before upstream's scrub reads it. If upstream
-   reworks `scrub`, the hook stays first in it; a new caller of the scrub gets the fold with no change).
+   reworks `scrub`, the hook stays first in it; a new caller of the scrub gets the fold with no change. And upstream's
+   RetroArch itself: while `BR2_PACKAGE_KIWAMI_RETROARCH_MASTER` is on, the fork's pin (`kiwami/local.mk`) and patches
+   (`kiwami/patches/retroarch/`) shadow upstream's version and patches, so a change upstream makes there never
+   reaches the image. `kiwami/tests/ci.sh` stops when upstream's `RETROARCH_VERSION`, `RETROARCH_JOYPADS_VERSION` or
+   patches differ from what the fork last checked, and what to do is in the comment above the stamps in
+   `kiwami/tests/retroarch-pin.sh`).
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

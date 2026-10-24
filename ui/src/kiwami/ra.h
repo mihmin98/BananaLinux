@@ -44,7 +44,7 @@ namespace banana
 		std::string rmArmed;				// the remembered account waiting for its second X
 		enum Typing { NAME, PASSWORD } typing = NAME;	// what the keyboard is typing for the page
 		std::string typedName;				// the account the password is for
-		std::map<std::string, rnds::TexPtr> avatars;	// by name in lower case, null for none (the trophy instead)
+		std::map<std::string, rnds::TexPtr> avatars;	// by name in lower case, null for none (the logo instead)
 
 		// the Stats page: the numbers shown, fetched now or kept on the card (cached: as of stats.when)
 		kiwami::ra::Stats stats;

@@ -1,7 +1,7 @@
 #!/bin/sh
 # The RetroAchievements group in banana-ui's Settings, headless at both panel sizes: its rows (Account, Mode) after
 # System; the groups' grid showing two rows, the first two exactly as with six groups (KIWAMI_RA_GROUP=0 leaves the
-# group out: upstream's grid), scrolling one row to the trophy's and back, wrapping with a short last row; taps on what
+# group out: upstream's grid), scrolling one row to the logo's and back, wrapping with a short last row; taps on what
 # shows; Mode and Other systems > RetroAchievements kept in step. The Account page against the stand-in server
 # (ra-server.py): signing in (accepted, refused, with no connection and the token fetched later), out (A twice, the
 # scrub first), back in from the remembered accounts, removing one (X twice), an account adopted from accounts.conf.
@@ -68,6 +68,9 @@ shown() {
 }
 same() { cmp -s "$OUT/$size-$1-$3.png" "$OUT/$size-$2-$3.png" || { echo "FAIL $size $name: $1 and $2 differ ($3)"; fail=1; }; }
 differ() { cmp -s "$OUT/$size-$1-$3.png" "$OUT/$size-$2-$3.png" && { echo "FAIL $size $name: $1 and $2 are the same ($3)"; fail=1; }; true; }
+# a shot has the colour $3 (RRGGBB) somewhere (painted), or nowhere (unpainted)
+painted() { convert "$OUT/$size-$1-$2.png" -unique-colors txt:- 2>/dev/null | grep -qi "#$3" || { echo "FAIL $size $name: no #$3 in $1 ($2)"; fail=1; }; }
+unpainted() { ! convert "$OUT/$size-$1-$2.png" -unique-colors txt:- 2>/dev/null | grep -qi "#$3" || { echo "FAIL $size $name: #$3 in $1 ($2)"; fail=1; }; }
 # a file's content is exactly $2 (printf's format), or the file isn't there ($2 "-")
 holds() {
     if [ "$2" = - ]; then [ ! -e "$1" ] || { echo "FAIL $size $name: $1 is there"; fail=1; }; return; fi
@@ -96,11 +99,13 @@ for size in 640x480 1024x768; do
     shown g0
     same g0 g0-ra top; same g0 g0-ra bot
 
-    # RIGHT on System: rows 2 and 3, the trophy's tile selected; UP keeps them, UP again shows rows 1 and 2
+    # RIGHT on System: rows 2 and 3, the logo's tile selected; UP keeps them, UP again shows rows 1 and 2
     run $size scroll "$SET; press r; press r; press r; press r; press r; press right; shot g7; press up; shot g4; press up; shot g1"
     lines "groups from row" "banana-ui: kiwami: groups from row 1|banana-ui: kiwami: groups from row 0|"
     shown g7
     differ g0 g7 bot; differ g0 g7 top; differ g7 g4 bot
+    # the tile is RetroAchievements' logo: the blue of its R's inner line is on no other tile
+    painted g7 bot 1F3D6E; unpainted g0 bot 1F3D6E
     # with six groups, upstream's grid: RIGHT on System is Display & sound, the rows never move
     KIWAMI_RA_GROUP=0 run $size scroll-six "$SET; press r; press r; press r; press r; press r; press right; shot six"
     unlogged "groups from row"
@@ -114,6 +119,7 @@ for size in 640x480 1024x768; do
     run $size list "$SET; $R4; press down; press a; shot ra-list; press a"
     logged "banana-ui: ra: account page: not signed in, 0 remembered"
     shown ra-list
+    painted ra-list top 1F3D6E	# Account's icon, the logo
 
     # UP on Sleep & power: the third row's last tile (its column is empty); then a tap on the empty slot beside it does
     # nothing, a tap on Other systems (shown where row 1 was) selects it, a second opens it
@@ -124,7 +130,7 @@ for size in 640x480 1024x768; do
     # (Other systems' list: its first row, Screen, on the top panel)
     run $size other "$SET; press r; press r; press r; press a; shot other"
     same opened other top
-    # a tap on the trophy, where it shows, selects it (UP from it to Other systems keeps rows 2 and 3)
+    # a tap on the logo, where it shows, selects it (UP from it to Other systems keeps rows 2 and 3)
     run $size tap-ra "$SET; press r; press r; press r; press r; press r; press right; shot r7; press up; touch 1 116 327; shot t7"
     lines "touch " "banana-ui: touch 116 327: settings result 1|"
     same g7 t7 bot

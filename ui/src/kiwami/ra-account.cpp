@@ -354,7 +354,7 @@ namespace banana
 	}
 
 	// ---- drawing ----------------------------------------------------------------------------------------------------
-	// an account's avatar in a square of size (CSS px), decoded once while the page shows; the trophy when it has none
+	// an account's avatar in a square of size (CSS px), decoded once while the page shows; the logo when it has none
 	void Settings::Kiwami::raAvatar(const std::string& name, float x, float y, float size)
 	{
 		std::string f = ra::fileName(name);
@@ -376,10 +376,10 @@ namespace banana
 			return;
 		}
 		int k = std::max(1, (int)(size / 32));
-		st.icon("kiwami.trophy", x + (size - 32 * k) / 2, y + (size - 32 * k) / 2, k);
+		st.icon("kiwami.ra", x + (size - 32 * k) / 2, y + (size - 32 * k) / 2, k);
 	}
 
-	// the top panel: the account's avatar (or the trophy), RetroAchievements, the title and a line in the accent, then
+	// the top panel: the account's avatar (or the logo), RetroAchievements, the title and a line in the accent, then
 	// the state (in ink) and the help (muted), as Tailscale's page
 	void Settings::Kiwami::raTop(const std::string& title, const std::string& accent, const std::string& state, const std::string& help,
 		const std::string& avatar)

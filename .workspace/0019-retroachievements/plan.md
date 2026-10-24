@@ -5,7 +5,8 @@ Issue: #19 · Branch: `k/0019-retroachievements` · Investigation: [investigatio
 ## Summary
 
 Settings gets a seventh group, RetroAchievements, after System. The group grid stays three tiles wide and shows two rows
-at a time, scrolling one row to reach the third. The tile shows a pixel trophy. The group has four rows:
+at a time, scrolling one row to reach the third. The tile shows RetroAchievements' logo, pixelated (step 13; step 2
+drew a trophy). The group has four rows:
 
 - **Account**: sign in (name, password, checked with the server, the token kept); sign out, which forgets the password
   and token everywhere Banana and the emulators keep them; and a Google-like list of signed-out accounts with their
@@ -49,7 +50,7 @@ The approach is the investigation's option 1:
   On the device these are the paths the investigation names (data is `/data/banana`), and the headless tests can use
   a fixture card. The scrub that sign-out runs first is a command that `KIWAMI_RA_SCRUB` can replace for the tests.
 - **The group's rows are `Account`, `Stats`, `Games on this card` and `Mode`.** Account is first, so its icon (the
-  trophy) is the tile's, and the tile's hint reads "account, stats".
+  logo) is the tile's, and the tile's hint reads "account, stats".
 - **No setting turns the group off**, as the investigation decided. What a user of `main` would notice:
   - a seventh tile below the first two rows;
   - RIGHT on System and DOWN on the second row reach it, instead of wrapping to the first row;
@@ -62,7 +63,7 @@ The approach is the investigation's option 1:
 The group and the grid
 
 - **A1**: given Settings opens on its groups, then the grid shows the first two rows exactly as `main` does (six tiles,
-  the same pixels), and the RetroAchievements tile, with its trophy, is the seventh.
+  the same pixels), and the RetroAchievements tile, with RetroAchievements' logo, is the seventh.
   - RIGHT on System, or DOWN on a second-row tile, shows rows 2 and 3 with the cursor on RetroAchievements.
   - UP from RetroAchievements to the second row keeps rows 2 and 3; UP again to the first row shows rows 1 and 2.
   - DOWN on the third row goes to the first row's tile in the same column (Display & sound, from RetroAchievements).
@@ -158,7 +159,7 @@ The panel, secrets, footprint, devices
     are taken in by `update()` (A19). `wake()` asks for 100 ms only while one is in flight, as Tailscale's helper does.
   - Hashing reads up to 64 MB (N64) into memory, unpacks a `.7z` first, and reads only the boot file of a disc. It is
     once per ROM, cached.
-  - banana-ui's growth is measured in step 13 (A19). A bench run in `ra-ui.sh` checks the groups' frame time against
+  - banana-ui's growth is measured in step 14 (A19). A bench run in `ra-ui.sh` checks the groups' frame time against
     a run with the fork's group absent.
   - Nothing is added to the rootfs but banana-ui's size. libcurl and zlib are already in the image (zlib is
     banana-ui's dependency already).
@@ -752,7 +753,34 @@ Each step is one commit and leaves the tree building with `make test` and `kiwam
   `make test`, `kiwami/tests/ci.sh .buildroot`.
 - **Commit**: `RetroAchievements: a game's achievements, locked and unlocked, from the games on this card`
 
-### 13. Final check
+### 13. The group's icon: RetroAchievements' logo
+
+- **Files**:
+  - `ui/src/kiwami/ra-icon.cpp` (changed)
+  - `ui/src/kiwami/kiwami.cpp` (changed)
+  - `ui/src/kiwami/kiwami.h`, `ui/src/kiwami/ra.h` (changed: comments)
+  - `ui/src/kiwami/ra-account.cpp` (changed)
+  - `kiwami/tests/ra-ui.sh` (changed)
+  - `.workspace/0019-retroachievements/plan.md` (changed)
+- **Change**: the user's request after trying the update (see *Deviations*).
+  - `ra-icon.cpp` gets a second pixel map, `kiwami.ra`: RetroAchievements' logo (a blue R and a gold A, each stroke
+    with the logo's dark line along its middle), redrawn by hand at 32x32 in the icons' look. It has a black outline,
+    the trophy's golds, and the blues of `cart.png` and `gamepad.png` (`#7EA8E6`, `#4C8EE0`, `#3D6FB8`, and `#1F3D6E` for
+    the R's inner line). `icon()` serves both maps.
+  - The Account and Stats rows take `kiwami.ra`, so the group's tile and the panels show the logo. An account with no
+    avatar shows it too (`raAvatar`).
+  - The trophy stays for an achievement whose badge isn't on the card (`ra-game.cpp`, unchanged).
+  - No upstream file changes. The `icon()` hook's comment, "(the trophy)", stays as it is: the trophy is still one of
+    the fork's icons.
+- **Tests**: `ra-ui.sh`:
+  - `painted` and `unpainted` check that a shot has a colour or hasn't;
+  - `#1F3D6E`, the R's inner line, is on the logo's tile (`g7`, bottom) and on no tile of the first rows (`g0`). It is
+    also on the group list's top panel (`ra-list`, Account's icon). Built with the trophy on the rows, these checks
+    fail;
+  - `make test`, `make -C ui`, `kiwami/tests/ci.sh .buildroot`.
+- **Commit**: `RetroAchievements: the group's icon is RetroAchievements' logo, pixelated`
+
+### 14. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
 - The fork's tests in `kiwami/tests/`: `units`, `ra-ui.sh` (with `ra-server.py`), `tailscale-ui.sh`, `cores-ui.sh`,
@@ -800,7 +828,7 @@ and they never carry a password or token.
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | Settings: RIGHT from System, DOWN/UP through the rows, taps on tiles of both scroll positions; open RetroAchievements; switch Mode, then look at Other systems > RetroAchievements, and switch it back there | The grid scrolls one row at a time, the trophy tile looks like the others, taps hit what shows; both Mode rows always agree, and `retroarch.cfg` follows | `banana-ui.log` (`groups from row`), `/data/retroarch/retroarch.cfg`'s `cheevos_hardcore_mode_enable` | A1, A3, A21 | not run |
+| M1 | rgds-plus | Settings: RIGHT from System, DOWN/UP through the rows, taps on tiles of both scroll positions; open RetroAchievements; switch Mode, then look at Other systems > RetroAchievements, and switch it back there | The grid scrolls one row at a time, the logo's tile looks like the others, taps hit what shows; both Mode rows always agree, and `retroarch.cfg` follows | `banana-ui.log` (`groups from row`), `/data/retroarch/retroarch.cfg`'s `cheevos_hardcore_mode_enable` | A1, A3, A21 | not run |
 | M2 | rgds-plus | Account: sign in with the real account (typed, then by touch); then sign in with a wrong password; then with Wi-Fi off, then on again and reopen the page | Signed in with avatar and points; the wrong one refused and nothing changed; offline kept unchecked, the token got on reopening | `banana-ui.log`; `banana/accounts.conf` (check its keys, don't share its values) | A4, A5, A6 | not run |
 | M3 | rgds-plus | Sign out (A, A); start a RetroArch game and a DS game (BananaDS, then DraStic); sign back in from the remembered list; sign in to a second account, then switch back; remove the second with X, X | After sign-out: no achievement pop-up or login in either game, both `ra.token` gone, `retroarch.cfg` `cheevos_enable = "false"`; the lists behave as A7-A9 | `banana-ui.log`, `/run/banana/retroarch.log` (Second screen on), `banana/logs/superdrastic/`, BananaDS's log in `banana/logs/`; `ls /data/superdrastic/ra.token /data/bananads/ra.token` | A7, A8, A9 | not run |
 | M4 | rgds-plus | Stats: open, compare with the account's page on retroachievements.org; Y; Wi-Fi off and reopen; sleep (lid) while "Updating...", open the lid | Points, completed/mastered and unlocked per system match the site; offline shows the cache with its date; after the lid, the page shows the result or the failure and works | `banana-ui.log` (the `ra:` request lines and times) | A11, A12, A22 | not run |
@@ -809,6 +837,16 @@ and they never carry a password or token.
 | M7 | rgds-plus | The menu with Settings closed after using the pages, then `bench`-like use: scroll the library 30 s; `top -b -n 1` over SSH | No banana-ui thread beyond upstream's, no network activity; the menu as smooth as before. banana-ui's size recorded | `top` output, `ls -l /usr/bin/banana-ui` | A19 | not run |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- **banana-ui's size (A19), 2026-10-24.** Built for the RG DS Plus with its Buildroot toolchain, flags as
+  `banana-ui.mk`'s, stripped with `aarch64-linux-strip`:
+  - before, `kiwami` at `b59fab5`: 1,357,928 bytes (1,594,416 unstripped);
+  - after, this branch at `d8fbbc0`: 1,919,352 bytes (2,231,784 unstripped), +561,424 (+41%).
+
+  `make banana-ui-rebuild-rgds-plus` gave the same binary as the hand cross-build of `d8fbbc0`, to the byte, so the
+  before (which Buildroot can't build without checking it out) was measured the same way. The three libraries are
+  about 279 KB of the growth (rcheevos 54 KB, the LZMA SDK 40 KB, libchdr with zstd 185 KB, `size` of their objects),
+  under the investigation's 300-400 KB. The rest, about 282 KB, is the fork's pages, requests and card code.
 
 ## Deviations
 
@@ -1027,6 +1065,22 @@ Where the implementation turned out different from this plan, why, and what chan
     the same time with the group as without it: 0.27 ms at 1024x768, 0.13 ms at 640x480.
   - `ra-ui.sh` also checks that the hash is kept on the card with its ID, that B goes back to the games as they were,
     and the login with no token yet.
+- **2026-10-24, step 14: the baseline is the upstream `kiwami` holds, not `main`.** `kiwami` took upstream's `main`
+  (`1dcb3e4`) and then upstream's `release-0.4.2` at `e1b2ac4` (`9a8e35e`), which isn't in `main`, and that release takes
+  precedence over `main` (the user). Neither alone is the upstream in `kiwami`, and `git merge-tree -X theirs main
+  e1b2ac4` (the release winning each conflict) gives a tree that doesn't compile (`settings.cpp`). So, agreed with the
+  user:
+  - The hooks: this feature's are `git diff b59fab5 HEAD` (the plan's base, `kiwami` before the feature). `docs/FORK.md`'s
+    two commands run against that merged tree (`dc6eab9`), in memory, with no ref made.
+  - The renders: against `kiwami` before the feature (`b59fab5`, exported with `git archive`), with the release's own
+    (`e1b2ac4`) rendered beside them to show what of upstream differs on screen.
+- **2026-10-24, a new step 13: the group's icon is RetroAchievements' logo.** After trying the update on the RG DS
+  Plus, the user asked for the group's icon to be RetroAchievements' logo, pixelated, instead of step 2's trophy. It is
+  hand-drawn: shrinking the logo alone loses its inner lines at 32 px. Chosen with the user:
+  - the logo is on the group's tile, the Account and Stats rows, and stands in for a missing avatar;
+  - a missing achievement badge keeps the trophy;
+  - it is a step of its own, and the final check becomes step 14. The final check's results above were taken before
+    it, so step 14 runs them again.
 
 ## Progress
 
@@ -1046,4 +1100,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 10. Hashing games in .zip and .7z: the LZMA SDK's 7z decoder | done | RetroAchievements: games in .zip and .7z hashed as RetroArch does, with the LZMA SDK's 7z decoder |
 | 11. Hashing PlayStation .chd: libchdr | done | RetroAchievements: PlayStation .chd hashed through libchdr |
 | 12. A game's achievements | done | RetroAchievements: a game's achievements, locked and unlocked, from the games on this card |
-| 13. Final check | todo | |
+| 13. The group's icon: RetroAchievements' logo | done | RetroAchievements: the group's icon is RetroAchievements' logo, pixelated |
+| 14. Final check | todo | |

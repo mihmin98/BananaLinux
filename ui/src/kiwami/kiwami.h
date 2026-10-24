@@ -12,7 +12,7 @@
 //   settings.conf has tailscale = on. A opens Tailscale's page (tailscale.cpp).
 //   RetroAchievements (a seventh group, after System; KIWAMI_RA_GROUP=0 in the environment leaves it out, for the
 //   tests): Account (kiwami.ra.account), Stats (kiwami.ra.stats), Games on this card (kiwami.ra.games) and Mode (upstream's cheevos_hardcore_mode_enable, the same setting as Other
-//   systems > RetroAchievements, the two rows kept in step). Its tile has the fork's trophy (ra-icon.cpp), and the
+//   systems > RetroAchievements, the two rows kept in step). Its tile has RetroAchievements' logo (ra-icon.cpp), and the
 //   grid, three tiles a row, shows two rows at a time, scrolling to the third (grid.h). A on Account opens the Account
 //   page (ra-account.cpp): sign in, sign out, and the accounts signed out, remembered. Stats (kiwami.ra.stats): points
 //   and progress per system (ra-stats.cpp), fetched when the page opens or on Y, kept on the card for offline. Games on
@@ -137,7 +137,7 @@ namespace banana
 		void raFetchToken();						// a password with no token yet: the server's token for it
 		void raSignOut();
 		void raRemove(const std::string& name);
-		void raAvatar(const std::string& name, float x, float y, float size);	// its picture, or the trophy
+		void raAvatar(const std::string& name, float x, float y, float size);	// its picture, or the logo
 		void raTop(const std::string& title, const std::string& accent, const std::string& state, const std::string& help,
 			const std::string& avatar);
 		// the Stats page (ra-stats.cpp): the account's points and messages on the top panel, the nine systems' progress on

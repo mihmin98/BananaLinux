@@ -90,12 +90,12 @@ namespace banana
 		else if (strcmp(group, "RetroAchievements") == 0 && !(getenv("KIWAMI_RA_GROUP") && strcmp(getenv("KIWAMI_RA_GROUP"), "0") == 0))
 		{
 			Item it;
-			it.section = group; it.icon = "kiwami.trophy"; it.label = "Account"; it.key = "kiwami.ra.account"; it.kind = Item::PAGE;
+			it.section = group; it.icon = "kiwami.ra"; it.label = "Account"; it.key = "kiwami.ra.account"; it.kind = Item::PAGE;
 			it.help = "The RetroAchievements account your games unlock achievements on. A opens it: sign in, sign out, or "
 				"switch to an account used here before.";
 			s.items.push_back(it);
 			Item stats;
-			stats.section = group; stats.icon = "kiwami.trophy"; stats.label = "Stats"; stats.key = "kiwami.ra.stats"; stats.kind = Item::PAGE;
+			stats.section = group; stats.icon = "kiwami.ra"; stats.label = "Stats"; stats.key = "kiwami.ra.stats"; stats.kind = Item::PAGE;
 			stats.help = "The account's points, and its progress on each of Banana's systems: games started, completed and "
 				"mastered, achievements unlocked. Fetched when the page opens, and kept on the card for when there's no Wi-Fi.";
 			s.items.push_back(stats);

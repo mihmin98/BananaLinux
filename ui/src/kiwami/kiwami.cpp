@@ -1,5 +1,5 @@
 // banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing, each page
-// hook going to the page that is open; the pages are in their own files (tailscale.cpp).
+// hook going to the page that is open, and the groups' grid; the pages are in their own files (tailscale.cpp).
 #include "kiwami.h"
 #include <algorithm>
 #include <cstdio>
@@ -43,6 +43,9 @@ namespace banana
 		return e && *e ? e : "/usr/lib/libretro";
 	}
 
+	// RetroAchievements > Mode's key: upstream's Other systems > RetroAchievements row's, in retroarch.cfg
+	static const char* const MODE = "cheevos_hardcore_mode_enable";
+
 	// Other systems: the fork's second cores, a row per system shown when the core is in the image. Upstream's
 	// core.<system> keys (run-retroarch reads them) as upstream's Game Boy Advance row has, so upstream loads, saves
 	// and resets them as any choice row; upstream's core first, its default
@@ -83,6 +86,24 @@ namespace banana
 			s.items.push_back(it);
 			keys = it.key;
 		}
+		else if (strcmp(group, "RetroAchievements") == 0 && !(getenv("KIWAMI_RA_GROUP") && strcmp(getenv("KIWAMI_RA_GROUP"), "0") == 0))
+		{
+			Item it;
+			it.section = group; it.icon = "kiwami.trophy"; it.label = "Account"; it.key = "kiwami.ra.account"; it.kind = Item::PAGE;
+			it.help = "The RetroAchievements account your games unlock achievements on. A opens it: sign in, sign out, or "
+				"switch to an account used here before.";
+			s.items.push_back(it);
+			// upstream's Other systems > RetroAchievements, the same setting (load and save are upstream's)
+			Item m;
+			m.section = group; m.icon = "gamepad"; m.label = "Mode"; m.key = MODE;
+			m.help = "Softcore: achievements unlock with save states, rewind and cheats still there. Hardcore: those are locked "
+				"for the game, and the unlocks count as hardcore on retroachievements.org. The same setting as Other systems > "
+				"RetroAchievements; RetroArch's own menu changes it too.";
+			m.file = "/data/retroarch/retroarch.cfg";
+			m.names = { "Softcore", "Hardcore" }; m.values = { "false", "true" };
+			s.items.push_back(m);
+			keys = it.key + " " + m.key;
+		}
 		// (the tests read it, and on the device it says which of the fork's cores the image has)
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
 	}
@@ -90,12 +111,15 @@ namespace banana
 	// ---- the hooks, to the page that is open (or, for the rows' values in the background, to each page's part) ------
 	void Settings::Kiwami::opened()
 	{
+		modeAt = -1;
+		for (auto& it : st.items) if (it.key == MODE) modeAt = it.at;	// (both rows as just read, from the one file)
 		tsOpened();
 	}
 
 	Settings::Result Settings::Kiwami::open(const std::string& key)
 	{
 		if (key == "kiwami.tailscale") { pageOpen = Page::TAILSCALE; return tsOpen(); }
+		if (key == "kiwami.ra.account") { fprintf(stderr, "banana-ui: ra: account page (to come)\n"); return NONE; }
 		return NONE;
 	}
 
@@ -126,12 +150,41 @@ namespace banana
 
 	bool Settings::Kiwami::update(double t)
 	{
-		return tsUpdate(t);
+		bool mode = syncMode();
+		return tsUpdate(t) || mode;
 	}
 
 	int Settings::Kiwami::wake(double t, bool shown) const
 	{
 		return tsWake(t, shown && pageOpen == Page::TAILSCALE);
+	}
+
+	// ---- the groups' grid: the first row shown follows the selection (grid.h); logged when it moves, for the tests ---
+	int Settings::Kiwami::gridTop(int gsel, int n)
+	{
+		int r = kiwami::gridTop(row0, gsel, n);
+		if (r != row0) fprintf(stderr, "banana-ui: kiwami: groups from row %d\n", r);
+		row0 = r;
+		return r;
+	}
+
+	// Mode and upstream's Other systems > RetroAchievements are two rows of one setting, each read when Settings opens:
+	// a change to one is taken into the other at the next update (they're in different groups, never on screen together)
+	bool Settings::Kiwami::syncMode()
+	{
+		if (!st.mOpen || modeAt < 0) return false;
+		int rows = 0, at = modeAt;
+		for (auto& it : st.items)
+			if (it.key == MODE && ++rows && at == modeAt) at = it.at;
+		if (rows < 2 || at == modeAt) return false;	// (one row: the group left out)
+		modeAt = at;
+		for (auto& it : st.items)
+			if (it.key == MODE)
+			{
+				it.at = at;
+				if (it.section == "RetroAchievements") fprintf(stderr, "banana-ui: kiwami: Mode %s in both rows\n", it.names[at].c_str());
+			}
+		return true;
 	}
 
 	// ---- Tailscale's part: the Network row's value, from the helper's status; its page is tailscale.cpp -------------

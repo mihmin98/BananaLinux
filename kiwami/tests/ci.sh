@@ -23,11 +23,11 @@ kiwami/tests/ra-keychain.sh
 # in a made-up root, with a stand-in retroarch
 kiwami/tests/ra-hotkeys.sh
 
-# banana-ui's code of the fork's that needs no screen (the JSON reader, Tailscale's status, the name, the QR code),
-# with the host's g++
+# banana-ui's code of the fork's that needs no screen (the JSON reader, Tailscale's status, the name, the QR code,
+# Settings' grid of groups), with the host's g++
 T=$(mktemp -d)
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp \
-    ui/src/kiwami/qrcodegen.cpp
+    ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp
 "$T/units" kiwami/tests/tailscale
 rm -rf "$T"
 
@@ -39,6 +39,9 @@ if [ -x ui/banana-ui ]; then kiwami/tests/7z-ui.sh; else echo "7z-ui: skipped, n
 
 # the fork's cores in Settings > Other systems, headless, when banana-ui is built
 if [ -x ui/banana-ui ]; then kiwami/tests/cores-ui.sh; else echo "cores-ui: skipped, no ui/banana-ui (make ui)"; fi
+
+# the RetroAchievements group in Settings and the grid scrolling to it, headless, when banana-ui is built
+if [ -x ui/banana-ui ]; then kiwami/tests/ra-ui.sh; else echo "ra-ui: skipped, no ui/banana-ui (make ui)"; fi
 
 # post-build.sh vetoes tailscaled's state and RetroArch master's credentials file in upstream's share script, each
 # once and the same on a second run, and stops the build when the line isn't there

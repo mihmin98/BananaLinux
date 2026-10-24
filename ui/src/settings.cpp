@@ -504,6 +504,7 @@ namespace banana
 		add(S, "gear", "About", "", "", "", {}, {}, Item::INFO);
 		add(S, "gear", "Restart", "Restarts the handheld. Press A twice.", "", "reboot", { "" }, { "" }, Item::ACTION);
 		add(S, "gear", "Shut down", "Turns the handheld off. Press A twice. (Or hold the power button.)", "", "poweroff", { "" }, { "" }, Item::ACTION);
+		Kiwami::rows(*this, "RetroAchievements");	// kiwami: the RetroAchievements group, after System
 	}
 
 	void Settings::load(Item& it)
@@ -969,7 +970,7 @@ namespace banana
 		// a grid of three columns, as the in-game menu's main page
 		case Key::LEFT: gsel = (gsel + n - 1) % n; return MOVED;
 		case Key::RIGHT: gsel = (gsel + 1) % n; return MOVED;
-		case Key::UP: case Key::DOWN: gsel = (gsel + (k == Key::UP ? n - 3 : 3)) % n; return MOVED;
+		case Key::UP: case Key::DOWN: gsel = kw ? kw->gridMove(gsel, n, k == Key::UP) : (gsel + (k == Key::UP ? n - 3 : 3)) % n; return MOVED;	// kiwami: a last row that isn't full
 		case Key::L: gsel = (gsel + n - 1) % n; return MOVED;
 		case Key::R: gsel = (gsel + 1) % n; return MOVED;
 		case Key::A:
@@ -1022,9 +1023,10 @@ namespace banana
 		if (inGroups)
 		{
 			if (downY >= 418 && downY <= 466) return pressGroups(downX < 320 ? Key::B : Key::A);
-			for (int g = 0; g < (int)groups.size(); g++)
+			int r0 = kw ? kw->gridTop(gsel, (int)groups.size()) : 0;	// kiwami: the first of the two rows shown
+			for (int g = 3 * r0; g < (int)groups.size() && g < 3 * r0 + 6; g++)	// kiwami:
 			{
-				float x = 18 + (g % 3) * 204, y = 82 + (g / 3) * 166;
+				float x = 18 + (g % 3) * 204, y = 82 + (g / 3 - r0) * 166;	// kiwami:
 				if (downX < x || downX > x + 196 || downY < y || downY > y + 158) continue;
 				if (g != gsel) { gsel = g; return MOVED; }
 				return pressGroups(Key::A);
@@ -1199,6 +1201,7 @@ namespace banana
 		if (it == cache.end())
 		{
 			rnds::Bitmap b = rnds::decodeFile(assets + "/icons/" + name + ".png");
+			if (b.empty() && kw) b = kw->icon(name);	// kiwami: the fork's own icons (the trophy)
 			Cached c;
 			if (!b.empty()) c.tex = be->upload(b, false);
 			it = cache.emplace(key, c).first;
@@ -1368,12 +1371,13 @@ namespace banana
 		text(sub, true, 17, 602 - sw, 31, p.muted);
 		advance();
 		aGroup = -1;	// (the list starts still when a group opens)
-		for (int g = 0; g < (int)groups.size() && g < 6; g++) box("slot", false, 18 + (g % 3) * 204, 82 + (g / 3) * 166, 196, 158);
-		box("pick", true, 18 + aCol * 204, 82 + aRow * 166, 196, 158);
-		for (int g = 0; g < (int)groups.size() && g < 6; g++)
+		int r0 = kw ? kw->gridTop(gsel, (int)groups.size()) : 0;	// kiwami: the first of the two rows shown
+		for (int g = 3 * r0; g < (int)groups.size() && g < 3 * r0 + 6; g++) box("slot", false, 18 + (g % 3) * 204, 82 + (g / 3 - r0) * 166, 196, 158);	// kiwami:
+		box("pick", true, 18 + aCol * 204, 82 + std::min(1.0f, std::max(0.0f, aRow - r0)) * 166, 196, 158);	// kiwami: (on the rows shown)
+		for (int g = 3 * r0; g < (int)groups.size() && g < 3 * r0 + 6; g++)	// kiwami:
 		{
 			bool on = std::fabs(g % 3 - aCol) < 0.5f && std::fabs(g / 3 - aRow) < 0.5f;
-			float x = 18 + (g % 3) * 204, y = 82 + (g / 3) * 166;
+			float x = 18 + (g % 3) * 204, y = 82 + (g / 3 - r0) * 166;	// kiwami:
 			iconCentred(items[groupStart(g)].icon, x + 98, y + 22, 2);
 			std::string label = fit(groups[g], true, 19, 180);
 			float lw = text(label, true, 19, 0, 0, p.ink, false, 0, true);

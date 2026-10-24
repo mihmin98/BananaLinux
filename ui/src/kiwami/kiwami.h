@@ -10,7 +10,12 @@
 //   Network > Tailscale (kiwami.tailscale): the state, from the Tailscale helper (/usr/libexec/kiwami/tailscale, or
 //   KIWAMI_TAILSCALE in the environment: the test's stand-in), asked once when Settings opens and only while
 //   settings.conf has tailscale = on. A opens Tailscale's page (tailscale.cpp).
+//   RetroAchievements (a seventh group, after System; KIWAMI_RA_GROUP=0 in the environment leaves it out, for the
+//   tests): Account (kiwami.ra.account) and Mode (upstream's cheevos_hardcore_mode_enable, the same setting as Other
+//   systems > RetroAchievements, the two rows kept in step). Its tile has the fork's trophy (ra-icon.cpp), and the
+//   grid, three tiles a row, shows two rows at a time, scrolling to the third (grid.h).
 #include "../settings.h"
+#include "grid.h"
 #include "tsstatus.h"
 
 namespace banana
@@ -27,7 +32,10 @@ namespace banana
 		bool owns(const std::string& key) const { return key.compare(0, 7, "kiwami.") == 0; }
 		Result open(const std::string& key);		// A on a row of the fork's: its page
 		Result press(Key k);						// on the fork's pages
+		int gridMove(int g, int n, bool up) const { return kiwami::gridMove(g, n, up); }	// UP or DOWN on the groups
 		Result touch(float cx, float cy);
+		int gridTop(int gsel, int n);				// the groups' touch and drawing: the first of the two rows shown
+		rnds::Bitmap icon(const std::string& name) const;	// an icon the theme has no PNG of: the fork's, or empty
 		void render();
 		std::string value(const std::string& key) const;	// a row's value in the list
 		bool update(double t);						// true: something to draw again
@@ -39,6 +47,9 @@ namespace banana
 		Settings& st;
 		// the page that shows while Settings' page is KIWAMI: open() sets it, and the page hooks go to its own functions
 		enum class Page { NONE, TAILSCALE } pageOpen = Page::NONE;
+		int row0 = 0;								// the groups' first row shown, kept as the selection moves
+		int modeAt = -1;							// Mode's value as both its rows last had it
+		bool syncMode();							// a change to one of Mode's two rows shown in the other
 
 		// Tailscale's part of the hooks (kiwami.cpp: the row's value, asked in the background)
 		void tsOpened();

@@ -163,7 +163,7 @@ The panel, secrets, footprint, devices
   - Nothing is added to the rootfs but banana-ui's size. libcurl and zlib are already in the image (zlib is
     banana-ui's dependency already).
 - **Conflicts with upstream.**
-  - `ui/src/settings.cpp` changes often and heavily. The grid hook modifies six of upstream's lines in
+  - `ui/src/settings.cpp` changes often and heavily. The grid hook modifies seven of upstream's lines in
     `renderGroups`, the touch code and `pressGroups`, and adds two. Upstream restyling the grid conflicts there
     visibly (that is wanted: a copy of the grid in the fork would silently drift).
   - If upstream adds a seventh group or its own RetroAchievements menu (its open request), the merge reconsiders the
@@ -218,7 +218,10 @@ Each step is one commit and leaves the tree building with `make test` and `kiwam
   - `ui/src/kiwami/kiwami.h` (changed)
   - `ui/src/kiwami/kiwami.cpp` (changed)
   - `ui/src/kiwami/ra-icon.cpp` (new)
+  - `ui/src/kiwami/grid.h`, `ui/src/kiwami/grid.cpp` (new: the grid's arithmetic, see *Deviations*)
   - `kiwami/tests/ra-ui.sh` (new)
+  - `kiwami/tests/units.cpp` (changed)
+  - `kiwami/tests/cores-ui.sh` (changed: its `rows in` lines gain RetroAchievements')
   - `kiwami/tests/ci.sh` (changed)
   - `.workspace/0019-retroachievements/plan.md` (changed)
 - **Change**:
@@ -232,7 +235,10 @@ Each step is one commit and leaves the tree building with `make test` and `kiwam
       `{ "Softcore", "Hardcore" }` / `{ "false", "true" }`, icon `gamepad`).
 
     Mode's help is upstream's row's text, adding "the same setting as Other systems > RetroAchievements". Upstream's
-    generic `load`/`save` handle it (`settings.cpp:580,733-740`), as they do upstream's row (`:447-448`). Account's
+    generic `load`/`save` handle it (`settings.cpp:580,733-740`), as they do upstream's row (`:447-448`). Upstream
+    reads a row's value only when Settings opens, so `Kiwami::update` keeps the two rows in step: `modeAt` is their
+    value when Settings opened, and when one row's value differs from it, the other row takes it (logged
+    `banana-ui: kiwami: Mode <Softcore|Hardcore> in both rows`). Account's
     page is empty in this step: A on it logs `ra: account page (to come)` and returns `NONE`. Step 5 fills it. The rows'
     log line follows the existing pattern:
     `banana-ui: kiwami: rows in RetroAchievements: kiwami.ra.account cheevos_hardcore_mode_enable`.
@@ -244,8 +250,9 @@ Each step is one commit and leaves the tree building with `make test` and `kiwam
     the colours of `ui/assets/rnds/icons/` (sampled from `gear.png`'s and `fav.png`'s palette), and an empty bitmap for
     anything else. `iconCentred` goes through `icon`, so the tile, the groups' top panel and the list's top panel all
     get it.
-  - **The grid.** The first row shown, `r0`, comes from
-    `int Kiwami::gridTop(int gsel, int n)`, which keeps `row0` and returns it:
+  - **The grid.** The arithmetic is in `kiwami::gridMove(g, n, up)` and `kiwami::gridTop(row0, gsel, n)` (`grid.h`),
+    which `units.cpp` links without Settings; `Kiwami::gridMove` calls the first, and `Kiwami::gridTop` the second. The
+    first row shown, `r0`, comes from `int Kiwami::gridTop(int gsel, int n)`, which keeps `row0` and returns it:
     - with `rows = (n + 2) / 3` and `r = gsel / 3`: `row0 = clamp(row0, r - 1, r)`, then `clamp(row0, 0, max(0, rows - 2))`;
     - it logs `banana-ui: kiwami: groups from row <r0>` when `row0` changes;
     - with six groups it is always 0.
@@ -752,7 +759,7 @@ Each step is one commit and leaves the tree building with `make test` and `kiwam
   `7z-ui.sh` and the rest that `ci.sh` runs.
 - The hooks: `git diff --stat main...HEAD` and `git grep -n 'kiwami:'` (the commands in `docs/FORK.md`) agree, and
   this feature added exactly these:
-  - `ui/src/settings.cpp`: `build()` 1 line, `icon()` 1, the grid 8 (2 added, 6 modified), `gameOpen` 1;
+  - `ui/src/settings.cpp`: `build()` 1 line, `icon()` 1, the grid 9 (2 added, 7 modified), `gameOpen` 1;
   - `ui/src/main.cpp`: 2;
   - `ui/Makefile`: 1.
 - With the fork's group absent (`KIWAMI_RA_GROUP=0`) and with it present, `make test`'s renders in `ui/tests/out/`
@@ -813,6 +820,21 @@ Where the implementation turned out different from this plan, why, and what chan
   Page::NONE;` (agreed with the user), and the later pages are `Page::RA_ACCOUNT`, `Page::RA_STATS`, `Page::RA_GAMES`
   and `Page::RA_GAME`. `opened()` is routed like `update` and `wake` (Tailscale's part is `tsOpened`), so step 5's
   `adopt()` call goes beside it rather than into Tailscale's code.
+- **2026-10-24, step 2: the grid's arithmetic in `grid.h`/`grid.cpp`.** As `Settings::Kiwami` members, `gridMove` and
+  `gridTop` couldn't be linked into `units` without all of Settings. They are plain functions,
+  `kiwami::gridMove(g, n, up)` and `kiwami::gridTop(row0, gsel, n)`, in two new files, and the `Kiwami` members call
+  them (`gridTop` keeps `row0` and logs). Agreed with the user.
+- **2026-10-24, step 2: Mode and Other systems > RetroAchievements kept in step by `Kiwami::update`.** Upstream reads a
+  row's value only when Settings opens, so after Mode changed, upstream's row showed the old value until Settings was
+  reopened, and A3 failed. `Kiwami::update`, which runs every loop while Settings is open, copies a change from either
+  row to the other. There is no added hook. `ra-ui.sh` checks both ways on screen and in the log. Agreed with the user.
+- **2026-10-24, step 2: `cores-ui.sh` updated.** It checks that the log's `kiwami: rows in` lines are exactly these.
+  The group adds `RetroAchievements: kiwami.ra.account cheevos_hardcore_mode_enable` to its four expectations, which
+  check more than before. Agreed with the user.
+- **2026-10-24, step 2: the grid hook modifies seven of upstream's lines, not six.** `pressGroups` 1, the touch code 2
+  (the loop, `y`), `renderGroups` 4 (the slots' loop, the pick, the tiles' loop, `y`). The final check's count is
+  updated. The trophy's gold is the icons' `#F2C94C` (`bank.png`, `sword.png` and others), `#FFF0A8` (`bank.png`) and
+  `#8A6A1E` (`cart.png`), and its plinth `gear.png`'s greys. `fav.png` has no gold.
 
 ## Progress
 
@@ -821,7 +843,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. The fork's Settings pages, routed by which one is open | done | RetroAchievements: the fork's Settings pages routed by which one is open |
-| 2. The RetroAchievements group, the scrolling grid and the trophy, with Mode | todo | |
+| 2. The RetroAchievements group, the scrolling grid and the trophy, with Mode | done | RetroAchievements: a group in Settings, the grid scrolling to its row, with Mode |
 | 3. RetroAchievements' requests, and a stand-in server for the tests | todo | |
 | 4. The account on the card: signing in, out, and the remembered accounts | todo | |
 | 5. The Account page | todo | |

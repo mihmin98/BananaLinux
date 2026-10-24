@@ -1,8 +1,10 @@
 // The fork's banana-ui code that needs no screen, checked on its own: the JSON reader, Tailscale's status, the
-// device's name, the login's QR code and the devices' list. Built and run by kiwami/tests/ci.sh with the host's g++:
+// device's name, the login's QR code, the devices' list and Settings' grid of groups. Built and run by
+// kiwami/tests/ci.sh with the host's g++:
 //   g++ -std=c++17 -Wall -I ui/src kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp
-//       ui/src/kiwami/qrcodegen.cpp -o units
+//       ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp -o units
 //   ./units kiwami/tests/tailscale
+#include "kiwami/grid.h"
 #include "kiwami/json.h"
 #include "kiwami/tsstatus.h"
 #include <cstdio>
@@ -243,6 +245,48 @@ static void testDevices()
 	EQ(osName("plan9"), "plan9");
 }
 
+#define IEQ(a, b) do { checks++; int a_ = (a), b_ = (b); if (a_ != b_) { failed++; fprintf(stderr, "units: FAIL %s:%d: %s is %d, not %d\n", __FILE__, __LINE__, #a, a_, b_); } } while (0)
+
+static void testGrid()
+{
+	// a full last row: upstream's (g ± 3) % n, for every group
+	for (int n : { 3, 6, 9 })
+		for (int g = 0; g < n; g++)
+		{
+			IEQ(gridMove(g, n, false), (g + 3) % n);
+			IEQ(gridMove(g, n, true), (g + n - 3) % n);
+			IEQ(gridTop(0, g, n), n == 9 && g >= 6 ? 1 : 0);
+		}
+	// seven groups: RetroAchievements (6) alone on the third row
+	IEQ(gridMove(3, 7, false), 6);	// DOWN: the tile below
+	IEQ(gridMove(4, 7, false), 6);	// DOWN from a row above the last, nothing below: the last tile
+	IEQ(gridMove(5, 7, false), 6);
+	IEQ(gridMove(6, 7, false), 0);	// DOWN on the last row: the first row, same column
+	IEQ(gridMove(6, 7, true), 3);	// UP: the tile above
+	IEQ(gridMove(0, 7, true), 6);	// UP on the first row: the last row, same column
+	IEQ(gridMove(1, 7, true), 6);	// ... or its last tile when that column is empty
+	IEQ(gridMove(2, 7, true), 6);
+	// eight: 6 and 7 on the third row
+	IEQ(gridMove(4, 8, false), 7);
+	IEQ(gridMove(5, 8, false), 7);
+	IEQ(gridMove(7, 8, false), 1);
+	IEQ(gridMove(1, 8, true), 7);
+	IEQ(gridMove(2, 8, true), 7);
+	IEQ(gridMove(7, 8, true), 4);
+	// the rows shown move only to show the selection: down to the third shows 2 and 3, up to the second keeps them,
+	// up to the first shows 1 and 2
+	for (int n : { 7, 8 })
+	{
+		IEQ(gridTop(0, 6, n), 1);
+		IEQ(gridTop(1, 3, n), 1);
+		IEQ(gridTop(1, 0, n), 0);
+		IEQ(gridTop(0, 3, n), 0);
+		IEQ(gridTop(1, n - 1, n), 1);
+		IEQ(gridTop(5, 0, n), 0);	// (a row from a longer grid: back in range)
+	}
+	IEQ(gridTop(3, 0, 6), 0);
+}
+
 int main(int argc, char** argv)
 {
 	dir = argc > 1 ? argv[1] : "kiwami/tests/tailscale";
@@ -251,6 +295,7 @@ int main(int argc, char** argv)
 	testName();
 	testQr();
 	testDevices();
+	testGrid();
 	if (failed) { fprintf(stderr, "units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("units: %d checks passed\n", checks);
 	return 0;

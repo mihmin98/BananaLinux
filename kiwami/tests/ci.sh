@@ -83,3 +83,8 @@ for b in rgds rgds_plus universal; do
     kiwami/configure.sh "$BR" "$O"
     echo "$b: configured"
 done
+
+# RetroArch's master as each board resolves it with the fork's options (the pin, the fork's hash file, patches and
+# options), and upstream's v1.22.2 with the option off
+kiwami/tests/retroarch-pin.sh "$BR" ${TMPDIR:-/tmp}/kiwami-config-rgds ${TMPDIR:-/tmp}/kiwami-config-rgds_plus \
+    ${TMPDIR:-/tmp}/kiwami-config-universal

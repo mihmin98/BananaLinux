@@ -3,4 +3,11 @@ source "$BR2_EXTERNAL_KIWAMI_PATH/package/kiwami-tailscale/Config.in"
 source "$BR2_EXTERNAL_KIWAMI_PATH/package/kiwami-libretro-mesen/Config.in"
 source "$BR2_EXTERNAL_KIWAMI_PATH/package/kiwami-libretro-sameboy/Config.in"
 source "$BR2_EXTERNAL_KIWAMI_PATH/package/kiwami-libretro-genesis-plus-gx/Config.in"
+
+config BR2_PACKAGE_KIWAMI_RETROARCH_MASTER
+	bool "RetroArch's master instead of v1.22.2"
+	depends on BR2_PACKAGE_RETROARCH
+	help
+	  RetroArch built from its master branch at the commit kiwami/local.mk pins, with the fork's patches
+	  (kiwami/patches/retroarch/) instead of upstream's. Off, RetroArch is upstream's release.
 endmenu

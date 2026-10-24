@@ -136,7 +136,7 @@ files.
   - it configures with `HAVE_KEYCHAIN = 0`, and with the MCP server, the NFS and SMB clients, the RAR reader, GameMode
     and the ten decoders off;
   - it keeps 7z, CHD with FLAC, RetroArch's own TLS client and stdin commands (`HAVE_STDIN_CMD`);
-  - it builds an aarch64 `retroarch` whose `NEEDED` libraries are the baseline's (or fewer) and whose `strings` hold
+  - it builds an aarch64 `retroarch` whose `NEEDED` libraries are all ones the baseline image already ships and whose `strings` hold
     `71f521e`, and installs `/usr/share/kiwami/ra-hotkeys` with the four names.
   Its size is recorded against the baseline's (step 1).
 - **A4** (the guard): `kiwami/tests/ci.sh` fails when any of these differs from what the fork last checked:
@@ -550,8 +550,8 @@ Each step is one commit, and leaves the tree building and `make test` passing.
       for 0003;
     - `output/rgds-plus/build/retroarch-71f521e.../config.mk` has `HAVE_KEYCHAIN = 0`, `HAVE_7ZIP = 1`,
       `HAVE_RETROSSL = 1`, `HAVE_STDIN_CMD = 1`, `HAVE_CHD = 1` and `HAVE_RFLAC = 1`;
-    - on `output/rgds-plus/target/usr/bin/retroarch`: `file` says aarch64, its `readelf -d` `NEEDED` set matches the
-      baseline's (step 1), `strings | grep 71f521e` finds the commit, and its size is recorded (`du -b`).
+    - on `output/rgds-plus/target/usr/bin/retroarch`: `file` says aarch64, each library of its `readelf -d` `NEEDED` is
+      one the baseline image already ships (step 1; Deviations, 24 Oct 2026), `strings | grep 71f521e` finds the commit, and its size is recorded (`du -b`).
   - `make test` (unchanged, passing).
 - **Commit**: `RetroArch master: master at 71f521e behind a build option, with the fork's patches for it`
 
@@ -864,6 +864,17 @@ Notes from the runs (what the logs showed, what was fixed):
   - Not run: the second Castlevania on FCEUmm (the spread), so the CPU share's bar takes its floor of 2 points, and
     the two `powersave` runs of GBA and SNES (information only).
   - The mGBA run (Settings > Other systems' other GBA core) is an extra. M4 can repeat it, as information.
+- **Step 3's build** (24 Oct 2026, `make retroarch-rgds-plus` over the baseline's output, reconfigured by the
+  fragment). Buildroot downloaded master itself, and both tarballs were checked against the fork's hash file
+  (`retroarch-71f521e....tar.gz: OK`, `f3b62b8....tar.gz: OK`). 0002 applied at an offset of 102 lines and 0003
+  exactly, both from `kiwami/patches/retroarch/` (`.applied_patches_list`). `config.mk` has `HAVE_KEYCHAIN = 0`,
+  `HAVE_7ZIP = 1`, `HAVE_RETROSSL = 1`, `HAVE_STDIN_CMD = 1`, `HAVE_CHD = 1`, `HAVE_RFLAC = 1` and `HAVE_RZSTD = 1`.
+  The only compiler warning is master's own (`command.c:3094`, `-Wformat-truncation`).
+  - `usr/bin/retroarch`: 17,971,528 bytes, aarch64, 2,962,840 bytes (19.7%) over the baseline's; step 5 removes
+    built-ins. `strings` has `71f521e`.
+  - `NEEDED`: `libasound.so.2 libfreetype.so.6 libudev.so.1 libgbm.so.1 libdrm.so.2 libGLESv2.so.2 libEGL.so.1
+    libz.so.1 libstdc++.so.6 libm.so.6 libmvec.so.1 libgcc_s.so.1 libc.so.6` (13): the baseline's without
+    `liblzma.so.5` and with `libz.so.1`, both already in the image (Deviations).
 
 ## Deviations
 
@@ -880,6 +891,12 @@ Where the implementation turned out different from this plan, why, and what chan
   - A failed fold (the folder made read-only): both files stay as they were, no temporary is left, no "folded" line
     is logged, and the scrub carries on. That's "a failure leaves both files as they were", which the plan settled
     but didn't test. It's skipped when run as root, since root writes anyway.
+- **24 Oct 2026, step 3: master's `NEEDED` isn't a subset of v1.22.2's.** Master links the system zlib
+  (`libz.so.1`) and no longer `liblzma.so.5`. It dropped v1.22.2's bundled zlib (`HAVE_BUILTINZLIB`) and bundled
+  Zstandard for `-lz` and libretro-common's own decoders (`HAVE_RZSTD`, which also reads CHD's Zstandard hunks), and
+  its xdelta softpatching became a self-contained VCDIFF decoder. Both libraries are in the baseline image anyway
+  (`libz.so.1` is linked by banana-ui and freetype), so the image ships nothing new. A3's and step 3's check
+  becomes "every `NEEDED` library is one the baseline image already ships", and step 5 compares with step 3's set.
 
 ## Progress
 
@@ -889,7 +906,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. The measurements' script | done | RetroArch master: a script for the device measurements, the same on both versions |
 | 2. Master's credentials file folded back into retroarch.cfg | done | RetroArch master: ra-secrets folds master's credentials file back into retroarch.cfg |
-| 3. RetroArch's master, pinned behind a build option | todo | |
+| 3. RetroArch's master, pinned behind a build option | done | RetroArch master: master at 71f521e behind a build option, with the fork's patches for it |
 | 4. RetroArch hotkeys Off covers master's four new hotkeys | todo | |
 | 5. Master without the built-ins Banana can't use | todo | |
 | 6. A guard against upstream's RetroArch moving under the pin | todo | |

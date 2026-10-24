@@ -11,3 +11,9 @@ BR2_PACKAGE_HOST_GO_BIN=y
 BR2_PACKAGE_KIWAMI_LIBRETRO_MESEN=y
 BR2_PACKAGE_KIWAMI_LIBRETRO_SAMEBOY=y
 BR2_PACKAGE_KIWAMI_LIBRETRO_GENESIS_PLUS_GX=y
+
+# RetroArch's master instead of upstream's v1.22.2, measured against it on the RG DS Plus
+# (.workspace/0007-retroarch-master/); off puts upstream's back. The pin is in the fork's package override file,
+# which Buildroot reads before any package (and which still reads the output's own local.mk).
+BR2_PACKAGE_KIWAMI_RETROARCH_MASTER=y
+BR2_PACKAGE_OVERRIDE_FILE="$(BR2_EXTERNAL_KIWAMI_PATH)/local.mk"

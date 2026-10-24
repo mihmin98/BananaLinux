@@ -1,13 +1,15 @@
 // The fork's banana-ui code that needs no screen, checked on its own: the JSON reader, Tailscale's status, the
-// device's name, the login's QR code, the devices' list and Settings' grid of groups. Built and run by
-// kiwami/tests/ci.sh with the host's g++:
+// device's name, the login's QR code, the devices' list, Settings' grid of groups and RetroAchievements' replies.
+// Built and run by kiwami/tests/ci.sh with the host's g++:
 //   g++ -std=c++17 -Wall -I ui/src kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp
-//       ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp -o units
-//   ./units kiwami/tests/tailscale
+//       ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp -ldl -o units
+//   ./units kiwami/tests/tailscale kiwami/tests/ra
 #include "kiwami/grid.h"
 #include "kiwami/json.h"
+#include "kiwami/raclient.h"
 #include "kiwami/tsstatus.h"
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -18,11 +20,11 @@ static int checks = 0, failed = 0;
 #define CHECK(c) do { checks++; if (!(c)) { failed++; fprintf(stderr, "units: FAIL %s:%d: %s\n", __FILE__, __LINE__, #c); } } while (0)
 #define EQ(a, b) do { checks++; std::string a_ = (a), b_ = (b); if (a_ != b_) { failed++; fprintf(stderr, "units: FAIL %s:%d: %s is \"%s\", not \"%s\"\n", __FILE__, __LINE__, #a, a_.c_str(), b_.c_str()); } } while (0)
 
-static std::string dir;
-static std::string capture(const std::string& name)
+static std::string dir, raDir;
+static std::string capture(const std::string& name, const std::string& in = dir)
 {
-	std::ifstream f(dir + "/" + name + ".json");
-	if (!f) { fprintf(stderr, "units: no capture %s/%s.json\n", dir.c_str(), name.c_str()); failed++; }
+	std::ifstream f(in + "/" + name + ".json");
+	if (!f) { fprintf(stderr, "units: no capture %s/%s.json\n", in.c_str(), name.c_str()); failed++; }
 	std::stringstream ss;
 	ss << f.rdbuf();
 	return ss.str();
@@ -287,15 +289,104 @@ static void testGrid()
 	IEQ(gridTop(3, 0, 6), 0);
 }
 
+// RetroAchievements' replies (kiwami/tests/ra, the stand-in server's): each request's, a refusal (the server saying
+// no), and what isn't an answer (none, a page that isn't JSON, JSON cut short, an empty body)
+static void testRa()
+{
+	using namespace banana::kiwami::ra;
+	auto ra = [](const std::string& name) { return capture(name, raDir); };
+	auto nothing = [](const Reply& r, const char* error) {
+		CHECK(!r.ok); CHECK(!r.refused); EQ(r.error.substr(0, std::string(error).size()), error);
+	};
+
+	std::string body = ra("login2");
+	for (auto& [k, v] : { std::make_pair("@USER@", "alice"), std::make_pair("@TOKEN@", "tok1"), std::make_pair("@MEDIA@", "http://m") })
+		for (size_t at; (at = body.find(k)) != std::string::npos;) body.replace(at, strlen(k), v);
+	Login l = parseLogin(body, 200);
+	CHECK(l.ok); CHECK(!l.refused);
+	EQ(l.user, "alice"); EQ(l.token, "tok1"); EQ(l.avatarUrl, "http://m/UserPic/alice.png");
+	IEQ((int)l.score, 1234); IEQ((int)l.softScore, 56); IEQ((int)l.messages, 2);
+	l = parseLogin(ra("login2-refused"), 401);
+	CHECK(!l.ok); CHECK(l.refused); EQ(l.error, "Invalid user/password combination. Please try again.");
+	CHECK(parseLogin("", 401).refused);
+	CHECK(parseLogin("{\"Success\":false,\"Error\":\"Account locked\"}", 200).refused);
+	nothing(parseLogin("", 0), "no connection");
+	nothing(parseLogin(ra("unavailable"), 503), "unreadable answer (503)");
+	nothing(parseLogin(ra("malformed"), 200), "unreadable answer (200)");
+	nothing(parseLogin("", 200), "unreadable answer (200)");
+	nothing(parseLogin("{\"Success\":true,\"User\":\"alice\"}", 200), "unreadable answer (no user or token)");
+	nothing(parseLogin("{\"Success\":true,\"User\":\"alice\",\"Token\":\"tok1\"}", 500), "unreadable answer (500)");
+
+	// a game completed in softcore, one mastered, one started; then none
+	Progress p = parseProgress(ra("allprogress"), 200);
+	CHECK(p.ok);
+	IEQ((int)p.games.size(), 3);
+	if (p.games.size() == 3)
+	{
+		IEQ((int)p.games[0].id, 1446); IEQ(p.games[0].total, 10); IEQ(p.games[0].unlocked, 10); IEQ(p.games[0].unlockedHardcore, 0);
+		IEQ((int)p.games[2].id, 11240); IEQ(p.games[2].unlockedHardcore, 1);
+	}
+	IEQ(p.started, 3); IEQ(p.completed, 1); IEQ(p.mastered, 1); IEQ(p.unlocked, 18);
+	p = parseProgress(ra("allprogress-empty"), 200);
+	CHECK(p.ok); IEQ(p.started, 0); IEQ(p.unlocked, 0);
+	CHECK(parseProgress(ra("token-refused"), 401).refused);
+	nothing(parseProgress("{\"Success\":true}", 200), "unreadable answer (no Response)");
+	nothing(parseProgress(ra("malformed"), 200), "unreadable answer");
+	nothing(parseProgress("", 0), "no connection");
+
+	GameId g = parseGameId(ra("gameid-m0f343b0931126a20f133d67c2b018a3b"), 200);
+	CHECK(g.ok); IEQ((int)g.id, 1446);
+	g = parseGameId(ra("gameid"), 200);
+	CHECK(g.ok); IEQ((int)g.id, 0);
+	nothing(parseGameId("", 0), "no connection");
+
+	// core achievements only (Flags 3; the unofficial one, 5, dropped), their texts unescaped
+	Patch pa = parsePatch(ra("patch"), 200);
+	CHECK(pa.ok); EQ(pa.title, "Orchard Tactics");
+	IEQ((int)pa.achievements.size(), 3);
+	if (pa.achievements.size() == 3)
+	{
+		IEQ((int)pa.achievements[0].id, 101); EQ(pa.achievements[0].title, "First Harvest");
+		EQ(pa.achievements[0].description, "Pick the first apple"); EQ(pa.achievements[0].badge, "101234"); IEQ(pa.achievements[0].points, 5);
+		EQ(pa.achievements[1].title, "Pear \"Tree\" \xc3\xa9");
+		IEQ((int)pa.achievements[2].id, 103); IEQ(pa.achievements[2].points, 25);
+	}
+	CHECK(parsePatch(ra("token-refused"), 401).refused);
+	nothing(parsePatch("{\"Success\":true}", 200), "unreadable answer (no PatchData)");
+	nothing(parsePatch(ra("malformed"), 200), "unreadable answer");
+
+	Unlocks u = parseUnlocks(ra("unlocks"), 200);
+	CHECK(u.ok); IEQ((int)u.ids.size(), 2);
+	if (u.ids.size() == 2) { IEQ((int)u.ids[0], 101); IEQ((int)u.ids[1], 102); }
+	u = parseUnlocks(ra("unlocks-h1"), 200);
+	IEQ((int)u.ids.size(), 1);
+	CHECK(parseUnlocks(ra("token-refused"), 401).refused);
+	nothing(parseUnlocks("", 0), "no connection");
+
+	// the consoles, in the Stats page's order
+	const unsigned ids[9] = { 18, 5, 6, 4, 7, 3, 1, 12, 2 };
+	for (int i = 0; i < 9; i++) IEQ((int)CONSOLES[i].id, (int)ids[i]);
+	EQ(CONSOLES[6].system, "megadrive");
+
+	EQ(escape("Alice_1-2.3~"), "Alice_1-2.3~");
+	EQ(escape("a b&c=d/+%\xc3\xa9"), "a%20b%26c%3Dd%2F%2B%25%C3%A9");
+	EQ(fileName("Alice_01"), "alice_01");
+	EQ(fileName("../x"), "");
+	EQ(fileName("a/b"), "");
+	EQ(fileName(""), "");
+}
+
 int main(int argc, char** argv)
 {
 	dir = argc > 1 ? argv[1] : "kiwami/tests/tailscale";
+	raDir = argc > 2 ? argv[2] : "kiwami/tests/ra";
 	testJson();
 	testStatus();
 	testName();
 	testQr();
 	testDevices();
 	testGrid();
+	testRa();
 	if (failed) { fprintf(stderr, "units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("units: %d checks passed\n", checks);
 	return 0;

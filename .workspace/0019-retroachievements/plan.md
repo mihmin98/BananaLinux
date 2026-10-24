@@ -835,6 +835,24 @@ Where the implementation turned out different from this plan, why, and what chan
   (the loop, `y`), `renderGroups` 4 (the slots' loop, the pick, the tiles' loop, `y`). The final check's count is
   updated. The trophy's gold is the icons' `#F2C94C` (`bank.png`, `sword.png` and others), `#FFF0A8` (`bank.png`) and
   `#8A6A1E` (`cart.png`), and its plinth `gear.png`'s greys. `fav.png` has no gold.
+- **2026-10-24, step 3: details the plan left open.**
+  - A game counts once in the sums. Mastered means every achievement unlocked in hardcore. Completed means every
+    achievement unlocked, not all of them in hardcore, so a mastered game isn't also completed, as on the site's
+    profile. Started counts every game `allprogress` lists. Unlocked adds each game's larger of `Unlocked` and
+    `UnlockedHardcore`.
+  - `refused` is `Success: false`, or a 401 or 403. Anything else that isn't a yes is "no connection" when there was no
+    answer, and "unreadable answer (<status>)" otherwise: a 5xx page, JSON cut short, an empty body, a yes with no
+    token.
+  - `fetch` is internal. `avatar` and `badge` call it, and refuse names that aren't plain (letters, digits, `-`, `_`).
+    An avatar's file is the name in lower case, so `remove` (step 4) finds it whatever the case. A badge keeps its
+    name, as upstream's panel names it in the same folder.
+  - The stand-in also checks the token of every request but `gameid` (401, `token-refused.json`). It picks the most
+    specific canned reply for the request's `c`, `g`, `m` and `h` (`unlocks-h1.json`,
+    `gameid-m<md5>.json`), and fills `login2.json`'s `@USER@`, `@TOKEN@` and `@MEDIA@`. `ra/` also has the
+    replies the parser tests need: `login2-refused`, `token-refused`, `allprogress-empty`, `malformed` and
+    `unavailable`.
+  - `units` takes the `ra/` folder as a second argument and links with `-ldl`. `ci.sh` compiles `ra-server.py`
+    with its bytecode in the temporary folder.
 
 ## Progress
 
@@ -844,7 +862,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. The fork's Settings pages, routed by which one is open | done | RetroAchievements: the fork's Settings pages routed by which one is open |
 | 2. The RetroAchievements group, the scrolling grid and the trophy, with Mode | done | RetroAchievements: a group in Settings, the grid scrolling to its row, with Mode |
-| 3. RetroAchievements' requests, and a stand-in server for the tests | todo | |
+| 3. RetroAchievements' requests, and a stand-in server for the tests | done | RetroAchievements: the server's requests, and a stand-in server for the tests |
 | 4. The account on the card: signing in, out, and the remembered accounts | todo | |
 | 5. The Account page | todo | |
 | 6. The game panel takes the token Banana keeps (a bug fix) | todo | |

@@ -149,6 +149,191 @@ grep -q "logout: the device couldn't be deleted on RomM (no server), forgotten h
 romm_url=$DOWNURL
 smb_user=me" ] || fail "logout with no server: accounts.conf is $(cat "$A")"; ok
 
+# ---- saves around a game ----------------------------------------------------------------------------------------
+# upstream's systems.conf and nds-saves (its /data moved into the made-up card), a libretro folder for core.<system>
+C=$X/card
+cp system/rootfs/etc/banana/systems.conf "$X/etc/"
+mkdir -p "$X/libretro" "$C/roms/gba" "$C/roms/nds" "$C/roms/snes" "$C/roms/megadrive" "$X/sd2/roms/psx/Disc Game"
+sed "s|/data/|$C/|g" system/rootfs/usr/libexec/banana/nds-saves > "$X/bin/nds-saves"
+chmod +x "$X/bin/nds-saves"
+export KIWAMI_LIBRETRO=$X/libretro KIWAMI_ROMM_NDS_SAVES=$X/bin/nds-saves
+sed -i "s|^romm_url=.*|romm_url=$URL|" "$A"
+out=$("$H" pair); code=$(printf '%s' "$out" | sed -n 's/^pairing \([A-Z0-9]*\)	.*/\1/p')
+post "/test/approve?user_code=$code"
+waitstatus "paired 5.4.1" "pairing for the saves"
+tokens="$tokens $(key romm_token)"
+push() { KIWAMI_ROMM_SYNC=1 "$H" push "$@"; }
+# the server's saves of a game: "<emulator> <hash> <size>" lines, oldest first
+saves() { get /test/saves | python3 -c "import json, sys; [print(s['emulator'], s['hash'], s['size']) for s in json.load(sys.stdin) if s['rom_id'] == int(sys.argv[1])]" "$1"; }
+plays() { get /test/play-sessions | python3 -c "import json, sys; [print(p['rom_id'], p['duration_ms'], p['save_slot']) for p in json.load(sys.stdin)]"; }
+websave() { python3 -c "import sys, urllib.request; urllib.request.urlopen(urllib.request.Request(sys.argv[1], data=open(sys.argv[2], 'rb').read(), method='POST'))" "$URL/test/save?rom_id=$1&slot=autosave&emulator=$2" "$3"; }
+sum() { md5sum "$1" | cut -d' ' -f1; }
+count() { grep -c "$1" "$X/srv.log" || true; }
+T1=$(($(date +%s) - 120)) T2=$(date +%s)
+
+GBA="$C/roms/gba/Pocket Adventure (USA).gba" SRM="$C/saves/gpSP/Pocket Adventure (USA).srm" STATE="$C/states/gpSP/Pocket Adventure (USA).state.auto"
+touch "$GBA"
+# no save on either side: nothing written; the platform's list fetched (none cached), the match recorded
+"$H" pull gba "$GBA" || fail "pull exited non-zero"
+[ ! -e "$SRM" ] || fail "pull with no saves wrote one"; ok
+grep -q "pull: Pocket Adventure (USA): no save on either side" "$LOG" || fail "pull: no 'no save' line"; ok
+grep -q "^GET /api/roms?platform_ids=1&" "$X/srv.log" || fail "pull: the GBA list wasn't fetched"; ok
+grep -qx "101	Pocket Adventure (USA).gba	4096	Pocket Adventure" "$B/romm/platforms/gba.tsv" || fail "the GBA list's cache: $(cat "$B/romm/platforms/gba.tsv")"; ok
+grep -qx "gba	Pocket Adventure (USA).gba	101" "$B/romm/games" || fail "the match isn't recorded: $(cat "$B/romm/games")"; ok
+
+# the push after it: the save into autosave as gpSP's, with its hash and the play
+mkdir -p "$C/saves/gpSP" "$C/states/gpSP"
+printf 'save-v1' > "$SRM"
+push gba "$GBA" $T1 $T2
+[ "$(saves 101)" = "gpsp $(sum "$SRM") 7" ] || fail "push: the server has '$(saves 101)'"; ok
+[ "$(plays)" = "101 120000 autosave" ] || fail "push: the plays are '$(plays)'"; ok
+grep -q "push: Pocket Adventure (USA): sent (gpsp)" "$LOG" || fail "push: no 'sent' line"; ok
+
+# the same on both sides: nothing changes
+n0=$(count "GET /api/saves/")
+"$H" pull gba "$GBA"
+[ "$(cat "$SRM")" = save-v1 ] && [ ! -e "$SRM.bak" ] || fail "a no-op pull changed the save"; ok
+[ "$(count "GET /api/saves/")" = "$n0" ] || fail "a no-op pull downloaded"; ok
+[ "$(count "GET /api/roms")" = 1 ] || fail "the list fetched again with a cache"; ok
+
+# RomM's web player's newer save (its own core): taken, the card's kept as .bak, the Quick resume state renamed
+printf 'web-v2' > "$X/web2"; websave 101 mgba "$X/web2"
+echo state > "$STATE"
+"$H" pull gba "$GBA"
+[ "$(cat "$SRM")" = web-v2 ] || fail "the web player's save not taken: $(cat "$SRM")"; ok
+[ "$(cat "$SRM.bak")" = save-v1 ] || fail "the card's save not kept as .bak"; ok
+[ ! -e "$STATE" ] && [ -f "$STATE.bak" ] || fail "the Quick resume state not renamed"; ok
+grep -q "the Quick resume state renamed .state.auto.bak" "$LOG" || fail "the guard not in the log"; ok
+# ... and confirmed: the next pull and push leave it, nothing sent back
+"$H" pull gba "$GBA"
+push gba "$GBA" $T1 $T2
+[ "$(cat "$SRM")" = web-v2 ] && [ "$(saves 101 | wc -l)" = 2 ] || fail "after taking RomM's: '$(saves 101)'"; ok
+
+# both changed: a conflict noted, the card's save kept, nothing sent
+sleep 0.05; printf 'card-v3' > "$SRM"
+printf 'web-v3' > "$X/web3"; websave 101 mgba "$X/web3"
+"$H" pull gba "$GBA"
+[ "$(cat "$SRM")" = card-v3 ] || fail "a conflict overwrote the card's save"; ok
+grep -q "^gba	$GBA	101	[0-9]*	20" "$B/romm/conflicts" || fail "the conflict isn't noted: $(cat "$B/romm/conflicts" 2>/dev/null)"; ok
+push gba "$GBA" $T1 $T2
+[ "$(saves 101 | wc -l)" = 3 ] || fail "a conflict was sent: '$(saves 101)'"; ok
+[ "$(wc -l < "$B/romm/conflicts")" = 1 ] || fail "the conflict noted twice"; ok
+
+# RomM's 409 on an upload: the web player saved first, the card's never synced: noted as a conflict
+LATE="$C/roms/snes/Late Bloomer.sfc"; touch "$LATE"
+printf 'web' > "$X/webl"; websave 402 snes9x "$X/webl"
+sleep 0.05; mkdir -p "$C/saves/Snes9x"; printf 'card' > "$C/saves/Snes9x/Late Bloomer.srm"
+push snes "$LATE" $T1 $T2
+grep -q "Late Bloomer: RomM has a newer save since this handheld's last sync (409)" "$LOG" || fail "the 409 not in the log"; ok
+grep -q "^snes	$LATE	402	" "$B/romm/conflicts" || fail "the 409 not noted as a conflict"; ok
+[ "$(saves 402)" = "snes9x $(printf web | md5sum | cut -d' ' -f1) 3" ] || fail "the 409 upload kept: '$(saves 402)'"; ok
+
+# a slot emptied on RomM: the card's save renamed .bak, nothing deleted
+SPACE="$C/roms/snes/Space Name (Japan).sfc" SSRM="$C/saves/Snes9x/Space Name (Japan).srm"; touch "$SPACE"
+printf 'space-v1' > "$SSRM"
+push snes "$SPACE" $T1 $T2
+post "/test/delete-slot?rom_id=401&slot=autosave"
+"$H" pull snes "$SPACE"
+[ ! -e "$SSRM" ] && [ "$(cat "$SSRM.bak")" = space-v1 ] || fail "a delete wasn't turned into a .bak"; ok
+grep -q "emptied on RomM, the card's save renamed Space Name (Japan).srm.bak" "$LOG" || fail "the delete not in the log"; ok
+
+# core.gba = mgba with the core installed: mGBA's folder and name; with it not installed, gpSP's (and a name that
+# differs from RomM's only in case)
+printf 'core.gba = mgba\n' > "$B/settings.conf"
+touch "$X/libretro/mgba_libretro.so"
+CQ="$C/roms/gba/Core Quest.gba"; touch "$CQ"
+mkdir -p "$C/saves/mGBA"; printf 'mgba-save' > "$C/saves/mGBA/Core Quest.srm"
+push gba "$CQ" $T1 $T2
+[ "$(saves 103)" = "mgba $(sum "$C/saves/mGBA/Core Quest.srm") 9" ] || fail "mGBA's save: '$(saves 103)'"; ok
+rm "$X/libretro/mgba_libretro.so"
+CT="$C/roms/gba/case test (europe).gba"; touch "$CT"
+printf 'case-save' > "$C/saves/gpSP/case test (europe).srm"
+push gba "$CT" $T1 $T2
+[ "$(saves 102)" = "gpsp $(sum "$C/saves/gpSP/case test (europe).srm") 9" ] || fail "gpSP's save of a name in another case: '$(saves 102)'"; ok
+rm "$B/settings.conf"
+
+# the DS after DraStic: nds-saves first, the raw .sav sent as melonDS's
+DS="$C/roms/nds/Dual Screen (USA).nds" SAV="$C/saves/nds/Dual Screen (USA).sav" DSV="$C/drastic/backup/Dual Screen (USA).dsv"
+touch "$DS"; mkdir -p "$C/saves/nds" "$C/drastic/backup"
+printf 'old' > "$SAV"; touch -d '-1 hour' "$SAV"
+head -c 512 /dev/zero | tr '\0' D > "$DSV"
+push nds "$DS" $T1 $T2
+cmp -s "$DSV" "$SAV" || fail "nds-saves didn't run before the push"; ok
+[ "$(saves 201)" = "melonds $(sum "$DSV") 512" ] || fail "the DS's save: '$(saves 201)'"; ok
+# ... and one from RomM with DeSmuME's footer: written as DraStic's, BananaDS's raw at its size
+python3 -c "
+import struct, sys
+snip = b'|<--Snip above here to create a raw sav by excluding this DeSmuME savedata footer:'
+sys.stdout.buffer.write(b'E' * 512 + snip.ljust(82, b' ')[:82] + struct.pack('<6I', 512, 512, 0, 0, 0, 0) + b'|-DESMUME SAVE-|')" > "$X/desmume.dsv"
+head -c 512 /dev/zero | tr '\0' E > "$X/raw2"
+websave 201 desmume "$X/desmume.dsv"
+"$H" pull nds "$DS"
+cmp -s "$DSV" "$X/desmume.dsv" || fail "RomM's DS save not written as DraStic's"; ok
+cmp -s "$SAV" "$X/raw2" || fail "BananaDS's save isn't the raw 512 bytes: $(stat -c %s "$SAV") bytes"; ok
+[ "$(head -c 512 "$SAV.bak" | tr -d D)" = "" ] || fail "BananaDS's save before not kept as .bak"; ok
+
+# no server, and one that stalls: the pull gives up within 3 s and exits 0
+KIWAMI_ROMM_STALL=10 serve "$X/stallport" "$X/stall.log"; STALLSRV=$!
+sed -i "s|^romm_url=.*|romm_url=http://127.0.0.1:$(cat "$X/stallport")|" "$A"
+t0=$(date +%s%N); "$H" pull gba "$GBA" || fail "a stalled pull exited non-zero"; t1=$(date +%s%N)
+kill "$STALLSRV"
+[ $(((t1 - t0) / 1000000)) -lt 3500 ] || fail "a stalled pull took $(((t1 - t0) / 1000000)) ms"; ok
+sed -i "s|^romm_url=.*|romm_url=$DOWNURL|" "$A"
+t0=$(date +%s%N); "$H" pull gba "$GBA" || fail "a pull with no server exited non-zero"; t1=$(date +%s%N)
+[ $(((t1 - t0) / 1000000)) -lt 3500 ] || fail "a pull with no server took $(((t1 - t0) / 1000000)) ms"; ok
+[ "$(cat "$SRM")" = card-v3 ] || fail "a pull with no server changed the save"; ok
+
+# a push with no server: kept pending with its play; the next push sends it
+MD="$C/roms/megadrive/Blast Processing.md"; touch "$MD"
+mkdir -p "$C/saves/PicoDrive"; printf 'blast-v1' > "$C/saves/PicoDrive/Blast Processing.srm"
+push megadrive "$MD" $T1 $T2
+grep -qxF "push	megadrive	$MD" "$B/romm/pending" || fail "a push with no server isn't pending: $(cat "$B/romm/pending" 2>/dev/null)"; ok
+grep -qxF "play	megadrive	$MD	$T1	$T2" "$B/romm/pending" || fail "its play isn't pending"; ok
+"$H" pending gba "$GBA" $((T1 - 1000)) $((T2 - 1000))
+grep -qxF "play	gba	$GBA	$((T1 - 1000))	$((T2 - 1000))" "$B/romm/pending" || fail "romm pending kept nothing"; ok
+sed -i "s|^romm_url=.*|romm_url=$URL|" "$A"
+DISC="$X/sd2/roms/psx/Disc Game/Disc Game.m3u"; touch "$DISC"
+mkdir -p "$C/saves/PCSX-ReARMed"; printf 'psx-v1' > "$C/saves/PCSX-ReARMed/Disc Game.srm"
+push psx "$DISC" $T1 $T2
+[ ! -s "$B/romm/pending" ] || fail "pending not sent: $(cat "$B/romm/pending")"; ok
+[ "$(saves 501)" = "picodrive $(sum "$C/saves/PicoDrive/Blast Processing.srm") 8" ] || fail "the pending push: '$(saves 501)'"; ok
+plays | grep -qx "501 120000 autosave" || fail "the pending play not sent: $(plays)"; ok
+[ "$(plays | grep -c '^101 120000 autosave$')" = 2 ] || fail "romm pending's play not sent: $(plays)"; ok
+# the second card's game in a folder of its own: matched by the folder's name, its save on the main card
+[ "$(saves 301)" = "pcsx_rearmed $(sum "$C/saves/PCSX-ReARMed/Disc Game.srm") 6" ] || fail "the folder game's save: '$(saves 301)'"; ok
+
+# a game RomM doesn't have: skipped and logged; the push fetches the list again, the pull doesn't
+UNK="$C/roms/gba/Unknown Game.gba"; touch "$UNK"; printf 'x' > "$C/saves/gpSP/Unknown Game.srm"
+n0=$(count "GET /api/roms?platform_ids=1&")
+push gba "$UNK" $T1 $T2
+grep -q "push: Unknown Game.gba: not on RomM (gba's list)" "$LOG" || fail "a game RomM doesn't have isn't logged"; ok
+[ "$(count "GET /api/roms?platform_ids=1&")" = $((n0 + 1)) ] || fail "the push didn't fetch the list again on a miss"; ok
+[ ! -s "$B/romm/pending" ] || fail "a game RomM doesn't have left pending"; ok
+"$H" pull gba "$UNK"
+[ "$(count "GET /api/roms?platform_ids=1&")" = $((n0 + 1)) ] || fail "the pull fetched the list again on a miss"; ok
+
+# a server too old: refused, nothing negotiated; a newer one: synced, with the warning
+post "/test/version?v=5.3.2"; n0=$(count "POST /api/sync/negotiate")
+"$H" pull gba "$GBA"
+[ "$(count "POST /api/sync/negotiate")" = "$n0" ] || fail "5.3.2: negotiated"; ok
+post "/test/version?v=5.5.0"
+"$H" pull gba "$GBA"
+[ "$(count "POST /api/sync/negotiate")" = $((n0 + 1)) ] || fail "5.5.0: not negotiated"; ok
+post "/test/version?v=5.4.1"
+
+# two at once: the push waits for the saves lock another holds
+flock "$X/run/romm-saves.lock" sleep 1.5 & sleep 0.2
+t0=$(date +%s%N); push gba "$GBA" $T1 $T2; t1=$(date +%s%N)
+[ $(((t1 - t0) / 1000000)) -ge 1000 ] || fail "a push didn't wait for the lock"; ok
+grep -q "push: waiting for another sync to end" "$LOG" || fail "the wait isn't in the log"; ok
+[ ! -s "$B/romm/pending" ] || fail "the push that waited didn't go: $(cat "$B/romm/pending")"; ok
+
+# a token RomM refuses: the push kept pending, the last sync's state revoked
+post /test/revoke
+push gba "$GBA" $T1 $T2
+grep -qxF "push	gba	$GBA" "$B/romm/pending" || fail "a refused push isn't pending"; ok
+[ "$(cut -f2 "$B/romm/last")" = revoked ] || fail "last isn't revoked: $(cat "$B/romm/last" 2>/dev/null)"; ok
+
 # the tokens nowhere but accounts.conf: not in the log, the status file or the server's log
 for t in $tokens; do
     ! grep -qF "$t" "$LOG" "$ST" "$X/srv.log" || fail "a token in the log, the status or the server's log"; ok

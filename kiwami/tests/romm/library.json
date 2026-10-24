@@ -1,11 +1,34 @@
 {
-  "_comment": "The stand-in RomM server's library (kiwami/tests/romm-server.py): its platforms, their ROMs (each file's bytes made up from its seed and size, so nothing large is kept here) and firmware.",
+  "_comment": "The stand-in RomM server's library (kiwami/tests/romm-server.py): its platforms, their ROMs (each file's bytes made up from its seed and size, so nothing large is kept here) and firmware. The names exercise the helper's matching: exact, case, a game in a folder of its own, one platform Banana has no system for.",
   "platforms": [
-    { "id": 1, "slug": "gba", "name": "Game Boy Advance" }
+    { "id": 1, "slug": "gba", "name": "Game Boy Advance" },
+    { "id": 2, "slug": "nds", "name": "Nintendo DS" },
+    { "id": 3, "slug": "psx", "name": "PlayStation" },
+    { "id": 4, "slug": "snes", "name": "Super Nintendo" },
+    { "id": 5, "slug": "genesis", "name": "Sega Mega Drive / Genesis" },
+    { "id": 6, "slug": "dc", "name": "Dreamcast" }
   ],
   "roms": [
     { "id": 101, "platform_id": 1, "name": "Pocket Adventure", "fs_name": "Pocket Adventure (USA).gba",
-      "files": [ { "file_name": "Pocket Adventure (USA).gba", "size": 4096, "seed": 101 } ] }
+      "files": [ { "file_name": "Pocket Adventure (USA).gba", "size": 4096, "seed": 101 } ] },
+    { "id": 102, "platform_id": 1, "name": "Case Test", "fs_name": "Case Test (Europe).gba",
+      "files": [ { "file_name": "Case Test (Europe).gba", "size": 4096, "seed": 102 } ] },
+    { "id": 103, "platform_id": 1, "name": "Core Quest", "fs_name": "Core Quest.gba",
+      "files": [ { "file_name": "Core Quest.gba", "size": 4096, "seed": 103 } ] },
+    { "id": 201, "platform_id": 2, "name": "Dual Screen", "fs_name": "Dual Screen (USA).nds",
+      "files": [ { "file_name": "Dual Screen (USA).nds", "size": 8192, "seed": 201 } ] },
+    { "id": 301, "platform_id": 3, "name": "Disc Game", "fs_name": "Disc Game",
+      "files": [ { "file_name": "Disc Game.m3u", "size": 40, "seed": 301 },
+                 { "file_name": "Disc Game (Disc 1).cue", "size": 120, "seed": 302 },
+                 { "file_name": "Disc Game (Disc 1).bin", "size": 16384, "seed": 303 } ] },
+    { "id": 401, "platform_id": 4, "name": "Space Name", "fs_name": "Space Name (Japan).sfc",
+      "files": [ { "file_name": "Space Name (Japan).sfc", "size": 4096, "seed": 401 } ] },
+    { "id": 402, "platform_id": 4, "name": "Late Bloomer", "fs_name": "Late Bloomer.sfc",
+      "files": [ { "file_name": "Late Bloomer.sfc", "size": 4096, "seed": 402 } ] },
+    { "id": 501, "platform_id": 5, "name": "Blast Processing", "fs_name": "Blast Processing.md",
+      "files": [ { "file_name": "Blast Processing.md", "size": 4096, "seed": 501 } ] },
+    { "id": 601, "platform_id": 6, "name": "Spiral", "fs_name": "Spiral.chd",
+      "files": [ { "file_name": "Spiral.chd", "size": 4096, "seed": 601 } ] }
   ],
   "firmware": [
     { "id": 501, "platform_id": 1, "file_name": "gba_bios.bin", "size": 16384, "seed": 501 }

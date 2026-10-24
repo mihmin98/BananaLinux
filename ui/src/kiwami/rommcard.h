@@ -6,11 +6,20 @@
 //                                   and logging out
 //   <card>/banana/settings.conf     romm, romm_autosync, romm_target (else <etc>/settings.conf's)
 //   <card>/banana/romm/identifier   the handheld's id for RomM (client_device_identifier), made once
+//   <card>/banana/romm/pending      what didn't reach RomM yet: "push\t<system>\t<rom>" and
+//                                   "play\t<system>\t<rom>\t<start>\t<end>" lines, each once
+//   <card>/banana/romm/conflicts    the games whose save changed on both sides, one line each:
+//                                   "<system>\t<rom>\t<rom id>\t<save id>\t<RomM's time>\t<noted>"
+//   <card>/banana/romm/last         the last sync's result: "<time>\t<state>\t<sent>\t<fetched>\t<conflicts>\t<skipped>"
+//   <card>/banana/romm/synced       each game's save at its last sync, "<rom id>\t<hash>": a save that differs from it
+//                                   changed here since (RomM keeps its record per save, and misses it when another
+//                                   device's newer save is a new one)
 //   <card>/banana/logs/romm.log     the helper's log
 //   <run>/romm.status               the helper's state, one line
 // The paths are moved for the tests by KIWAMI_ROMM_CARD (/data), KIWAMI_RUN (/run/banana), KIWAMI_ROMM_ETC
 // (/etc/banana), KIWAMI_LIBRETRO (/usr/lib/libretro) and KIWAMI_ROMM_NDS_SAVES (/usr/libexec/banana/nds-saves).
 #include <string>
+#include <vector>
 
 namespace banana::kiwami::romm
 {
@@ -40,4 +49,33 @@ namespace banana::kiwami::romm
 	std::string deviceIdentifier(const Card& c);
 
 	bool makeDir(const std::string& dir);
+
+	// each false with error set when the file couldn't be written; each written through replaceFile
+	struct Pending
+	{
+		struct Push { std::string system, rom; };
+		struct Play { std::string system, rom; long long start = 0, end = 0; };
+		std::vector<Push> pushes;
+		std::vector<Play> plays;
+		bool empty() const { return pushes.empty() && plays.empty(); }
+	};
+	Pending pending(const Card& c);
+	// lines added (each once) or taken out, under a lock of their own (<run>/romm-pending.lock): romm pending adds to
+	// it while a push may be sending it
+	bool addPending(const Card& c, const Pending& add, std::string& error);
+	bool removePending(const Card& c, const Pending& done, std::string& error);
+
+	struct Conflict { std::string system, rom; long romId = 0, saveId = 0; std::string serverTime; long long noted = 0; };
+	std::vector<Conflict> conflicts(const Card& c);
+	bool noteConflict(const Card& c, const Conflict& k, std::string& error);	// replaces the game's line
+	bool clearConflict(const Card& c, const std::string& system, const std::string& rom, std::string& error);
+
+	// the hash of the game's save at its last sync ("" for none); "" as hash takes the record out
+	std::string syncedHash(const Card& c, long romId);
+	bool setSynced(const Card& c, long romId, const std::string& hash, std::string& error);
+
+	// the state: synced, conflicts, down or revoked
+	struct Last { long long when = 0; std::string state; int sent = 0, fetched = 0, conflicts = 0, skipped = 0; };
+	Last last(const Card& c);
+	bool setLast(const Card& c, const Last& l, std::string& error);
 }

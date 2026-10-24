@@ -1,8 +1,11 @@
 #pragma once
 // The RomM helper (kiwami): RomM's requests and their replies, as RomM 5.4.1 (tag 9c74d01) answers them: the device
-// flow (backend/endpoints/device/auth.py), the devices (endpoints/device/__init__.py) and the heartbeat. The parsers
-// take the body and the HTTP status (0: no answer) and need no network, so the unit test runs them.
+// flow (backend/endpoints/device/auth.py), the devices (endpoints/device/__init__.py), the heartbeat, the platforms and
+// their games (endpoints/platform.py, endpoints/roms/), and the saves' sync (endpoints/sync/__init__.py,
+// endpoints/saves.py). The parsers take the body and the HTTP status (0: no answer) and need no network, so the unit
+// test runs them.
 #include <string>
+#include <vector>
 
 namespace banana::kiwami::romm
 {
@@ -43,5 +46,45 @@ namespace banana::kiwami::romm
 	long getDevice(const Server& s, const std::string& id);
 	long deleteDevice(const Server& s, const std::string& id);
 
+	// ---- the library ----------------------------------------------------------------------------------------------
+	struct Platform { long id = 0, romCount = 0; std::string slug, name; };
+	struct Platforms { bool ok = false; long status = 0; std::vector<Platform> list; };
+	Platforms parsePlatforms(const std::string& body, long status);
+	Platforms platforms(const Server& s);
+
+	// a page of a platform's games (search "" for all): what the helper keeps of each
+	struct Rom { long id = 0; long long size = 0; std::string fsName, name; };
+	struct Roms { bool ok = false; long status = 0, total = 0; std::vector<Rom> items; };
+	Roms parseRoms(const std::string& body, long status);
+	Roms roms(const Server& s, long platform, const std::string& search, long offset, long limit);
+
+	// ---- the saves' sync ------------------------------------------------------------------------------------------
+	// a save on the card as the negotiation takes it; always in the slot "autosave"
+	struct ClientSave { long romId = 0; std::string fileName, emulator, hash; long long mtimeMs = 0, size = 0; };
+	// what RomM says to do with a save: upload, download, conflict, delete or no_op
+	struct Operation { std::string action, slot, fileName, emulator, serverHash, serverTime; long romId = 0, saveId = 0; };
+	struct Negotiation { bool ok = false; long status = 0, session = 0; std::vector<Operation> ops; std::string error; };
+	Negotiation parseNegotiation(const std::string& body, long status);
+	// rom_ids scopes it to the games given (at most 500); emulators is left out, so the newest autosave pairs whichever
+	// emulator wrote it (RomM's web player's included)
+	Negotiation negotiate(const Server& s, const std::string& deviceId, const std::vector<ClientSave>& saves, const std::vector<long>& romIds);
+
+	// an upload: 409 is RomM saying the slot has a newer save since this device's last sync (a conflict)
+	struct Upload { bool ok = false, conflict = false; long status = 0, saveId = 0; };
+	Upload uploadSave(const Server& s, const ClientSave& save, const std::string& deviceId, long session, bool overwrite,
+		const std::string& bytes);
+	// a save's bytes (status 200), RomM told the device has it (the hash of what is on the card now)
+	long downloadSave(const Server& s, long id, const std::string& deviceId, long session, std::string& bytes);
+	long confirmDownload(const Server& s, long id, const std::string& deviceId, const std::string& hash);
+	// the session closed, with the plays it carries (seconds since 1970; one shorter than a second isn't sent, RomM
+	// refuses it)
+	struct PlaySession { long romId = 0; long long start = 0, end = 0; };
+	long complete(const Server& s, long session, int done, int failed, const std::vector<PlaySession>& plays);
+	// the plays alone (POST /api/play-sessions, 201), when no session carries them; RomM skips one it has already (the
+	// same game and start)
+	long playSessions(const Server& s, const std::string& deviceId, const std::vector<PlaySession>& plays);
+
 	std::string jsonString(const std::string& s);	// s as a JSON string, quoted
+	std::string isoTime(long long ms);				// UTC, 2026-10-24T12:00:00.000Z
+	std::string urlEscape(const std::string& s);
 }

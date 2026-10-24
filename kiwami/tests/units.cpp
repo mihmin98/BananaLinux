@@ -5,14 +5,17 @@
 //   g++ -std=c++17 -Wall -I ui/src kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp
 //       ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp
 //       ui/src/kiwami/rahash.cpp ui/src/kiwami/conf.cpp ui/src/kiwami/rommcard.cpp ui/src/kiwami/romm/api.cpp
-//       ui/src/kiwami/romm/http.cpp $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -o units
-//   ./units kiwami/tests/tailscale kiwami/tests/ra
+//       ui/src/kiwami/romm/http.cpp ui/src/kiwami/romm/saves.cpp ui/src/kiwami/romm/games.cpp
+//       $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -o units
+//   ./units kiwami/tests/tailscale kiwami/tests/ra system/rootfs/etc/banana/systems.conf
 #include "kiwami/grid.h"
 #include "kiwami/json.h"
 #include "kiwami/raclient.h"
 #include "kiwami/rahash.h"
 #include "kiwami/rastore.h"
 #include "kiwami/romm/api.h"
+#include "kiwami/romm/games.h"
+#include "kiwami/romm/saves.h"
 #include "kiwami/rommcard.h"
 #include "kiwami/tsstatus.h"
 #include <cstdint>
@@ -31,7 +34,7 @@ static int checks = 0, failed = 0;
 #define CHECK(c) do { checks++; if (!(c)) { failed++; fprintf(stderr, "units: FAIL %s:%d: %s\n", __FILE__, __LINE__, #c); } } while (0)
 #define EQ(a, b) do { checks++; std::string a_ = (a), b_ = (b); if (a_ != b_) { failed++; fprintf(stderr, "units: FAIL %s:%d: %s is \"%s\", not \"%s\"\n", __FILE__, __LINE__, #a, a_.c_str(), b_.c_str()); } } while (0)
 
-static std::string dir, raDir;
+static std::string dir, raDir, systemsConf;
 static std::string capture(const std::string& name, const std::string& in = dir)
 {
 	std::ifstream f(in + "/" + name + ".json");
@@ -816,10 +819,170 @@ static void testRomm()
 	if (system(("rm -rf " + t0).c_str()) != 0) {}
 }
 
+// a game's save and its RomM id, from upstream's systems.conf: the core each system runs (core.<system> when its core
+// is installed), where each of the nine keeps its save, the names a game goes by, RomM's negotiation's reply
+static void testRommSaves()
+{
+	using namespace banana::kiwami::romm;
+	std::vector<System> all = parseSystems(slurp(systemsConf));
+	for (auto& m : SYNCED) CHECK(findSystem(all, m.system) != nullptr);
+	const System* md = findSystem(all, "megadrive");
+	CHECK(md && md->folder == "megadrive" && md->ext.size() == 5 && !md->flat);
+	const System* ports = findSystem(all, "ports");
+	CHECK(ports && ports->flat && !synced("ports") && !synced("pico-8"));
+	CHECK(findSystem(all, "nothing") == nullptr);
+	EQ(std::string(synced("megadrive")->slugs[0]), "genesis");
+	EQ(std::string(synced("nes")->slugs[1]), "famicom");
+	EQ(std::string(synced("snes")->slugs[1]), "sfam");
+
+	const char* tmp = getenv("TMPDIR");
+	std::string tmpl = std::string(tmp && *tmp ? tmp : "/tmp") + "/kiwami-units-XXXXXX";
+	if (!mkdtemp(&tmpl[0])) { fprintf(stderr, "units: no temporary folder\n"); failed++; return; }
+	std::string t = tmpl;
+	for (const char* d : { "/banana", "/etc", "/libretro" }) mkdir((t + d).c_str(), 0755);
+	setenv("KIWAMI_ROMM_CARD", t.c_str(), 1);
+	setenv("KIWAMI_ROMM_ETC", (t + "/etc").c_str(), 1);
+	setenv("KIWAMI_LIBRETRO", (t + "/libretro").c_str(), 1);
+	Card c;
+	// the image's systems.conf, unless the card has its own
+	spit(t + "/etc/systems.conf", slurp(systemsConf));
+	IEQ((int)systems(c).size(), (int)all.size());
+	spit(t + "/banana/systems.conf", "[gba]\nrun = /usr/libexec/banana/run-retroarch mgba %ROM%\n");
+	IEQ((int)systems(c).size(), 1);
+	unlink((t + "/banana/systems.conf").c_str());
+
+	// each system's core and save, as run-retroarch picks the core
+	struct { const char* system; const char* core; const char* save; } want[] = {
+		{ "nds", "nds", "/saves/nds/Game (USA).sav" }, { "gba", "gpsp", "/saves/gpSP/Game (USA).srm" },
+		{ "gbc", "gambatte", "/saves/Gambatte/Game (USA).srm" }, { "gb", "gambatte", "/saves/Gambatte/Game (USA).srm" },
+		{ "nes", "fceumm", "/saves/FCEUmm/Game (USA).srm" }, { "snes", "snes9x", "/saves/Snes9x/Game (USA).srm" },
+		{ "megadrive", "picodrive", "/saves/PicoDrive/Game (USA).srm" }, { "psx", "pcsx_rearmed", "/saves/PCSX-ReARMed/Game (USA).srm" },
+		{ "n64", "mupen64plus_next", "/saves/Mupen64Plus-Next/Game (USA).srm" },
+	};
+	for (auto& w : want)
+	{
+		const System* sy = findSystem(all, w.system);
+		if (!sy) continue;
+		EQ(coreOf(c, *sy), w.core);
+		Save sv;
+		std::string why;
+		CHECK(saveOf(c, *sy, "/data/roms/x/Game (USA).zip", sv, why));
+		EQ(sv.path, t + w.save);
+		EQ(sv.emulator, std::string(w.core) == "nds" ? "melonds" : w.core);
+		CHECK(sv.ds == (std::string(w.core) == "nds"));
+	}
+	const System* gba = findSystem(all, "gba");
+	const System* nds = findSystem(all, "nds");
+	Save sv;
+	std::string why;
+	CHECK(saveOf(c, *nds, "/run/banana/sd2/roms/nds/Dual.nds", sv, why));
+	EQ(sv.dsv, t + "/drastic/backup/Dual.dsv");
+	EQ(sv.state, "");
+	CHECK(saveOf(c, *gba, "/data/roms/gba/Pocket.gba", sv, why));
+	EQ(sv.state, t + "/states/gpSP/Pocket.state.auto");
+	// core.gba = mgba: only once mGBA is installed
+	spit(c.settings, "core.gba = mgba\n");
+	EQ(coreOf(c, *gba), "gpsp");
+	spit(t + "/libretro/mgba_libretro.so", "");
+	EQ(coreOf(c, *gba), "mgba");
+	CHECK(saveOf(c, *gba, "/data/roms/gba/Pocket.gba", sv, why));
+	EQ(sv.path, t + "/saves/mGBA/Pocket.srm");
+	// the wrapper in front of the run line (romm-game) changes nothing; a core the helper doesn't know is skipped
+	System wrapped = *gba;
+	wrapped.run = "/usr/libexec/kiwami/romm-game " + wrapped.run;
+	EQ(coreOf(c, wrapped), "mgba");
+	unlink(c.settings.c_str());
+	wrapped.run = "/usr/libexec/kiwami/romm-game /usr/libexec/banana/run-retroarch vbam %ROM%";
+	CHECK(!saveOf(c, wrapped, "/data/roms/gba/Pocket.gba", sv, why));
+	EQ(why, "the core vbam isn't one the helper knows");
+	System app = *findSystem(all, "pico-8");
+	CHECK(!saveOf(c, app, "/data/roms/pico-8/x.p8", sv, why));
+	EQ(stemOf("/data/roms/psx/Disc Game/Disc Game.m3u"), "Disc Game");
+	EQ(stemOf("noext"), "noext");
+	EQ(md5Hex(""), "d41d8cd98f00b204e9800998ecf8427e");
+	EQ(md5Hex("abc"), "900150983cd24fb0d6963f7d28e17f72");	// (RFC 1321's test suite)
+	EQ(md5Hex("save-v1"), "64350580a0fae3d545e47f2c93881895");	// (md5sum's)
+
+	// the names a game goes by, and RomM's game for each: exactly, then without case; a folder of its own by its name
+	const System* psx = findSystem(all, "psx");
+	std::vector<std::string> n = namesOf(*psx, "/run/banana/sd2/roms/psx/Disc Game/Disc Game.m3u");
+	CHECK(n.size() == 2 && n[0] == "Disc Game.m3u" && n[1] == "Disc Game");
+	n = namesOf(*psx, "/data/roms/psx/Single.chd");
+	CHECK(n.size() == 1 && n[0] == "Single.chd");
+	std::vector<Rom> list = { { 1, 10, "Pocket Adventure (USA).gba", "" }, { 2, 10, "pocket adventure (usa).gba", "" },
+		{ 3, 10, "Case Test (Europe).gba", "" }, { 4, 10, "Disc Game", "" } };
+	IEQ((int)matchRom(list, "pocket adventure (usa).gba"), 2);	// (exact first)
+	IEQ((int)matchRom(list, "Pocket Adventure (USA).gba"), 1);
+	IEQ((int)matchRom(list, "CASE TEST (EUROPE).GBA"), 3);
+	IEQ((int)matchRom(list, "Disc Game"), 4);
+	IEQ((int)matchRom(list, "Case Test.gba"), 0);
+
+	// the negotiation's reply
+	Negotiation ng = parseNegotiation("{\"session_id\": 12, \"operations\": [{\"action\": \"download\", \"rom_id\": 101, \"save_id\": 7, "
+		"\"file_name\": \"x [2026-10-24].sav\", \"slot\": \"autosave\", \"emulator\": \"mgba\", \"reason\": \"r\", "
+		"\"server_updated_at\": \"2026-10-24T10:00:00Z\", \"server_content_hash\": \"abc\"}, {\"action\": \"upload\", \"rom_id\": 102, "
+		"\"save_id\": null, \"file_name\": \"y.srm\", \"slot\": \"autosave\", \"emulator\": \"gpsp\", \"reason\": \"r\"}], "
+		"\"total_upload\": 1, \"total_download\": 1, \"total_conflict\": 0, \"total_no_op\": 0, \"total_delete\": 0}", 200);
+	CHECK(ng.ok);
+	IEQ((int)ng.session, 12);
+	CHECK(ng.ops.size() == 2);
+	if (ng.ops.size() == 2)
+	{
+		EQ(ng.ops[0].action, "download"); IEQ((int)ng.ops[0].saveId, 7); EQ(ng.ops[0].serverHash, "abc"); EQ(ng.ops[0].emulator, "mgba");
+		EQ(ng.ops[1].action, "upload"); IEQ((int)ng.ops[1].saveId, 0); EQ(ng.ops[1].slot, "autosave");
+	}
+	ng = parseNegotiation("{\"detail\": \"Sync is disabled for this device\"}", 400);
+	CHECK(!ng.ok);
+	EQ(ng.error, "Sync is disabled for this device (400)");
+	CHECK(!parseNegotiation("", 0).ok);
+	// the lists
+	Platforms pl = parsePlatforms("[{\"id\": 1, \"slug\": \"gba\", \"name\": \"Game Boy Advance\", \"rom_count\": 3}, {\"id\": 2}]", 200);
+	CHECK(pl.ok && pl.list.size() == 1 && pl.list[0].slug == "gba" && pl.list[0].romCount == 3);
+	Roms rs = parseRoms("{\"items\": [{\"id\": 5, \"fs_name\": \"A.gba\", \"name\": \"A\", \"fs_size_bytes\": 4096}], \"total\": 9, "
+		"\"limit\": 500, \"offset\": 0}", 200);
+	CHECK(rs.ok && rs.total == 9 && rs.items.size() == 1 && rs.items[0].fsName == "A.gba" && rs.items[0].size == 4096);
+	CHECK(!parseRoms("[]", 200).ok);
+	EQ(isoTime(1792843200123LL), "2026-10-24T12:00:00.123Z");
+	EQ(urlEscape("a b/c"), "a%20b%2Fc");
+
+	// the card's records: pending (each line once), conflicts (one a game), the last hash synced
+	std::string error;
+	Pending p;
+	p.pushes.push_back({ "gba", "/data/roms/gba/A.gba" });
+	p.plays.push_back({ "gba", "/data/roms/gba/A.gba", 100, 220 });
+	CHECK(addPending(c, p, error) && addPending(c, p, error));
+	EQ(slurp(c.dir + "/pending"), "push\tgba\t/data/roms/gba/A.gba\nplay\tgba\t/data/roms/gba/A.gba\t100\t220\n");
+	Pending q = pending(c);
+	CHECK(q.pushes.size() == 1 && q.plays.size() == 1 && q.plays[0].end == 220);
+	Pending only;
+	only.pushes = p.pushes;
+	CHECK(removePending(c, only, error));
+	EQ(slurp(c.dir + "/pending"), "play\tgba\t/data/roms/gba/A.gba\t100\t220\n");
+	Conflict k;
+	k.system = "gba"; k.rom = "/data/roms/gba/A.gba"; k.romId = 101; k.saveId = 7; k.serverTime = "2026-10-24T10:00:00Z"; k.noted = 5;
+	CHECK(noteConflict(c, k, error));
+	k.saveId = 8;
+	CHECK(noteConflict(c, k, error));
+	std::vector<Conflict> ks = conflicts(c);
+	CHECK(ks.size() == 1 && ks[0].saveId == 8 && ks[0].romId == 101);
+	CHECK(clearConflict(c, "gba", "/data/roms/gba/A.gba", error) && conflicts(c).empty());
+	CHECK(setSynced(c, 101, "aaa", error) && setSynced(c, 102, "bbb", error) && setSynced(c, 101, "ccc", error));
+	EQ(syncedHash(c, 101), "ccc"); EQ(syncedHash(c, 102), "bbb"); EQ(syncedHash(c, 1), "");
+	CHECK(setSynced(c, 101, "", error));
+	EQ(syncedHash(c, 101), "");
+	Last l;
+	l.when = 9; l.state = "revoked"; l.sent = 1;
+	CHECK(setLast(c, l, error));
+	CHECK(last(c).state == "revoked" && last(c).sent == 1 && last(c).when == 9);
+	unsetenv("KIWAMI_ROMM_CARD"); unsetenv("KIWAMI_ROMM_ETC"); unsetenv("KIWAMI_LIBRETRO");
+	if (system(("rm -rf " + t).c_str()) != 0) {}
+}
+
 int main(int argc, char** argv)
 {
 	dir = argc > 1 ? argv[1] : "kiwami/tests/tailscale";
 	raDir = argc > 2 ? argv[2] : "kiwami/tests/ra";
+	systemsConf = argc > 3 ? argv[3] : "system/rootfs/etc/banana/systems.conf";
 	testJson();
 	testStatus();
 	testName();
@@ -831,6 +994,7 @@ int main(int argc, char** argv)
 	testPanelToken();
 	testHash();
 	testRomm();
+	testRommSaves();
 	if (failed) { fprintf(stderr, "units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("units: %d checks passed\n", checks);
 	return 0;

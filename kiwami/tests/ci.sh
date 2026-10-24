@@ -28,16 +28,16 @@ for d in ui/src/kiwami/third_party/*/; do (cd "$d" && sha256sum -c --quiet SHA25
 echo "third_party: $(ls -d ui/src/kiwami/third_party/*/ | wc -l) vendored libraries checked"
 
 # banana-ui's code of the fork's that needs no screen (the JSON reader, Tailscale's status, the name, the QR code,
-# Settings' grid of groups, RetroAchievements' replies, its account on the card and its games' hashes, RomM's replies
-# and RomM on the card), with the host's g++ and the vendored C built by banana-ui's own rules
+# Settings' grid of groups, RetroAchievements' replies, its account on the card and its games' hashes, RomM's replies,
+# RomM on the card and the games' saves), with the host's g++ and the vendored C built by banana-ui's own rules
 make -s -C ui kiwami-c
 T=$(mktemp -d)
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp \
     ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp ui/src/kiwami/rahash.cpp \
     ui/src/kiwami/ra7z.cpp ui/src/kiwami/rachd.cpp ui/src/zip.cpp ui/src/kiwami/conf.cpp ui/src/kiwami/rommcard.cpp \
-    ui/src/kiwami/romm/api.cpp ui/src/kiwami/romm/http.cpp \
+    ui/src/kiwami/romm/api.cpp ui/src/kiwami/romm/http.cpp ui/src/kiwami/romm/saves.cpp ui/src/kiwami/romm/games.cpp \
     $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -lz
-"$T/units" kiwami/tests/tailscale kiwami/tests/ra
+"$T/units" kiwami/tests/tailscale kiwami/tests/ra system/rootfs/etc/banana/systems.conf
 # the stand-in RetroAchievements and RomM servers the tests run against (their bytecode in $T, not beside them)
 PYTHONPYCACHEPREFIX="$T" python3 -m py_compile kiwami/tests/ra-server.py kiwami/tests/romm-server.py
 rm -rf "$T"

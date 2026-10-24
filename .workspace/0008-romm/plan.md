@@ -377,7 +377,8 @@ detaching, for the tests.
       `GET /api/platforms`, then `GET /api/roms?platform_ids=<id>&limit=10000`). The file's name is matched against
       `fs_name` exactly, then without case. A game in a folder of its own is matched by the folder's name. A match is
       written to `games`.
-    - On a miss the list is fetched again, at most once per run of the helper. Not found: `none`, logged.
+    - On a miss the list is fetched again, at most once per run of the helper, except by `pull`, which fetches a
+      list only when none is cached (*Deviations*, 25 Oct). Not found: `none`, logged.
   - **`api`**:
     - `platforms()` and `roms(platform, search, offset, limit)`, the parsers for `items`/`total`;
     - `negotiate(saves, romIds)` → `session_id` and the operations (`action`, `rom_id`, `save_id`, `slot`,
@@ -388,10 +389,13 @@ detaching, for the tests.
     - `confirmDownload(id, deviceId, hash)`;
     - `complete(session, done, failed, playSessions)`.
   - **`rommcard`**:
-    - `banana/romm/pending`: `push\t<system>\t<rom>` and `play\t<rom id>\t<start>\t<end>` lines, each once;
+    - `banana/romm/pending`: `push\t<system>\t<rom>` and `play\t<system>\t<rom>\t<start>\t<end>` lines, each once
+      (*Deviations*, 25 Oct);
     - `banana/romm/conflicts`: `<system>\t<rom>\t<rom id>\t<save id>\t<server time>\t<noted>`;
     - `banana/romm/last`: the last sync's result, `<time>\t<state>\t<sent>\t<fetched>\t<conflicts>\t<skipped>`,
       where state is `synced`, `conflicts`, `down` or `revoked`.
+
+    - `banana/romm/synced`: `<rom id>\t<hash>`, each game's save at its last sync (*Deviations*, 25 Oct).
 
     Each is read, and written through `replaceFile`.
   - **`main.cpp`**:
@@ -745,6 +749,29 @@ Notes from the runs (what the logs showed, what was fixed):
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
 
+- **25 Oct 2026, step 2: the pull never fetches a platform's list again on a miss.** RomM 5.4.1's `GET /api/roms`
+  can't pick fields: each game comes with its whole schema (about 90 fields, the metadata and summary included), so a
+  platform of 1,000 games is several MB. The plan fetched the list again on a miss once per run of the helper, and
+  each pull is a run, so a game RomM doesn't have would have cost up to the 3 s cap on every start. Now the pull uses
+  `games` and the cached list, and fetches a platform's list only when there's no cache for it yet (the first game
+  after pairing). The push after the game and Sync now still fetch again on a miss, once per run, and write what they
+  find to `games`, so the next pull has it. The lists are fetched 500 games a page, so a large platform is never held
+  whole. Agreed with the user.
+- **25 Oct 2026, step 2: a pending play session keeps its system and ROM, not its RomM id.** `romm pending` runs after
+  a shutdown with no network, when a game never matched yet has no id to write. The line is
+  `play\t<system>\t<rom>\t<start>\t<end>`, and the id is found when the session is sent, as for a pending push.
+  Agreed with the user.
+- **25 Oct 2026, step 2: the client keeps each game's hash at its last sync, and makes its own conflicts.** RomM 5.4.1
+  keeps a device's sync per save row (`get_syncs_for_device_and_saves` over the slots' current rows), and every slotted
+  upload is a new row (`reserve_version_name`), the web player's included. So when both sides changed and the other
+  device's save is the newer, the negotiation has no sync of that row for the handheld, falls back to the times, and
+  answers `download`, not `conflict`: followed, it would replace a save changed on the handheld, against A11. RomM
+  only catches it the other way round, a 409 on the upload when the handheld's save is the newer. Now the helper
+  writes the hash of each game's save at its last sync (an upload, a download, a no-op) to `banana/romm/synced`
+  (`<rom id>\t<hash>`), and a `download` over a card save that differs from it is a conflict: noted, nothing
+  overwritten. With no record yet (the first sync of a game saved on both sides) RomM's times decide, as RomM does,
+  and the card's save is kept as `.bak`. The stand-in server stays as RomM is. Agreed with the user.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -752,7 +779,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. The helper, its package, and pairing | done | RomM: a helper of the fork's own, its package, and pairing by RomM's device flow |
-| 2. A game's save: its RomM id, the pull before it and the push after | todo | |
+| 2. A game's save: its RomM id, the pull before it and the push after | done | RomM: a game's save pulled from RomM before it and pushed after, the conflicts kept for later |
 | 3. Sync now and the conflicts resolved | todo | |
 | 4. The wrapper around the games, put into the image's systems.conf | todo | |
 | 5. Settings: the RomM group and its Account page | todo | |

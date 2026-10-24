@@ -4,7 +4,11 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
+#include <fcntl.h>
+#include <sstream>
+#include <sys/file.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 namespace banana::kiwami::romm
 {
@@ -17,6 +21,56 @@ namespace banana::kiwami::romm
 			while (s.size() > 1 && s.back() == '/') s.pop_back();
 			return s;
 		}
+
+		std::vector<std::string> fields(const std::string& ln)
+		{
+			std::vector<std::string> f;
+			std::istringstream in(ln);
+			std::string x;
+			while (std::getline(in, x, '\t')) f.push_back(x);
+			return f;
+		}
+
+		std::vector<std::string> lines(const std::string& path)
+		{
+			std::string text, ln;
+			bool there = false;
+			readFile(path, text, there);
+			std::vector<std::string> l;
+			std::istringstream in(text);
+			while (std::getline(in, ln)) if (!ln.empty()) l.push_back(ln);
+			return l;
+		}
+
+		bool writeLines(const Card& c, const std::string& path, const std::vector<std::string>& l, std::string& error)
+		{
+			std::string text;
+			for (auto& ln : l) text += ln + "\n";
+			if (!makeDir(c.dir)) { error = "can't make " + c.dir; return false; }
+			return replaceFile(path, text, error);
+		}
+
+		std::vector<std::string> pendingLines(const Pending& p)
+		{
+			std::vector<std::string> l;
+			for (auto& x : p.pushes) l.push_back("push\t" + x.system + "\t" + x.rom);
+			for (auto& x : p.plays)
+				l.push_back("play\t" + x.system + "\t" + x.rom + "\t" + std::to_string(x.start) + "\t" + std::to_string(x.end));
+			return l;
+		}
+
+		// the pending file's lock, held while the object lives
+		struct PendingLock
+		{
+			int fd;
+			explicit PendingLock(const Card& c)
+			{
+				makeDir(c.run);
+				fd = open((c.run + "/romm-pending.lock").c_str(), O_RDWR | O_CREAT, 0644);
+				if (fd >= 0) flock(fd, LOCK_EX);
+			}
+			~PendingLock() { if (fd >= 0) close(fd); }
+		};
 	}
 
 	Card::Card()
@@ -115,5 +169,112 @@ namespace banana::kiwami::romm
 		std::string error;
 		if (!makeDir(c.dir) || !replaceFile(path, id + "\n", error)) return "";
 		return id;
+	}
+
+	Pending pending(const Card& c)
+	{
+		Pending p;
+		for (auto& ln : lines(c.dir + "/pending"))
+		{
+			std::vector<std::string> f = fields(ln);
+			if (f.size() == 3 && f[0] == "push") p.pushes.push_back({ f[1], f[2] });
+			else if (f.size() == 5 && f[0] == "play") p.plays.push_back({ f[1], f[2], atoll(f[3].c_str()), atoll(f[4].c_str()) });
+		}
+		return p;
+	}
+
+	bool addPending(const Card& c, const Pending& add, std::string& error)
+	{
+		PendingLock lock(c);
+		std::vector<std::string> l = lines(c.dir + "/pending"), n = pendingLines(add);
+		size_t before = l.size();
+		for (auto& x : n)
+		{
+			bool there = false;
+			for (auto& y : l) there |= x == y;
+			if (!there) l.push_back(x);
+		}
+		return l.size() == before || writeLines(c, c.dir + "/pending", l, error);
+	}
+
+	bool removePending(const Card& c, const Pending& done, std::string& error)
+	{
+		PendingLock lock(c);
+		std::vector<std::string> l = lines(c.dir + "/pending"), d = pendingLines(done), out;
+		for (auto& x : l)
+		{
+			bool gone = false;
+			for (auto& y : d) gone |= x == y;
+			if (!gone) out.push_back(x);
+		}
+		return out.size() == l.size() || writeLines(c, c.dir + "/pending", out, error);
+	}
+
+	std::vector<Conflict> conflicts(const Card& c)
+	{
+		std::vector<Conflict> k;
+		for (auto& ln : lines(c.dir + "/conflicts"))
+		{
+			std::vector<std::string> f = fields(ln);
+			if (f.size() < 6) continue;
+			k.push_back({ f[0], f[1], atol(f[2].c_str()), atol(f[3].c_str()), f[4], atoll(f[5].c_str()) });
+		}
+		return k;
+	}
+
+	bool noteConflict(const Card& c, const Conflict& k, std::string& error)
+	{
+		std::vector<std::string> out;
+		std::string key = k.system + "\t" + k.rom + "\t";
+		for (auto& ln : lines(c.dir + "/conflicts")) if (ln.compare(0, key.size(), key) != 0) out.push_back(ln);
+		out.push_back(key + std::to_string(k.romId) + "\t" + std::to_string(k.saveId) + "\t" + k.serverTime + "\t" + std::to_string(k.noted));
+		return writeLines(c, c.dir + "/conflicts", out, error);
+	}
+
+	bool clearConflict(const Card& c, const std::string& system, const std::string& rom, std::string& error)
+	{
+		std::vector<std::string> l = lines(c.dir + "/conflicts"), out;
+		std::string key = system + "\t" + rom + "\t";
+		for (auto& ln : l) if (ln.compare(0, key.size(), key) != 0) out.push_back(ln);
+		return out.size() == l.size() || writeLines(c, c.dir + "/conflicts", out, error);
+	}
+
+	Last last(const Card& c)
+	{
+		Last l;
+		std::vector<std::string> ls = lines(c.dir + "/last");
+		if (ls.empty()) return l;
+		std::vector<std::string> f = fields(ls[0]);
+		if (f.size() < 6) return l;
+		l.when = atoll(f[0].c_str());
+		l.state = f[1];
+		l.sent = atoi(f[2].c_str());
+		l.fetched = atoi(f[3].c_str());
+		l.conflicts = atoi(f[4].c_str());
+		l.skipped = atoi(f[5].c_str());
+		return l;
+	}
+
+	bool setLast(const Card& c, const Last& l, std::string& error)
+	{
+		return writeLines(c, c.dir + "/last", { std::to_string(l.when) + "\t" + l.state + "\t" + std::to_string(l.sent) + "\t"
+			+ std::to_string(l.fetched) + "\t" + std::to_string(l.conflicts) + "\t" + std::to_string(l.skipped) }, error);
+	}
+
+	std::string syncedHash(const Card& c, long romId)
+	{
+		std::string key = std::to_string(romId) + "\t";
+		for (auto& ln : lines(c.dir + "/synced")) if (ln.compare(0, key.size(), key) == 0) return ln.substr(key.size());
+		return "";
+	}
+
+	bool setSynced(const Card& c, long romId, const std::string& hash, std::string& error)
+	{
+		std::string key = std::to_string(romId) + "\t";
+		std::vector<std::string> l = lines(c.dir + "/synced"), out;
+		for (auto& ln : l) if (ln.compare(0, key.size(), key) != 0) out.push_back(ln);
+		if (!hash.empty()) out.push_back(key + hash);
+		if (out == l) return true;
+		return writeLines(c, c.dir + "/synced", out, error);
 	}
 }

@@ -4,6 +4,7 @@
 #include "../json.h"
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 
 namespace banana::kiwami::romm
 {
@@ -28,6 +29,20 @@ namespace banana::kiwami::romm
 		{
 			return v.type == json::Value::NUM && v.n > 0 ? (int)v.n : dflt;
 		}
+
+		long long whole(const json::Value& v) { return v.type == json::Value::NUM ? (long long)v.n : 0; }
+
+		// a request to the server, with its token and timeouts
+		Request to(const Server& s, const char* method, const std::string& path)
+		{
+			Request r;
+			r.method = method;
+			r.url = s.url + path;
+			r.token = s.token;
+			r.connectMs = s.connectMs;
+			r.totalMs = s.totalMs;
+			return r;
+		}
 	}
 
 	Version versionOk(const std::string& v)
@@ -42,6 +57,27 @@ namespace banana::kiwami::romm
 		if (e == q) return NEWER;
 		if (major != 5) return major < 5 ? OLD : NEWER;
 		return minor < 4 ? OLD : minor == 4 ? OK : NEWER;
+	}
+
+	std::string urlEscape(const std::string& s)
+	{
+		static const char* HEX = "0123456789ABCDEF";
+		std::string e;
+		for (unsigned char c : s)
+			if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.' || c == '_' || c == '~') e += (char)c;
+			else { e += '%'; e += HEX[c >> 4]; e += HEX[c & 15]; }
+		return e;
+	}
+
+	std::string isoTime(long long ms)
+	{
+		time_t t = (time_t)(ms / 1000);
+		struct tm g;
+		gmtime_r(&t, &g);
+		char b[96];
+		snprintf(b, sizeof b, "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ", g.tm_year + 1900, g.tm_mon + 1, g.tm_mday, g.tm_hour, g.tm_min,
+			g.tm_sec, (int)(ms % 1000));
+		return b;
 	}
 
 	std::string jsonString(const std::string& s)
@@ -170,6 +206,178 @@ namespace banana::kiwami::romm
 		r.token = s.token;
 		r.connectMs = s.connectMs;
 		r.totalMs = s.totalMs;
+		return perform(r).status;
+	}
+
+	// ---- the library ------------------------------------------------------------------------------------------------
+	Platforms parsePlatforms(const std::string& body, long status)
+	{
+		Platforms p;
+		p.status = status;
+		json::Value v;
+		if (status != 200 || !json::parse(body, v) || v.type != json::Value::ARR) return p;
+		for (auto& e : v.arr)
+		{
+			Platform pl;
+			pl.id = (long)whole(e["id"]);
+			pl.slug = e["slug"].str();
+			pl.name = e["name"].str();
+			pl.romCount = (long)whole(e["rom_count"]);
+			if (pl.id && !pl.slug.empty()) p.list.push_back(pl);
+		}
+		p.ok = true;
+		return p;
+	}
+
+	Platforms platforms(const Server& s)
+	{
+		Response res = perform(to(s, "GET", "/api/platforms"));
+		return parsePlatforms(res.body, res.status);
+	}
+
+	Roms parseRoms(const std::string& body, long status)
+	{
+		Roms r;
+		r.status = status;
+		json::Value v;
+		if (status != 200 || !json::parse(body, v) || v["items"].type != json::Value::ARR) return r;
+		r.total = (long)whole(v["total"]);
+		for (auto& e : v["items"].arr)
+		{
+			Rom rom;
+			rom.id = (long)whole(e["id"]);
+			rom.fsName = e["fs_name"].str();
+			rom.name = e["name"].str();
+			rom.size = whole(e["fs_size_bytes"]);
+			if (rom.id && !rom.fsName.empty()) r.items.push_back(rom);
+		}
+		r.ok = true;
+		return r;
+	}
+
+	Roms roms(const Server& s, long platform, const std::string& search, long offset, long limit)
+	{
+		std::string q = "/api/roms?platform_ids=" + std::to_string(platform) + "&offset=" + std::to_string(offset) + "&limit="
+			+ std::to_string(limit) + "&order_by=id&order_dir=asc";
+		if (!search.empty()) q += "&search_term=" + urlEscape(search);
+		Response res = perform(to(s, "GET", q));
+		return parseRoms(res.body, res.status);
+	}
+
+	// ---- the saves' sync --------------------------------------------------------------------------------------------
+	Negotiation parseNegotiation(const std::string& body, long status)
+	{
+		Negotiation n;
+		n.status = status;
+		json::Value v;
+		if (status != 200 || !json::parse(body, v) || v["operations"].type != json::Value::ARR)
+		{
+			std::string why = status ? detail(body) : "";
+			n.error = why.empty() ? unreadable(status) : why + " (" + std::to_string(status) + ")";
+			return n;
+		}
+		n.session = (long)whole(v["session_id"]);
+		for (auto& e : v["operations"].arr)
+		{
+			Operation o;
+			o.action = e["action"].str();
+			o.romId = (long)whole(e["rom_id"]);
+			o.saveId = (long)whole(e["save_id"]);
+			o.slot = e["slot"].str();
+			o.fileName = e["file_name"].str();
+			o.emulator = e["emulator"].str();
+			o.serverHash = e["server_content_hash"].str();
+			o.serverTime = e["server_updated_at"].str();
+			if (!o.action.empty() && o.romId) n.ops.push_back(o);
+		}
+		n.ok = true;
+		return n;
+	}
+
+	Negotiation negotiate(const Server& s, const std::string& deviceId, const std::vector<ClientSave>& saves, const std::vector<long>& romIds)
+	{
+		Request r = to(s, "POST", "/api/sync/negotiate");
+		r.type = "application/json";
+		std::string list, ids;
+		for (auto& c : saves)
+			list += std::string(list.empty() ? "" : ", ") + "{\"rom_id\": " + std::to_string(c.romId) + ", \"file_name\": " + jsonString(c.fileName)
+				+ ", \"slot\": \"autosave\", \"emulator\": " + jsonString(c.emulator) + ", \"content_hash\": " + jsonString(c.hash)
+				+ ", \"updated_at\": " + jsonString(isoTime(c.mtimeMs)) + ", \"file_size_bytes\": " + std::to_string(c.size) + "}";
+		for (long id : romIds) ids += (ids.empty() ? "" : ", ") + std::to_string(id);
+		r.body = "{\"device_id\": " + jsonString(deviceId) + ", \"saves\": [" + list + "], \"rom_ids\": [" + ids + "]}";
+		Response res = perform(r);
+		return parseNegotiation(res.body, res.status);
+	}
+
+	Upload uploadSave(const Server& s, const ClientSave& save, const std::string& deviceId, long session, bool overwrite,
+		const std::string& bytes)
+	{
+		std::string q = "/api/saves?rom_id=" + std::to_string(save.romId) + "&emulator=" + urlEscape(save.emulator)
+			+ "&slot=autosave&device_id=" + urlEscape(deviceId) + "&content_hash=" + save.hash + "&overwrite="
+			+ (overwrite ? "true" : "false") + "&autocleanup=true";
+		if (session) q += "&session_id=" + std::to_string(session);
+		Request r = to(s, "POST", q);
+		r.body = multipart("saveFile", save.fileName, bytes, r.type);
+		Response res = perform(r);
+		Upload u;
+		u.status = res.status;
+		u.conflict = res.status == 409;
+		json::Value v;
+		if (res.status == 200 && json::parse(res.body, v)) { u.saveId = (long)whole(v["id"]); u.ok = true; }
+		return u;
+	}
+
+	long downloadSave(const Server& s, long id, const std::string& deviceId, long session, std::string& bytes)
+	{
+		std::string q = "/api/saves/" + std::to_string(id) + "/content?device_id=" + urlEscape(deviceId);
+		if (session) q += "&session_id=" + std::to_string(session);
+		Response res = perform(to(s, "GET", q));
+		bytes = res.status == 200 ? res.body : "";
+		return res.status;
+	}
+
+	long confirmDownload(const Server& s, long id, const std::string& deviceId, const std::string& hash)
+	{
+		Request r = to(s, "POST", "/api/saves/" + std::to_string(id) + "/downloaded");
+		r.type = "application/json";
+		r.body = "{\"device_id\": " + jsonString(deviceId) + ", \"content_hash\": " + (hash.empty() ? "null" : jsonString(hash)) + "}";
+		return perform(r).status;
+	}
+
+	namespace
+	{
+		// the plays as RomM's PlaySessionEntry list, "" when none is long enough to send
+		std::string playList(const std::vector<PlaySession>& plays)
+		{
+			std::string list;
+			for (auto& p : plays)
+			{
+				if (!p.romId || p.end < p.start + 1) continue;
+				list += std::string(list.empty() ? "" : ", ") + "{\"rom_id\": " + std::to_string(p.romId) + ", \"save_slot\": \"autosave\", "
+					+ "\"start_time\": " + jsonString(isoTime(p.start * 1000)) + ", \"end_time\": " + jsonString(isoTime(p.end * 1000))
+					+ ", \"duration_ms\": " + std::to_string((p.end - p.start) * 1000) + "}";
+			}
+			return list;
+		}
+	}
+
+	long playSessions(const Server& s, const std::string& deviceId, const std::vector<PlaySession>& plays)
+	{
+		std::string list = playList(plays);
+		if (list.empty()) return 201;
+		Request r = to(s, "POST", "/api/play-sessions");
+		r.type = "application/json";
+		r.body = "{\"device_id\": " + jsonString(deviceId) + ", \"sessions\": [" + list + "]}";
+		return perform(r).status;
+	}
+
+	long complete(const Server& s, long session, int done, int failed, const std::vector<PlaySession>& plays)
+	{
+		Request r = to(s, "POST", "/api/sync/sessions/" + std::to_string(session) + "/complete");
+		r.type = "application/json";
+		std::string list = playList(plays);
+		r.body = "{\"operations_completed\": " + std::to_string(done) + ", \"operations_failed\": " + std::to_string(failed)
+			+ (list.empty() ? "" : ", \"play_sessions\": [" + list + "]") + "}";
 		return perform(r).status;
 	}
 }

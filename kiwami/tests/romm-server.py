@@ -13,15 +13,37 @@
 #                                       the device once, as RomM's consume_approved
 #   GET  /api/devices/<id>              the device (devices.read), 404 when it isn't the token's user's
 #   DELETE /api/devices/<id>            204, the device and its tokens gone
+#   GET  /api/platforms                 the library's platforms, with their games' counts
+#   GET  /api/roms                      a platform's games (platform_ids, search_term, offset, limit), paged as RomM's
+#                                       {items, total, limit, offset}
+#   POST /api/sync/negotiate            the saves' negotiation as endpoints/sync/__init__.py's negotiate_sync and
+#                                       handler/sync/comparison.py decide it: saves paired on (rom_id, slot), the
+#                                       newest of a slot the current one, each device's last sync of a save (its time,
+#                                       the client's and the server's hashes), versions a slot lost and when (delete),
+#                                       scoped by rom_ids
+#   POST /api/saves                     an upload (multipart saveFile) with endpoints/saves.py's add_save rules: 409
+#                                       when the slot's newest save isn't the one this device last synced (unless
+#                                       overwrite), the same bytes again in a slot taken as that save
+#   GET  /api/saves/<id>/content        a save's bytes, the device's sync of it recorded (its server half)
+#   POST /api/saves/<id>/downloaded     the device's sync completed with the hash it holds, as confirm_download
+#   POST /api/sync/sessions/<id>/complete    the session closed, its play sessions kept
+#   POST /api/play-sessions             play sessions on their own (201), one with the same game and start skipped
 # and for the tests:
 #   POST /test/approve, /test/deny, /test/expire    the newest pairing waiting (or ?user_code=)
 #   POST /test/revoke                   every token refused from then on (401)
 #   POST /test/version?v=<version>      the heartbeat's version from then on
 #   GET  /test/devices                  the devices, one "<id> <name> <client> <client_version> <identifier>" line each
+#   POST /test/save?rom_id=&slot=&emulator=     the body uploaded as another device would (RomM's web player)
+#   POST /test/delete-slot?rom_id=&slot=        the slot emptied, as RomM's own page does (its versions' removal kept)
+#   GET  /test/saves                    the saves, as JSON: id, rom_id, slot, emulator, hash, size, file_name, data
+#                                       (the bytes, latin-1), newest last
+#   GET  /test/play-sessions            the play sessions received, as JSON
 # Its library (platforms, ROMs and their files' bytes, firmware) is kiwami/tests/romm/library.json. Each request
 # appends "METHOD path?query auth=<0|1>" to <log file>: whether a token was sent, never the token. With KIWAMI_ROMM_DOWN
 # set it closes every connection unanswered, as a server that can't be reached; with KIWAMI_ROMM_STALL=<s> it holds each
 # answer that long, as one that stalls.
+import datetime
+import hashlib
 import http.server
 import json
 import os
@@ -54,6 +76,86 @@ class State:
         self.tokens = {}     # token -> device id
         with open(os.path.join(HERE, "library.json")) as f:
             self.library = json.load(f)
+        self.saves = []      # {id, rom_id, slot, emulator, file_name, hash, updated, data}, oldest first
+        self.syncs = {}      # (device, save id) -> {synced, hash, server_hash}
+        self.removed = {}    # (rom_id, slot) -> {hash: when}
+        self.sessions = {}   # id -> {device, status}
+        self.plays = []      # the play sessions received
+        self.next_id = 1
+
+    def new_id(self):
+        self.next_id += 1
+        return self.next_id
+
+    # the current save of each (rom_id, slot): the newest
+    def current(self, rom_ids=None):
+        cur = {}
+        for sv in self.saves:
+            if sv["slot"] is None or (rom_ids is not None and sv["rom_id"] not in rom_ids):
+                continue
+            k = (sv["rom_id"], sv["slot"])
+            if k not in cur or sv["updated"] > cur[k]["updated"]:
+                cur[k] = sv
+        return cur
+
+    def save_by_id(self, i):
+        return next((sv for sv in self.saves if sv["id"] == i), None)
+
+
+def parse_time(text):
+    return datetime.datetime.fromisoformat(text.replace("Z", "+00:00")).timestamp()
+
+
+def iso(t):
+    return datetime.datetime.fromtimestamp(t, datetime.timezone.utc).isoformat()
+
+
+# handler/sync/comparison.py, with times as seconds
+def held_since_removal(client_hash, client_ts, removed):
+    when = (removed or {}).get(client_hash) if client_hash else None
+    return when is not None and client_ts <= when
+
+
+def compare_save_state(client_hash, client_ts, server_hash, server_ts, sync, removed):
+    if client_hash and server_hash and client_hash == server_hash:
+        return "no_op", "Content is identical"
+    if held_since_removal(client_hash, client_ts, removed):
+        return "download", "Client holds a version removed on the server"
+    if sync:
+        client_unchanged = bool(client_hash and sync["hash"] and client_hash == sync["hash"])
+        server_unchanged = bool(server_hash and sync["server_hash"] and server_hash == sync["server_hash"])
+        client_changed = client_ts > sync["synced"] and not client_unchanged
+        server_changed = server_ts > sync["synced"] and not server_unchanged
+        if client_changed and server_changed:
+            return "conflict", "Both sides changed since last sync"
+        if client_changed:
+            return "upload", "Client save is newer than last sync"
+        if server_changed:
+            return "download", "Server save is newer than last sync"
+        return "no_op", "No changes since last sync"
+    if client_ts > server_ts:
+        return "upload", "Client save is newer (no sync history)"
+    if server_ts > client_ts:
+        return "download", "Server save is newer (no sync history)"
+    if client_hash != server_hash:
+        return "conflict", "Same timestamp but different content"
+    return "no_op", "Saves appear identical"
+
+
+def multipart_file(ctype, body):
+    """The first file part of a multipart/form-data body: (field, filename, bytes)."""
+    boundary = ctype.split("boundary=", 1)[1].strip().strip('"').encode()
+    for part in body.split(b"--" + boundary)[1:]:
+        if part.startswith(b"--"):
+            break
+        head, _, data = part.partition(b"\r\n\r\n")
+        head = head.decode("latin-1")
+        if data.endswith(b"\r\n"):
+            data = data[:-2]
+        name = head.split('name="', 1)[1].split('"', 1)[0] if 'name="' in head else ""
+        fname = head.split('filename="', 1)[1].split('"', 1)[0] if 'filename="' in head else ""
+        return name, fname, data
+    return "", "", b""
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -118,22 +220,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.init(st)
         if method == "POST" and path == "/api/auth/device/token":
             return self.poll(st)
-        if path.startswith("/api/devices/"):
+        if path.startswith("/api/") and path != "/api/heartbeat" and not path.startswith("/api/auth/"):
             dev = self.authed()
             if dev is None:
                 return
-            want = path[len("/api/devices/"):]
-            if want != dev or want not in st.devices:
-                return self.detail(404, "Device with ID %s not found" % want)
-            if method == "GET":
-                d = st.devices[want]
-                return self.reply(200, {"id": want, "name": d["name"], "client": d["client"],
-                                        "client_version": d["client_version"], "sync_enabled": True})
-            if method == "DELETE":
-                del st.devices[want]
-                for t in [t for t, d in st.tokens.items() if d == want]:
-                    del st.tokens[t]
-                return self.reply(204)
+            return self.api(method, path, q, st, dev)
         if method == "POST" and path in ("/test/approve", "/test/deny", "/test/expire"):
             code = self.waiting(st, q.get("user_code"))
             if code is None:
@@ -150,6 +241,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
             else:
                 del st.flows[code]
             return self.reply(200, {"ok": True})
+        if method == "POST" and path == "/test/save":
+            data = self.body()
+            rom = int(q["rom_id"])
+            st.saves.append({"id": st.new_id(), "rom_id": rom, "slot": q.get("slot", "autosave"),
+                             "emulator": q.get("emulator"), "file_name": "web.sav", "hash": hashlib.md5(data).hexdigest(),
+                             "updated": time.time(), "data": data})
+            return self.reply(200, {"id": st.next_id})
+        if method == "POST" and path == "/test/delete-slot":
+            key = (int(q["rom_id"]), q.get("slot", "autosave"))
+            gone = [sv for sv in st.saves if (sv["rom_id"], sv["slot"]) == key]
+            for sv in gone:
+                st.removed.setdefault(key, {})[sv["hash"]] = time.time()
+                st.saves.remove(sv)
+            return self.reply(200, {"deleted": len(gone)})
+        if method == "GET" and path == "/test/saves":
+            return self.reply(200, [{"id": sv["id"], "rom_id": sv["rom_id"], "slot": sv["slot"], "emulator": sv["emulator"],
+                                     "hash": sv["hash"], "size": len(sv["data"]), "file_name": sv["file_name"],
+                                     "data": sv["data"].decode("latin-1")} for sv in st.saves])
+        if method == "GET" and path == "/test/play-sessions":
+            return self.reply(200, st.plays)
         if method == "POST" and path == "/test/revoke":
             st.tokens.clear()
             return self.reply(200, {"ok": True})
@@ -161,6 +272,184 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                                 d["identifier"]) for i, d in st.devices.items())
             return self.reply(200, lines.encode(), "text/plain")
         self.detail(404, "Not Found")
+
+    # the API behind a token: dev is the token's device
+    def api(self, method, path, q, st, dev):
+        parts = path.strip("/").split("/")
+        if parts[:2] == ["api", "devices"] and len(parts) == 3:
+            want = parts[2]
+            if want != dev or want not in st.devices:
+                return self.detail(404, "Device with ID %s not found" % want)
+            if method == "GET":
+                d = st.devices[want]
+                return self.reply(200, {"id": want, "name": d["name"], "client": d["client"],
+                                        "client_version": d["client_version"], "sync_enabled": True})
+            if method == "DELETE":
+                del st.devices[want]
+                for t in [t for t, d in st.tokens.items() if d == want]:
+                    del st.tokens[t]
+                return self.reply(204)
+        lib = st.library
+        if method == "GET" and path == "/api/platforms":
+            return self.reply(200, [{"id": p["id"], "slug": p["slug"], "fs_slug": p["slug"], "name": p["name"],
+                                     "rom_count": sum(1 for r in lib["roms"] if r["platform_id"] == p["id"])}
+                                    for p in lib["platforms"]])
+        if method == "GET" and path == "/api/roms":
+            pids = {int(x) for x in urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get("platform_ids", [])}
+            items = [r for r in lib["roms"] if not pids or r["platform_id"] in pids]
+            term = q.get("search_term", "").lower()
+            if term:
+                items = [r for r in items if all(w in (r["name"] + " " + r["fs_name"]).lower() for w in term.split())]
+            items.sort(key=lambda r: r["id"])
+            offset, limit = int(q.get("offset", "0")), int(q.get("limit", "50"))
+            if not 1 <= limit <= 10000:
+                return self.detail(422, "limit out of range")
+            page = items[offset:offset + limit]
+            # (RomM's SimpleRomSchema has some 90 fields; the ones the helper reads, and a summary as heavy as RomM's)
+            return self.reply(200, {"items": [{"id": r["id"], "platform_id": r["platform_id"], "fs_name": r["fs_name"],
+                                               "name": r["name"], "fs_size_bytes": sum(f["size"] for f in r["files"]),
+                                               "summary": "x" * 400} for r in page],
+                                    "total": len(items), "limit": limit, "offset": offset})
+        if method == "POST" and path == "/api/sync/negotiate":
+            return self.negotiate(st, dev)
+        if method == "POST" and path == "/api/saves":
+            return self.upload(st, dev, q)
+        if parts[:2] == ["api", "saves"] and len(parts) == 4 and parts[3] == "content" and method == "GET":
+            sv = st.save_by_id(int(parts[2]))
+            if sv is None:
+                return self.detail(404, "Save with ID %s not found" % parts[2])
+            if q.get("device_id") == dev:
+                st.syncs[(dev, sv["id"])] = {"synced": sv["updated"], "hash": None, "server_hash": sv["hash"]}
+            return self.reply(200, sv["data"], "application/octet-stream")
+        if parts[:2] == ["api", "saves"] and len(parts) == 4 and parts[3] == "downloaded" and method == "POST":
+            sv = st.save_by_id(int(parts[2]))
+            if sv is None:
+                return self.detail(404, "Save with ID %s not found" % parts[2])
+            p = json.loads(self.body() or b"{}")
+            synced, server_hash, client_hash = sv["updated"], sv["hash"], p.get("content_hash")
+            served = st.syncs.get((p["device_id"], sv["id"]))
+            if served and served["server_hash"] and not served["hash"]:
+                synced, server_hash = served["synced"], served["server_hash"]
+            elif client_hash != server_hash:
+                client_hash = server_hash = None
+            st.syncs[(p["device_id"], sv["id"])] = {"synced": synced, "hash": client_hash, "server_hash": server_hash}
+            return self.reply(200, {"id": sv["id"]})
+        if parts[:3] == ["api", "sync", "sessions"] and len(parts) == 5 and parts[4] == "complete" and method == "POST":
+            sess = st.sessions.get(int(parts[3]))
+            if sess is None:
+                return self.detail(404, "Sync session with ID %s not found" % parts[3])
+            if sess["status"] != "in_progress":
+                return self.detail(400, "Session is already %s" % sess["status"])
+            p = json.loads(self.body() or b"{}")
+            if not self.take_plays(st, dev, p.get("play_sessions") or []):
+                return
+            sess["status"] = "completed"
+            return self.reply(200, {"session": {"id": int(parts[3]), "status": "completed"}})
+        if method == "POST" and path == "/api/play-sessions":
+            p = json.loads(self.body() or b"{}")
+            if not p.get("sessions"):
+                return self.detail(400, "Payload must contain at least one session")
+            if not self.take_plays(st, dev, p["sessions"]):
+                return
+            return self.reply(201, {"results": [], "created_count": len(p["sessions"]), "skipped_count": 0})
+        self.detail(404, "Not Found")
+
+    # PlaySessionEntry's rules (end after start, to the second), then kept, one with the same game and start skipped
+    def take_plays(self, st, dev, plays):
+        for e in plays:
+            if int(parse_time(e["end_time"])) <= int(parse_time(e["start_time"])) or e.get("duration_ms", -1) < 0:
+                self.detail(422, "end_time must be after start_time")
+                return False
+        for e in plays:
+            if not any(x["rom_id"] == e.get("rom_id") and x["start_time"] == e["start_time"] for x in st.plays):
+                st.plays.append(dict(e, device_id=dev))
+        return True
+
+    def negotiate(self, st, dev):
+        p = json.loads(self.body() or b"{}")
+        saves = p.get("saves", [])
+        rom_ids = p.get("rom_ids")
+        if rom_ids is not None and len(rom_ids) > 500:
+            return self.detail(422, "too many rom_ids")
+        scope = set(rom_ids) | {c["rom_id"] for c in saves} if rom_ids is not None else None
+        cur = st.current(scope)
+        sid = st.new_id()
+        st.sessions[sid] = {"device": dev, "status": "in_progress"}
+        ops, matched = [], set()
+
+        def op(action, reason, rom, sv=None, client=None):
+            ops.append({"action": action, "rom_id": rom, "save_id": sv["id"] if sv else None,
+                        "file_name": sv["file_name"] if sv else client["file_name"],
+                        "slot": sv["slot"] if sv else client.get("slot"),
+                        "emulator": sv["emulator"] if sv else client.get("emulator"), "reason": reason,
+                        "server_updated_at": iso(sv["updated"]) if sv else None,
+                        "server_content_hash": sv["hash"] if sv else None})
+
+        for c in saves:
+            key = (c["rom_id"], c.get("slot"))
+            sv = cur.get(key) if c.get("slot") else None
+            removed = st.removed.get(key, {})
+            cts = parse_time(c["updated_at"])
+            if sv is None:
+                gone = held_since_removal(c.get("content_hash"), cts, removed)
+                op("delete" if gone else "upload", "Save was deleted on the server" if gone else
+                   "Save exists on client but not on server", c["rom_id"], client=c)
+                continue
+            matched.add(sv["id"])
+            sync = st.syncs.get((dev, sv["id"]))
+            action, reason = compare_save_state(c.get("content_hash"), cts, sv["hash"], sv["updated"], sync, removed)
+            if action == "no_op" and c.get("content_hash") == sv["hash"]:
+                old = st.syncs.get((dev, sv["id"]))
+                if not old or old["hash"] != sv["hash"]:
+                    st.syncs[(dev, sv["id"])] = {"synced": sv["updated"], "hash": sv["hash"], "server_hash": sv["hash"]}
+            op(action, reason, sv["rom_id"], sv)
+        for sv in cur.values():
+            if sv["id"] in matched:
+                continue
+            sync = st.syncs.get((dev, sv["id"]))
+            if sync and sv["updated"] <= sync["synced"] and not p.get("restore_unlisted"):
+                continue
+            op("download", "Save exists on server but not on client", sv["rom_id"], sv)
+        count = lambda a: sum(1 for o in ops if o["action"] == a)
+        self.reply(200, {"session_id": sid, "operations": ops, "total_upload": count("upload"),
+                         "total_download": count("download"), "total_conflict": count("conflict"),
+                         "total_no_op": count("no_op"), "total_delete": count("delete")})
+
+    def upload(self, st, dev, q):
+        ctype = self.headers.get("Content-Type", "")
+        if "multipart/form-data" not in ctype:
+            return self.detail(422, "saveFile missing")
+        field, fname, data = multipart_file(ctype, self.body())
+        if field != "saveFile" or not fname:
+            return self.detail(400, "Save file has no filename")
+        rom = int(q["rom_id"])
+        if not any(r["id"] == rom for r in st.library["roms"]):
+            return self.detail(404, "Rom %d not found" % rom)
+        slot, device, overwrite = q.get("slot"), q.get("device_id"), q.get("overwrite") == "true"
+        if device and device != dev:
+            return self.detail(404, "Device with ID %s not found" % device)
+        if device and slot and not overwrite:
+            in_slot = [sv for sv in st.saves if sv["rom_id"] == rom and sv["slot"] == slot]
+            if in_slot:
+                latest = max(in_slot, key=lambda sv: sv["updated"])
+                sync = st.syncs.get((device, latest["id"]))
+                if not sync or sync["synced"] < latest["updated"]:
+                    return self.detail(409, "Slot has a newer save since your last sync")
+        h = hashlib.md5(data).hexdigest()
+        if slot and not overwrite:
+            same = next((sv for sv in st.saves if sv["rom_id"] == rom and sv["slot"] == slot and sv["hash"] == h), None)
+            if same:
+                if device:
+                    st.syncs[(device, same["id"])] = {"synced": same["updated"], "hash": q.get("content_hash"),
+                                                      "server_hash": same["hash"]}
+                return self.reply(200, {"id": same["id"], "content_hash": same["hash"]})
+        # a slot's uploads are each a version of their own, the newest the slot's
+        sv = {"id": st.new_id(), "rom_id": rom, "slot": slot, "emulator": q.get("emulator"), "file_name": fname,
+              "hash": h, "updated": time.time(), "data": data}
+        st.saves.append(sv)
+        if device:
+            st.syncs[(device, sv["id"])] = {"synced": sv["updated"], "hash": q.get("content_hash"), "server_hash": h}
+        self.reply(200, {"id": sv["id"], "content_hash": h, "file_name": fname})
 
     def waiting(self, st, user_code):
         for code in reversed(st.order):

@@ -366,7 +366,7 @@ Each step is one commit, and leaves the tree building and `make test` passing.
     K=${CFG%/*}/retroarch-keychain.cfg
     rm -f "${CFG%/*}/retroarch-keychain.key"
     [ -f "$K" ] && [ -f "$CFG" ] || exit 0
-    awk 'FNR == NR { if (/^[A-Za-z0-9_]+ = ".*"$/) { if (!($1 in v)) o[++n] = $1; v[$1] = $0 } next }
+    awk 'FILENAME == ARGV[1] { if (/^[A-Za-z0-9_]+ = ".*"$/) { if (!($1 in v)) o[++n] = $1; v[$1] = $0 } next }
          !($2 == "=" && $1 in v) { print }
          END { for (i = 1; i <= n; i++) print v[o[i]] }' "$K" "$CFG" > "$CFG.kiwami" &&
         mv "$CFG.kiwami" "$CFG" && rm -f "$K" || { rm -f "$CFG.kiwami"; exit 0; }
@@ -408,7 +408,11 @@ Each step is one commit, and leaves the tree building and `make test` passing.
       `cheevos_username = "bob"` line is left (A5);
     - **special characters**: a password `p&w|d\x` is carried byte for byte into `accounts.conf` (A5);
     - **no final newline**: `retroarch.cfg`'s last line, `audio_latency = "64"` with no newline, is kept whole (A5);
+    - **an empty keychain file**: `retroarch.cfg`, with a key twice and a line of another shape, is kept byte for byte,
+      and the keychain file is gone (Deviations, 24 Oct 2026);
     - **no retroarch.cfg**: the keychain file stays as it is, nothing is made, and the exit is 0 (A5);
+    - **a failed fold** (the folder not writable, skipped as root): both files as they were, no temporary, no "folded"
+      log line, exit 0 (Deviations, 24 Oct 2026);
     - **idempotent**: a second scrub changes nothing (`cmp`) and logs nothing;
     - **the hook**: the line after `scrub)` in `system/rootfs/usr/libexec/banana/ra-secrets` is exactly the hook
       (`grep -A1`, as `core-overrides.sh` checks its own).
@@ -826,9 +830,32 @@ A run's `<name>` is `<image>-<game>-<core>`, e.g. `v122-cv-fceumm` or `master-cv
 
 Notes from the runs (what the logs showed, what was fixed):
 
+- **The baseline image** (24 Oct 2026). `make rgds-plus` from scratch (`output/rgds-plus/` deleted first; the old
+  output was a 0.3.0 build from 17 Oct) at `82010f7`, step 1's commit, which is `kiwami`'s `848af54` plus
+  `.workspace/`. It took 54 minutes. `VERSION` is 0.4.2, and RetroArch is `v1.22.2` with upstream's 0001, 0002 and
+  0003 applied (`.applied_patches_list`). The update package is copied as
+  `output/baseline-0.4.2/banana-rgds-plus-0.4.2-v1222.update.tar` (186,275,840 bytes, sha256 `139855c0...`).
+  - `usr/bin/retroarch`: 15,008,688 bytes (`du -b`), aarch64, stripped. `strings` has `1.22.2` and no commit.
+  - `rootfs.squashfs`: 175,738,880 bytes.
+  - `NEEDED`: `liblzma.so.5 libasound.so.2 libfreetype.so.6 libudev.so.1 libgbm.so.1 libdrm.so.2 libGLESv2.so.2
+    libEGL.so.1 libstdc++.so.6 libm.so.6 libmvec.so.1 libgcc_s.so.1 libc.so.6` (13).
+  - Joypad autoconfig files (`usr/share/libretro/autoconfig/udev`): 91.
+
 ## Deviations
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
+
+- **24 Oct 2026, step 2: the fold tells the keychain file apart by its name.** The planned awk took the keychain's
+  lines while `FNR == NR`. When `retroarch-keychain.cfg` is empty (0 bytes), that also holds for every line of
+  `retroarch.cfg`, which would then be read as the keychain. Its lines of another shape would be dropped, and only the
+  last of a repeated key kept. The awk compares `FILENAME` with `ARGV[1]` (the keychain's path, which `awk -v` would
+  have put through escape processing) instead. The step's code above is updated.
+- **24 Oct 2026, step 2: two more cases in `kiwami/tests/ra-keychain.sh`.**
+  - An empty keychain file, with a `retroarch.cfg` that has a key twice and a comment line. It fails on the
+    `FNR == NR` version.
+  - A failed fold (the folder made read-only): both files stay as they were, no temporary is left, no "folded" line
+    is logged, and the scrub carries on. That's "a failure leaves both files as they were", which the plan settled
+    but didn't test. It's skipped when run as root, since root writes anyway.
 
 ## Progress
 
@@ -837,7 +864,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. The measurements' script | done | RetroArch master: a script for the device measurements, the same on both versions |
-| 2. Master's credentials file folded back into retroarch.cfg | todo | |
+| 2. Master's credentials file folded back into retroarch.cfg | done | RetroArch master: ra-secrets folds master's credentials file back into retroarch.cfg |
 | 3. RetroArch's master, pinned behind a build option | todo | |
 | 4. RetroArch hotkeys Off covers master's four new hotkeys | todo | |
 | 5. Master without the built-ins Banana can't use | todo | |

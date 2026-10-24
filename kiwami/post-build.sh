@@ -5,14 +5,22 @@
 set -e
 T=$1
 
-# File sharing: tailscaled's state (the handheld's keys in the tailnet) neither listed nor opened over SMB, as the share
-# script keeps upstream's own secrets. Upstream's veto line is matched exactly: if it moves or changes shape, the build
-# stops here rather than sharing the state.
+# File sharing: the fork's secrets neither listed nor opened over SMB, as the share script keeps upstream's own:
+# tailscaled's state (the handheld's keys in the tailnet), and RetroArch master's credentials file
+# (retroarch-keychain.cfg, the RetroAchievements password and token from RetroArch's exit until the next scrub folds
+# it into retroarch.cfg, and the .key a sealed build would leave). Upstream's veto line is matched exactly: if it
+# moves or changes shape, the build stops here rather than sharing them.
 S=$T/usr/libexec/banana/share
 V='^	veto files = /.*/$'
 [ "$(grep -c "$V" "$S")" = 1 ] || { echo "kiwami/post-build.sh: no single 'veto files' line in $S" >&2; exit 1; }
-grep -q '^	veto files = .*/\*tailscaled\.state/$' "$S" || sed -i '/^	veto files = /s|$|*tailscaled.state/|' "$S"
-grep -q '^	veto files = /.*/\*tailscaled\.state/$' "$S" || { echo "kiwami/post-build.sh: tailscaled.state not vetoed in $S" >&2; exit 1; }
+# veto <name> <its regex>: the name appended to upstream's line when the line doesn't have it yet, then looked for
+# anywhere on it (the fork's names follow upstream's)
+veto() {
+    grep -q "^	veto files = /.*/$2/" "$S" || sed -i "/^	veto files = /s|\$|$1/|" "$S"
+    grep -q "^	veto files = /.*/$2/" "$S" || { echo "kiwami/post-build.sh: $1 not vetoed in $S" >&2; exit 1; }
+}
+veto '*tailscaled.state' '\*tailscaled\.state'
+veto '*retroarch-keychain.*' '\*retroarch-keychain\.\*'
 
 # 7z ROMs: the cartridge systems also list .7z games, which RetroArch (built with 7z support) unpacks when the game
 # starts, as it does .zip ones. A chosen system with no ext line stops the build rather than leaving it out; a line

@@ -1,0 +1,21 @@
+#!/bin/sh
+# RetroArch master's credentials file back into retroarch.cfg: ra-secrets calls it (a kiwami: hook) at the start of
+# a scrub, which then moves the password and token to accounts.conf as it does on v1.22.2.
+#   ra-keychain <retroarch.cfg>
+# Master writes its "sensitive" settings (cheevos_username, _password, _token and 16 more) to retroarch-keychain.cfg
+# beside retroarch.cfg on every save, and takes them out of retroarch.cfg; the fork builds it unsealed
+# (--disable-keychain). Their lines go back into retroarch.cfg, the keychain's value winning (it is the latest),
+# and the file goes, with a key file a sealed build would have left. Upstream's scrub, file sharing's veto and the
+# game panel (cheevos_username in retroarch.cfg) then see what v1.22.2 left. (.workspace/0007-retroarch-master/)
+CFG=$1
+K=${CFG%/*}/retroarch-keychain.cfg
+rm -f "${CFG%/*}/retroarch-keychain.key"
+[ -f "$K" ] && [ -f "$CFG" ] || exit 0
+# (the keychain told apart by its name, not FNR == NR, which an empty keychain would make true for retroarch.cfg; a
+# last line with no newline is printed with one, so nothing is glued onto it. Written through a temporary: a failure
+# leaves both files as they were, and the scrub carries on)
+awk 'FILENAME == ARGV[1] { if (/^[A-Za-z0-9_]+ = ".*"$/) { if (!($1 in v)) o[++n] = $1; v[$1] = $0 } next }
+     !($2 == "=" && $1 in v) { print }
+     END { for (i = 1; i <= n; i++) print v[o[i]] }' "$K" "$CFG" > "$CFG.kiwami" &&
+    mv "$CFG.kiwami" "$CFG" && rm -f "$K" || { rm -f "$CFG.kiwami"; exit 0; }
+echo "kiwami: ra-keychain: retroarch-keychain.cfg folded into retroarch.cfg" >&2

@@ -1,6 +1,6 @@
 # 0008 RomM: investigation
 
-Issue: #8 · Branch: `kiwami` (committed there at the user's request; the implementation gets `k/0008-romm`) · Status: draft (open: not being worked on yet) · Confidence: 91% (proceed)
+Issue: #8 · Branch: `kiwami` (committed there at the user's request; the implementation gets `k/0008-romm`) · Status: draft (open: not being worked on yet; rechecked 24 Oct 2026, *Rechecked*) · Confidence: 91% (proceed)
 
 ## The request
 
@@ -34,6 +34,34 @@ Out of scope: save states (RetroArch's `.state`, the DS emulators' `.dss`/`.mst`
 scraper covers it), PICO-8's and the Ports' and apps' own data, uploading games to RomM, RomM's collections and
 "install to device" pushes from the web UI.
 
+### Rechecked (24 Oct 2026)
+
+The report was checked again against what changed after it was written (23 Oct): 0007's RetroArch master
+(`k/0007-retroarch-master`, about to be merged into `kiwami`), upstream's `main` on GitHub (31 commits past the
+local `main`'s `a5e65b7`), and RomM's and Grout's releases. **It still holds**: every decision stands, and the
+`path:line` references were read again on `k/0007-retroarch-master`. What changed:
+
+- **RetroArch master's Cloud Sync now pulls before the game loads** (`retroarch.c:9566-9577` at `71f521e`): the
+  reason *Suggestions*, 6 gave for leaving it out no longer holds on master. Other reasons still do, and the user
+  confirmed the built-in client and no RetroArch WebDAV (*Suggestions*, 6, *Options*, 4, open question 13).
+- **RetroArch master keeps what the client relies on**: saves per core (`DEFAULT_SORT_SAVEFILES_ENABLE` true,
+  `config.def.h:1117` at `71f521e`, `:917` on v1.22.2), the automatic state still `<game>.state.auto`
+  (`command.c:5826`), which the Quick resume guard renames. The guard has to work under both builds, since
+  `BR2_PACKAGE_KIWAMI_RETROARCH_MASTER` can be turned off.
+- **Upstream added a JSON reader of its own** (`ui/src/json.{h,cpp}`, `banana::parseJson`, for its layout themes:
+  comments and trailing commas allowed), not merged into the fork yet. The helper keeps the fork's
+  `ui/src/kiwami/json.h` (open question 14). The two don't clash: different namespaces, and `#include "json.h"` from
+  `ui/src/kiwami/` finds the fork's first.
+- **Upstream's other changes don't touch RomM's ground.** Layout themes (`ui/src/layout.cpp`, `theme.cpp`, a few lines in
+  `main.cpp`'s menu set-up and CLI), the theme studios under `tools/`, the website and promo videos. Nothing in
+  `runGame`, `systems.conf`, the `run-*` launchers, `nds-saves`, `share`, `wifi`, `sleep.d/` or Settings' pages. The
+  RomM page is drawn by Settings, whatever the menu's theme. Their `ui/Makefile` `SRC` line changed next to the
+  fork's hook (a conflict for the next upstream merge, not for RomM: the helper isn't built by `ui/Makefile`).
+- **`kiwami/post-build.sh` now has a `veto` helper** (0007) for file sharing's veto line; the wrapping of `run` lines
+  goes in the same file. RomM's token stays in `accounts.conf`, already vetoed (`share:50`).
+- **RomM 5.4.1 and Grout v5.4.0.0 are still the latest releases.**
+- Line drift only: banana-ui's game-panel test is now `ui/src/main.cpp:1381` (was `:1384`).
+
 ## Oversights in the requirements
 
 1. **Grout's paths aren't Banana's, beyond the ROMs.** Grout's ROCKNIX profile (`cfw/rocknix/rocknix.go`, Grout
@@ -47,7 +75,8 @@ scraper covers it), PICO-8's and the Ports' and apps' own data, uploading games 
 
 2. **RetroArch's saves are per core, not per system.** `retroarch.cfg` sets `savefile_directory = "/data/saves"`
    (`system/rootfs/etc/banana/retroarch.cfg:36`) and leaves `sort_savefiles_enable` at RetroArch's default, true
-   (`config.def.h:917`), so a save is `/data/saves/<core's library_name>/<rom stem>.srm` (`runloop.c:8240-8260`):
+   (`config.def.h:917` on v1.22.2, `:1117` on master's `71f521e`), so a save is
+   `/data/saves/<core's library_name>/<rom stem>.srm` (`runloop.c:8240-8260`, v1.22.2):
    `gpSP`, `mGBA`, `Gambatte`, `SameBoy`, `FCEUmm`, `Mesen`, `Snes9x`, `PicoDrive`, `Genesis Plus GX`,
    `Mupen64Plus-Next`, `PCSX-ReARMed`. `docs/EMULATORS.md`'s "Saves and states | `/data/saves/<system>`" is wrong for
    RetroArch (true only for BananaDS's `saves/nds`). Switching a system's core (`core.<system>`, Settings > Other
@@ -117,8 +146,9 @@ scraper covers it), PICO-8's and the Ports' and apps' own data, uploading games 
 ## Suggestions
 
 1. **The Quick resume guard** (*decided*). When a pull replaces a game's save, its automatic state is renamed to
-   `.bak` (RetroArch's `<game>.state.auto` in the core's states folder, DraStic's resume state), so the game starts
-   from the save that was pulled. A few lines in the wrapper.
+   `.bak` (RetroArch's `<game>.state.auto` in the core's states folder, the same name on v1.22.2 and master,
+   `command.c:5826`; DraStic's resume state), so the game starts from the save that was pulled. A few lines in the
+   wrapper.
 2. **The push in the background** (*decided*). After a game the menu comes back at once; the push runs detached (its
    own session, outside the game's process group), and one that fails is pending for the next sync (the next game's
    push, or Sync now). No waiting on a dark screen.
@@ -130,11 +160,21 @@ scraper covers it), PICO-8's and the Ports' and apps' own data, uploading games 
    `genesis_plus_gx`...), as RomM's own RetroArch endpoint translates core folders to, lets RomM's web player see the
    saves. Pairing doesn't depend on it (it is by `rom_id` and slot), so it costs nothing. *Proposed*: yes, with the
    slot `autosave` (Grout's default, so saves made by Grout on another handheld pair with Banana's).
-6. **Leave out**: RetroArch's own Cloud Sync. Banana's RetroArch is built with it (`HAVE_CLOUDSYNC`, WebDAV), and
-   RomM 5.4.0 added a WebDAV endpoint for it (`/api/sync/retroarch`). But RetroArch loads the game from the command
-   line (`retroarch.c:~6030`) *before* it starts its first sync (`:6053`), so a pulled save arrives after the game has
-   read the old one, and the game's own write on quit then overwrites it. It would also cover RetroArch only (not the
-   DS) and keep the RomM password in `retroarch.cfg`, which file sharing shows.
+6. **Leave out**: RetroArch's own Cloud Sync (*decided*, again on 24 Oct). Banana's RetroArch is built with it
+   (`HAVE_CLOUDSYNC`, WebDAV), and RomM 5.4.0 added a WebDAV endpoint for it (`/api/sync/retroarch`). On v1.22.2,
+   RetroArch loads the game from the command line (`retroarch.c:~6030`) *before* it starts its first sync (`:6053`),
+   so a pulled save arrives after the game has read the old one. Master (0007's `71f521e`) fixed that: a game from
+   the command line waits for the sync (`retroarch.c:9566-9577`), and `retroarch --cloudsync` syncs and exits
+   (`:8988-9020`). It still doesn't fit:
+   - RomM's WebDAV takes the user's password (Basic auth, `backend/handler/auth/hybrid_auth.py:83-99` in RomM 5.4.1),
+     not a device token that can be revoked. Master keeps it in its keychain (`webdav_password`), which the fork's
+     `ra-keychain` folds back into `retroarch.cfg`, and file sharing shows that file.
+   - RomM registers one "RetroArch" device per user, whatever the install (`backend/handler/sync/retroarch/device.py`),
+     so the handheld and a PC's RetroArch would be the same device, and their conflicts would go unseen.
+   - Nothing is pushed when RetroArch quits (`retroarch.c:10035`: no sync once shutdown has begun), only at the
+     next RetroArch start, unless something runs `retroarch --cloudsync` after it.
+   - It covers RetroArch only, not the DS, and only while `BR2_PACKAGE_KIWAMI_RETROARCH_MASTER` is on. Conflicts are
+     resolved in RetroArch's menu, not Banana's Settings.
 7. **Not now, worth an issue later**: covers for downloaded games from RomM (a game downloaded to the second card
    gets none from `banana-scrape`, which scans only `/data/roms`, `ui/src/scrape.cpp:388`); save states; RomM's
    "install to device" pushes from the web UI.
@@ -149,7 +189,7 @@ second root from `/run/banana/sd2/roms`). banana-ui's `runGame` (`ui/src/main.cp
 and `%SYSTEM%` in the system's `run` (`:1365`), decides from that string whether it is RetroArch, which gets the game
 panel (`:1384`, `find("run-retroarch")`, `run-ps1`, `run-pico8`), closes the display (Mode B) or leases one panel
 (Mode A), forks, `setsid()`, exports `BANANA_ROM` and `BANANA_SYSTEM` (`:1433-1434`), runs `sh -c <run>` and writes
-its pid to `/run/banana/game.pid` (`:1447`). After the game: `banana-perf ui`, the panels back, `lib.recordPlay`
+its pid to `/run/banana/game.pid` (`:1447`; the game-panel test is now at `:1381`). After the game: `banana-perf ui`, the panels back, `lib.recordPlay`
 (`:1487`) with the seconds played. The library picks up games copied into ROM folders through inotify, read again
 once the copying has been quiet for 2 s (`ui/src/main.cpp:341-375`; the second card's folders are watched too).
 banana-ui's headless test prints a launch line instead of running the command (`kiwami/tests/7z-ui.sh:30-36`).
@@ -179,7 +219,10 @@ in the image; upstream's code `dlopen`s it (`ui/src/settings.cpp:2873`; busybox'
   background job polled while the page shows (`wifi::Job`, `update()`/`wake()`). Tailscale's page
   (`ui/src/kiwami/tailscale.cpp`) is the model: a helper program, a status, a login by a QR code on the top panel
   (`qrFor()`, `renderLogin()`, Nayuki's QR generator, `ui/src/kiwami/qrcodegen.cpp`).
-- A JSON reader (`ui/src/kiwami/json.h`), unit-tested (`kiwami/tests/units.cpp`).
+- A JSON reader (`ui/src/kiwami/json.h`), unit-tested (`kiwami/tests/units.cpp`). Upstream now has its own
+  (`ui/src/json.h`, for themes, not merged yet); the helper keeps the fork's (open question 14).
+- RetroArch's master (0007), on by default in `kiwami/configs/kiwami.fragment` and off with
+  `BR2_PACKAGE_KIWAMI_RETROARCH_MASTER`: the same save and state layout as v1.22.2 (*Rechecked*).
 - `kiwami/post-build.sh` already edits the image's `systems.conf` (0003's `7z`), failing the build if a section it
   expects isn't there.
 - Upstream's `banana-scrape` (`ui/src/scrape.cpp`) is the model for a long network job: a separate program started
@@ -264,8 +307,10 @@ All of it is in the fork's own files; no upstream file changes.
    in Grout's maintainers' hands.
 3. **Grout for the games, our helper for the sync around games.** Two clients would be two RomM devices for one
    handheld, each seeing the other's saves as another device's: conflicts by design. Rejected.
-4. **RetroArch's Cloud Sync against RomM's WebDAV endpoint.** No code at all, but it doesn't fit Banana's one game per
-   RetroArch run, and covers RetroArch only (*Suggestions*, 6). Rejected.
+4. **RetroArch's Cloud Sync against RomM's WebDAV endpoint.** No code for the RetroArch systems. Master's sync
+   before the game fixes v1.22.2's order, but it takes the RomM password, shows up as one RetroArch device for all
+   the user's installs, pushes nothing at quit and covers neither the DS nor a v1.22.2 build (*Suggestions*, 6).
+   Rejected (again on 24 Oct, by the user).
 
 Grout as it is, from the Ports shelf with `BASE_PATH=/data` in its `Grout.sh`, would already download games into the
 right folders (not BIOS or saves). That's a stopgap the user can try on the card before the feature exists; nothing
@@ -345,3 +390,7 @@ of the fork's is needed for it.
 11. **The suggestions.** *Answered*: the Quick resume guard, the push in the background, play time to RomM, the second
     card's fallback.
 12. **One feature or two.** *Answered*: one, saves first.
+13. **RetroArch master's Cloud Sync, now that it pulls before the game** (24 Oct). *Answered*: the built-in client
+    stays; RetroArch's WebDAV isn't used (*Suggestions*, 6).
+14. **Which JSON reader the helper uses, now that upstream has one** (24 Oct). *Answered*: the fork's
+    (`ui/src/kiwami/json.h`).

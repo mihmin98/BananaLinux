@@ -945,6 +945,29 @@ Where the implementation turned out different from this plan, why, and what chan
     `DEPENDENCIES.md`.
   - `ci.sh` runs `sha256sum -c` in each `third_party/*/` folder (it fails on a changed byte, tried on a copy) and
     links `units` with the objects `make -C ui kiwami-c` built.
+- **2026-10-24, step 10: details the plan left open.**
+  - `rahash` has no library, so `hash` takes the system's extensions as a third argument (`exts`, the shelf's
+    `def.exts`; none by default, and then an archive has no game). Step 12 passes them.
+  - RetroArch's pick, checked at `71f521e`: `content_file_get_path` lists the files whose extension the core takes,
+    sorts them with `dir_list_sort` (case aside, `dir_list_casecmp`), and loads the first. `rahash` does the same with
+    the system's extensions, archives aside. `several.zip` and `several.7z` hold `readme.txt`, `B.gba` and `a.gba` in
+    that order, and the test expects `a.gba`.
+  - A solid `.7z` unpacks the whole block its game is in (`SzArEx_Extract`), so that block's size is checked against
+    64 MB too, before anything is allocated. A `.zip`'s game is checked on its directory's size, and one that turns
+    out longer or shorter than that is damaged.
+  - The reasons are worded as step 9's, in lower case after the page's "Can't identify this game:": "no game in the
+    archive", "over 64 MB unpacked", "damaged archive", "a DS game can't be identified from a .zip" (or `.7z`).
+  - The pick logs `ra: hash: <file> in <archive>` (or `no game in <archive>`), as rcheevos logs only "Hashing <n>
+    byte buffer" for it. M5 reads that line.
+  - `ci.sh` changes (not in the step's Files): `units` links `ra7z.cpp`, upstream's `zip.cpp` and `-lz`.
+  - The truncated archives are cut in the test from the committed ones. The test also checks a changed byte of the
+    packed game, a file that isn't an archive, and two `.zip`s whose directory was changed in the test (65 MB; 100
+    bytes, shorter than the game).
+  - Vendored: the plan's 15 `.c` files and the 14 headers they include on Linux (29 files, each the tag's).
+    `7zWindows.h` (`_WIN32` only) and `Ppmd.h`/`Ppmd7.h` (`Z7_PPMD_SUPPORT` only) are left out.
+  - `make-fixtures.sh` makes the PlayStation images again too, with new ISO timestamps. The committed ones were kept,
+    since their hashes don't change.
+  - `make banana-ui-rebuild-rgds` was run too: the decoder builds for the RK3566 with no warning.
 
 ## Progress
 
@@ -961,7 +984,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 7. The Stats page | done | RetroAchievements: the Stats page, points and progress per system, kept for offline |
 | 8. The games on this card, from the library | done | RetroAchievements: the games on this card, with the menu's titles, from the library |
 | 9. Hashing games as RetroArch does: rcheevos, and the fork's C build | done | RetroAchievements: rcheevos' hashing, vendored, and the fork's C build in banana-ui |
-| 10. Hashing games in .zip and .7z: the LZMA SDK's 7z decoder | todo | |
+| 10. Hashing games in .zip and .7z: the LZMA SDK's 7z decoder | done | RetroAchievements: games in .zip and .7z hashed as RetroArch does, with the LZMA SDK's 7z decoder |
 | 11. Hashing PlayStation .chd: libchdr | todo | |
 | 12. A game's achievements | todo | |
 | 13. Final check | todo | |

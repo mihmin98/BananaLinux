@@ -628,6 +628,54 @@ static void testHash()
 		if (h.hash != want) fprintf(stderr, "units: %s: \"%s\" (%s)\n", f, h.hash.c_str(), h.error.c_str());
 		EQ(h.hash, want);
 	}
+	// a cartridge in a .zip or .7z (kiwami/tests/ra, make-fixtures.sh): the game in it, unpacked, as RetroArch picks
+	// it: the first in name order, letters' case aside, of the files whose extension is the system's
+	std::vector<std::string> gbaExts = { "gba", "zip", "7z" }, nesExts = { "nes", "zip", "7z" };
+	want = md5sum(raDir + "/cart.gba");
+	EQ(hash(raDir + "/cart.gba", "gba").hash, want);
+	for (const char* f : { "cart.zip", "cart-lzma.7z", "cart-lzma2.7z", "several.zip", "several.7z" })
+	{
+		Hash h = hash(raDir + "/" + f, "gba", gbaExts);
+		if (h.hash != want) fprintf(stderr, "units: %s: \"%s\" (%s)\n", f, h.hash.c_str(), h.error.c_str());
+		EQ(h.hash, want);
+	}
+	// an NES's header left out of the game in a .7z, as of the plain file
+	want = md5of(slurp(raDir + "/cart.nes").substr(16), scratch);
+	EQ(hash(raDir + "/cart.nes", "nes").hash, want);
+	EQ(hash(raDir + "/cart-nes.7z", "nes", nesExts).hash, want);
+	// no game in it: none at all, or none of the system's
+	EQ(hash(raDir + "/readme.zip", "gba", gbaExts).error, "no game in the archive");
+	EQ(hash(raDir + "/readme.7z", "gba", gbaExts).error, "no game in the archive");
+	EQ(hash(raDir + "/cart.zip", "nes", nesExts).error, "no game in the archive");
+	EQ(hash(raDir + "/cart-lzma.7z", "nes", nesExts).error, "no game in the archive");
+	// damaged: cut short, a byte of the packed game changed (the decoder or the CRC says so), not an archive
+	std::string zip = slurp(raDir + "/cart.zip"), sz = slurp(raDir + "/cart-lzma2.7z");
+	spit(t + "/cut.zip", zip.substr(0, zip.size() / 2));
+	EQ(hash(t + "/cut.zip", "gba", gbaExts).error, "damaged archive");
+	spit(t + "/cut.7z", sz.substr(0, sz.size() / 2));
+	EQ(hash(t + "/cut.7z", "gba", gbaExts).error, "damaged archive");
+	std::string bad = sz;
+	bad[32 + 40] ^= 0x55;
+	spit(t + "/bad.7z", bad);
+	EQ(hash(t + "/bad.7z", "gba", gbaExts).error, "damaged archive");
+	spit(t + "/not.7z", std::string(4096, 'x'));
+	EQ(hash(t + "/not.7z", "gba", gbaExts).error, "damaged archive");
+	spit(t + "/not.zip", std::string(4096, 'x'));
+	EQ(hash(t + "/not.zip", "gba", gbaExts).error, "damaged archive");
+	// over 64 MB unpacked, refused on what the archive says before anything is unpacked: big.7z's header, and a .zip's
+	// directory made to say 65 MB; a .zip whose game is longer than its directory says is damaged
+	EQ(hash(raDir + "/big.7z", "gba", gbaExts).error, "over 64 MB unpacked");
+	size_t cd = zip.find(std::string("PK\x01\x02", 4));
+	CHECK(cd != std::string::npos);
+	auto sized = [&](uint32_t n) { std::string z = zip; for (int i = 0; i < 4; i++) z[cd + 24 + i] = (char)(n >> (8 * i)); return z; };
+	spit(t + "/big.zip", sized(65u << 20));
+	EQ(hash(t + "/big.zip", "gba", gbaExts).error, "over 64 MB unpacked");
+	spit(t + "/short.zip", sized(100));
+	EQ(hash(t + "/short.zip", "gba", gbaExts).error, "damaged archive");
+	// a DS game in an archive is refused unread
+	spit(t + "/d.zip", "not read");
+	EQ(hash(t + "/d.zip", "nds", { "nds", "zip" }).error, "a DS game can't be identified from a .zip");
+	EQ(hash(t + "/d.7z", "nds", { "nds", "7z" }).error, "a DS game can't be identified from a .7z");
 	// what can't be identified says why, and nothing is read
 	spit(t + "/p.pbp", "PBP");
 	Hash h = hash(t + "/p.pbp", "psx");

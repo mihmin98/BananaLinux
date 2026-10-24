@@ -34,7 +34,8 @@ make -s -C ui kiwami-c
 T=$(mktemp -d)
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp \
     ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp ui/src/kiwami/rahash.cpp \
-    $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl
+    ui/src/kiwami/ra7z.cpp ui/src/zip.cpp \
+    $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -lz
 "$T/units" kiwami/tests/tailscale kiwami/tests/ra
 # the stand-in RetroAchievements server the UI tests run against (its bytecode in $T, not beside it)
 PYTHONPYCACHEPREFIX="$T" python3 -m py_compile kiwami/tests/ra-server.py

@@ -1,7 +1,8 @@
 // banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing, each page
 // hook going to the page that is open, and the groups' grid; the pages are in their own files (tailscale.cpp,
-// ra-account.cpp, ra-stats.cpp, ra-games.cpp, ra-game.cpp).
+// ra-account.cpp, ra-stats.cpp, ra-games.cpp, ra-game.cpp, romm-account.cpp).
 #include "ra.h"
+#include "romm.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -117,6 +118,7 @@ namespace banana
 		}
 		// (the tests read it, and on the device it says which of the fork's cores the image has)
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
+		if (strcmp(group, "RetroAchievements") == 0) rommRows(s);	// (RomM's group after it, whether or not it is left out)
 	}
 
 	std::string Settings::Kiwami::panelToken(const std::string& user, const std::string& data)
@@ -134,6 +136,7 @@ namespace banana
 		for (auto& it : st.items) if (it.key == MODE) modeAt = it.at;	// (both rows as just read, from the one file)
 		tsOpened();
 		raOpened();
+		rommOpened();
 	}
 
 	Settings::Result Settings::Kiwami::open(const std::string& key)
@@ -142,6 +145,7 @@ namespace banana
 		if (key == "kiwami.ra.account") { pageOpen = Page::RA_ACCOUNT; return raOpen(); }
 		if (key == "kiwami.ra.stats") { pageOpen = Page::RA_STATS; return raStatsOpen(); }
 		if (key == "kiwami.ra.games") { pageOpen = Page::RA_GAMES; return raGamesOpen(); }
+		if (key == "kiwami.romm.account") { pageOpen = Page::ROMM_ACCOUNT; return rommAccountOpen(); }
 		return NONE;
 	}
 
@@ -149,14 +153,14 @@ namespace banana
 	{
 		return pageOpen == Page::TAILSCALE ? tsPress(k) : pageOpen == Page::RA_ACCOUNT ? raPress(k)
 			: pageOpen == Page::RA_STATS ? raStatsPress(k) : pageOpen == Page::RA_GAMES ? raGamesPress(k)
-			: pageOpen == Page::RA_GAME ? raGamePress(k) : NONE;
+			: pageOpen == Page::RA_GAME ? raGamePress(k) : pageOpen == Page::ROMM_ACCOUNT ? rommAccountPress(k) : NONE;
 	}
 
 	Settings::Result Settings::Kiwami::touch(float cx, float cy)
 	{
 		return pageOpen == Page::TAILSCALE ? tsTouch(cx, cy) : pageOpen == Page::RA_ACCOUNT ? raTouch(cx, cy)
 			: pageOpen == Page::RA_STATS ? raStatsTouch(cx, cy) : pageOpen == Page::RA_GAMES ? raGamesTouch(cx, cy)
-			: pageOpen == Page::RA_GAME ? raGameTouch(cx, cy) : NONE;
+			: pageOpen == Page::RA_GAME ? raGameTouch(cx, cy) : pageOpen == Page::ROMM_ACCOUNT ? rommAccountTouch(cx, cy) : NONE;
 	}
 
 	void Settings::Kiwami::render()
@@ -166,28 +170,33 @@ namespace banana
 		else if (pageOpen == Page::RA_STATS) raStatsRender();
 		else if (pageOpen == Page::RA_GAMES) raGamesRender();
 		else if (pageOpen == Page::RA_GAME) raGameRender();
+		else if (pageOpen == Page::ROMM_ACCOUNT) rommAccountRender();
 	}
 
 	std::string Settings::Kiwami::entryHelp() const
 	{
-		return pageOpen == Page::TAILSCALE ? tsEntryHelp() : pageOpen == Page::RA_ACCOUNT ? raEntryHelp() : "";
+		return pageOpen == Page::TAILSCALE ? tsEntryHelp() : pageOpen == Page::RA_ACCOUNT ? raEntryHelp()
+			: pageOpen == Page::ROMM_ACCOUNT ? rommEntryHelp() : "";
 	}
 
 	Settings::Result Settings::Kiwami::entered(std::string& text)
 	{
-		return pageOpen == Page::TAILSCALE ? tsEntered(text) : pageOpen == Page::RA_ACCOUNT ? raEntered(text) : NONE;
+		return pageOpen == Page::TAILSCALE ? tsEntered(text) : pageOpen == Page::RA_ACCOUNT ? raEntered(text)
+			: pageOpen == Page::ROMM_ACCOUNT ? rommEntered(text) : NONE;
 	}
 
 	bool Settings::Kiwami::update(double t)
 	{
-		bool mode = syncMode(), ra = raUpdate();
-		return tsUpdate(t) || mode || ra;
+		bool mode = syncMode(), ra = raUpdate(), rm = rommUpdate(t);
+		return tsUpdate(t) || mode || ra || rm;
 	}
 
 	int Settings::Kiwami::wake(double t, bool shown) const
 	{
-		int w = tsWake(t, shown && pageOpen == Page::TAILSCALE), r = raWake();
-		return w < 0 ? r : r < 0 ? w : std::min(w, r);
+		int best = -1;
+		for (int w : { tsWake(t, shown && pageOpen == Page::TAILSCALE), raWake(), rommWake(t, shown && pageOpen == Page::ROMM_ACCOUNT) })
+			if (w >= 0 && (best < 0 || w < best)) best = w;
+		return best;
 	}
 
 	// ---- the groups' grid: the first row shown follows the selection (grid.h); logged when it moves, for the tests ---
@@ -285,7 +294,8 @@ namespace banana
 
 	std::string Settings::Kiwami::value(const std::string& key) const
 	{
-		return key == "kiwami.tailscale" ? word : key.compare(0, 10, "kiwami.ra.") == 0 ? raValue(key) : "";
+		return key == "kiwami.tailscale" ? word : key.compare(0, 10, "kiwami.ra.") == 0 ? raValue(key)
+			: key.compare(0, 12, "kiwami.romm.") == 0 ? rommValue(key) : "";
 	}
 
 	// a program of the fork's, its own session; detached so that it outlives a game the menu starts next, waited for

@@ -15,6 +15,8 @@
 #   kiwami/tests/ra-ui.sh        (the shots in $OUT, /tmp/kiwami-ra by default)
 set -e
 cd "$(dirname "$0")/../.."
+# RomM's group left out: the grid is RetroAchievements' seven, as every check below counts them (romm-ui.sh tests eight)
+export KIWAMI_ROMM_GROUP=0
 UI=$PWD/ui
 OUT=${OUT:-${TMPDIR:-/tmp}/kiwami-ra}
 FX=$OUT/fixture

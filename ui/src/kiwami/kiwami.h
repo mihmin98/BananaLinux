@@ -18,6 +18,11 @@
 //   and progress per system (ra-stats.cpp), fetched when the page opens or on Y, kept on the card for offline. Games on
 //   this card (kiwami.ra.games): the library's games the emulators recorded achievements for (ra-games.cpp), A on one
 //   its achievements, locked and unlocked (ra-game.cpp), the game identified by hashing it as RetroArch does.
+//   RomM (an eighth group, after RetroAchievements; KIWAMI_ROMM_GROUP=0 leaves it out, for the tests): RomM (romm,
+//   settings.conf, off by default), Account (kiwami.romm.account) and Sync around games (romm_autosync, settings.conf,
+//   on by default; its help says when the card's own systems.conf doesn't start the games through the wrapper). Its
+//   tile has RomM's logo (ra-icon.cpp). A on Account opens the Account page (romm-account.cpp): the server, pairing by
+//   a QR code, logging out, through the RomM helper (romm.h).
 #include "../settings.h"
 #include <functional>
 #include "grid.h"
@@ -54,7 +59,7 @@ namespace banana
 	private:
 		Settings& st;
 		// the page that shows while Settings' page is KIWAMI: open() sets it, and the page hooks go to its own functions
-		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS, RA_GAMES, RA_GAME } pageOpen = Page::NONE;
+		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS, RA_GAMES, RA_GAME, ROMM_ACCOUNT } pageOpen = Page::NONE;
 		int row0 = 0;								// the groups' first row shown, kept as the selection moves
 		int modeAt = -1;							// Mode's value as both its rows last had it
 		bool syncMode();							// a change to one of Mode's two rows shown in the other
@@ -163,5 +168,33 @@ namespace banana
 		void raGameLoad();
 		void raGameBadges();
 		void raBadge(const std::string& name, float x, float y, float size, bool dim);
+
+		// RomM's pages (romm.h: their state, made when Settings first opens with the group). Their part of the hooks:
+		// the card read when Settings opens (no helper run), the rows' values, the helper's answers taken in
+		struct Romm;
+		std::shared_ptr<Romm> romm;
+		static void rommRows(Settings& s);			// the group's rows, after RetroAchievements'
+		void rommOpened();
+		std::string rommValue(const std::string& key) const;
+		bool rommUpdate(double t);
+		int rommWake(double t, bool shown) const;
+		void rommRead();							// the account, from the card
+		void rommRun(const char* verb);				// the helper, in the background (Romm::job)
+		bool rommTook(const std::string& out);		// its answer
+		// the Account page (romm-account.cpp): Server (upstream's keyboard), Pair, Log out (A twice) on the bottom panel;
+		// the state (check's answer, or the pairing's code and its QR code) and the selected row's help on the top one
+		Result rommAccountOpen();
+		Result rommAccountPress(Key k);
+		Result rommAccountTouch(float cx, float cy);
+		void rommAccountRender();
+		std::string rommEntryHelp() const;
+		Result rommEntered(std::string& text);
+		std::vector<std::string> rommAccountRows() const;
+		Result rommChange(int dir);
+		bool rommPairStatus();						// the status file read while a pairing waits: true when it moved on
+		bool rommQr(const std::string& url);
+		void rommTop(const std::string& title, const std::string& accent, const std::string& state, const std::string& help);
+		void rommLogin(const std::string& title, const std::string& accent, const std::string& state, const std::string& help,
+			const std::string& link, const std::string& foot);
 	};
 }

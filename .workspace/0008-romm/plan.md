@@ -97,7 +97,9 @@ The group and its rows
 The account
 
 - **A4**: given the Account page, when a server is typed, then it is kept as `romm_url` in `accounts.conf`, with
-  `http://` added when there's no scheme and a trailing `/` removed. The file's other lines stay as they were.
+  `http://` added when there's no scheme and a trailing `/` removed. The file's other lines stay as they were. A server
+  other than the one paired with forgets the pairing here (`romm_token`, `romm_device_id`), so its token is never sent
+  to another address (*Deviations*, 25 Oct).
 - **A5**: given a server, when Pair is pressed, then the top panel shows the QR code of RomM's pairing link and the
   code to type. Once the user approves it in RomM, `romm_token` and `romm_device_id` are in `accounts.conf` and the
   page says Paired, with the server's version. Denied, or expired, the page says so and nothing is written. Pairing
@@ -188,7 +190,8 @@ Footprint, both boards
 
 - **A24**: with nothing running:
   - no process of the feature is alive in the menu;
-  - the groups' frame time with the RomM group is within 10% of the frame time without it (`bench`);
+  - the groups' frame time with the RomM group, and without it, under 1 ms, the first at most twice the second plus
+    0.05 ms (`bench`; *Deviations*, 25 Oct);
   - the helper is under 1 MB;
   - with RomM Off, a game's start costs one `exec`.
 - **A25**: every request is one `romm.log` line (verb, method, path, status or `no connection`, milliseconds), and the
@@ -545,7 +548,7 @@ detaching, for the tests.
   - `ui/src/kiwami/kiwami.h`, `kiwami.cpp`, `ra-icon.cpp` (changed)
   - `ui/src/kiwami/romm.h`, `ui/src/kiwami/romm-account.cpp` (new)
   - `kiwami/tests/romm-ui.sh` (new)
-  - `kiwami/tests/ra-ui.sh`, `kiwami/tests/ci.sh` (changed)
+  - `kiwami/tests/ra-ui.sh`, `kiwami/tests/cores-ui.sh`, `kiwami/tests/ci.sh` (changed)
 - **Change**:
   - **`Kiwami::rows`**: in the `"RetroAchievements"` call, after RetroAchievements' rows (and whether or not they are
     left out), RomM's are added, unless `KIWAMI_ROMM_GROUP=0`. They are logged on their own line
@@ -560,7 +563,8 @@ detaching, for the tests.
   - **`Page`**: `ROMM_ACCOUNT` added to the enum and to `open/press/touch/render/entryHelp/entered/update/wake`'s
     routing. `opened()` reads the card only.
   - **`romm-account.cpp`**: the Account page, in Tailscale's page's look.
-    - Rows: Server (upstream's keyboard, `ENTRY_KIWAMI`; `setServer`), Pair, Log out (A twice; shown when paired).
+    - Rows: Server (upstream's keyboard, `ENTRY_KIWAMI`; `setServer`; another server than the paired one `forget`s the
+      pairing), Pair (once there is a server), Log out (A twice; shown when paired).
     - The top panel: the state (`check`'s answer, asked through a `wifi::Job` when the page opens and after Pair or
       Log out, never when Settings opens), then the selected row's help.
     - Pair runs `romm pair` through a job. Its line puts the QR code (`qrFor`, `renderLogin`, as Tailscale's) and the
@@ -582,7 +586,9 @@ detaching, for the tests.
     - `check` on opening the page with 5.3.2 (too old), 5.5.0 (newer) and down;
     - revoked: `Pair again`;
     - Log out, one A and then two;
-    - the groups' frame time with the group and without (`bench 120`, within 10%);
+    - the groups' frame time with the group and without (`bench 120`, as `ra-ui.sh` compares them);
+    - the card's own `systems.conf` without the wrapper noted (A17's help), and with it not;
+    - another server forgetting the pairing;
     - no token in the log.
   - **`ci.sh`**: `romm-ui.sh` run when `ui/banana-ui` is built.
 - **Tests**: `kiwami/tests/romm-ui.sh`, `ra-ui.sh`, `tailscale-ui.sh`, `cores-ui.sh`; `make test` (upstream's renders
@@ -785,6 +791,15 @@ Where the implementation turned out different from this plan, why, and what chan
   10 s it prints `busy` and exits 3. `sync` also says `error sync unpaired` (exit 1, nothing asked of the server)
   when there's no pairing, which the plan's list of errors didn't have. Agreed with the user.
 
+- **25 Oct 2026, step 5: another server forgets the pairing, and the groups' bench is compared as RetroAchievements'
+  is.** A server typed on the Account page that differs from the one paired with would have had the old server's
+  token sent to it as a Bearer header by the next check or sync, so it now takes `romm_token` and `romm_device_id`
+  out of `accounts.conf` (nothing asked of either server; the same server typed again keeps the pairing): A4 says
+  so. A24's "within 10%" of the groups' frame time is 2-3 µs of a 0.02-0.03 ms frame, inside the run-to-run noise, so
+  the test checks what `ra-ui.sh` checks: both under 1 ms, the group's at most twice the other's plus 0.05 ms. Agreed
+  with the user. `kiwami/tests/cores-ui.sh`, which the step runs, compares every `rows in` log line, so it expects
+  RomM's after RetroAchievements', as RetroAchievements' step added its own there.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -795,7 +810,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 2. A game's save: its RomM id, the pull before it and the push after | done | RomM: a game's save pulled from RomM before it and pushed after, the conflicts kept for later |
 | 3. Sync now and the conflicts resolved | done | RomM: Sync now for every game on both cards, and a conflict resolved either way |
 | 4. The wrapper around the games, put into the image's systems.conf | done | RomM: the games' saves synced around each game, through a wrapper in the image's systems.conf |
-| 5. Settings: the RomM group and its Account page | todo | |
+| 5. Settings: the RomM group and its Account page | done | RomM: a group in Settings, after RetroAchievements, with its logo and the Account page |
 | 6. Settings: Sync now and the conflicts | todo | |
 | 7. The helper's games, downloads and BIOS | todo | |
 | 8. Settings: Games, Downloads to and BIOS | todo | |

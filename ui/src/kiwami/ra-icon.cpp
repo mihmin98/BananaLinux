@@ -79,10 +79,50 @@ namespace banana
 		"................................",
 	};
 
+	// RomM's logo, pixelated: its isotipo's purple disc, a controller's corner (its lit half and its shaded one, split on
+	// the diagonal) with four buttons, two cream and two peach, on the lilac of the disc's rim; the colours are the
+	// isotipo's own. A new drawing after it, not RomM's file: RomM's repository (AGPL-3.0, tag 9c74d01) has no trademark
+	// or logo policy in its README, its contributing guide or elsewhere, and the AGPL grants no trademark rights, so the
+	// logo is used only to name RomM. The group's tile, its RomM and Account rows, the Account page
+	static const char* ROMM[32] = {
+		"................................",
+		"...........aaaaaaaaaa...........",
+		".........aaaWWUUUUUUaaa.........",
+		".......aaaWWUUUUUUUUUUaaa.......",
+		"......aaWWWUUUUUUUUUUUUUaa......",
+		".....aaWWWUUUUUUUUUUUUUUUaa.....",
+		"....aaWWWUUUUUUUYYUUUUUUUVaa....",
+		"...aaWWUUUUUUUUYYYYUUUUUUUVaa...",
+		"...aWWUUUUUUUUUYYYYUUUUUUKVVa...",
+		"..aaWUUUUUUUUUUUYYUUUUUUKKVVaa..",
+		"..aWUUUUUUUUYYUUUUUUEEUKKKKVVa..",
+		".aaUUUUUUUUYYYYUUUUEEEEKKKKVVaa.",
+		".aUUUUUUUUUYYYYUUUUEEEEKKKKVVVa.",
+		".aUUUUUUUUUUYYUUUUUUEEKKKKKKVVa.",
+		".aUUUUUUUUUUUUUUEEUKKKKKKKKKVVa.",
+		".aUUUUUUUUUUUUUEEEEKKKKKKKKKVVa.",
+		".aUUUUUUUUUUUUUEEEEKKKKKKKKKKVa.",
+		".aUUUUUUUUUUUUUUEEKKKKKKKKKKKVa.",
+		".aUUUUUUUUUUUUUKKKKKKKKKKKKKKVa.",
+		".aUUUUUUUUUUUUKKKKKKKKKKKKKKKVa.",
+		".aaUUUUUUUUUUKKKKKKKKKKKKKKKKaa.",
+		"..aUUUUUUUUUKKKKKKKKKKKKKKKKKa..",
+		"..aaUUUUUUUKKKKKKKKKKKKKKKKKaa..",
+		"...aUUUUUUKKKKKKKKKKKKKKKKKKa...",
+		"...aaVVVVVVVVVVKKKKKKKKKKKKaa...",
+		"....aaVVVVVVVVVVKKKKKKKKKKaa....",
+		".....aaVVVVVVVVVVKKKKKKKVaa.....",
+		"......aaVVVVVVVVVVKKKKKVaa......",
+		".......aaaVVVVVVVVVKKKaaa.......",
+		".........aaaVVVVVVVVaaa.........",
+		"...........aaaaaaaaaa...........",
+		"................................",
+	};
+
 	rnds::Bitmap Settings::Kiwami::icon(const std::string& name) const
 	{
 		rnds::Bitmap b;
-		const char* const* map = name == "kiwami.trophy" ? TROPHY : name == "kiwami.ra" ? LOGO : nullptr;
+		const char* const* map = name == "kiwami.trophy" ? TROPHY : name == "kiwami.ra" ? LOGO : name == "kiwami.romm" ? ROMM : nullptr;
 		if (!map) return b;
 		b.w = b.h = 32;
 		b.px.assign(32 * 32 * 4, 0);
@@ -102,6 +142,12 @@ namespace banana
 				case 'B': c = 0x4c8ee0; break;	// blue
 				case 'M': c = 0x3d6fb8; break;	// blue, lower down
 				case 'D': c = 0x1f3d6e; break;	// blue, in shade
+				case 'W': c = 0xede4f1; break;	// RomM's lilac, lit
+				case 'V': c = 0xbda5cf; break;	// RomM's lilac
+				case 'U': c = 0x553f99; break;	// RomM's purple
+				case 'K': c = 0x38286a; break;	// RomM's purple, in shade
+				case 'Y': c = 0xe5c7a7; break;	// RomM's cream button
+				case 'E': c = 0xe1a38e; break;	// RomM's peach button
 				default: continue;				// clear
 				}
 				uint8_t* p = &b.px[(y * 32 + x) * 4];

@@ -60,6 +60,10 @@ if [ -x ui/banana-ui ]; then kiwami/tests/cores-ui.sh; else echo "cores-ui: skip
 # the RetroAchievements group in Settings and the grid scrolling to it, headless, when banana-ui is built
 if [ -x ui/banana-ui ]; then kiwami/tests/ra-ui.sh; else echo "ra-ui: skipped, no ui/banana-ui (make ui)"; fi
 
+# the RomM group in Settings and its Account page, with the helper against the stand-in RomM server, headless, when
+# banana-ui is built
+if [ -x ui/banana-ui ]; then kiwami/tests/romm-ui.sh; else echo "romm-ui: skipped, no ui/banana-ui (make ui)"; fi
+
 # post-build.sh vetoes tailscaled's state and RetroArch master's credentials file in upstream's share script, each
 # once and the same on a second run, and stops the build when the line isn't there
 T=$(mktemp -d)

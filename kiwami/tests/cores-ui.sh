@@ -66,7 +66,7 @@ for size in 640x480 1024x768; do
     # the four rows after VSync, a shot of each (the help on the top panel, each its own); browsing writes nothing
     card
     run $size rows all "$OTHER; $DOWN7; wait 400; shot nes; press down; wait 400; shot gb; press down; wait 400; shot gbc; press down; wait 400; shot md"
-    rows "Other systems: core.nes core.gb core.gbc core.megadrive|Network: kiwami.tailscale|RetroAchievements: kiwami.ra.account kiwami.ra.stats kiwami.ra.games cheevos_hardcore_mode_enable|"
+    rows "Other systems: core.nes core.gb core.gbc core.megadrive|Network: kiwami.tailscale|RetroAchievements: kiwami.ra.account kiwami.ra.stats kiwami.ra.games cheevos_hardcore_mode_enable|RomM: romm kiwami.romm.account romm_autosync|"
     shown nes gb gbc md
     differ nes gb; differ gb gbc; differ gbc md
     cmp -s "$OUT/before.conf" "$CONF" || { echo "FAIL $size rows: browsing changed settings.conf: $(diff "$OUT/before.conf" "$CONF" | tr '\n' ' ')"; fail=1; }
@@ -94,14 +94,14 @@ for size in 640x480 1024x768; do
     # SameBoy alone: its two rows only
     card
     run $size sameboy sameboy "$OTHER; $DOWN7; press right; press down; press right"
-    rows "Other systems: core.gb core.gbc|Network: kiwami.tailscale|RetroAchievements: kiwami.ra.account kiwami.ra.stats kiwami.ra.games cheevos_hardcore_mode_enable|"
+    rows "Other systems: core.gb core.gbc|Network: kiwami.tailscale|RetroAchievements: kiwami.ra.account kiwami.ra.stats kiwami.ra.games cheevos_hardcore_mode_enable|RomM: romm kiwami.romm.account romm_autosync|"
     changed "core.gbc = sameboy core.gb = sameboy "
 
     # none of them: upstream's rows only (VSync last before RetroArch hotkeys and Reset RetroArch), and a card's core
     # naming a missing one kept
     card "core.nes = mesen"
     run $size none none "$OTHER; press up; press up; press up; press right"
-    rows "Other systems: none|Network: kiwami.tailscale|RetroAchievements: kiwami.ra.account kiwami.ra.stats kiwami.ra.games cheevos_hardcore_mode_enable|"
+    rows "Other systems: none|Network: kiwami.tailscale|RetroAchievements: kiwami.ra.account kiwami.ra.stats kiwami.ra.games cheevos_hardcore_mode_enable|RomM: romm kiwami.romm.account romm_autosync|"
     has "ra_vsync = off" "core.nes = mesen"
     changed "ra_vsync = off "
 
@@ -109,7 +109,7 @@ for size in 640x480 1024x768; do
     card "core.nes = mesen" "core.gb = sameboy" "core.gbc = sameboy" "core.megadrive = genesis_plus_gx" "core.gba = mgba"
     run $size reset all "$SYSTEM; press down; press down; press down; press down; press down; press down; press down; press down; press a; press a; wait 300"
     has "core.nes = fceumm" "core.gb = gambatte" "core.gbc = gambatte" "core.megadrive = picodrive" "core.gba = gpsp"
-    rows "Other systems: core.nes core.gb core.gbc core.megadrive|Network: kiwami.tailscale|RetroAchievements: kiwami.ra.account kiwami.ra.stats kiwami.ra.games cheevos_hardcore_mode_enable|Other systems: core.nes core.gb core.gbc core.megadrive|Network: kiwami.tailscale|RetroAchievements: kiwami.ra.account kiwami.ra.stats kiwami.ra.games cheevos_hardcore_mode_enable|"
+    rows "Other systems: core.nes core.gb core.gbc core.megadrive|Network: kiwami.tailscale|RetroAchievements: kiwami.ra.account kiwami.ra.stats kiwami.ra.games cheevos_hardcore_mode_enable|RomM: romm kiwami.romm.account romm_autosync|Other systems: core.nes core.gb core.gbc core.megadrive|Network: kiwami.tailscale|RetroAchievements: kiwami.ra.account kiwami.ra.stats kiwami.ra.games cheevos_hardcore_mode_enable|RomM: romm kiwami.romm.account romm_autosync|"
 done
 [ $fail = 0 ] && echo "cores-ui: all checks passed ($OUT)"
 exit $fail

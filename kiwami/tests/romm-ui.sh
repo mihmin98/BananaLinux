@@ -21,6 +21,11 @@ rm -rf "$OUT"; mkdir -p "$OUT/bin" "$OUT/run" "$OUT/etc"
 ln -s data "$FX/banana"
 make -s -C ui -f src/kiwami/romm/romm.mk OUT="$OUT/bin"
 export KIWAMI_ROMM=$OUT/bin/romm KIWAMI_ROMM_CARD=$FX KIWAMI_RUN=$OUT/run KIWAMI_ROMM_ETC=$OUT/etc KIWAMI_MODEL=$OUT/model
+# for Sync now: upstream's systems.conf and nds-saves (its /data moved into the fixture), no second cores
+cp system/rootfs/etc/banana/systems.conf "$OUT/etc/"
+sed "s|/data/|$FX/|g" system/rootfs/usr/libexec/banana/nds-saves > "$OUT/bin/nds-saves"; chmod +x "$OUT/bin/nds-saves"
+mkdir -p "$OUT/libretro"
+export KIWAMI_LIBRETRO=$OUT/libretro KIWAMI_ROMM_NDS_SAVES=$OUT/bin/nds-saves
 echo "0.4.2-test" > "$OUT/etc/version"
 printf 'Anbernic RG DS Plus\0' > "$OUT/model"
 D=$FX/data A=$FX/data/accounts.conf
@@ -29,7 +34,8 @@ fail=0
 SLOG=$OUT/server.log
 PYTHONPYCACHEPREFIX="$OUT/pyc" python3 kiwami/tests/romm-server.py "$OUT/port" "$SLOG" & SERVER=$!
 KIWAMI_ROMM_DOWN=1 PYTHONPYCACHEPREFIX="$OUT/pyc" python3 kiwami/tests/romm-server.py "$OUT/port-down" "$OUT/server-down.log" & DOWN=$!
-trap 'kill $SERVER $DOWN 2>/dev/null' EXIT
+SYNCSRV= LOCKER=
+trap 'kill $SERVER $DOWN $SYNCSRV $LOCKER 2>/dev/null' EXIT
 for i in $(seq 100); do [ -s "$OUT/port" ] && [ -s "$OUT/port-down" ] && break; sleep 0.05; done
 [ -s "$OUT/port" ] && [ -s "$OUT/port-down" ] || { echo "FAIL: the stand-in server didn't start"; exit 1; }
 URL=http://127.0.0.1:$(cat "$OUT/port") URL_DOWN=http://127.0.0.1:$(cat "$OUT/port-down")
@@ -45,6 +51,7 @@ R4="press r; press r; press r; press r"
 GROUP="$SET; $R4; press r; press r; press r"
 LIST="$GROUP; press a"
 ACCT="$LIST; press down; press a"
+SYNC="$LIST; press down; press down; press down; press a"
 
 # run <size> <name> <script>: one run of banana-ui, its log in $OUT/<size>-<name>.log
 run() {
@@ -88,7 +95,7 @@ for size in 640x480 1024x768; do
 
     # ---- the grid: RomM the eighth tile, the first two rows as with the fork's groups left out ----
     run $size groups "$SET; shot g0"
-    logged "banana-ui: kiwami: rows in RomM: romm kiwami.romm.account romm_autosync"
+    logged "banana-ui: kiwami: rows in RomM: romm kiwami.romm.account romm_autosync kiwami.romm.sync"
     KIWAMI_RA_GROUP=0 KIWAMI_ROMM_GROUP=0 run $size six "$SET; shot six"
     logged "banana-ui: kiwami: rows in RomM: none"
     shown g0
@@ -179,6 +186,129 @@ for size in 640x480 1024x768; do
     sed -i "s|^romm_url=.*|romm_url=$URL|" "$A"
     differ old newer top; differ newer down top
 
+    # ---- Sync now: its own stand-in server for this size (the saves it keeps), paired through the helper ----
+    cp "$A" "$OUT/accounts.main"
+    SSLOG=$OUT/server-sync-$size.log
+    PYTHONPYCACHEPREFIX="$OUT/pyc" python3 kiwami/tests/romm-server.py "$OUT/port-sync-$size" "$SSLOG" & SYNCSRV=$!
+    for i in $(seq 100); do [ -s "$OUT/port-sync-$size" ] && break; sleep 0.05; done
+    SURL=http://127.0.0.1:$(cat "$OUT/port-sync-$size")
+    spost() { python3 -c "import sys, urllib.request; urllib.request.urlopen(urllib.request.Request(sys.argv[1], method='POST'))" "$SURL$1"; }
+    websave() { python3 -c "import sys, urllib.request; urllib.request.urlopen(urllib.request.Request(sys.argv[1], data=sys.argv[2].encode(), method='POST'))" "$SURL/test/save?rom_id=$1&slot=autosave&emulator=$2" "$3"; }
+    ssaves() { python3 -c "import json, sys, urllib.request; [print(s['emulator'], s['data']) for s in json.load(urllib.request.urlopen(sys.argv[1])) if s['rom_id'] == int(sys.argv[2])]" "$SURL/test/saves" "$1"; }
+    printf 'ra_user=alice\nromm_url=%s\nsmb_user=me\n' "$SURL" > "$A"
+    out=$("$KIWAMI_ROMM" pair); code=$(printf '%s' "$out" | sed -n 's/^pairing \([A-Z0-9]*\)	.*/\1/p')
+    spost "/test/approve?user_code=$code"
+    for i in $(seq 100); do grep -q '^paired' "$OUT/run/romm.status" && break; sleep 0.05; done
+    tokens="$tokens $(sed -n 's/^romm_token=//p' "$A")"
+    # two games RomM has, each with a save; the fixture's nine others RomM doesn't have
+    SKIPPED=9
+    PA="$FX/roms/gba/Pocket Adventure (USA).gba" LB="$FX/roms/snes/Late Bloomer.sfc"
+    PSRM="$FX/saves/gpSP/Pocket Adventure (USA).srm" LSRM="$FX/saves/Snes9x/Late Bloomer.srm"
+    rm -rf "$FX/saves"; mkdir -p "$FX/saves/gpSP" "$FX/saves/Snes9x"
+    touch "$PA" "$LB"; printf 'card-v1' > "$PSRM"; printf 'snes-v1' > "$LSRM"
+    sed -i '/^romm = /d' "$D/settings.conf"
+
+    # RomM off: the row says so, the page doesn't start
+    run $size sync-off "$SYNC; press a; shot sync-off"
+    logged "banana-ui: romm: sync now: Off"
+    logged "banana-ui: romm: sync page: Off, 0 conflicts"
+    logged "banana-ui: romm: sync: not started (off)"
+    unlogged "banana-ui: romm: run sync"
+    echo 'romm = on' >> "$D/settings.conf"
+    # on, never synced: Not yet, nothing run on opening; this card's own systems.conf without the wrapper said on the page
+    : > "$SSLOG"
+    run $size sync-notyet "$SYNC; shot sync-notyet"
+    logged "banana-ui: romm: sync now: Not yet"
+    unlogged "banana-ui: romm: run"
+    served_sync=$(cat "$SSLOG"); [ -z "$served_sync" ] || { echo "FAIL $size $name: the server was asked: $served_sync"; fail=1; }
+    cp system/rootfs/etc/banana/systems.conf "$D/systems.conf"
+    run $size sync-unwrapped "$SYNC; shot sync-unwrapped"
+    rm -f "$D/systems.conf"
+    shown sync-off sync-notyet sync-unwrapped
+    differ sync-off sync-notyet top; differ sync-notyet sync-unwrapped top
+
+    # Sync now: both saves sent, the fixture's other games not on RomM; the row says Synced once the page is left
+    KIWAMI_ROMM_SYNC=1 run $size sync "$SYNC; press a; wait 1; shot sync-done; press b; shot sync-list"
+    logged "banana-ui: romm: run sync"
+    logged "banana-ui: romm: sync: done sync 2 0 0 $SKIPPED"
+    logged "banana-ui: romm: sync now: Synced"
+    [ "$(ssaves 101)" = "gpsp card-v1" ] && [ "$(ssaves 402)" = "snes9x snes-v1" ] || { echo "FAIL $size $name: RomM has '$(ssaves 101)' '$(ssaves 402)'"; fail=1; }
+    shown sync-done sync-list
+    differ sync-notyet sync-done top
+
+    # both sides changed: two conflicts listed, nothing overwritten
+    sleep 1; printf 'card-v2' > "$PSRM"; printf 'snes-v2' > "$LSRM"
+    websave 101 mgba web-v2; websave 402 snes9x web-snes
+    KIWAMI_ROMM_SYNC=1 run $size conflicts "$SYNC; press a; wait 1; shot conflicts; press down; shot conflict; press b; shot conflicts-list"
+    logged "banana-ui: romm: sync: done sync 0 0 2 $SKIPPED"
+    logged "banana-ui: romm: sync now: 2 conflicts"
+    [ "$(cat "$PSRM")" = card-v2 ] && [ "$(cat "$LSRM")" = snes-v2 ] || { echo "FAIL $size $name: a save in conflict overwritten"; fail=1; }
+    [ "$(wc -l < "$D/romm/conflicts")" = 2 ] || { echo "FAIL $size $name: the conflicts are $(tr '\n' '|' < "$D/romm/conflicts")"; fail=1; }
+    shown conflicts conflict
+    differ conflicts conflict top; differ conflicts conflict bot
+    # a choice left with B, and one A then another key: nothing run
+    run $size undecided "$SYNC; press down; press a; shot asking; press right; shot asking-romm; press b; press a; press a; press up"
+    unlogged "banana-ui: romm: run resolve"
+    differ asking asking-romm bot
+    # Take RomM's for the first (the card's kept as .bak), Keep this card's for the other (sent over RomM's)
+    n1=$(cut -f2 "$D/romm/conflicts" | sed -n 1p); r1=$(basename "$n1")
+    KIWAMI_ROMM_SYNC=1 run $size take "$SYNC; press down; press a; press right; press a; shot armed; press a; wait 1; shot taken"
+    logged "banana-ui: romm: run resolve 1 server $n1"
+    logged "banana-ui: romm: resolved 1 server"
+    logged "banana-ui: romm: sync now: 1 conflict"
+    n2=$(cut -f2 "$D/romm/conflicts")
+    KIWAMI_ROMM_SYNC=1 run $size keep "$SYNC; press down; press a; press a; press a; wait 1; shot kept; press b"
+    logged "banana-ui: romm: run resolve 1 local $n2"
+    logged "banana-ui: romm: resolved 1 local"
+    logged "banana-ui: romm: sync now: Synced"
+    [ ! -s "$D/romm/conflicts" ] || { echo "FAIL $size $name: conflicts left: $(tr '\n' '|' < "$D/romm/conflicts")"; fail=1; }
+    if [ "$n1" = "$PA" ]; then
+        [ "$(cat "$PSRM")" = web-v2 ] && [ "$(cat "$PSRM.bak")" = card-v2 ] || { echo "FAIL $size take: the GBA save is $(cat "$PSRM")"; fail=1; }
+        [ "$(ssaves 402 | tail -n 1)" = "snes9x snes-v2" ] || { echo "FAIL $size keep: RomM has '$(ssaves 402 | tail -n 1)'"; fail=1; }
+    else
+        [ "$(cat "$LSRM")" = web-snes ] && [ "$(cat "$LSRM.bak")" = snes-v2 ] || { echo "FAIL $size take: the SNES save is $(cat "$LSRM")"; fail=1; }
+        [ "$(ssaves 101 | tail -n 1)" = "gpsp card-v2" ] || { echo "FAIL $size keep: RomM has '$(ssaves 101 | tail -n 1)'"; fail=1; }
+    fi
+    shown armed taken kept
+    differ armed taken top
+
+    # a sync running (the status says so, a helper holds the saves lock): Syncing, its progress, A starts nothing
+    python3 -c "import fcntl, sys, time; f = open(sys.argv[1], 'a'); fcntl.flock(f, fcntl.LOCK_EX); open(sys.argv[2], 'w').close(); time.sleep(60)" \
+        "$OUT/run/romm-saves.lock" "$OUT/locked" & LOCKER=$!
+    for i in $(seq 100); do [ -e "$OUT/locked" ] && break; sleep 0.05; done
+    printf 'running 3 10\tgba\tPocket Adventure (USA)\n' > "$OUT/run/romm.status"
+    : > "$SSLOG"
+    run $size running "$SYNC; shot running; press a; wait 600"
+    logged "banana-ui: romm: sync now: Syncing"
+    logged "banana-ui: romm: sync page: Syncing, 0 conflicts, a sync running"
+    logged "banana-ui: romm: sync: a sync is running, nothing started"
+    unlogged "banana-ui: romm: run sync"
+    shown running
+    differ sync-done running top
+    # the lock held by another helper (a push after a game), the status not running: the helper says busy
+    printf 'done sync 0 0 0 1\n' > "$OUT/run/romm.status"
+    run $size busy "$SYNC; press a; wait 1; shot busy"
+    logged "banana-ui: romm: run sync"
+    logged "banana-ui: romm: sync: busy"
+    kill $LOCKER; wait $LOCKER 2>/dev/null || true; LOCKER=; rm -f "$OUT/locked"
+    # running, and nothing holds the lock: it stopped; Sync now starts again
+    printf 'running 3 10\tgba\tPocket Adventure (USA)\n' > "$OUT/run/romm.status"
+    KIWAMI_ROMM_SYNC=1 run $size stopped "$SYNC; shot stopped; press a; wait 1"
+    unlogged "banana-ui: romm: sync now: Syncing"
+    logged "banana-ui: romm: run sync"
+    logged "banana-ui: romm: sync: done sync 0 0 0 $SKIPPED"
+    differ running stopped top
+
+    # no server: No server, nothing changed
+    sed -i "s|^romm_url=.*|romm_url=$URL_DOWN|" "$A"
+    KIWAMI_ROMM_SYNC=1 run $size sync-down "$SYNC; press a; wait 1; shot sync-down; press b"
+    logged "banana-ui: romm: sync: error sync down"
+    logged "banana-ui: romm: sync now: No server"
+    shown sync-down
+    kill $SYNCSRV; wait $SYNCSRV 2>/dev/null || true; SYNCSRV=
+    cp "$OUT/accounts.main" "$A"
+    rm -rf "$D/romm"
+
     # Log out: A, then DOWN, logs nothing out; A twice: the device deleted on RomM, the token and the device gone, the
     # server and the other lines kept
     cp "$A" "$OUT/accounts.before"
@@ -203,6 +333,13 @@ for size in 640x480 1024x768; do
     run $size revoked "$ACCT; shot revoked"
     logged "banana-ui: romm: check: revoked"
     shown revoked
+    # Sync now with the token refused: Pair again, and the page doesn't start another
+    KIWAMI_ROMM_SYNC=1 run $size sync-revoked "$SYNC; press a; wait 1; press a; shot sync-revoked; press b"
+    logged "banana-ui: romm: sync: error sync revoked"
+    logged "banana-ui: romm: sync: not started (revoked)"
+    logged "banana-ui: romm: sync now: Pair again"
+    lines "banana-ui: romm: run sync" "banana-ui: romm: run sync|"
+    shown sync-revoked
     # another server (the address with its last digit deleted): the pairing forgotten here, nothing sent to either
     run $size other "$ACCT; press a; press b; press start"
     logged "banana-ui: romm: the pairing with 127.0.0.1:$(cat "$OUT/port") forgotten (another server)"

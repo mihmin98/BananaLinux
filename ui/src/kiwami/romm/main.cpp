@@ -5,8 +5,9 @@
 //   romm pair      pairs with accounts.conf's romm_url by RomM's device flow: prints (and puts in the status file)
 //                  "pairing <code>\t<the page to approve it on>", then goes on in the background, asking RomM every
 //                  few seconds until the user approves it (the token and the device written to accounts.conf, the
-//                  status "paired <version>"), denies it or lets it expire ("pair-failed denied|expired"). A second
-//                  pair stops the first. Failing at once, it prints the pair-failed line and exits 1
+//                  status "paired <version>", the last sync's result dropped), denies it or lets it expire
+//                  ("pair-failed denied|expired"). A second pair stops the first. Failing at once, it prints the
+//                  pair-failed line and exits 1
 //   romm logout    asks RomM to delete the device (which takes its token away; skipped with no server), then takes the
 //                  token and the device out of accounts.conf
 //   romm pull <system> <rom>
@@ -192,7 +193,12 @@ namespace
 			case DeviceToken::GRANTED:
 			{
 				std::string error;
-				if (paired(card, t.token, t.deviceId, error)) result = "paired " + version;
+				if (paired(card, t.token, t.deviceId, error))
+				{
+					result = "paired " + version;
+					// the last sync's result was the old pairing's (a revoked one would keep Sync now refusing)
+					if (unlink((card.dir + "/last").c_str()) == 0) log("pair: the last sync's result dropped");
+				}
 				else { log("pair: %s", error.c_str()); result = "pair-failed card"; }
 				break;
 			}

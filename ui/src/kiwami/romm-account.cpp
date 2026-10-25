@@ -3,7 +3,8 @@
 // (when paired; A twice). The top panel says the state, whichever row is selected, then that row's help: what the
 // helper's check answered (asked when the page opens and after Pair, Log out or a new server), or while a pairing waits,
 // its link's QR code and the code to type. Also the group's part of the hooks: its rows, the card read when Settings
-// opens (no helper run, nothing asked of the server), the Account row's value, the helper's answers.
+// opens (no helper run, nothing asked of the server), the rows' values, the helper's runs and answers (Sync now's taken
+// in by romm-sync.cpp).
 #include "romm.h"
 #include <algorithm>
 #include <cmath>
@@ -91,7 +92,13 @@ namespace banana
 			sync.file = s.data + "/settings.conf";
 			sync.names = { "On", "Off" }; sync.values = { "on", "off" };
 			s.items.push_back(sync);
-			keys = on.key + " " + acct.key + " " + sync.key;
+			Item now;
+			now.section = group; now.icon = "kiwami.romm"; now.label = "Sync now"; now.key = "kiwami.romm.sync"; now.kind = Item::PAGE;
+			now.help = "Every game's save on both cards synced with RomM at once: sent when this card's is newer, taken when "
+				"RomM's is. A opens it: the sync, its progress and result, and the games changed on both sides, to resolve "
+				"either way.";
+			s.items.push_back(now);
+			keys = on.key + " " + acct.key + " " + sync.key + " " + now.key;
 		}
 		fprintf(stderr, "banana-ui: kiwami: rows in RomM: %s\n", keys.empty() ? "none" : keys.c_str());
 	}
@@ -116,29 +123,40 @@ namespace banana
 	void Settings::Kiwami::rommRead()
 	{
 		romm->account = rm::account(romm->card);
+		rommSyncRead();
+	}
+
+	bool Settings::Kiwami::rommOn() const
+	{
+		for (auto& it : st.items)
+			if (it.key == "romm") return it.at >= 0 && it.at < (int)it.values.size() && it.values[it.at] == "on";
+		return false;
 	}
 
 	std::string Settings::Kiwami::rommValue(const std::string& key) const
 	{
-		if (!romm || key != "kiwami.romm.account") return "";
+		if (!romm) return "";
+		if (key == "kiwami.romm.sync") return rommSyncWord();
+		if (key != "kiwami.romm.account") return "";
 		const rm::Account& a = romm->account;
 		return a.url.empty() || a.token.empty() ? "Not paired" : rm::host(a.url);
 	}
 
-	void Settings::Kiwami::rommRun(const char* verb)
+	void Settings::Kiwami::rommRun(const char* verb, const std::string& args, const std::string& shown)
 	{
 		if (!romm || romm->helper.empty() || romm->job.running()) return;
 		std::string out;
 		if (romm->job.take(out)) rommTook(out);	// (the last run's answer, not taken in yet: not lost)
 		if (romm->job.running()) return;
-		fprintf(stderr, "banana-ui: romm: run %s\n", verb);
+		fprintf(stderr, "banana-ui: romm: run %s%s%s\n", verb, shown.empty() ? "" : " ", shown.c_str());
 		romm->verb = verb;
-		romm->job.start(shq(romm->helper) + " " + verb, st.sync);
+		romm->job.start(shq(romm->helper) + " " + verb + (args.empty() ? "" : " " + args), st.sync);
 	}
 
 	bool Settings::Kiwami::rommTook(const std::string& out)
 	{
 		std::string line = out.substr(0, out.find('\n'));
+		if (romm->verb == "sync" || romm->verb == "resolve") return rommSyncTook(out);
 		if (romm->verb == "check")
 		{
 			romm->check = line.empty() ? "down" : line;
@@ -186,7 +204,7 @@ namespace banana
 	bool Settings::Kiwami::rommUpdate(double t)
 	{
 		if (!romm) return false;
-		bool shown = st.page == KIWAMI && pageOpen == Page::ROMM_ACCOUNT;
+		bool shown = st.page == KIWAMI && pageOpen == Page::ROMM_ACCOUNT, syncShown = st.page == KIWAMI && pageOpen == Page::ROMM_SYNC;
 		if (!shown && romm->qr) { romm->qr.reset(); romm->qrUrl.clear(); }
 		bool changed = false;
 		std::string out;
@@ -196,6 +214,11 @@ namespace banana
 			romm->nextStatus = t + 500;
 			changed |= rommPairStatus();
 		}
+		if (syncShown && romm->syncing && t >= romm->nextStatus)
+		{
+			romm->nextStatus = t + 500;
+			changed |= rommSyncPoll();
+		}
 		return changed;
 	}
 
@@ -203,7 +226,8 @@ namespace banana
 	{
 		if (!romm) return -1;
 		if (romm->job.running()) return 100;
-		if (shown && starts(romm->pairing, "pairing ")) return std::max(0, (int)(romm->nextStatus - t));
+		if (shown && pageOpen == Page::ROMM_ACCOUNT && starts(romm->pairing, "pairing ")) return std::max(0, (int)(romm->nextStatus - t));
+		if (shown && pageOpen == Page::ROMM_SYNC && romm->syncing) return std::max(0, (int)(romm->nextStatus - t));
 		return -1;
 	}
 
@@ -334,7 +358,8 @@ namespace banana
 
 	// ---- drawing --------------------------------------------------------------------------------------------------
 	// the top panel: RomM's logo, RomM, the title and a line in the accent, then the state (in ink) and the help (muted)
-	void Settings::Kiwami::rommTop(const std::string& title, const std::string& accent, const std::string& state, const std::string& help)
+	void Settings::Kiwami::rommTop(const std::string& title, const std::string& accent, const std::string& state, const std::string& help,
+		const std::function<void()>& extra)
 	{
 		Colours p = colours(st.light);
 		st.be->beginScreen(0);
@@ -347,6 +372,7 @@ namespace banana
 		float y = para(state, 196, 7, p.ink);	// (the help gets what is left: a line at least)
 		if (!state.empty()) y += 14;
 		para(help, y, (int)((440 - y) / 28), p.muted);
+		if (extra) extra();
 		st.be->endScreen();
 	}
 

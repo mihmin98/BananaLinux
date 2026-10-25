@@ -404,6 +404,13 @@ grep -qxF "push	gba	$GBA" "$B/romm/pending" || fail "a refused push isn't pendin
 sync && fail "a revoked sync exited 0" || true
 [ "$(cat "$ST")" = "error sync revoked" ] || fail "a revoked sync's status: '$(cat "$ST")'"; ok
 grep -qxF "push	gba	$GBA" "$B/romm/pending" || fail "a revoked sync lost what was pending"; ok
+# paired again: the revoked result dropped, so Sync now starts over
+out=$("$H" pair); code=$(printf '%s' "$out" | sed -n 's/^pairing \([A-Z0-9]*\)	.*/\1/p')
+post "/test/approve?user_code=$code"
+waitstatus "paired 5.4.1" "pairing again after the revoke"
+[ ! -e "$B/romm/last" ] || fail "pairing again kept last: $(cat "$B/romm/last")"; ok
+grep -q "pair: the last sync's result dropped" "$LOG" || fail "the dropped result isn't in the log"; ok
+tokens="$tokens $(key romm_token)"
 
 # the tokens nowhere but accounts.conf: not in the log, the status file or the server's log
 for t in $tokens; do

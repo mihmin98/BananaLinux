@@ -20,9 +20,11 @@
 //   its achievements, locked and unlocked (ra-game.cpp), the game identified by hashing it as RetroArch does.
 //   RomM (an eighth group, after RetroAchievements; KIWAMI_ROMM_GROUP=0 leaves it out, for the tests): RomM (romm,
 //   settings.conf, off by default), Account (kiwami.romm.account) and Sync around games (romm_autosync, settings.conf,
-//   on by default; its help says when the card's own systems.conf doesn't start the games through the wrapper). Its
+//   on by default; its help says when the card's own systems.conf doesn't start the games through the wrapper) and
+//   Sync now (kiwami.romm.sync: the last sync's result, the conflicts, Syncing while one runs, read from the card). Its
 //   tile has RomM's logo (ra-icon.cpp). A on Account opens the Account page (romm-account.cpp): the server, pairing by
-//   a QR code, logging out, through the RomM helper (romm.h).
+//   a QR code, logging out, through the RomM helper (romm.h). A on Sync now opens its page (romm-sync.cpp): the sync
+//   started, its progress and result, the conflicts resolved either way.
 #include "../settings.h"
 #include <functional>
 #include "grid.h"
@@ -59,7 +61,7 @@ namespace banana
 	private:
 		Settings& st;
 		// the page that shows while Settings' page is KIWAMI: open() sets it, and the page hooks go to its own functions
-		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS, RA_GAMES, RA_GAME, ROMM_ACCOUNT } pageOpen = Page::NONE;
+		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS, RA_GAMES, RA_GAME, ROMM_ACCOUNT, ROMM_SYNC } pageOpen = Page::NONE;
 		int row0 = 0;								// the groups' first row shown, kept as the selection moves
 		int modeAt = -1;							// Mode's value as both its rows last had it
 		bool syncMode();							// a change to one of Mode's two rows shown in the other
@@ -178,8 +180,10 @@ namespace banana
 		std::string rommValue(const std::string& key) const;
 		bool rommUpdate(double t);
 		int rommWake(double t, bool shown) const;
-		void rommRead();							// the account, from the card
-		void rommRun(const char* verb);				// the helper, in the background (Romm::job)
+		void rommRead();							// the account and Sync now's state, from the card
+		bool rommOn() const;						// the RomM row on, as it shows
+		// the helper, in the background (Romm::job); args already quoted for the shell, shown is what the log says of them
+		void rommRun(const char* verb, const std::string& args = "", const std::string& shown = "");
 		bool rommTook(const std::string& out);		// its answer
 		// the Account page (romm-account.cpp): Server (upstream's keyboard), Pair, Log out (A twice) on the bottom panel;
 		// the state (check's answer, or the pairing's code and its QR code) and the selected row's help on the top one
@@ -193,8 +197,21 @@ namespace banana
 		Result rommChange(int dir);
 		bool rommPairStatus();						// the status file read while a pairing waits: true when it moved on
 		bool rommQr(const std::string& url);
-		void rommTop(const std::string& title, const std::string& accent, const std::string& state, const std::string& help);
+		// extra: drawn last on the panel (Sync now's progress bar)
+		void rommTop(const std::string& title, const std::string& accent, const std::string& state, const std::string& help,
+			const std::function<void()>& extra = nullptr);
 		void rommLogin(const std::string& title, const std::string& accent, const std::string& state, const std::string& help,
 			const std::string& link, const std::string& foot);
+		// the Sync now page (romm-sync.cpp): Sync now and the conflicts on the bottom panel; on the top one the sync's
+		// progress or its result, or the selected conflict in full and its choice: Keep this card's or Take RomM's (A twice)
+		Result rommSyncOpen();
+		Result rommSyncPress(Key k);
+		Result rommSyncTouch(float cx, float cy);
+		void rommSyncRender();
+		void rommSyncRead();						// last, the conflicts and the status: from the card, no helper run
+		std::string rommSyncWord() const;			// the row's value
+		bool rommSyncTook(const std::string& out);	// sync's or resolve's answer
+		bool rommSyncPoll();						// the status file again while a sync runs: true when it moved on
+		Result rommSyncA();
 	};
 }

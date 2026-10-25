@@ -597,11 +597,13 @@ detaching, for the tests.
 
 ### 6. Settings: Sync now and the conflicts
 
-- **Files**: `ui/src/kiwami/kiwami.h`, `kiwami.cpp`, `romm.h` (changed); `ui/src/kiwami/romm-sync.cpp` (new);
-  `kiwami/tests/romm-ui.sh` (changed)
+- **Files**: `ui/src/kiwami/kiwami.h`, `kiwami.cpp`, `romm.h`, `romm-account.cpp` (changed);
+  `ui/src/kiwami/romm-sync.cpp` (new); `ui/src/kiwami/romm/main.cpp` (changed: a pairing drops `last`, *Deviations*
+  25 Oct); `kiwami/tests/romm-ui.sh`, `romm-helper.sh`, `cores-ui.sh` (changed)
 - **Change**:
   - **The row `kiwami.romm.sync`** (a page), after Sync around games. Its value comes from `last` and `conflicts`:
-    `Off` (RomM off), `Not paired`, `Not yet`, `Synced`, `<n> conflicts`, `No server`, `Pair again`.
+    `Off` (RomM off), `Not paired`, `Not yet`, `Synced`, `<n> conflicts`, `No server`, `Pair again`, and `Syncing`
+    while a sync runs (*Deviations*, 25 Oct).
   - **`romm-sync.cpp`**, the Sync now page.
     - A starts `romm sync`, detached as `banana-scrape` is, and the status is read every 0.5 s while the page shows.
     - The top panel: a progress bar and the game, as `scrapeBar`, then the result: sent, fetched, conflicts, not on
@@ -800,6 +802,14 @@ Where the implementation turned out different from this plan, why, and what chan
   with the user. `kiwami/tests/cores-ui.sh`, which the step runs, compares every `rows in` log line, so it expects
   RomM's after RetroAchievements', as RetroAchievements' step added its own there.
 
+- **25 Oct 2026, step 6: a new pairing drops the last sync's result, and the row says `Syncing` while a sync runs.**
+  Nothing took `revoked` out of `banana/romm/last`: after pairing again the Sync now row would have said `Pair again`
+  and the page, which doesn't start while revoked, would never have synced again. Now the helper removes `last` once a
+  pairing is approved (`main.cpp`'s `pair`, checked in `romm-helper.sh`), so the row says `Not yet` until the first
+  sync with the new pairing. While a sync runs (the status file says `running` and the saves lock is held, read when
+  Settings opens or the page is left, no polling on the list), the row's value is `Syncing`, beside A2's list.
+  `kiwami/tests/cores-ui.sh` expects the new row in RomM's `rows in` line. Agreed with the user.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -811,7 +821,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 3. Sync now and the conflicts resolved | done | RomM: Sync now for every game on both cards, and a conflict resolved either way |
 | 4. The wrapper around the games, put into the image's systems.conf | done | RomM: the games' saves synced around each game, through a wrapper in the image's systems.conf |
 | 5. Settings: the RomM group and its Account page | done | RomM: a group in Settings, after RetroAchievements, with its logo and the Account page |
-| 6. Settings: Sync now and the conflicts | todo | |
+| 6. Settings: Sync now and the conflicts | done | RomM: Sync now in Settings, with its progress, its result and the conflicts to resolve |
 | 7. The helper's games, downloads and BIOS | todo | |
 | 8. Settings: Games, Downloads to and BIOS | todo | |
 | 9. Final check | todo | |

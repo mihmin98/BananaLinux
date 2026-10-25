@@ -1,0 +1,53 @@
+#!/bin/sh
+# RomM around a game (kiwami): kiwami/post-build.sh puts this in front of the nine synced systems' run lines in the
+# image's systems.conf. With RomM on (settings.conf's romm), Sync around games not off (romm_autosync), a pairing
+# (accounts.conf's romm_token) and the helper there, the game's save is pulled from RomM before the game (romm pull,
+# 3 s at most) and pushed after it (romm push, which goes into the background: the menu comes back at once).
+# Otherwise the launcher is exec'd, and the game runs as it does without the fork: the settings are read by the shell
+# itself, so that costs no process.
+#   romm-game <launcher> <args...>
+# BANANA_SYSTEM and BANANA_ROM come from banana-ui. A TERM (bananad's shutdown signals the game's whole process group)
+# isn't passed on, since the game has it already and a second one could cut DraStic's resume save short: the wrapper
+# waits for the game, then keeps its push and its play for the next sync (romm pending), with no network.
+# KIWAMI_ROMM_CARD (/data), KIWAMI_ROMM_ETC (/etc/banana) and KIWAMI_ROMM (the helper) are moved by the tests.
+D=${KIWAMI_ROMM_CARD:-/data}
+E=${KIWAMI_ROMM_ETC:-/etc/banana}
+H=${KIWAMI_ROMM:-/usr/libexec/kiwami/romm}
+
+# conf <file> <key>: the key's last value in a "key = value" file, in $v ("" when it has none)
+conf() {
+    v=
+    [ -f "$1" ] || return 0
+    while IFS='=' read -r k x || [ -n "$k" ]; do
+        k=${k#"${k%%[! ]*}"}; k=${k%"${k##*[! ]}"}
+        [ "$k" = "$2" ] || continue
+        x=${x#"${x%%[! ]*}"}; x=${x%"${x##*[! ]}"}
+        v=$x
+    done < "$1"
+}
+# setting <key>: the card's settings.conf, else the image's (run-retroarch's setting())
+setting() { conf "$D/banana/settings.conf" "$1"; [ -n "$v" ] || conf "$E/settings.conf" "$1"; }
+
+setting romm; [ "$v" = on ] || exec "$@"
+setting romm_autosync; [ "$v" != off ] || exec "$@"
+conf "$D/banana/accounts.conf" romm_token; [ -n "$v" ] || exec "$@"
+[ -x "$H" ] && [ -n "$BANANA_SYSTEM" ] && [ -n "$BANANA_ROM" ] || exec "$@"
+
+term=
+trap 'term=1' TERM INT HUP
+start=$(date +%s)
+echo "romm-game: $BANANA_SYSTEM: the save synced with RomM around the game" >&2
+"$H" pull "$BANANA_SYSTEM" "$BANANA_ROM"
+[ -z "$term" ] || exit 143	# (shut down before the game started)
+# the game as a child, with banana-ui's stdin (a background command's is /dev/null otherwise)
+"$@" <&0 &
+P=$!
+wait $P; S=$?
+while kill -0 $P 2>/dev/null; do wait $P; S=$?; done	# a trap interrupted the wait: until the game has quit
+end=$(date +%s)
+if [ -n "$term" ]; then
+    "$H" pending "$BANANA_SYSTEM" "$BANANA_ROM" "$start" "$end"
+else
+    "$H" push "$BANANA_SYSTEM" "$BANANA_ROM" "$start" "$end"
+fi
+exit $S

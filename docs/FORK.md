@@ -52,7 +52,7 @@ The rule: a new file of the fork's own wherever the build allows one; an upstrea
 | Another version of one of upstream's packages | `kiwami/local.mk` (Buildroot's package override file, set by the fragment; `override <PKG>_VERSION`), its patches and hash in `kiwami/patches/<package>/`, its options in `kiwami/external.mk`, behind an option in `kiwami/Config.in` |
 | Kernel options | `kiwami/linux.fragment`, listed after upstream's (the last one wins); busybox and U-Boot the same way when needed |
 | Files in the image | `kiwami/rootfs/`, a second rootfs overlay (copied after upstream's, so it can also replace an upstream file) |
-| Additions to upstream's files in the image (`systems.conf`, the theme's `systems.cfg`) | `kiwami/post-build.sh`, appending or inserting into the copy in `$TARGET_DIR`, rather than a whole replacement in the overlay |
+| Additions to upstream's files in the image (`systems.conf`, the theme's `systems.cfg`) | `kiwami/post-build.sh`, appending or inserting into the copy in `$TARGET_DIR`, rather than a whole replacement in the overlay (`systems.conf`: `7z` on seven `ext` lines, the RomM wrapper `romm-game` in front of nine `run` lines) |
 | Boot and network services | hook folders that run every file in them: `/etc/banana/sleep.d/` (around a suspend), `/usr/share/udhcpc/default.script.d/` (on an address from DHCP) |
 | banana-ui | `ui/src/kiwami/` (inside `ui/`: the package builds only that folder): its own theme behind `banana::Menu`, its own settings rows, its own handlers for the host's events. C libraries it vendors go unchanged in `ui/src/kiwami/third_party/<library>/`, each with the `SHA256SUMS` of its pinned version's files (checked by `kiwami/tests/ci.sh`) and a `VENDORED` note, and are built by `ui/src/kiwami/kiwami.mk` (the `ui/Makefile`'s third `kiwami:` line) |
 | Tests of the fork's features | `kiwami/tests/` (a one-line `kiwami:` hook if `make test` has to run them) |
@@ -162,7 +162,7 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
        system/rootfs/usr/libexec/banana/share buildroot/package/retroarch/cores.in \
        system/rootfs/usr/libexec/banana/run-retroarch system/rootfs/etc/banana/retroarch.cfg \
        system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
-       buildroot/patches/retroarch/
+       buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/nds-saves
    ```
    (the systems list, whose `ext` lines `kiwami/post-build.sh` adds `7z` to on seven systems (the build stops if
    one of them is gone; a new cartridge system may want it too), the defconfigs the fork adds to, the share script
@@ -187,7 +187,14 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    (`kiwami/patches/retroarch/`) shadow upstream's version and patches, so a change upstream makes there never
    reaches the image. `kiwami/tests/ci.sh` stops when upstream's `RETROARCH_VERSION`, `RETROARCH_JOYPADS_VERSION` or
    patches differ from what the fork last checked, and what to do is in the comment above the stamps in
-   `kiwami/tests/retroarch-pin.sh`).
+   `kiwami/tests/retroarch-pin.sh`). And where RomM's helper finds the games' saves: `kiwami/post-build.sh` puts
+   `/usr/libexec/kiwami/romm-game` in front of the `run` lines of `nds gba gbc gb nes snes megadrive psx n64` (the
+   build stops if one is gone; a system upstream adds isn't synced until it is added to that list and to `SYNCED` in
+   `ui/src/kiwami/romm/saves.cpp`), and the helper reads the launcher's name in the line, `run-retroarch`'s
+   `core.<system>` choice, `retroarch.cfg`'s `savefile_directory` and `savestate_directory` (the saves and Quick
+   resume's states by core under `/data/saves` and `/data/states`), and `nds-saves`' two DS saves
+   (`drastic/backup/<game>.dsv`, `saves/nds/<game>.sav`). A change upstream makes to any of them moves the saves the
+   helper reads and writes, so `ui/src/kiwami/romm/saves.cpp` has to follow it.
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

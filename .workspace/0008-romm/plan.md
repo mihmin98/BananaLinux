@@ -794,7 +794,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 1. The helper, its package, and pairing | done | RomM: a helper of the fork's own, its package, and pairing by RomM's device flow |
 | 2. A game's save: its RomM id, the pull before it and the push after | done | RomM: a game's save pulled from RomM before it and pushed after, the conflicts kept for later |
 | 3. Sync now and the conflicts resolved | done | RomM: Sync now for every game on both cards, and a conflict resolved either way |
-| 4. The wrapper around the games, put into the image's systems.conf | todo | |
+| 4. The wrapper around the games, put into the image's systems.conf | done | RomM: the games' saves synced around each game, through a wrapper in the image's systems.conf |
 | 5. Settings: the RomM group and its Account page | todo | |
 | 6. Settings: Sync now and the conflicts | todo | |
 | 7. The helper's games, downloads and BIOS | todo | |

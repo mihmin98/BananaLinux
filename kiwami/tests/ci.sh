@@ -45,6 +45,9 @@ rm -rf "$T"
 # the RomM helper, built for this machine, against the stand-in RomM server
 kiwami/tests/romm-helper.sh
 
+# the RomM wrapper around the games, with a stand-in helper and game
+kiwami/tests/romm-game.sh
+
 # Tailscale in banana-ui's Settings, headless, when banana-ui is built (CI builds it before)
 if [ -x ui/banana-ui ]; then kiwami/tests/tailscale-ui.sh; else echo "tailscale-ui: skipped, no ui/banana-ui (make ui)"; fi
 
@@ -92,10 +95,57 @@ grep -q '\[n64\]' "$T/err" || { echo "post-build: the failure doesn't name [n64]
 [ ! -e "$C.tmp" ] || { echo "post-build: left its temporary behind" >&2; exit 1; }
 cp system/rootfs/etc/banana/systems.conf "$C"
 
+# ... and puts the RomM wrapper in front of the nine synced systems' run lines, once each and nowhere else, the same
+# on a second run, and stops the build when one of them has no run line; the RetroArch systems' lines still name
+# their launcher, which is what gives a game the game panel (ui/src/main.cpp's ra)
+R=/usr/libexec/kiwami/romm-game
+run() { awk -v s="[$1]" '/^\[/ { in_s = ($0 == s) } in_s && /^run *= */ { sub(/^run *= */, ""); print }' "$2"; }
+sh kiwami/post-build.sh "$T" rgds
+for s in $(awk '/^\[.*\]$/ { print substr($0, 2, length($0) - 2) }' "$C"); do
+    want=$(run $s system/rootfs/etc/banana/systems.conf)
+    case " nds gba gbc gb nes snes megadrive psx n64 " in *" $s "*) want="$R $want" ;; esac
+    [ "$(run $s "$C")" = "$want" ] || { echo "post-build: [$s]'s run line is '$(run $s "$C")', not '$want'" >&2; exit 1; }
+done
+for s in gba gbc gb nes snes megadrive n64; do
+    run $s "$C" | grep -q " /usr/libexec/banana/run-retroarch " || { echo "post-build: [$s]'s run line lost run-retroarch" >&2; exit 1; }
+done
+run psx "$C" | grep -q " /usr/libexec/banana/run-ps1 " || { echo "post-build: [psx]'s run line lost run-ps1" >&2; exit 1; }
+cp "$C" "$T/systems.once"
+sh kiwami/post-build.sh "$T" rgds
+cmp -s "$C" "$T/systems.once" || { echo "post-build: a second run wrapped a run line again" >&2; exit 1; }
+awk '/^\[/ { in_s = ($0 == "[psx]") } !(in_s && /^run *=/)' system/rootfs/etc/banana/systems.conf > "$C"
+! sh kiwami/post-build.sh "$T" rgds 2>"$T/err" || { echo "post-build: no failure without [psx]'s run line" >&2; exit 1; }
+grep -q '\[psx\]' "$T/err" || { echo "post-build: the failure doesn't name [psx]: $(cat "$T/err")" >&2; exit 1; }
+[ ! -e "$C.tmp" ] || { echo "post-build: left its temporary behind" >&2; exit 1; }
+cp system/rootfs/etc/banana/systems.conf "$C"
+
+# ... and over the post-built file, banana-ui headless launches a game on each of the nine shelves (every shelf's
+# first game in turn, the shelves counted by going right round them, as kiwami/tests/7z-ui.sh does)
+if [ -x ui/banana-ui ]; then
+    sh kiwami/post-build.sh "$T" rgds
+    mkdir -p "$T/data"
+    for s in nds gba gbc gb nes snes megadrive psx n64; do
+        e=$(awk -v s="[$s]" '/^\[/ { in_s = ($0 == s) } in_s && /^ext *=/ { print $3 }' "$C")
+        mkdir -p "$T/roms/$s"; : > "$T/roms/$s/Game $s.$e"
+    done
+    shelves() { ui/banana-ui --headless "$T/" --size 640x480 --assets ui/assets/rnds --systems "$C" --roms "$T/roms" \
+        --data "$T/data" --script "$1" 2>&1; }
+    k=$(shelves "home 0; $(printf 'press right; %.0s' $(seq $(grep -c '^\[' "$C")))" |
+        grep -o 'view 0 sys [0-9]*' | awk '$4 > m { m = $4 } END { print m + 1 }')
+    script="home 0"; i=0
+    while [ $i -lt $k ]; do script="$script; lib $i 0; press a; wait 3000; wait 1; press b; press b"; i=$((i + 1)); done
+    shelves "$script" > "$T/shelves.log"
+    for s in nds gba gbc gb nes snes megadrive psx n64; do
+        grep -q "^banana-ui: launch [0-9]*: $T/roms/$s/Game $s\.[a-z0-9]* (system $s)$" "$T/shelves.log" ||
+            { echo "post-build: no game launched on [$s] over the wrapped systems.conf: $(grep 'launch [0-9]*: ' "$T/shelves.log")" >&2; exit 1; }
+    done
+    echo "post-build: a game launched on each of the nine wrapped shelves ($k shelves)"
+else echo "post-build: the wrapped shelves' launches skipped, no ui/banana-ui (make ui)"; fi
+
 sed -i '/veto files/d' "$T/usr/libexec/banana/share"
 ! sh kiwami/post-build.sh "$T" rgds 2>/dev/null || { echo "post-build: no failure without the veto line" >&2; exit 1; }
 rm -rf "$T"
-echo "post-build: veto and 7z checked"
+echo "post-build: veto, 7z and the RomM wrapper checked"
 
 # every board configures with the fork's tree and options over upstream's, keeping all of the fork's options
 for b in rgds rgds_plus universal; do

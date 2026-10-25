@@ -34,3 +34,18 @@ awk -v want="gba gb gbc nes snes megadrive n64" '
     END { for (s in need) if (!(s in has)) { print "kiwami/post-build.sh: no ext line for [" s "] in " FILENAME > "/dev/stderr"; bad = 1 }
           exit bad }' "$C" > "$C.tmp" || { rm -f "$C.tmp"; exit 1; }
 mv "$C.tmp" "$C"
+
+# RomM: the systems whose saves the RomM helper syncs start their games through /usr/libexec/kiwami/romm-game, which
+# runs the launcher as it is (exec) unless RomM and Sync around games are on. Their run lines get it in front, once; a
+# chosen system with no run line stops the build, so a change upstream makes to the list is noticed.
+awk -v want="nds gba gbc gb nes snes megadrive psx n64" -v w="/usr/libexec/kiwami/romm-game" '
+    BEGIN { n = split(want, s, " "); for (i = 1; i <= n; i++) need[s[i]] = 1 }
+    /^\[.*\]$/ { sec = substr($0, 2, length($0) - 2) }
+    (sec in need) && match($0, /^run *= */) {
+        cmd = substr($0, RLENGTH + 1)
+        if (index(cmd, w " ") != 1) $0 = substr($0, 1, RLENGTH) w " " cmd
+        has[sec] = 1 }
+    { print }
+    END { for (x in need) if (!(x in has)) { print "kiwami/post-build.sh: no run line for [" x "] in " FILENAME > "/dev/stderr"; bad = 1 }
+          exit bad }' "$C" > "$C.tmp" || { rm -f "$C.tmp"; exit 1; }
+mv "$C.tmp" "$C"

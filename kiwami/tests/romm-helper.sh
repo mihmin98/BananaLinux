@@ -328,11 +328,82 @@ t0=$(date +%s%N); push gba "$GBA" $T1 $T2; t1=$(date +%s%N)
 grep -q "push: waiting for another sync to end" "$LOG" || fail "the wait isn't in the log"; ok
 [ ! -s "$B/romm/pending" ] || fail "the push that waited didn't go: $(cat "$B/romm/pending")"; ok
 
-# a token RomM refuses: the push kept pending, the last sync's state revoked
+# ---- Sync now ---------------------------------------------------------------------------------------------------
+# the card as the saves left it, and: the second card in; a game moved into a subfolder, its save changed; a changed
+# save; a DS save pending from a shutdown, with its play; Space Name with no save here and a new one from RomM's web
+# player. Pocket Adventure and Late Bloomer are still in conflict, Unknown Game isn't on RomM, Disc Game (the second
+# card) and Core Quest (its mGBA save synced, none in gpSP's folder) have nothing to do
+sync() { KIWAMI_ROMM_SYNC=1 "$H" sync; }
+lastis() { [ "$(cut -f2- "$B/romm/last")" = "$1" ] || fail "$2: last is '$(cat "$B/romm/last" 2>/dev/null)', not '<time>	$1'"; ok; }
+mkdir -p "$X/run/sd2"; printf '%s/\n' "$X/sd2/roms" > "$X/run/sd2/roms"
+mkdir -p "$C/roms/gba/Collection"; mv "$CT" "$C/roms/gba/Collection/"
+printf 'case-v2' > "$C/saves/gpSP/case test (europe).srm"
+printf 'blast-v2' > "$C/saves/PicoDrive/Blast Processing.srm"
+head -c 512 /dev/zero | tr '\0' F > "$DSV"
+"$H" pending nds "$DS" $((T1 - 2000)) $((T2 - 2000))
+printf 'space-web' > "$X/webs"; websave 401 snes9x "$X/webs"
+# a second sync while one runs: busy, at once, nothing asked of RomM
+flock "$X/run/romm-saves.lock" sleep 1 & FL=$!; sleep 0.2
+n0=$(wc -l < "$X/srv.log")
+out=$("$H" sync) && st=0 || st=$?
+[ "$st" = 3 ] && [ "$out" = busy ] || fail "a sync while the saves are locked: '$out', exit $st"; ok
+[ "$(wc -l < "$X/srv.log")" = "$n0" ] || fail "a busy sync asked RomM"; ok
+wait "$FL"
+sync || fail "sync exited non-zero"
+[ "$(cat "$ST")" = "done sync 3 1 2 1" ] || fail "sync's status: '$(cat "$ST")'"; ok
+lastis "conflicts	3	1	2	1" "sync"
+[ "$(saves 102 | tail -n 1)" = "gpsp $(sum "$C/saves/gpSP/case test (europe).srm") 7" ] || fail "the subfolder's game: '$(saves 102)'"; ok
+[ "$(saves 501 | tail -n 1)" = "picodrive $(sum "$C/saves/PicoDrive/Blast Processing.srm") 8" ] || fail "the changed save: '$(saves 501)'"; ok
+[ "$(saves 201 | tail -n 1)" = "melonds $(sum "$DSV") 512" ] || fail "the pending DS save: '$(saves 201)'"; ok
+[ "$(cat "$SSRM")" = space-web ] || fail "RomM's save of a game with none here: $(cat "$SSRM" 2>/dev/null)"; ok
+[ ! -e "$C/saves/gpSP/Core Quest.srm" ] || fail "a save this handheld synced and no longer has came back"; ok
+[ "$(cat "$SRM")" = card-v3 ] && [ "$(cat "$C/saves/Snes9x/Late Bloomer.srm")" = card ] || fail "sync overwrote a save in conflict"; ok
+[ "$(cut -f1,3 "$B/romm/conflicts" | tr '\t\n' ' ')" = "gba 101 snes 402 " ] || fail "the conflicts: $(cat "$B/romm/conflicts")"; ok
+[ "$(saves 301 | wc -l)" = 1 ] || fail "the second card's game sent again: '$(saves 301)'"; ok
+grep -q "sync: Unknown Game.gba: not on RomM (gba's list)" "$LOG" || fail "the game RomM doesn't have isn't logged"; ok
+# pending first: the DS's push and its play went, the file emptied
+[ ! -s "$B/romm/pending" ] || fail "pending after sync: $(cat "$B/romm/pending")"; ok
+plays | grep -qx "201 120000 autosave" || fail "the pending play not sent: $(plays)"; ok
+# each platform's list fetched at most once (only the GBA's again here, for the game RomM doesn't have)
+[ -z "$(sed -n "$((n0 + 1)),\$p" "$X/srv.log" | grep '^GET /api/roms?' | sort | uniq -d)" ] || fail "a list fetched twice in one sync"; ok
+[ "$(sed -n "$((n0 + 1)),\$p" "$X/srv.log" | grep -c '^GET /api/roms?platform_ids=1&')" = 1 ] || fail "the GBA's list not fetched again on a miss"; ok
+
+# resolve: the line has to be the ROM's still; Pocket Adventure with RomM's, Late Bloomer with this card's
+PL=$(grep -n "	$GBA	" "$B/romm/conflicts" | cut -d: -f1) LL=$(grep -n "	$LATE	" "$B/romm/conflicts" | cut -d: -f1)
+out=$("$H" resolve "$LL" server "$GBA") && fail "resolve of another line's ROM succeeded" || true
+[ "$out" = "resolve-failed changed" ] && [ "$(wc -l < "$B/romm/conflicts")" = 2 ] || fail "resolve of another ROM: '$out'"; ok
+out=$("$H" resolve 3 local "$GBA") && fail "resolve of a line that isn't there succeeded" || true
+[ "$out" = "resolve-failed changed" ] || fail "resolve 3: '$out'"; ok
+echo state > "$STATE"
+out=$("$H" resolve "$PL" server "$GBA") || fail "resolve server failed: '$out'"
+[ "$out" = "resolved $PL server" ] || fail "resolve server said '$out'"; ok
+[ "$(cat "$SRM")" = web-v3 ] && [ "$(cat "$SRM.bak")" = card-v3 ] || fail "resolve server: the save is $(cat "$SRM"), .bak $(cat "$SRM.bak")"; ok
+[ ! -e "$STATE" ] || fail "resolve server: the Quick resume state kept"; ok
+lastis "conflicts	3	1	1	1" "resolve server"
+LL=$(grep -n "	$LATE	" "$B/romm/conflicts" | cut -d: -f1)
+out=$("$H" resolve "$LL" local "$LATE") || fail "resolve local failed: '$out'"
+[ "$(saves 402 | tail -n 1)" = "snes9x $(printf card | md5sum | cut -d' ' -f1) 4" ] || fail "resolve local: '$(saves 402)'"; ok
+[ ! -s "$B/romm/conflicts" ] || fail "the conflicts not emptied: $(cat "$B/romm/conflicts")"; ok
+lastis "synced	3	1	0	1" "resolve local"
+# ... settled: the next sync finds nothing to do but the game RomM doesn't have
+sync
+[ "$(cat "$ST")" = "done sync 0 0 0 1" ] || fail "a sync after resolving: '$(cat "$ST")'"; ok
+
+# Sync now in the background with no server: down
+sed -i "s|^romm_url=.*|romm_url=$DOWNURL|" "$A"
+"$H" sync || fail "a sync with no server didn't go into the background"
+waitstatus "error sync down" "sync with no server"
+lastis "down	0	0	0	1" "sync with no server"
+sed -i "s|^romm_url=.*|romm_url=$URL|" "$A"
+
+# a token RomM refuses: the push kept pending, the last sync's state revoked; Sync now says so
 post /test/revoke
 push gba "$GBA" $T1 $T2
 grep -qxF "push	gba	$GBA" "$B/romm/pending" || fail "a refused push isn't pending"; ok
 [ "$(cut -f2 "$B/romm/last")" = revoked ] || fail "last isn't revoked: $(cat "$B/romm/last" 2>/dev/null)"; ok
+sync && fail "a revoked sync exited 0" || true
+[ "$(cat "$ST")" = "error sync revoked" ] || fail "a revoked sync's status: '$(cat "$ST")'"; ok
+grep -qxF "push	gba	$GBA" "$B/romm/pending" || fail "a revoked sync lost what was pending"; ok
 
 # the tokens nowhere but accounts.conf: not in the log, the status file or the server's log
 for t in $tokens; do

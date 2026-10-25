@@ -18,6 +18,16 @@
 //                  and whatever is pending with it; kept pending when RomM can't be reached
 //   romm pending <system> <rom> <start> <end>
 //                  the push and the play kept for later, with no network (after a shutdown)
+//   romm sync      Sync now, in the background: what is pending first, then every game of the synced systems on both
+//                  cards, each with its save or RomM's, negotiated 500 at a time. The status file says
+//                  "running <done> <total>\t<system>\t<game>", then "done sync <sent> <fetched> <conflicts> <skipped>"
+//                  (also kept in <card>/banana/romm/last) or "error sync down|revoked|old|unpaired". With a sync or a
+//                  push already running it prints busy and exits 3
+//   romm resolve <n> local|server <rom>
+//                  the n-th conflict (its line in <card>/banana/romm/conflicts, which has to be still <rom>'s): this
+//                  card's save sent over RomM's (local), or RomM's taken, the card's kept as .bak (server). Prints
+//                  "resolved <n> local|server", or "resolve-failed <why>" and exits 1 with the line left; busy (3) when
+//                  the saves are still locked after 10 s
 // The saves are changed under one lock (<run>/romm-saves.lock): the pull waits for it within its 3 s, the push up to 60 s.
 // The status file is <run>/romm.status, one line; the log <card>/banana/logs/romm.log (http.h), which the token never
 // reaches: the helper reads it from accounts.conf, never from its command line. The paths: rommcard.h.
@@ -28,16 +38,19 @@
 #include "saves.h"
 #include "../conf.h"
 #include "../rommcard.h"
+#include <algorithm>
 #include <chrono>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <dirent.h>
 #include <fcntl.h>
 #include <fstream>
 #include <sstream>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 using namespace banana::kiwami;
@@ -285,7 +298,10 @@ namespace
 		if (!saveOf(card, *s, g.rom, g.save, why)) { log("%s: %s: skipped, %s", verb.c_str(), g.rom.c_str(), why.c_str()); return false; }
 		g.id = lookup.idOf(*s, g.rom);
 		if (!g.id) return false;
-		if (g.save.ds) ndsSaves(card, g.rom);
+		// (nds-saves only when there is a save for it to look at: Sync now goes through every DS game)
+		std::string beside = g.rom.substr(0, g.rom.rfind('.')) + ".dsv";
+		if (g.save.ds && (!access(g.save.path.c_str(), F_OK) || !access(g.save.dsv.c_str(), F_OK) || !access(beside.c_str(), F_OK)))
+			ndsSaves(card, g.rom);
 		g.hasSave = readSave(g.save, g.bytes, g.mtimeMs);
 		if (g.hasSave) g.hash = md5Hex(g.bytes);
 		return true;
@@ -541,6 +557,289 @@ namespace
 		return 0;
 	}
 
+	// ---- Sync now -------------------------------------------------------------------------------------------------
+	std::string lower(std::string s)
+	{
+		for (auto& c : s) c = (char)tolower((unsigned char)c);
+		return s;
+	}
+
+	// a system's folder's games as the library lists them (library.cpp's listRoms): by ext, without case (an ext can
+	// have dots of its own), two folders deep unless flat, art's and ES's folders and dot files left out; in name order
+	void listRoms(const std::string& dir, const std::vector<std::string>& exts, int depth, int maxDepth, std::vector<std::string>& out)
+	{
+		DIR* d = opendir(dir.c_str());
+		if (!d) return;
+		std::vector<std::pair<std::string, bool>> entries;
+		while (dirent* e = readdir(d))
+		{
+			if (e->d_name[0] == '.') continue;
+			bool isDir = e->d_type == DT_DIR;
+			if (e->d_type == DT_UNKNOWN || e->d_type == DT_LNK)
+			{
+				struct stat st;
+				if (stat((dir + "/" + e->d_name).c_str(), &st)) continue;
+				isDir = S_ISDIR(st.st_mode);
+			}
+			entries.push_back({ e->d_name, isDir });
+		}
+		closedir(d);
+		std::sort(entries.begin(), entries.end());
+		for (auto& [name, isDir] : entries)
+		{
+			std::string ln = lower(name);
+			if (isDir)
+			{
+				if (depth < maxDepth && ln != "media" && ln != "images" && ln != "videos" && ln != "manuals" && ln != "downloaded_images")
+					listRoms(dir + "/" + name, exts, depth + 1, maxDepth, out);
+				continue;
+			}
+			for (const std::string& x : exts)
+				if (ln.size() > x.size() + 1 && ln.compare(ln.size() - x.size() - 1, std::string::npos, "." + x) == 0) { out.push_back(dir + "/" + name); break; }
+		}
+	}
+
+	// the cards' roms folders: this card's, and the second card's while it's in (bananad's sd2 script names it)
+	std::vector<std::string> romRoots()
+	{
+		std::vector<std::string> r = { card.card + "/roms" };
+		std::string sd2 = firstLine(card.run + "/sd2/roms");
+		while (!sd2.empty() && (sd2.back() == ' ' || sd2.back() == '/')) sd2.pop_back();
+		if (!sd2.empty() && sd2 != r[0]) r.push_back(sd2);
+		return r;
+	}
+
+	// the sync's end when it can't go on: why is down, revoked, old or unpaired
+	int syncStopped(const std::string& why)
+	{
+		if (why == "down")
+		{
+			Last l = last(card);
+			l.when = time(nullptr);
+			l.state = "down";
+			std::string error;
+			if (!setLast(card, l, error)) log("sync: %s", error.c_str());
+		}
+		status("error sync " + why);
+		log("sync: stopped: %s", why.c_str());
+		return 1;
+	}
+
+	int syncAll()
+	{
+		Account a = account(card);
+		if (!pairedHere(a)) { status("error sync unpaired"); say("error sync unpaired"); return 1; }
+		if (!lockSaves(0)) { say("busy"); return 3; }		// (taken before going into the background: the child keeps it)
+		status("running 0 0\t\t");
+		detach();
+		Server s = server(a, 5000, 30000);
+		std::string version, why;
+		if (!versionChecked(s, version, why)) return syncStopped(why == "down" ? "down" : "old");
+
+		// the games: the pending ones first, then each synced system's on both cards, one per save (system and stem)
+		Pending carried = pending(card);
+		std::vector<Game> listed;
+		std::set<std::string> keys;
+		auto add = [&](const std::string& system, const std::string& rom) {
+			if (!keys.insert(system + "\t" + stemOf(rom)).second) return;
+			Game g;
+			g.system = system;
+			g.rom = rom;
+			listed.push_back(g);
+		};
+		for (auto& p : carried.pushes) add(p.system, p.rom);
+		std::vector<std::string> roots = romRoots();
+		for (auto& sy : allSystems())
+		{
+			if (!synced(sy.id)) continue;
+			for (size_t r = 0; r < roots.size(); r++)
+			{
+				bool absolute = !sy.folder.empty() && sy.folder[0] == '/';
+				if (r > 0 && absolute) continue;	// (an absolute folder: one place)
+				std::vector<std::string> roms;
+				listRoms(absolute ? sy.folder : roots[r] + "/" + sy.folder, sy.ext, 0, sy.flat ? 0 : 2, roms);
+				for (auto& rom : roms) add(sy.id, rom);
+			}
+		}
+
+		// each one's save and RomM id; one RomM game is one save (a game on both cards, or a disc's .m3u and its .cue):
+		// the one with a save kept, the newest save when both have one
+		int total = (int)listed.size(), done = 0, skipped = 0;
+		auto progress = [&](const Game& g) {
+			status("running " + std::to_string(done) + " " + std::to_string(total) + "\t" + g.system + "\t" + g.name());
+		};
+		Games lookup(card, s, true);
+		lookup.batch = true;
+		std::vector<Game> games;
+		for (auto& g : listed)
+		{
+			g.save.stem = stemOf(g.rom);
+			progress(g);
+			if (!prepare(g, allSystems(), lookup))
+			{
+				if (lookup.down) break;
+				skipped++;
+				done++;
+				continue;
+			}
+			auto same = std::find_if(games.begin(), games.end(), [&](const Game& o) { return o.id == g.id; });
+			if (same == games.end()) games.push_back(g);
+			else
+			{
+				if (g.hasSave && (!same->hasSave || g.mtimeMs > same->mtimeMs)) *same = g;
+				done++;
+			}
+		}
+		if (lookup.status == 401) noteRevoked();
+		if (lookup.down) return syncStopped(revoked ? "revoked" : "down");
+		lookup.flush();
+
+		// the pending plays, sent with the first negotiation's session
+		std::vector<PlaySession> plays;
+		for (auto& p : carried.plays)
+		{
+			const System* sy = findSystem(allSystems(), p.system);
+			long id = sy ? lookup.idOf(*sy, p.rom) : 0;
+			if (id) plays.push_back({ id, p.start, p.end });
+		}
+		bool playsSent = plays.empty();
+
+		Tally t;
+		std::vector<bool> failed(games.size(), false);
+		for (size_t from = 0; from < games.size(); from += 500)
+		{
+			size_t to = std::min(games.size(), from + 500);
+			std::vector<ClientSave> saves;
+			std::vector<long> ids;
+			for (size_t i = from; i < to; i++) { ids.push_back(games[i].id); if (games[i].hasSave) saves.push_back(games[i].client()); }
+			Negotiation n = negotiate(s, a.deviceId, saves, ids);
+			if (n.status == 401) noteRevoked();
+			if (!n.ok) return syncStopped(revoked ? "revoked" : "down");
+			int batchDone = 0, batchFailed = 0;
+			for (size_t i = from; i < to; i++)
+			{
+				progress(games[i]);
+				for (auto& o : n.ops)
+				{
+					if (o.romId != games[i].id || o.slot != "autosave") continue;
+					if (apply(s, a, n.session, games[i], o, t)) batchDone++;
+					else { batchFailed++; failed[i] = true; }
+				}
+				done++;
+			}
+			t.done += batchDone;
+			t.failed += batchFailed;
+			long st = complete(s, n.session, batchDone, batchFailed, from == 0 ? plays : std::vector<PlaySession>());
+			if (st == 401) noteRevoked();
+			if (from == 0) playsSent = playsSent || st == 200;
+			if (revoked) return syncStopped("revoked");
+		}
+		if (!playsSent && games.empty())
+		{
+			long st = playSessions(s, a.deviceId, plays);
+			if (st == 401) noteRevoked();
+			playsSent = st == 201;
+		}
+
+		// the pending file: what was carried taken out, what failed put back (the next push after a game tries it again)
+		std::string error;
+		Pending gone, back;
+		gone.pushes = carried.pushes;
+		if (playsSent) gone.plays = carried.plays;
+		for (size_t i = 0; i < games.size(); i++) if (failed[i]) back.pushes.push_back({ games[i].system, games[i].rom });
+		if (!removePending(card, gone, error)) log("sync: %s", error.c_str());
+		if (!back.empty() && !addPending(card, back, error)) log("sync: %s", error.c_str());
+
+		Last l;
+		l.when = time(nullptr);
+		l.conflicts = (int)conflicts(card).size();
+		l.state = l.conflicts ? "conflicts" : "synced";
+		l.sent = t.sent;
+		l.fetched = t.fetched;
+		l.skipped = skipped;
+		if (!setLast(card, l, error)) log("sync: %s", error.c_str());
+		status("done sync " + std::to_string(l.sent) + " " + std::to_string(l.fetched) + " " + std::to_string(l.conflicts) + " "
+			+ std::to_string(l.skipped));
+		log("sync: done: %d games, %d sent, %d taken from RomM, %d conflicts, %d not on RomM, %d failed, %zu plays %s", total, l.sent,
+			l.fetched, l.conflicts, l.skipped, t.failed, plays.size(), playsSent ? "sent" : "kept");
+		return 0;
+	}
+
+	// a conflict settled: last's count (and its state, when it was a sync's result) in step with the list
+	void recount()
+	{
+		Last l = last(card);
+		if (!l.when) return;
+		l.conflicts = (int)conflicts(card).size();
+		if (l.state == "conflicts" || l.state == "synced") l.state = l.conflicts ? "conflicts" : "synced";
+		std::string error;
+		if (!setLast(card, l, error)) log("resolve: %s", error.c_str());
+	}
+
+	int resolve(int n, const std::string& side, const std::string& rom)
+	{
+		auto refused = [](const std::string& why) { say("resolve-failed " + why); return 1; };
+		Account a = account(card);
+		if (!pairedHere(a)) return refused("unpaired");
+		if (!lockSaves(10000)) { say("busy"); return 3; }
+		std::vector<Conflict> ks = conflicts(card);
+		if (n < 1 || n > (int)ks.size() || ks[n - 1].rom != rom)
+		{
+			log("resolve: the conflicts changed: line %d isn't %s now", n, rom.c_str());
+			return refused("changed");
+		}
+		Conflict k = ks[n - 1];
+		Server s = server(a, 5000, 30000);
+		std::string version, why;
+		if (!versionChecked(s, version, why)) return refused(why == "down" ? "down" : "old");
+		Game g;
+		g.system = k.system;
+		g.rom = k.rom;
+		g.id = k.romId;
+		const System* sy = findSystem(allSystems(), k.system);
+		if (!sy || !saveOf(card, *sy, k.rom, g.save, why)) { log("resolve: %s: %s", k.rom.c_str(), sy ? why.c_str() : "no such system"); return refused("card"); }
+		if (g.save.ds) ndsSaves(card, g.rom);
+		g.hasSave = readSave(g.save, g.bytes, g.mtimeMs);
+		if (g.hasSave) g.hash = md5Hex(g.bytes);
+		Tally t;
+		if (side == "local")
+		{
+			if (!g.hasSave) { log("resolve: %s: no save on the card to keep", g.name().c_str()); return refused("nosave"); }
+			Upload u = uploadSave(s, g.client(), a.deviceId, 0, true, g.bytes);
+			if (u.status == 401) { noteRevoked(); return refused("revoked"); }
+			if (!u.ok) return refused("down");
+			cleared(g);
+			log("resolve: %s: this card's save sent over RomM's (%s)", g.name().c_str(), g.save.emulator.c_str());
+		}
+		else
+		{
+			std::vector<ClientSave> saves;
+			if (g.hasSave) saves.push_back(g.client());
+			Negotiation ng = negotiate(s, a.deviceId, saves, { g.id });
+			if (ng.status == 401) { noteRevoked(); return refused("revoked"); }
+			if (!ng.ok) return refused("down");
+			const Operation* op = nullptr;
+			for (auto& o : ng.ops) if (o.romId == g.id && o.slot == "autosave") op = &o;
+			bool ok = false;
+			std::string error;
+			if (!op) log("resolve: %s: RomM has no save of it now", g.name().c_str());
+			else if (op->action == "no_op") { cleared(g); ok = true; }
+			else if (op->action == "delete")
+			{
+				ok = dropSave(g.save, error);
+				if (ok) { g.hasSave = false; cleared(g); }
+				else log("resolve: %s", error.c_str());
+			}
+			else if (op->saveId) ok = fetchSave(s, a, ng.session, g, *op, t);	// (download, conflict, or upload over RomM's)
+			else log("resolve: %s: RomM has no save of it now", g.name().c_str());
+			if (complete(s, ng.session, ok, !ok, {}) == 401) noteRevoked();
+			if (!ok) return refused(revoked ? "revoked" : op && (op->saveId || op->action == "delete") ? "down" : "noserver");
+		}
+		recount();
+		say("resolved " + std::to_string(n) + " " + side);
+		return 0;
+	}
+
 	// ---- the rest ------------------------------------------------------------------------------------------------
 	int check()
 	{
@@ -591,6 +890,10 @@ int main(int argc, char** argv)
 	if (verb == "pull" && argc == 4) return pull(argv[2], argv[3]);
 	if ((verb == "push" || verb == "pending") && argc == 6)
 		return (verb == "push" ? push : keepPending)(argv[2], argv[3], atoll(argv[4]), atoll(argv[5]));
-	fprintf(stderr, "usage: romm check | pair | logout | pull <system> <rom> | push|pending <system> <rom> <start> <end>\n");
+	if (verb == "sync" && argc == 2) return syncAll();
+	if (verb == "resolve" && argc == 5 && (!strcmp(argv[3], "local") || !strcmp(argv[3], "server")))
+		return resolve(atoi(argv[2]), argv[3], argv[4]);
+	fprintf(stderr, "usage: romm check | pair | logout | pull <system> <rom> | push|pending <system> <rom> <start> <end> | sync"
+		" | resolve <n> local|server <rom>\n");
 	return 2;
 }

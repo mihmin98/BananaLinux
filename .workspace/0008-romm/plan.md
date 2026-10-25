@@ -467,9 +467,12 @@ detaching, for the tests.
     - Pending pushes first. Then negotiations in batches of at most 500 ids, each with the saves the card has, and
       every operation applied as `push` applies it.
     - Progress in the status file, `running <done> <total>\t<system>\t<game>`. Then
-      `done sync <sent> <fetched> <conflicts> <skipped>` and `last` written, or `error sync down|revoked|old`.
+      `done sync <sent> <fetched> <conflicts> <skipped>` and `last` written, or `error sync down|revoked|old|unpaired`
+      (*Deviations*, 25 Oct).
     - The games RomM doesn't have are listed in `romm.log` and counted as skipped.
-  - **`resolve <n> local|server`**: the n-th line of `conflicts`, under the lock.
+  - **`resolve <n> local|server <rom>`**: the n-th line of `conflicts`, which has to be still `<rom>`'s (else
+    `resolve-failed changed`, exit 1), under the lock (waited for up to 10 s, else `busy`, exit 3; *Deviations*,
+    25 Oct).
     - `local`: the save uploaded with `overwrite=true`.
     - `server`: negotiated again for that game; the current save of the slot downloaded and put in place by
       `replaceSave`.
@@ -480,7 +483,8 @@ detaching, for the tests.
       have, one conflict: the counts in the status and in `last`, the files on the card, the server's saves;
     - a second `sync` while one runs (the lock held by the test) exits 3;
     - pending sent first;
-    - `resolve 1 local` and `resolve 1 server` (the `.bak`, the guard, the list emptied);
+    - `resolve <n> local <rom>` and `resolve <n> server <rom>` (the `.bak`, the guard, the list emptied), and a line
+      that isn't the ROM's refused;
     - `sync` with the server down: `last` says `down`.
 - **Commit**: `RomM: Sync now for every game on both cards, and a conflict resolved either way`
 
@@ -597,7 +601,8 @@ detaching, for the tests.
     - The top panel: a progress bar and the game, as `scrapeBar`, then the result: sent, fetched, conflicts, not on
       RomM, the time of the last sync.
     - The bottom panel lists the conflicts (game, system, RomM's time). A on one asks "Keep this card's" or "Take
-      RomM's" (LEFT/RIGHT, then A twice), and runs `romm resolve <n> local|server`.
+      RomM's" (LEFT/RIGHT, then A twice), and runs `romm resolve <n> local|server <rom>` (`busy` and `changed` said
+      on the page, the list read again).
     - Off, unpaired or revoked, the page says what to do instead of starting.
     - With the card's own `systems.conf` unwrapped, the page says the automatic sync is off for this card.
 - **Tests**: **`romm-ui.sh`**, with the stand-in server's library:
@@ -772,6 +777,14 @@ Where the implementation turned out different from this plan, why, and what chan
   overwritten. With no record yet (the first sync of a game saved on both sides) RomM's times decide, as RomM does,
   and the card's save is kept as `.bak`. The stand-in server stays as RomM is. Agreed with the user.
 
+- **25 Oct 2026, step 3: `resolve` names the ROM as well as the line, and waits up to 10 s for the saves.** It
+  takes the saves lock, so a push still running from the last game (or a sync) can change `conflicts` between the
+  page showing it and the lock coming free, and line n would then be another game: "Take RomM's" would replace the
+  wrong save. Now it is `romm resolve <n> local|server <rom>`, and a line n that isn't `<rom>`'s is refused
+  (`resolve-failed changed`, exit 1, nothing changed); step 6's page passes both. With the lock still held after
+  10 s it prints `busy` and exits 3. `sync` also says `error sync unpaired` (exit 1, nothing asked of the server)
+  when there's no pairing, which the plan's list of errors didn't have. Agreed with the user.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -780,7 +793,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. The helper, its package, and pairing | done | RomM: a helper of the fork's own, its package, and pairing by RomM's device flow |
 | 2. A game's save: its RomM id, the pull before it and the push after | done | RomM: a game's save pulled from RomM before it and pushed after, the conflicts kept for later |
-| 3. Sync now and the conflicts resolved | todo | |
+| 3. Sync now and the conflicts resolved | done | RomM: Sync now for every game on both cards, and a conflict resolved either way |
 | 4. The wrapper around the games, put into the image's systems.conf | todo | |
 | 5. Settings: the RomM group and its Account page | todo | |
 | 6. Settings: Sync now and the conflicts | todo | |

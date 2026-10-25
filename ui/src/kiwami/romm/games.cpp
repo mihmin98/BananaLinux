@@ -55,6 +55,8 @@ namespace banana::kiwami::romm
 
 	Games::Games(const Card& c, Server& s, bool r, std::function<bool(Server&)> b) : card(c), server(s), refetch(r), before(b) {}
 
+	Games::~Games() { flush(); }
+
 	bool Games::cached(const std::string& slug)
 	{
 		if (lists.count(slug)) return true;
@@ -130,18 +132,42 @@ namespace banana::kiwami::romm
 		return 0;
 	}
 
-	void Games::record(const std::string& system, const std::string& name, long id)
+	// the lines added into games, each replacing the line of its system and name there
+	void Games::write(const std::vector<std::vector<std::string>>& add)
 	{
 		std::string text, error;
 		bool there = false;
 		readFile(card.dir + "/games", text, there);
-		std::string key = system + "\t" + field(name) + "\t", out;
+		std::string out;
 		std::istringstream in(text);
 		std::string ln;
-		while (std::getline(in, ln)) if (ln.compare(0, key.size(), key) != 0) out += ln + "\n";
-		out += key + std::to_string(id) + "\n";
+		while (std::getline(in, ln))
+		{
+			std::vector<std::string> f = split(ln);
+			bool replaced = false;
+			for (auto& a : add) replaced |= f.size() >= 2 && f[0] == a[0] && f[1] == a[1];
+			if (!replaced) out += ln + "\n";
+		}
+		for (auto& a : add) out += a[0] + "\t" + a[1] + "\t" + a[2] + "\n";
 		makeDir(card.dir);
 		if (!replaceFile(card.dir + "/games", out, error)) log("%s: %s", verb.c_str(), error.c_str());
+	}
+
+	void Games::record(const std::string& system, const std::string& name, long id)
+	{
+		std::vector<std::string> line = { system, field(name), std::to_string(id) };
+		for (auto it = records.begin(); it != records.end();)
+			it = (*it)[0] == line[0] && (*it)[1] == line[1] ? records.erase(it) : it + 1;
+		records.push_back(line);
+		if (batch) unwritten.push_back(line);
+		else write({ line });
+	}
+
+	void Games::flush()
+	{
+		if (unwritten.empty()) return;
+		write(unwritten);
+		unwritten.clear();
 	}
 
 	long Games::idOf(const System& s, const std::string& rom)
@@ -149,24 +175,24 @@ namespace banana::kiwami::romm
 		const Synced* m = synced(s.id);
 		if (!m) return 0;
 		std::vector<std::string> names = namesOf(s, rom);
-		// the record
+		// the record, read once a run
+		if (!recordsRead)
 		{
 			std::string text;
 			bool there = false;
 			readFile(card.dir + "/games", text, there);
 			std::istringstream in(text);
 			std::string ln;
-			for (auto& n : names)
+			while (std::getline(in, ln))
 			{
-				in.clear();
-				in.seekg(0);
-				while (std::getline(in, ln))
-				{
-					std::vector<std::string> f = split(ln);
-					if (f.size() >= 3 && f[0] == s.id && f[1] == n) return atol(f[2].c_str());
-				}
+				std::vector<std::string> f = split(ln);
+				if (f.size() >= 3) records.push_back({ f[0], f[1], f[2] });
 			}
+			recordsRead = true;
 		}
+		for (auto& n : names)
+			for (auto& r : records)
+				if (r[0] == s.id && r[1] == n) return atol(r[2].c_str());
 		// the cached lists, fetched when none is
 		bool any = false;
 		for (const char* slug : m->slugs) any |= slug && cached(slug);

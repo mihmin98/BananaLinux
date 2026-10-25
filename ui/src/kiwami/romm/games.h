@@ -7,7 +7,8 @@
 //      exactly and then without case, and for a game in a folder of its own, the folder's name
 //   3. on a miss, the list fetched again, once per run of the helper, when refetch is allowed (not by the pull before
 //      a game, which only fetches a list none is cached for: a platform's list is heavy)
-// A match is written to games.
+// A match is written to games at once, or with batch on, by flush() (Sync now's thousand games: one write, not one
+// each); the destructor flushes.
 #include "api.h"
 #include "saves.h"
 #include <functional>
@@ -28,7 +29,11 @@ namespace banana::kiwami::romm
 	{
 		// before: called before each request, with the server to set its timeouts; false: no time left, no request
 		Games(const Card& c, Server& s, bool refetch, std::function<bool(Server&)> before = nullptr);
+		~Games();
 		long idOf(const System& s, const std::string& rom);	// 0: not on RomM, or not known now
+		void flush();			// the matches kept by batch written to games (the file read again, so a line written
+								// meanwhile stays)
+		bool batch = false;
 		bool down = false;		// a list couldn't be fetched (no answer, or no time left)
 		long status = 0;		// the last answer's HTTP status (401: the token refused)
 
@@ -41,9 +46,13 @@ namespace banana::kiwami::romm
 		std::vector<Platform> platformList;
 		std::set<std::string> fetched;							// the slugs fetched this run
 		std::map<std::string, std::vector<Rom>> lists;			// by slug, as cached
+		bool recordsRead = false;
+		std::vector<std::vector<std::string>> records;			// games' lines, split, as read and as matched since
+		std::vector<std::vector<std::string>> unwritten;		// the matches batch kept for flush
 		bool cached(const std::string& slug);
 		bool fetch(const Synced& m);
 		long lookUp(const Synced& m, const std::vector<std::string>& names);
 		void record(const std::string& system, const std::string& name, long id);
+		void write(const std::vector<std::vector<std::string>>& add);
 	};
 }

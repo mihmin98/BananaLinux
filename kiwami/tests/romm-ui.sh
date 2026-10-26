@@ -195,7 +195,7 @@ for size in 640x480 1024x768; do
     for i in $(seq 100); do [ -s "$OUT/port-sync-$size" ] && break; sleep 0.05; done
     SURL=http://127.0.0.1:$(cat "$OUT/port-sync-$size")
     spost() { python3 -c "import sys, urllib.request; urllib.request.urlopen(urllib.request.Request(sys.argv[1], method='POST'))" "$SURL$1"; }
-    websave() { python3 -c "import sys, urllib.request; urllib.request.urlopen(urllib.request.Request(sys.argv[1], data=sys.argv[2].encode(), method='POST'))" "$SURL/test/save?rom_id=$1&slot=autosave&emulator=$2" "$3"; }
+    websave() { python3 -c "import sys, urllib.request; urllib.request.urlopen(urllib.request.Request(sys.argv[1], data=sys.argv[2].encode(), method='POST'))" "$SURL/test/save?rom_id=$1&slot=autosave&emulator=$2$4" "$3"; }
     ssaves() { python3 -c "import json, sys, urllib.request; [print(s['emulator'], s['data']) for s in json.load(urllib.request.urlopen(sys.argv[1])) if s['rom_id'] == int(sys.argv[2])]" "$SURL/test/saves" "$1"; }
     printf 'ra_user=alice\nromm_url=%s\nsmb_user=me\n' "$SURL" > "$A"
     out=$("$KIWAMI_ROMM" pair); code=$(printf '%s' "$out" | sed -n 's/^pairing \([A-Z0-9]*\)	.*/\1/p')
@@ -273,6 +273,18 @@ for size in 640x480 1024x768; do
     fi
     shown armed taken kept
     differ armed taken top
+
+    # RomM's save that doesn't arrive whole: "Take RomM's" refused on its hash, said on the page, nothing changed
+    sleep 1; printf 'card-v3' > "$PSRM"; websave 101 mgba web-v3 "&corrupt=1"
+    KIWAMI_ROMM_SYNC=1 run $size badhash-sync "$SYNC; press a; wait 1"
+    logged "banana-ui: romm: sync now: 1 conflict"
+    KIWAMI_ROMM_SYNC=1 run $size badhash "$SYNC; press down; press a; press right; press a; press a; wait 1; shot badhash"
+    logged "banana-ui: romm: run resolve 1 server $PA"
+    logged "banana-ui: romm: resolve-failed hash"
+    [ "$(cat "$PSRM")" = card-v3 ] && [ "$(wc -l < "$D/romm/conflicts")" = 1 ] || { echo "FAIL $size badhash: the save is $(cat "$PSRM"), conflicts $(tr '\n' '|' < "$D/romm/conflicts")"; fail=1; }
+    shown badhash
+    differ taken badhash top
+    "$KIWAMI_ROMM" resolve 1 local "$PA" >/dev/null || { echo "FAIL $size badhash: resolve local after it"; fail=1; }
 
     # a sync running (the status says so, a helper holds the saves lock): Syncing, its progress, A starts nothing
     python3 -c "import fcntl, sys, time; f = open(sys.argv[1], 'a'); fcntl.flock(f, fcntl.LOCK_EX); open(sys.argv[2], 'w').close(); time.sleep(60)" \

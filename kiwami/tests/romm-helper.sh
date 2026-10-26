@@ -166,7 +166,8 @@ push() { KIWAMI_ROMM_SYNC=1 "$H" push "$@"; }
 # the server's saves of a game: "<emulator> <hash> <size>" lines, oldest first
 saves() { get /test/saves | python3 -c "import json, sys; [print(s['emulator'], s['hash'], s['size']) for s in json.load(sys.stdin) if s['rom_id'] == int(sys.argv[1])]" "$1"; }
 plays() { get /test/play-sessions | python3 -c "import json, sys; [print(p['rom_id'], p['duration_ms'], p['save_slot']) for p in json.load(sys.stdin)]"; }
-websave() { python3 -c "import sys, urllib.request; urllib.request.urlopen(urllib.request.Request(sys.argv[1], data=open(sys.argv[2], 'rb').read(), method='POST'))" "$URL/test/save?rom_id=$1&slot=autosave&emulator=$2" "$3"; }
+# a save as another device's (RomM's web player's), $4 more of /test/save's query (&zip=1...)
+websave() { python3 -c "import sys, urllib.request; urllib.request.urlopen(urllib.request.Request(sys.argv[1], data=open(sys.argv[2], 'rb').read(), method='POST'))" "$URL/test/save?rom_id=$1&slot=autosave&emulator=$2$4" "$3"; }
 sum() { md5sum "$1" | cut -d' ' -f1; }
 count() { grep -c "$1" "$X/srv.log" || true; }
 T1=$(($(date +%s) - 120)) T2=$(date +%s)
@@ -541,6 +542,57 @@ flock "$X/run/romm-download.lock" sleep 1 & FL=$!; sleep 0.2
 out=$("$H" bios) && st=0 || st=$?
 [ "$st" = 3 ] && [ "$out" = busy ] || fail "bios while a download runs: '$out', exit $st"; ok
 wait "$FL"
+
+# ---- saves as other clients keep them, and a save not taken -----------------------------------------------------
+SC="$C/roms/gba/Spare Change.gba" SCS="$C/saves/gpSP/Spare Change.srm" SCR="$C/saves/gpSP/Spare Change.rtc"
+printf 'sc-v1' > "$SCS"
+push gba "$SC" $T1 $T2
+[ "$(saves 106)" = "gpsp $(sum "$SCS") 5" ] || fail "Spare Change's first push: '$(saves 106)'"; ok
+# a zip of the save and its clock, as grout keeps one: checked by RomM's hash of a zip, the save and the clock taken
+sleep 0.05; printf 'zip-v2' > "$X/z2"; websave 106 mgba "$X/z2" "&zip=1"
+"$H" pull gba "$SC"
+[ "$(cat "$SCS")" = zip-v2 ] && [ "$(cat "$SCS.bak")" = sc-v1 ] || fail "the zipped save not taken: $(cat "$SCS")"; ok
+[ "$(cat "$SCR")" = rtc:zip-v2 ] && [ ! -e "$SCR.bak" ] || fail "the zipped save's clock: $(cat "$SCR" 2>/dev/null)"; ok
+grep -q "pull: Spare Change: RomM keeps it as a zip (another client's): its save taken from it" "$LOG" || fail "the zip not in the log"; ok
+grep -q "^GET /api/saves/[0-9]*/content?device_id=.*&optimistic=false" "$X/srv.log" || fail "a save asked for without optimistic=false"; ok
+zh=$(get /test/saves | python3 -c "import json, sys; print([s['hash'] for s in json.load(sys.stdin) if s['rom_id'] == 106][-1])")
+[ "$(grep "^106	" "$B/romm/synced")" = "106	$(sum "$SCS")	$zh" ] || fail "synced doesn't keep RomM's hash: $(grep "^106	" "$B/romm/synced")"; ok
+# ... and it stands for RomM's while it is unchanged: the next pull and push take and send nothing
+n0=$(count "GET /api/saves/")
+"$H" pull gba "$SC"
+push gba "$SC" $T1 $T2
+[ "$(count "GET /api/saves/")" = "$n0" ] && [ "$(saves 106 | wc -l)" = 2 ] || fail "a zipped save taken went back up or came again: '$(saves 106)'"; ok
+# played: the raw save goes up, and synced has only its own hash again
+sleep 0.05; printf 'sc-v3' > "$SCS"
+push gba "$SC" $T1 $T2
+[ "$(saves 106 | tail -n 1)" = "gpsp $(sum "$SCS") 5" ] || fail "the save after a zipped one: '$(saves 106)'"; ok
+[ "$(grep "^106	" "$B/romm/synced")" = "106	$(sum "$SCS")" ] || fail "synced after the upload: $(grep "^106	" "$B/romm/synced")"; ok
+# another zip: the clock before kept as .bak
+sleep 0.05; printf 'zip-v4' > "$X/z4"; websave 106 mgba "$X/z4" "&zip=1"
+"$H" pull gba "$SC"
+[ "$(cat "$SCR")" = rtc:zip-v4 ] && [ "$(cat "$SCR.bak")" = rtc:zip-v2 ] || fail "the second clock: $(cat "$SCR"), .bak $(cat "$SCR.bak" 2>/dev/null)"; ok
+# a zip of two saves: left alone, the card's untouched
+sleep 0.05; printf 'zip-v5' > "$X/z5"; websave 106 mgba "$X/z5" "&zip=2"
+"$H" pull gba "$SC"
+[ "$(cat "$SCS")" = zip-v4 ] || fail "a zip of two saves was taken: $(cat "$SCS")"; ok
+grep -q "pull: RomM's save is a zip of 2 saves and 0 clocks, not one save: left alone" "$LOG" || fail "the zip of two saves not in the log"; ok
+# a save that doesn't arrive whole, as Link's Awakening's on the RG DS Plus (26 Oct): RomM's newer than the card's
+# last sync, the card's changed after it, so the push's upload gets a 409 and is a conflict; "Take RomM's" refused on
+# its hash, and since RomM didn't count it as the handheld's, the next push still gets the 409
+sleep 0.05; printf 'bad-v6' > "$X/b6"; websave 106 mgba "$X/b6" "&corrupt=1"
+sleep 0.05; printf 'sc-v7' > "$SCS"
+push gba "$SC" $T1 $T2
+SL=$(grep -n "	$SC	106	" "$B/romm/conflicts" | cut -d: -f1)
+[ -n "$SL" ] || fail "the 409 over a save not taken isn't a conflict: $(cat "$B/romm/conflicts" 2>/dev/null)"; ok
+out=$("$H" resolve "$SL" server "$SC") && fail "resolve server of a save that didn't arrive whole succeeded" || true
+[ "$out" = "resolve-failed hash" ] || fail "resolve of a save that didn't arrive whole said '$out'"; ok
+[ "$(cat "$SCS")" = sc-v7 ] && grep -q "	$SC	106	" "$B/romm/conflicts" || fail "a refused resolve changed the card or the list"; ok
+n6=$(saves 106 | wc -l)
+push gba "$SC" $T1 $T2
+[ "$(saves 106 | wc -l)" = "$n6" ] || fail "the card's save went over RomM's after a refused download: '$(saves 106)'"; ok
+[ "$(grep -c "Spare Change: RomM has a newer save since this handheld's last sync (409)" "$LOG")" = 2 ] || fail "the second push didn't get its 409"; ok
+out=$("$H" resolve "$(grep -n "	$SC	106	" "$B/romm/conflicts" | cut -d: -f1)" local "$SC") || fail "resolve local after it: '$out'"
+[ "$(saves 106 | tail -n 1)" = "gpsp $(sum "$SCS") 5" ] && ! grep -q "	$SC	" "$B/romm/conflicts" || fail "resolve local after it: '$(saves 106)'"; ok
 
 # the tokens nowhere but accounts.conf: not in the log, the status file or the server's log
 for t in $tokens; do

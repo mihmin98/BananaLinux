@@ -11,9 +11,11 @@
 //   <card>/banana/romm/conflicts    the games whose save changed on both sides, one line each:
 //                                   "<system>\t<rom>\t<rom id>\t<save id>\t<RomM's time>\t<noted>"
 //   <card>/banana/romm/last         the last sync's result: "<time>\t<state>\t<sent>\t<fetched>\t<conflicts>\t<skipped>"
-//   <card>/banana/romm/synced       each game's save at its last sync, "<rom id>\t<hash>": a save that differs from it
-//                                   changed here since (RomM keeps its record per save, and misses it when another
-//                                   device's newer save is a new one)
+//   <card>/banana/romm/synced       each game's save at its last sync, "<rom id>\t<hash>[\t<RomM's hash>]": a save that
+//                                   differs from it changed here since (RomM keeps its record per save, and misses it
+//                                   when another device's newer save is a new one). RomM's hash is there when the
+//                                   save taken from RomM isn't the bytes RomM hashed (a zip, a DS save nds-saves
+//                                   rewrote): the save stands for it while it is unchanged
 //   <card>/banana/logs/romm.log     the helper's log
 //   <run>/romm.status               the helper's state, one line
 // The paths are moved for the tests by KIWAMI_ROMM_CARD (/data), KIWAMI_RUN (/run/banana), KIWAMI_ROMM_ETC
@@ -70,9 +72,11 @@ namespace banana::kiwami::romm
 	bool noteConflict(const Card& c, const Conflict& k, std::string& error);	// replaces the game's line
 	bool clearConflict(const Card& c, const std::string& system, const std::string& rom, std::string& error);
 
-	// the hash of the game's save at its last sync ("" for none); "" as hash takes the record out
+	// the hash of the game's save at its last sync ("" for none), and RomM's hash it stands for ("" when it is the
+	// save's own); "" as hash takes the record out
 	std::string syncedHash(const Card& c, long romId);
-	bool setSynced(const Card& c, long romId, const std::string& hash, std::string& error);
+	std::string syncedStandsFor(const Card& c, long romId);
+	bool setSynced(const Card& c, long romId, const std::string& hash, std::string& error, const std::string& standsFor = "");
 
 	// the state: synced, conflicts, down or revoked
 	struct Last { long long when = 0; std::string state; int sent = 0, fetched = 0, conflicts = 0, skipped = 0; };

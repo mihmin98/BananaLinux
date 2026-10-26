@@ -753,8 +753,9 @@ RomM's own client, does the same things and is the reference where named.
       ignored, logged. Another shape (no save, two saves) is refused.
     - `replaceSave` takes the `.rtc`: `<stem>.rtc` beside the `.srm` in the core's folder, the old one kept as
       `.bak`, so the clock of a game with one (Pokémon Crystal) comes with the save. A DS save never has one.
-    - The card's hash, kept in `synced` and sent to `/downloaded`, stays the `.srm`'s MD5, as for any other save, so
-      the next negotiation is a `no_op`. Uploads stay the raw `.srm` (its `.rtc` isn't sent, a known limit).
+    - RomM's hash of the zip is what `/downloaded` is sent, and `synced` keeps it beside the `.srm`'s own MD5
+      (*Deviations*, 26 Oct, step 9). While the `.srm` is unchanged, the negotiations send RomM's hash, so the next
+      one is a `no_op`. Uploads stay the raw `.srm` (its `.rtc` isn't sent, a known limit).
   - **`fetchSave`** says why it failed: `hash` (the hash differs), `shape` (a zip that isn't one save), `card` (the
     write), `down` (no answer). `resolve` passes it on (`resolve-failed hash|shape|card|down`).
   - **`romm-sync.cpp`**: `hash` and `shape` say that RomM's save can't be used as it is, and nothing changed.
@@ -1126,6 +1127,22 @@ Where the implementation turned out different from this plan, why, and what chan
     to pair again.
   Agreed with the user.
 
+- **26 Oct 2026, step 9: a save taken from RomM stands for RomM's hash.** The plan had the card's `.srm` MD5 sent
+  to `/downloaded` and in the negotiations after taking a zipped save, and expected a `no_op` next. RomM 5.4.1's
+  `confirm_download` keeps only a hash equal to its own, and records none otherwise. The next negotiation then finds
+  the card's `.srm` newer than the sync and answers `upload`, so every zipped save taken would have gone straight
+  back up as a raw `.srm`.
+  - Now `/downloaded` is sent RomM's hash of what came, which RomM takes as proof.
+  - `banana/romm/synced` keeps it as a third field, `<rom id>\t<hash>\t<RomM's hash>`, when it isn't the save's
+    own (`setSynced`, `syncedStandsFor`).
+  - A negotiation sends it while the save's MD5 is still the one recorded (`Game::client`), and the save's own MD5
+    once the game has written it. An upload always sends its own (`Game::sent`), and drops RomM's hash from the
+    record.
+  - The same covers a DS save that `nds-saves` rewrote (a DeSmuME footer left off), whose hash isn't RomM's either.
+  - Found while implementing: `resolve` said `down` when RomM's `delete` couldn't be applied on the card; it now says
+    `card`.
+  Agreed with the user.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -1140,7 +1157,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 6. Settings: Sync now and the conflicts | done | RomM: Sync now in Settings, with its progress, its result and the conflicts to resolve |
 | 7. The helper's games, downloads and BIOS | done | RomM: RomM's games listed and downloaded to either card, and its BIOS files into /data/bios |
 | 8. Settings: Games, Downloads to and BIOS | done | RomM: Games in Settings, RomM's platforms and games downloaded from the menu, and its BIOS files |
-| 9. A save from RomM counted only once in place, and RomM's zipped saves taken | todo | |
+| 9. A save from RomM counted only once in place, and RomM's zipped saves taken | done | RomM: a save from RomM counted as the handheld's only once it is in place, and its zipped saves taken |
 | 10. Sync now without RomM's whole lists every time | todo | |
 | 11. Unpacking a downloaded game, with Unpack downloads in Settings | todo | |
 | 12. RomM's collections on the Games page | todo | |

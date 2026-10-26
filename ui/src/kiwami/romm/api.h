@@ -104,7 +104,8 @@ namespace banana::kiwami::romm
 	struct Upload { bool ok = false, conflict = false; long status = 0, saveId = 0; };
 	Upload uploadSave(const Server& s, const ClientSave& save, const std::string& deviceId, long session, bool overwrite,
 		const std::string& bytes);
-	// a save's bytes (status 200), RomM told the device has it (the hash of what is on the card now)
+	// a save's bytes (status 200), not yet counted as the device's (optimistic=false); then RomM told the device has it,
+	// with RomM's own hash of it, which is the only one RomM takes as proof (confirm_download)
 	long downloadSave(const Server& s, long id, const std::string& deviceId, long session, std::string& bytes);
 	long confirmDownload(const Server& s, long id, const std::string& deviceId, const std::string& hash);
 	// the session closed, with the plays it carries (seconds since 1970; one shorter than a second isn't sent, RomM

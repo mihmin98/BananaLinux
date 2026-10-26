@@ -422,7 +422,9 @@ namespace banana::kiwami::romm
 
 	long downloadSave(const Server& s, long id, const std::string& deviceId, long session, std::string& bytes)
 	{
-		std::string q = "/api/saves/" + std::to_string(id) + "/content?device_id=" + urlEscape(deviceId);
+		// optimistic=false: RomM would otherwise count the save as the handheld's as it sends it, before it is checked
+		// and put in place; confirmDownload says so once it is (grout does the same, romm/saves.go)
+		std::string q = "/api/saves/" + std::to_string(id) + "/content?device_id=" + urlEscape(deviceId) + "&optimistic=false";
 		if (session) q += "&session_id=" + std::to_string(session);
 		Response res = perform(to(s, "GET", q));
 		bytes = res.status == 200 ? res.body : "";

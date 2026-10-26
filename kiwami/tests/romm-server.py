@@ -33,7 +33,8 @@
 #   POST /api/saves                     an upload (multipart saveFile) with endpoints/saves.py's add_save rules: 409
 #                                       when the slot's newest save isn't the one this device last synced (unless
 #                                       overwrite), the same bytes again in a slot taken as that save
-#   GET  /api/saves/<id>/content        a save's bytes, the device's sync of it recorded (its server half)
+#   GET  /api/saves/<id>/content        a save's bytes, the device's sync of it recorded (its server half) unless
+#                                       optimistic=false
 #   POST /api/saves/<id>/downloaded     the device's sync completed with the hash it holds, as confirm_download
 #   POST /api/sync/sessions/<id>/complete    the session closed, its play sessions kept
 #   POST /api/play-sessions             play sessions on their own (201), one with the same game and start skipped
@@ -42,7 +43,10 @@
 #   POST /test/revoke                   every token refused from then on (401)
 #   POST /test/version?v=<version>      the heartbeat's version from then on
 #   GET  /test/devices                  the devices, one "<id> <name> <client> <client_version> <identifier>" line each
-#   POST /test/save?rom_id=&slot=&emulator=     the body uploaded as another device would (RomM's web player)
+#   POST /test/save?rom_id=&slot=&emulator=     the body uploaded as another device would (RomM's web player);
+#                                       &zip=1 kept as grout keeps a save, a zip of web.srm (the body) and web.rtc
+#                                       ("rtc:" and the body), hashed as RomM hashes a zip; &zip=2 a zip of two saves;
+#                                       &corrupt=1 kept with a hash that isn't its bytes'
 #   POST /test/delete-slot?rom_id=&slot=        the slot emptied, as RomM's own page does (its versions' removal kept)
 #   GET  /test/saves                    the saves, as JSON: id, rom_id, slot, emulator, hash, size, file_name, data
 #                                       (the bytes, latin-1), newest last
@@ -170,6 +174,21 @@ def rom_zip(r, name, streamed=False):
         if not any(f["file_name"].lower().endswith(".m3u") for f in files):
             put(name + ".m3u", "\n".join(f["file_name"] for f in files).encode())
     return bytes(buf.data) if streamed else buf.getvalue()
+
+
+# assets_handler.py's hash_zip_contents: md5 of "<name>:<md5>" lines, by name, folders left out
+def zip_hash(data):
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        return hashlib.md5("\n".join("%s:%s" % (n, hashlib.md5(z.read(n)).hexdigest())
+                                     for n in sorted(z.namelist()) if not n.endswith("/")).encode()).hexdigest()
+
+
+def zipped(files):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for n, data in files:
+            z.writestr(n, data)
+    return buf.getvalue()
 
 
 def parse_time(text):
@@ -313,10 +332,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 del st.flows[code]
             return self.reply(200, {"ok": True})
         if method == "POST" and path == "/test/save":
-            data = self.body()
+            data, name = self.body(), "web.sav"
             rom = int(q["rom_id"])
+            if q.get("zip") == "1":
+                data, name = zipped([("web.srm", data), ("web.rtc", b"rtc:" + data)]), "web.zip"
+            elif q.get("zip") == "2":
+                data, name = zipped([("web.srm", data), ("other.srm", data)]), "web.zip"
+            h = zip_hash(data) if q.get("zip") else hashlib.md5(data).hexdigest()
+            if q.get("corrupt") == "1":
+                h = hashlib.md5(data + b"x").hexdigest()
             st.saves.append({"id": st.new_id(), "rom_id": rom, "slot": q.get("slot", "autosave"),
-                             "emulator": q.get("emulator"), "file_name": "web.sav", "hash": hashlib.md5(data).hexdigest(),
+                             "emulator": q.get("emulator"), "file_name": name, "hash": h,
                              "updated": time.time(), "data": data})
             return self.reply(200, {"id": st.next_id})
         if method == "POST" and path == "/test/delete-slot":
@@ -428,7 +454,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             sv = st.save_by_id(int(parts[2]))
             if sv is None:
                 return self.detail(404, "Save with ID %s not found" % parts[2])
-            if q.get("device_id") == dev:
+            if q.get("device_id") == dev and q.get("optimistic", "true") != "false":
                 st.syncs[(dev, sv["id"])] = {"synced": sv["updated"], "hash": None, "server_hash": sv["hash"]}
             return self.reply(200, sv["data"], "application/octet-stream")
         if parts[:2] == ["api", "saves"] and len(parts) == 4 and parts[3] == "downloaded" and method == "POST":

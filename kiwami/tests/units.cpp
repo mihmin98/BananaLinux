@@ -903,6 +903,8 @@ static void testRommSaves()
 	EQ(md5Hex(""), "d41d8cd98f00b204e9800998ecf8427e");
 	EQ(md5Hex("abc"), "900150983cd24fb0d6963f7d28e17f72");	// (RFC 1321's test suite)
 	EQ(md5Hex("save-v1"), "64350580a0fae3d545e47f2c93881895");	// (md5sum's)
+	// RomM's hash of a zip, by name whatever the order given (the value from hash_zip_contents' formula in Python)
+	EQ(zipHash({ { "web.srm", "abc" }, { "web.rtc", "rtc:abc" }, { "sub/x.sav", "" } }), "51f697ae54932d95781d0d7ac1bdab7a");
 
 	// the names a game goes by, and RomM's game for each: exactly, then without case; a folder of its own by its name
 	const System* psx = findSystem(all, "psx");
@@ -1008,6 +1010,10 @@ static void testRommSaves()
 	EQ(syncedHash(c, 101), "ccc"); EQ(syncedHash(c, 102), "bbb"); EQ(syncedHash(c, 1), "");
 	CHECK(setSynced(c, 101, "", error));
 	EQ(syncedHash(c, 101), "");
+	// RomM's hash a save stands for, kept beside its own, and left out when it is the save's own
+	CHECK(setSynced(c, 103, "ddd", error, "zzz") && setSynced(c, 104, "eee", error, "eee"));
+	EQ(syncedHash(c, 103), "ddd"); EQ(syncedStandsFor(c, 103), "zzz"); EQ(syncedStandsFor(c, 104), ""); EQ(syncedStandsFor(c, 102), "");
+	EQ(slurp(c.dir + "/synced"), "102\tbbb\n103\tddd\tzzz\n104\teee\n");
 	Last l;
 	l.when = 9; l.state = "revoked"; l.sent = 1;
 	CHECK(setLast(c, l, error));

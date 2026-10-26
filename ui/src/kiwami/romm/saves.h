@@ -53,10 +53,27 @@ namespace banana::kiwami::romm
 	// the save's bytes and modification time (seconds, and milliseconds); false when there is none
 	bool readSave(const Save& s, std::string& bytes, long long& mtimeMs);
 
+	// a save as RomM sent it: its bytes, or a zip another client made of them (grout's: the save, and the clock RetroArch
+	// keeps beside it for a cartridge with one). RomM hashes a zip by what it holds (assets_handler.py's
+	// hash_zip_contents), so hash is what RomM's content_hash is for what came
+	struct Payload
+	{
+		std::string save, rtc;	// the save's bytes, and its clock's ("" for none)
+		std::string hash;		// RomM's hash of what came
+		bool zip = false;
+	};
+	// bytes that begin as a zip and unpack as one are a zip: one .srm, .sav or save.sram, at most one .rtc (another
+	// clock.rtc, __MACOSX/, ._* and anything else ignored, logged); false, why "shape", for a zip without exactly one
+	// save. Anything else is the save itself
+	bool payloadOf(const Card& c, const std::string& bytes, Payload& out, std::string& why);
+	// RomM's hash of a zip: md5 of "<name>:<md5>" lines, one per file, by name
+	std::string zipHash(std::vector<std::pair<std::string, std::string>> files);
+
 	// the save replaced by bytes, the old one kept as .bak (for the DS, written as DraStic's .dsv and then nds-saves
 	// run, which makes BananaDS's .sav of it at its exact size, a DeSmuME footer left off); RetroArch's automatic state
-	// renamed .state.auto.bak, so the game starts from this save and not from Quick resume's state
-	bool replaceSave(const Card& c, const Save& s, const std::string& bytes, std::string& error);
+	// renamed .state.auto.bak, so the game starts from this save and not from Quick resume's state. A clock (rtc, not
+	// empty) goes beside a RetroArch save as <stem>.rtc, the old one kept as .bak too
+	bool replaceSave(const Card& c, const Save& s, const std::string& bytes, std::string& error, const std::string& rtc = "");
 	// on RomM's delete: the save renamed .bak (both of the DS's), nothing deleted
 	bool dropSave(const Save& s, std::string& error);
 

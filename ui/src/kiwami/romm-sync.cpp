@@ -180,6 +180,8 @@ namespace banana
 			starts(why, "old") ? "RomM at " + host + " is older than 5.4.0: nothing was changed." :
 			why == "nosave" ? "There's no save of it on this card any more: Take RomM's instead." :
 			why == "noserver" ? "RomM has no save of it now: Keep this card's instead." :
+			why == "hash" ? "RomM's save didn't arrive whole (its hash isn't RomM's): nothing was changed. Try again, or Keep this card's." :
+			why == "shape" ? "RomM keeps this save as a zip that isn't one save, which Banana can't use: nothing was changed." :
 			why == "unpaired" ? "Pair the handheld on Account first." :
 			"The save couldn't be written on the card. Nothing else was changed.";
 		rommSyncRead();

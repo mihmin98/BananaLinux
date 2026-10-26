@@ -27,8 +27,9 @@
 //   romm resolve <n> local|server <rom>
 //                  the n-th conflict (its line in <card>/banana/romm/conflicts, which has to be still <rom>'s): this
 //                  card's save sent over RomM's (local), or RomM's taken, the card's kept as .bak (server). Prints
-//                  "resolved <n> local|server", or "resolve-failed <why>" and exits 1 with the line left; busy (3) when
-//                  the saves are still locked after 10 s
+//                  "resolved <n> local|server", or "resolve-failed <why>" and exits 1 with the line left (why: down,
+//                  revoked, old, unpaired, changed, card, nosave, noserver, and hash or shape when RomM's save didn't
+//                  arrive whole or is a zip that isn't one save); busy (3) when the saves are still locked after 10 s
 //   romm platforms one line each of RomM's platforms that are Banana's systems' (the nine above's):
 //                  "<id>\t<slug>\t<system>\t<games>\t<name>"
 //   romm roms <platform id> <offset> [search]
@@ -298,20 +299,36 @@ namespace
 		long id = 0;
 		bool hasSave = false;
 		std::string bytes, hash;
+		std::string standsFor;	// RomM's hash the save stands for while it is as taken (a zip's, synced's third field)
 		long long mtimeMs = 0;
 		std::string name() const { return save.stem.empty() ? rom : save.stem; }
+		// the save as negotiated: by RomM's hash while it stands for one, so RomM sees it unchanged
 		ClientSave client() const
 		{
 			ClientSave c;
 			c.romId = id;
 			c.fileName = save.path.substr(save.path.rfind('/') + 1);
 			c.emulator = save.emulator;
-			c.hash = hash;
+			c.hash = standsFor.empty() ? hash : standsFor;
 			c.mtimeMs = mtimeMs;
 			c.size = (long long)bytes.size();
 			return c;
 		}
+		// the save as uploaded: its bytes' own hash
+		ClientSave sent() const
+		{
+			ClientSave c = client();
+			c.hash = hash;
+			return c;
+		}
 	};
+
+	// RomM's hash the card's save stands for, while it is the save taken (synced's hash)
+	void standing(Game& g)
+	{
+		g.standsFor.clear();
+		if (g.hasSave && syncedHash(card, g.id) == g.hash) g.standsFor = syncedStandsFor(card, g.id);
+	}
 
 	// the game's save found and read, and its id: false (logged) for a game that isn't synced or isn't on RomM
 	bool prepare(Game& g, const std::vector<System>& sys, Games& lookup)
@@ -328,6 +345,7 @@ namespace
 			ndsSaves(card, g.rom);
 		g.hasSave = readSave(g.save, g.bytes, g.mtimeMs);
 		if (g.hasSave) g.hash = md5Hex(g.bytes);
+		standing(g);
 		return true;
 	}
 
@@ -351,27 +369,35 @@ namespace
 	{
 		std::string error;
 		if (!clearConflict(card, g.system, g.rom, error)) log("%s: %s", verb.c_str(), error.c_str());
-		if (!setSynced(card, g.id, g.hasSave ? g.hash : "", error)) log("%s: %s", verb.c_str(), error.c_str());
+		if (!setSynced(card, g.id, g.hasSave ? g.hash : "", error, g.hasSave ? g.standsFor : "")) log("%s: %s", verb.c_str(), error.c_str());
 	}
 
-	// RomM's save in place of the card's, and RomM told what the card now has
-	bool fetchSave(Server& s, const Account& a, long session, Game& g, const Operation& o, Tally& t)
+	// RomM's save in place of the card's, and RomM told the card has it. False when it isn't, with why: down (no
+	// answer), hash (it didn't arrive whole), shape (a zip that isn't one save) or card (it couldn't be written)
+	bool fetchSave(Server& s, const Account& a, long session, Game& g, const Operation& o, Tally& t, std::string* why = nullptr)
 	{
-		std::string bytes, error;
-		if (!ready(s)) return false;
+		std::string bytes, error, shape;
+		auto fail = [&](const char* w) { if (why) *why = w; return false; };
+		if (!ready(s)) return fail("down");
 		long st = downloadSave(s, o.saveId, a.deviceId, session, bytes);
 		if (st == 401) noteRevoked();
-		if (st != 200) return false;
-		if (!o.serverHash.empty() && md5Hex(bytes) != o.serverHash)
+		if (st != 200) return fail("down");
+		Payload p;
+		if (!payloadOf(card, bytes, p, shape)) return fail("shape");
+		if (!o.serverHash.empty() && p.hash != o.serverHash)
 		{
 			log("%s: %s: RomM's save didn't arrive whole (its hash differs), left alone", verb.c_str(), g.name().c_str());
-			return false;
+			return fail("hash");
 		}
-		if (!replaceSave(card, g.save, bytes, error)) { log("%s: %s", verb.c_str(), error.c_str()); return false; }
+		if (p.zip) log("%s: %s: RomM keeps it as a zip (another client's): its save taken from it", verb.c_str(), g.name().c_str());
+		if (!replaceSave(card, g.save, p.save, error, p.rtc)) { log("%s: %s", verb.c_str(), error.c_str()); return fail("card"); }
 		// (the DS's as nds-saves left it: raw, which the next negotiation sends)
 		g.hasSave = readSave(g.save, g.bytes, g.mtimeMs);
 		g.hash = g.hasSave ? md5Hex(g.bytes) : "";
-		if (ready(s) && confirmDownload(s, o.saveId, a.deviceId, g.hash) == 401) noteRevoked();
+		// a save that isn't the bytes RomM hashed (a zip's, a DS save nds-saves rewrote) stands for RomM's hash: RomM
+		// is told that one, the only hash it takes as proof, and the negotiations send it while the save is unchanged
+		g.standsFor = g.hasSave && g.hash != p.hash ? p.hash : "";
+		if (ready(s) && confirmDownload(s, o.saveId, a.deviceId, p.hash) == 401) noteRevoked();
 		t.fetched++;
 		cleared(g);
 		log("%s: %s: RomM's save taken (from %s)", verb.c_str(), g.name().c_str(), o.emulator.empty() ? "an unnamed emulator" : o.emulator.c_str());
@@ -386,8 +412,8 @@ namespace
 		{
 			if (!g.hasSave) return true;
 			if (!ready(s)) return false;
-			Upload u = uploadSave(s, g.client(), a.deviceId, session, false, g.bytes);
-			if (u.ok) { t.sent++; cleared(g); log("%s: %s: sent (%s)", verb.c_str(), g.name().c_str(), g.save.emulator.c_str()); return true; }
+			Upload u = uploadSave(s, g.sent(), a.deviceId, session, false, g.bytes);
+			if (u.ok) { t.sent++; g.standsFor.clear(); cleared(g); log("%s: %s: sent (%s)", verb.c_str(), g.name().c_str(), g.save.emulator.c_str()); return true; }
 			if (u.conflict)
 			{
 				noteConflictOf(g, 0, "");
@@ -824,13 +850,15 @@ namespace
 		if (g.save.ds) ndsSaves(card, g.rom);
 		g.hasSave = readSave(g.save, g.bytes, g.mtimeMs);
 		if (g.hasSave) g.hash = md5Hex(g.bytes);
+		standing(g);
 		Tally t;
 		if (side == "local")
 		{
 			if (!g.hasSave) { log("resolve: %s: no save on the card to keep", g.name().c_str()); return refused("nosave"); }
-			Upload u = uploadSave(s, g.client(), a.deviceId, 0, true, g.bytes);
+			Upload u = uploadSave(s, g.sent(), a.deviceId, 0, true, g.bytes);
 			if (u.status == 401) { noteRevoked(); return refused("revoked"); }
 			if (!u.ok) return refused("down");
+			g.standsFor.clear();
 			cleared(g);
 			log("resolve: %s: this card's save sent over RomM's (%s)", g.name().c_str(), g.save.emulator.c_str());
 		}
@@ -844,7 +872,7 @@ namespace
 			const Operation* op = nullptr;
 			for (auto& o : ng.ops) if (o.romId == g.id && o.slot == "autosave") op = &o;
 			bool ok = false;
-			std::string error;
+			std::string error, failure = "down";
 			if (!op) log("resolve: %s: RomM has no save of it now", g.name().c_str());
 			else if (op->action == "no_op") { cleared(g); ok = true; }
 			else if (op->action == "delete")
@@ -853,10 +881,10 @@ namespace
 				if (ok) { g.hasSave = false; cleared(g); }
 				else log("resolve: %s", error.c_str());
 			}
-			else if (op->saveId) ok = fetchSave(s, a, ng.session, g, *op, t);	// (download, conflict, or upload over RomM's)
+			else if (op->saveId) ok = fetchSave(s, a, ng.session, g, *op, t, &failure);	// (download, conflict, or upload over RomM's)
 			else log("resolve: %s: RomM has no save of it now", g.name().c_str());
 			if (complete(s, ng.session, ok, !ok, {}) == 401) noteRevoked();
-			if (!ok) return refused(revoked ? "revoked" : op && (op->saveId || op->action == "delete") ? "down" : "noserver");
+			if (!ok) return refused(revoked ? "revoked" : op && op->saveId ? failure : op && op->action == "delete" ? "card" : "noserver");
 		}
 		recount();
 		say("resolved " + std::to_string(n) + " " + side);

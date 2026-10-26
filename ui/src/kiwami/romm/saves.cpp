@@ -1,5 +1,6 @@
 // The RomM helper (kiwami): the games' saves on the card (saves.h).
 #include "saves.h"
+#include "download.h"
 #include "http.h"
 #include "../conf.h"
 #include "../third_party/rcheevos/src/rhash/md5.h"
@@ -7,6 +8,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
+#include <dirent.h>
 #include <fcntl.h>
 #include <sstream>
 #include <sys/stat.h>
@@ -206,10 +208,96 @@ namespace banana::kiwami::romm
 		return true;
 	}
 
-	bool replaceSave(const Card& c, const Save& s, const std::string& bytes, std::string& error)
+	namespace
+	{
+		// the files under dir, each by its path in it, with its bytes
+		void filesUnder(const std::string& dir, const std::string& rel, std::vector<std::pair<std::string, std::string>>& out)
+		{
+			DIR* d = opendir((dir + rel).c_str());
+			if (!d) return;
+			while (dirent* e = readdir(d))
+			{
+				std::string n = e->d_name;
+				if (n == "." || n == "..") continue;
+				std::string path = rel.empty() ? n : rel.substr(1) + "/" + n;
+				struct stat sb;
+				if (lstat((dir + "/" + path).c_str(), &sb) != 0) continue;
+				if (S_ISDIR(sb.st_mode)) filesUnder(dir, "/" + path, out);
+				else if (S_ISREG(sb.st_mode))
+				{
+					std::string bytes;
+					bool there = false;
+					if (readFile(dir + "/" + path, bytes, there) && there) out.push_back({ path, bytes });
+				}
+			}
+			closedir(d);
+		}
+
+		std::string lower(std::string s)
+		{
+			for (auto& ch : s) ch = (char)tolower((unsigned char)ch);
+			return s;
+		}
+	}
+
+	std::string zipHash(std::vector<std::pair<std::string, std::string>> files)
+	{
+		std::sort(files.begin(), files.end());
+		std::string text;
+		for (size_t i = 0; i < files.size(); i++) text += (i ? "\n" : "") + files[i].first + ":" + md5Hex(files[i].second);
+		return md5Hex(text);
+	}
+
+	bool payloadOf(const Card& c, const std::string& bytes, Payload& out, std::string& why)
+	{
+		out = Payload();
+		out.save = bytes;
+		out.hash = md5Hex(bytes);
+		if (bytes.compare(0, 4, "PK\x03\x04", 4) != 0) return true;
+		// unpacked by unzip under <run>, which only this helper's pid names
+		std::string base = c.run + "/romm-save-" + std::to_string(getpid()), zip = base + ".zip", dir = base + ".d", error;
+		removeTree(dir);
+		std::vector<std::pair<std::string, std::string>> files;
+		bool unpacked = makeDir(c.run) && replaceFile(zip, bytes, error) && unpack(zip, dir, error);
+		if (unpacked) filesUnder(dir, "", files);
+		unlink(zip.c_str());
+		removeTree(dir);
+		if (!unpacked || files.empty())
+		{
+			log("%s: a save that begins as a zip doesn't unpack as one (%s): taken as it is", verb.c_str(), error.empty() ? "no files" : error.c_str());
+			return true;
+		}
+		// grout's way (saves/payload.go's classifyZipEntries): the save and its clock by their roles, not their names
+		const std::string *ram = nullptr, *rtc = nullptr;
+		int rams = 0, rtcs = 0;
+		for (auto& f : files)
+		{
+			std::string name = f.first.substr(f.first.rfind('/') + 1), ext = lower(name.substr(std::min(name.size(), name.rfind('.'))));
+			if (f.first.compare(0, 9, "__MACOSX/") == 0 || f.first.find("/__MACOSX/") != std::string::npos || name.compare(0, 2, "._") == 0)
+				continue;
+			if (ext == ".srm" || ext == ".sav" || lower(name) == "save.sram") { ram = &f.second; rams++; }
+			else if (lower(name) == "clock.rtc") log("%s: %s in RomM's zip isn't RetroArch's clock: left out", verb.c_str(), f.first.c_str());
+			else if (ext == ".rtc") { rtc = &f.second; rtcs++; }
+			else log("%s: %s in RomM's zip isn't a save: left out", verb.c_str(), f.first.c_str());
+		}
+		if (rams != 1 || rtcs > 1)
+		{
+			log("%s: RomM's save is a zip of %d saves and %d clocks, not one save: left alone", verb.c_str(), rams, rtcs);
+			why = "shape";
+			return false;
+		}
+		out.save = *ram;
+		out.rtc = rtc ? *rtc : "";
+		out.hash = zipHash(files);
+		out.zip = true;
+		return true;
+	}
+
+	bool replaceSave(const Card& c, const Save& s, const std::string& bytes, std::string& error, const std::string& rtc)
 	{
 		if (s.ds)
 		{
+			if (!rtc.empty()) log("%s: %s: RomM's save came with a clock, which the DS has no file for: left out", verb.c_str(), s.stem.c_str());
 			if (!writeKeeping(s.dsv, bytes, error)) return false;
 			// BananaDS's save out of the way (kept as .bak), so nds-saves makes it again from DraStic's whatever the two
 			// files' times (its -nt goes by the second)
@@ -221,6 +309,13 @@ namespace banana::kiwami::romm
 		}
 		if (!writeKeeping(s.path, bytes, error)) return false;
 		log("%s: %s: RomM's save in place (%zu bytes), the one before kept as .bak", verb.c_str(), s.stem.c_str(), bytes.size());
+		if (!rtc.empty())
+		{
+			// (the save is in place already: a clock that can't be written leaves the game its old clock, or none)
+			std::string clock = dirOf(s.path) + "/" + s.stem + ".rtc", why;
+			if (writeKeeping(clock, rtc, why)) log("%s: %s: and its clock, %s.rtc (%zu bytes)", verb.c_str(), s.stem.c_str(), s.stem.c_str(), rtc.size());
+			else log("%s: %s: its clock: %s", verb.c_str(), s.stem.c_str(), why.c_str());
+		}
 		if (exists(s.state))
 		{
 			if (rename(s.state.c_str(), (s.state + ".bak").c_str()) == 0)

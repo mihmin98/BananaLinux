@@ -261,19 +261,31 @@ namespace banana::kiwami::romm
 			+ std::to_string(l.fetched) + "\t" + std::to_string(l.conflicts) + "\t" + std::to_string(l.skipped) }, error);
 	}
 
-	std::string syncedHash(const Card& c, long romId)
+	namespace
 	{
-		std::string key = std::to_string(romId) + "\t";
-		for (auto& ln : lines(c.dir + "/synced")) if (ln.compare(0, key.size(), key) == 0) return ln.substr(key.size());
-		return "";
+		// the n-th field after the rom id of the game's line in synced ("" for none)
+		std::string syncedField(const Card& c, long romId, int n)
+		{
+			std::string key = std::to_string(romId) + "\t";
+			for (auto& ln : lines(c.dir + "/synced"))
+			{
+				if (ln.compare(0, key.size(), key) != 0) continue;
+				std::vector<std::string> f = fields(ln.substr(key.size()));
+				return n < (int)f.size() ? f[n] : "";
+			}
+			return "";
+		}
 	}
 
-	bool setSynced(const Card& c, long romId, const std::string& hash, std::string& error)
+	std::string syncedHash(const Card& c, long romId) { return syncedField(c, romId, 0); }
+	std::string syncedStandsFor(const Card& c, long romId) { return syncedField(c, romId, 1); }
+
+	bool setSynced(const Card& c, long romId, const std::string& hash, std::string& error, const std::string& standsFor)
 	{
 		std::string key = std::to_string(romId) + "\t";
 		std::vector<std::string> l = lines(c.dir + "/synced"), out;
 		for (auto& ln : l) if (ln.compare(0, key.size(), key) != 0) out.push_back(ln);
-		if (!hash.empty()) out.push_back(key + hash);
+		if (!hash.empty()) out.push_back(key + hash + (standsFor.empty() || standsFor == hash ? "" : "\t" + standsFor));
 		if (out == l) return true;
 		return writeLines(c, c.dir + "/synced", out, error);
 	}

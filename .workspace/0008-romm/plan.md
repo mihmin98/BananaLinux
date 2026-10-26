@@ -13,13 +13,14 @@ Banana gets a RomM client of the fork's own. It has three parts:
 - **A wrapper**, `/usr/libexec/kiwami/romm-game`, which `kiwami/post-build.sh` puts in front of the nine game
   systems' `run` lines in the image's `systems.conf`. With RomM on it pulls the game's save before the game and
   pushes it after, in the background. Otherwise it `exec`s the launcher, so the game runs as it does on `main`.
-- **Settings > RomM**, an eighth group after RetroAchievements, with seven rows:
+- **Settings > RomM**, an eighth group after RetroAchievements, with eight rows (*Deviations*, 26 Oct):
   - RomM, On/Off;
   - Account: the server, pairing by QR code, log out;
   - Sync around games, On/Off;
   - Sync now: progress, results, conflicts to resolve;
-  - Games: RomM's platforms, their games, downloads;
+  - Games: RomM's collections and platforms, their games, downloads;
   - Downloads to: Main card or Second card, shown only with a second slot;
+  - Unpack downloads: Ask, Always or Never (step 11);
   - BIOS.
 
   Settings reads the rows' values from the card. It runs the helper only from a RomM page, never when it opens.
@@ -196,6 +197,41 @@ Footprint, both boards
   - with RomM Off, a game's start costs one `exec`.
 - **A25**: every request is one `romm.log` line (verb, method, path, status or `no connection`, milliseconds), and the
   log is kept under 256 KB (the last one as `romm.1.log`). The pages are drawn right at 640x480 and 1024x768.
+
+After the first image (26 Oct 2026; *Deviations*, 26 Oct, the manual tests)
+
+- **A26**: given a save RomM sends that isn't put in place (its hash differs, a zip that isn't one save, a write that
+  fails, the connection cut), then RomM doesn't count it as this handheld's: it is asked for with `optimistic=false`
+  and confirmed (`/downloaded`) only once written. The next upload of the card's save for that game still gets RomM's
+  409, and stays a conflict.
+- **A27**: given a save RomM keeps as a zip (another client's: one `.srm` or `.sav`, at most one `.rtc`, anything else
+  ignored), then it is checked against RomM's hash of a zip (its entries' names and MD5s), and the save goes in place
+  as the core's save, the `.rtc` beside it, each old one kept as `.bak`. A zip of another shape is left alone, logged.
+  A conflict that can't be resolved for that reason says so (`resolve-failed hash`), not `down`.
+- **A28**: given a platform's list already cached, then no Sync now, push or pull fetches it whole again:
+  - a miss asks only for what changed since (`updated_after`, the newest `updated_at` in the cache);
+  - Sync now drops the games RomM no longer has (`GET /api/roms/identifiers`, once per run);
+  - every `GET /api/roms` turns off what the helper doesn't read (`with_char_index`, `with_filter_values`,
+    `with_rom_id_index`).
+
+  A Sync now with nothing new on RomM makes, besides the negotiation and the saves, at most one request per platform
+  with a miss, and one for the identifiers.
+- **A29**: given Unpack downloads (`romm_unpack`: Ask, the default, Always or Never), when a game that RomM keeps as
+  one `.zip` or `.7z` is downloaded, then:
+  - Always unpacks it, and Ask asks on the Games page (A: Unpack, B: Keep as it is); Never keeps it;
+  - unpacked, the game is the archive's file (several files: a folder of the archive's name), the archive goes, and
+    its id is recorded under the new name;
+  - free space is checked first, nothing is half-written, and an unpack that fails keeps the archive and says why;
+  - a `.7z` packed with LZMA or LZMA2 unpacks to the card as it goes, whatever its size. Other packings are unpacked in
+    memory, only when they fit in a third of the free memory; otherwise the archive is kept and the page says so.
+
+  The row's help says the DS and PS1 don't list an archive (`.7z`, and `.zip` for PS1), so a game kept packed there
+  doesn't show.
+- **A30**: given the Games page, then RomM's collections come before the platforms: Favourites first, then the
+  regular ones and the smart ones, each with its game count. A on one lists its games, 50 a page, with the search,
+  each game with its system. A game of a platform Banana doesn't have is listed, marked, and can't be downloaded. A
+  pairing made before the client asked for `collections.read` lists the platforms, and a row says to pair again for
+  the collections.
 
 ## Risks
 
@@ -697,7 +733,182 @@ detaching, for the tests.
   - shots at both sizes.
 - **Commit**: `RomM: Games in Settings, RomM's platforms and games downloaded from the menu, and its BIOS files`
 
-### 9. Final check
+Steps 9 to 13 come from the first image's manual tests (*Deviations*, 26 Oct). grout's `argosy-save-sync` branch,
+RomM's own client, does the same things and is the reference where named.
+
+### 9. A save from RomM counted only once in place, and RomM's zipped saves taken
+
+- **Files**: `ui/src/kiwami/romm/api.h`, `api.cpp`, `saves.h`, `saves.cpp`, `main.cpp` (changed);
+  `ui/src/kiwami/romm-sync.cpp` (changed); `kiwami/tests/romm-server.py`, `romm-helper.sh`, `romm-ui.sh`, `units.cpp`
+  (changed)
+- **Change**:
+  - **`downloadSave`** adds `optimistic=false`, as grout does (`romm/saves.go`'s `SaveContentQuery`). RomM then
+    records the handheld's sync of the save only when `confirmDownload` says it is in place (`saves.py`'s
+    `download_save` records it on the `GET` otherwise).
+  - **Zipped saves**, in `saves.cpp`:
+    - `zipSave(bytes, out, why)`: bytes that begin `PK\x03\x04` are unpacked by busybox `unzip` into a folder under
+      `$RUN`. Entries in folders, `__MACOSX/` and `._*` are tolerated. The entries are sorted as RomM sorts them
+      (`hash_zip_contents`), and their hash is `md5("<name>:<md5>\n...")`, which is what `fetchSave` compares with
+      `server_content_hash`. The save is one `.srm`, `.sav` or `save.sram`, and at most one `.rtc`; anything else is
+      ignored, logged. Another shape (no save, two saves) is refused.
+    - `replaceSave` takes the `.rtc`: `<stem>.rtc` beside the `.srm` in the core's folder, the old one kept as
+      `.bak`, so the clock of a game with one (Pokémon Crystal) comes with the save. A DS save never has one.
+    - The card's hash, kept in `synced` and sent to `/downloaded`, stays the `.srm`'s MD5, as for any other save, so
+      the next negotiation is a `no_op`. Uploads stay the raw `.srm` (its `.rtc` isn't sent, a known limit).
+  - **`fetchSave`** says why it failed: `hash` (the hash differs), `shape` (a zip that isn't one save), `card` (the
+    write), `down` (no answer). `resolve` passes it on (`resolve-failed hash|shape|card|down`).
+  - **`romm-sync.cpp`**: `hash` and `shape` say that RomM's save can't be used as it is, and nothing changed.
+- **Tests**:
+  - **`romm-server.py`**:
+    - `optimistic` as RomM has it (`true` by default records the device's sync on the `GET`);
+    - `POST /test/save?...&zip=1` keeps the save as a zip of `.srm` and `.rtc`, with RomM's zip hash;
+    - `&shape=bad` keeps a zip of two saves;
+    - `&corrupt=1` serves bytes other than its hash.
+  - **`romm-helper.sh`**:
+    - a zipped save pulled: the `.srm` and the `.rtc` in place, both `.bak`, `no_op` after;
+    - the zip of two saves refused, the card untouched;
+    - Link's Awakening's case: a corrupt save refused by `resolve server`, then `sync`: the upload gets 409 and stays
+      a conflict (with `optimistic` left out, the stand-in server accepts it, as the device's RomM did);
+    - `resolve-failed hash`.
+  - **`units.cpp`**: the zip hash over a fixture against the value Python's `zipfile` gives (written into the test).
+  - **`romm-ui.sh`**: the Sync now page's line for `resolve-failed hash`.
+- **Commit**: `RomM: a save from RomM counted as the handheld's only once it is in place, and its zipped saves taken`
+
+### 10. Sync now without RomM's whole lists every time
+
+- **Files**: `ui/src/kiwami/romm/api.h`, `api.cpp`, `games.h`, `games.cpp`, `main.cpp` (changed);
+  `kiwami/tests/romm-server.py`, `kiwami/tests/romm/library.json`, `romm-helper.sh`, `units.cpp` (changed)
+- **Change**:
+  - **`roms()`** sends `with_char_index=false&with_filter_values=false&with_rom_id_index=false` on every request: the
+    lists, the Games page, the search. `romOf` reads each game's `updated_at`. `roms()` takes an `updatedAfter`
+    (`updated_after=<ISO time>`). `romIdentifiers()` is `GET /api/roms/identifiers`.
+  - **`games.cpp`**: the cached list's first line is `#updated\t<newest updated_at>`, taken from RomM's own times, so
+    the handheld's clock doesn't matter.
+    - A miss with a list cached asks only for what changed since (`updated_after`), merges it by id, and writes the
+      newest time. This is once per platform and run, as the refetch was.
+    - A whole list is fetched only when none is cached, or the cache has no `#updated` line (one from before this
+      step).
+    - The pull's rule is unchanged: a list is fetched only when none is cached.
+  - **`sync`**: after the platforms, one `GET /api/roms/identifiers`. A cached game RomM no longer has leaves its list
+    and `games`, logged. When the request fails, nothing is dropped.
+- **Tests**:
+  - **`romm-server.py`**:
+    - `updated_after` and the three flags (logged with each request);
+    - `updated_at` on each game;
+    - `/api/roms/identifiers`;
+    - `POST /test/add-rom` and `/test/delete-rom`.
+  - **`romm-helper.sh`**:
+    - every `GET /api/roms` carries the three flags;
+    - a second `sync` with nothing new: no list fetched whole, one `updated_after` request per platform with a miss;
+    - a game added on RomM, then found by the next sync;
+    - a game deleted on RomM, dropped from the cache and `games`;
+    - a cache from before this step, fetched whole once.
+  - **`units.cpp`**: `romOf`'s `updated_at`, the cache's `#updated` line read and written.
+- **Commit**: `RomM: Sync now asks RomM only for the games changed since its last list`
+
+### 11. Unpacking a downloaded game, with Unpack downloads in Settings
+
+- **Files**: `ui/src/kiwami/romm/unpack.h`, `unpack.cpp` (new); `ui/src/kiwami/romm/main.cpp`, `download.cpp`,
+  `games.h`, `games.cpp`, `romm.mk` (changed); `ui/src/kiwami/romm-account.cpp`, `romm-games.cpp`, `romm.h`
+  (changed); `kiwami/package/kiwami-romm/kiwami-romm.mk` (changed, if the SDK's sources need naming there);
+  `kiwami/tests/romm/*.7z` (new, fixtures); `kiwami/tests/romm-server.py`, `library.json`, `romm-helper.sh`,
+  `romm-ui.sh`, `cores-ui.sh`, `ci.sh` (changed); `kiwami/DEPENDENCIES.md` (changed)
+- **Change**:
+  - **The row** `romm_unpack`, Unpack downloads: a choice `{ "Ask", "Always", "Never" }` / `{ "ask", "always",
+    "never" }`, default `ask`, after Downloads to. The help says that the DS and PS1 don't list a game kept packed.
+    The group's log line lists it.
+  - **`unpack.cpp`**, `unpack(archive, into, progress, error)`:
+    - a `.zip`: busybox `unzip -l` for the names and sizes, then `unzip -q -o` into `<into>.part.dir`;
+    - a `.7z`: the LZMA SDK's `SzArEx_Open` for its files, then each file written to `<into>.part.dir` as it is
+      unpacked, its CRC checked:
+      - a folder of one LZMA or LZMA2 coder (the usual for a ROM) is decoded from the archive's packed stream by
+        `LzmaDec_DecodeToBuf` / `Lzma2Dec_DecodeToBuf` in 1 MB pieces, whatever its size;
+      - another packing (BCJ, BCJ2, Delta, a solid block of several files) goes through `SzArEx_Extract` in memory,
+        when its block is under a third of `MemAvailable`; otherwise it fails as `packing`, and the archive is kept;
+    - names checked as `safePath` checks a download's (none leaves the folder, none the library hides);
+    - one file: renamed beside the archive as its own name; several: the folder renamed to the archive's stem; then
+      the archive removed;
+    - free space (the unpacked total from the listing) checked first.
+  - **The helper**:
+    - `download`, at its end, for a game RomM keeps as one `.zip` or `.7z`:
+      - with `always`, it unpacks;
+      - with `ask`, it ends with `done download <id> <path>\tunpack` (the page asks);
+      - with `never`, as before.
+    - `unpack <id> <path>`, a verb, detached, under the download lock: progress
+      `running <bytes> <total>\tunpack\t<name>`, then `done unpack <id> <path>` or `error unpack <why> <path>`
+      (`space`, `packing`, `damaged`, `name`).
+    - `games`' line for the id takes the new name (`Games::rename`), so the on-card mark and the saves' matching find
+      it.
+  - **`romm-games.cpp`**:
+    - on `done download ...\tunpack`, the top panel asks "Unpack <name>?" (A Unpack, B Keep as it is), and A runs
+      `romm unpack`;
+    - the progress and the result as a download's, and the library read again at the end.
+  - **`romm.mk`**: the LZMA SDK's decoder files (those `kiwami.mk` lists, from `third_party/lzma/`) built in as C. The
+    helper stays under 1 MB.
+  - **`kiwami/DEPENDENCIES.md`**: the LZMA SDK's row says the RomM helper builds it in too, to unpack downloaded
+    games to the card.
+- **Tests**:
+  - **Fixtures** `kiwami/tests/romm/*.7z`, made once with 7-Zip from seeded bytes, a few KB each:
+    - LZMA;
+    - LZMA2;
+    - BCJ with LZMA (the in-memory path);
+    - two files in a solid block;
+    - one whose CRC is broken.
+  - **`romm-server.py`**: games kept as one `.7z` (the fixtures) and one `.zip`.
+  - **`romm-helper.sh`**:
+    - each fixture unpacked (bytes as seeded);
+    - the streamed path holding under a fixed memory figure, a fixture over `KIWAMI_ROMM_MEM` (a test's stand-in
+      for `MemAvailable`) going through it, and the in-memory path refusing past it;
+    - not enough space;
+    - the broken CRC: archive kept, nothing left;
+    - `always`, `ask` (the status line's `\tunpack`) and `never`;
+    - `games` renamed;
+    - the library's filter never listing `.part.dir`.
+  - **`romm-ui.sh`**: the row; the question shot at both sizes; A, then the game in the library; B, the archive
+    kept.
+  - **`cores-ui.sh`**: RomM's `rows in` line with the new row.
+- **Commit**: `RomM: a downloaded game unpacked from its .zip or .7z, as Unpack downloads says`
+
+### 12. RomM's collections on the Games page
+
+- **Files**: `ui/src/kiwami/romm/api.h`, `api.cpp`, `main.cpp` (changed); `ui/src/kiwami/romm-games.cpp`, `romm.h`
+  (changed); `kiwami/tests/romm-server.py`, `library.json`, `romm-helper.sh`, `romm-ui.sh`, `units.cpp` (changed)
+- **Change**:
+  - **The scopes** get `collections.read` (nine). A pairing made before it gets 403 on the collections.
+  - **`collections`**, a verb: `GET /api/collections` and `GET /api/collections/smart`, and stdout lines
+    `<regular|smart>\t<id>\t<rom count>\t<favourite 0|1>\t<name>`, Favourites first, then by name. A 403 prints
+    `scope`.
+  - **`roms`** takes `collection <id>` or `smart <id>` in place of a platform id (`collection_id=`,
+    `smart_collection_id=`). Each line gets the game's system (from its `platform_slug`, empty for a platform Banana
+    doesn't have).
+  - **`romm-games.cpp`**:
+    - when the page opens, `romm collections` runs after `romm platforms`;
+    - the list is the collections, then the platforms; A on a collection lists its games as a platform's (pages,
+      search, on-card mark), each with its system;
+    - a game whose system is empty is marked as not one of Banana's, and its A says so;
+    - with `scope`, one row: "Collections: pair again to see them".
+  - `download <id>` is unchanged: it already reads the game first, and its platform gives the folder.
+- **Tests**:
+  - **`romm-server.py`**:
+    - a Favourites collection, a regular one and a smart one, with games of GBA, SNES and a platform Banana doesn't
+      have;
+    - `collection_id` and `smart_collection_id` on `/api/roms`;
+    - 403 for a token paired without the scope.
+  - **`romm-helper.sh`**: `collections`' lines and order; `roms collection` and `roms smart`; `scope`; a game from a
+    collection downloaded into its system's folder.
+  - **`romm-ui.sh`**: the collections above the platforms, a collection's games, the marked game refused, the
+    pair-again row (shots at both sizes).
+  - **`units.cpp`**: the collections' parser.
+- **Commit**: `RomM: RomM's collections, Favourites first, on the Games page`
+
+### 13. The manual tests of steps 9 to 12
+
+- **Files**: `.workspace/0008-romm/plan.md`
+- An image from step 12 on the RG DS Plus, with M5, M13, M14, M15 and M16 run again or for the first time, and their
+  outcomes and logs recorded here.
+- **Commit**: `RomM: the second image's manual tests on the RG DS Plus`
+
+### 14. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
 - The fork's tests in `kiwami/tests/`: `romm-helper.sh`, `romm-game.sh`, `romm-ui.sh` and every earlier one.
@@ -709,7 +920,7 @@ detaching, for the tests.
 - The hooks: `git diff --stat main...HEAD` and `git grep -n 'kiwami:'` (the commands in `docs/FORK.md`) agree, and this
   feature added none.
 - With the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s.
-- `kiwami/DEPENDENCIES.md` lists RomM's API and libcurl.
+- `kiwami/DEPENDENCIES.md` lists RomM's API and libcurl, and the LZMA SDK's row names the helper (step 11).
 - `docs/FORK.md` updated (step 4); `docs/ARCHITECTURE.md` and `CLAUDE.md` unchanged (nothing of upstream's changes).
 - The manual tests below all passed.
 - Every acceptance criterion is met: each is listed by at least one automated or manual test, and those passed.
@@ -729,6 +940,10 @@ detaching, for the tests.
 | Sync now page | `kiwami/tests/romm-ui.sh` (step 6) | Progress, result, row value, conflicts resolved, down, revoked, busy | A11, A17, A19 |
 | Downloads and BIOS | `kiwami/tests/romm-helper.sh` (step 7) | Lists, paging, search, both cards, fallback, unpack, resume, space, `awake.pid`, BIOS skip and `.bak` | A20-A23 |
 | Games and BIOS pages | `kiwami/tests/romm-ui.sh` (step 8) | Platforms, games, search, download and library, Downloads to row, fallback, BIOS | A21, A22, A23, A25 |
+| Saves counted once in place, zipped saves | `kiwami/tests/romm-helper.sh`, `units.cpp` (step 9) | `optimistic=false`, the 409 kept after a refused download, a zip of `.srm` and `.rtc` taken, another shape refused, `resolve-failed hash` | A26, A27 |
+| Lists by what changed | `kiwami/tests/romm-helper.sh`, `units.cpp` (step 10) | The three flags, `updated_after` on a miss, nothing fetched whole on a second sync, added and deleted games, an old cache | A28 |
+| Unpacking downloads | `kiwami/tests/romm-helper.sh`, `romm-ui.sh` (step 11) | Each 7z packing, zip, streamed vs in memory, space, broken CRC, Ask/Always/Never, the record renamed, the question | A29 |
+| Collections | `kiwami/tests/romm-helper.sh`, `romm-ui.sh`, `units.cpp` (step 12) | Order, a collection's games, smart, a platform Banana lacks, the missing scope | A30 |
 | Upstream's look | `make test` (every step) | Renders unchanged with the fork's options off | A1 |
 
 ## Manual tests
@@ -744,20 +959,46 @@ from the card on a computer (`banana/logs/` on the card is `/data/banana/logs/` 
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | Settings > RomM: Server `http://<LAN address>:<port>`, Pair, scan the QR on a phone, approve. Again with the Tailscale address (`100.x.y.z`) after Log out | Paired with 5.4.1 both times; Log out removes the device from RomM's devices page | `romm.log`, `banana-ui.log`, `accounts.conf`'s keys (names only) | A4, A5, A7, A8 | not run |
+| M1 | rgds-plus | Settings > RomM: Server `http://<LAN address>:<port>`, Pair, scan the QR on a phone, approve. Again with the Tailscale address (`100.x.y.z`) after Log out | Paired with 5.4.1 both times; Log out removes the device from RomM's devices page | `romm.log`, `banana-ui.log`, `accounts.conf`'s keys (names only) | A4, A5, A7, A8 | partly: paired over Tailscale (26 Oct); the LAN and Log out not run yet |
 | M2 | rgds-plus | RomM on, Second screen on. A GBA game with a save: play, save in game, quit. In RomM's web page, check the save. Play it in RomM's web player, save there. Start it again on the handheld | The game panel shows on the other screen (the wrapper kept it); the save is in RomM after the quit, the menu back at once; the handheld starts from the web player's save, the old one as `.bak` | `romm.log`, `banana-ui.log`, `/data/saves/gpSP/` listing | A9, A10 | not run |
-| M3 | rgds-plus | M2 with `core.gba = mgba`; then a SNES and a Mega Drive game | The save in the chosen core's folder; each system's save loads in RomM's web player and back | as M2, the cores' folders | A9, A10 | not run |
+| M3 | rgds-plus | M2 with `core.gba = mgba`; then a SNES and a Mega Drive game | The save in the chosen core's folder; each system's save loads in RomM's web player and back | as M2, the cores' folders | A9, A10 | partly: a SNES game's save sent after it (26 Oct); the web player's way not run yet |
 | M4 | rgds-plus | A DS game under DraStic: save, quit. Switch it to BananaDS (X on the game), start | BananaDS has the save; RomM has the raw `.sav` (its size); after a save in BananaDS, DraStic finds it | `romm.log`, `/data/saves/nds/`, `/data/drastic/backup/` listings | A15 | not run |
-| M5 | rgds-plus | Wi-Fi off: play a game, save, quit. Change the same game's save in the web player. Wi-Fi on, Sync now | One conflict listed; "Take RomM's" puts RomM's in place, the card's as `.bak`; another time "Keep this card's" | `romm.log`, `banana/romm/conflicts` before and after | A11, A13, A19 | not run |
+| M5 | rgds-plus | Wi-Fi off: play a game, save, quit. Change the same game's save in the web player. Wi-Fi on, Sync now | One conflict listed; "Take RomM's" puts RomM's in place, the card's as `.bak`; another time "Keep this card's" | `romm.log`, `banana/romm/conflicts` before and after | A11, A13, A19 | failed (26 Oct): four zipped saves refused, and one then overwritten on RomM (steps 9, 10) |
 | M6 | rgds-plus | Quick resume on: play a RetroArch game, quit (the auto state written). Save newer in the web player. Start on the handheld | The game starts from the pulled save, not the resume state (`.state.auto.bak` there) | `romm.log`, `/data/states/<core>/` listing | A9 | not run |
 | M7 | rgds-plus | Close the lid in the menu, open it, start a game at once | The game starts within 3 s more than usual; the pull logged as no connection; the push after the game goes | `romm.log` (times), `banana-ui.log` | A13 | not run |
 | M8 | rgds-plus | Time a GBA game's start and the menu's return after a quit, with RomM off and on (LAN), five times each | On: start at most ~0.2 s longer; return the same as off | `banana-ui.log` (its `starting` and back lines' times), `romm.log` | A10, A24 | not run |
 | M9 | rgds-plus | Hold the power button while playing (shutdown), boot, Sync now | The shutdown isn't held up past its 5 s; after the boot the pending push goes with Sync now | `romm.log`, `banana/romm/pending` before the sync | A14, A19 | not run |
-| M10 | rgds-plus | Games: download a GBA game to the second card, a PS1 game of several files to the main card; close the lid during a large download, open it, download it again; take the second card out, download | Games in the library; the multi-file game in its folder and starting; the cut download resumes; without the card it goes to the main card and the page says so | `romm.log`, `banana-ui.log`, the folders' listings | A21, A22 | not run |
+| M10 | rgds-plus | Games: download a GBA game to the second card, a PS1 game of several files to the main card; close the lid during a large download, open it, download it again; take the second card out, download | Games in the library; the multi-file game in its folder and starting; the cut download resumes; without the card it goes to the main card and the page says so | `romm.log`, `banana-ui.log`, the folders' listings | A21, A22 | partly: two games downloaded to the second card (26 Oct); the rest not run yet |
 | M11 | rgds-plus | BIOS, twice | Files in `/data/bios`; the second time all skipped | `romm.log`, `/data/bios` listing | A23 | not run |
-| M12 | rgds-plus | A game on the second card that RomM has: play, save, quit; Sync now. A game RomM doesn't have | The save in RomM, from `/data/saves`; the other skipped and counted | `romm.log`, `banana/romm/last` | A16, A19 | not run |
+| M12 | rgds-plus | A game on the second card that RomM has: play, save, quit; Sync now. A game RomM doesn't have | The save in RomM, from `/data/saves`; the other skipped and counted | `romm.log`, `banana/romm/last` | A16, A19 | partly: the 27 DS games RomM doesn't have skipped and counted (26 Oct) |
+| M13 | rgds-plus | Sync now twice, nothing changed on RomM in between; then add a game on RomM, Sync now | The second sync within a few seconds, with no list fetched whole; the added game found | `romm.log` (each request's milliseconds) | A28 | not run |
+| M14 | rgds-plus | The four Game Boy saves refused on 26 Oct (Pokémon Crystal and Yellow, Metroid II, Link's Awakening DX): Sync now, resolve Link's Awakening's conflict with "Take RomM's", start Pokémon Crystal | The saves taken, `.rtc` beside the `.srm`; Crystal's save and clock as on the other device; no upload over RomM's | `romm.log`, `/data/saves/Gambatte/` and `/data/saves/SameBoy/` listings | A26, A27 | not run |
+| M15 | rgds-plus | Unpack downloads Ask: a DS `.7z`, A; a NES `.7z`, B. Always: a PS1 `.7z` (one large `.bin`). Never: a `.zip` | Each as chosen; the DS and PS1 games in the library and starting; the NES one kept and starting | `romm.log`, `banana-ui.log`, the folders' listings, `free` during the PS1 unpack | A29 | not run |
+| M16 | rgds-plus | Games before pairing again: the pair-again row. Pair again, Games: Favourites and a smart collection; download a game from one | The collections, Favourites first; the game in its system's folder and the library | `romm.log`, `banana-ui.log` | A30 | not run |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- **26 Oct 2026, 0.4.2, built from `e958110`, RG DS Plus, RomM 5.4.1 over Tailscale** (`romm.log`, 19:11 to 19:22).
+  - **Pairing**: the code polled every 5 s (`400`, pending), approved at 19:12:58, `paired 5.4.1`, and the check after
+    it `ok 5.4.1`.
+  - **Around a game**: Batman (NES) and EarthBound (SNES) had no save on either side before. EarthBound's went up after
+    the game (`sent (snes9x)`, `1 plays sent`). The pull took 0.2 s and the push 0.5 s.
+  - **Downloads**: both landed in `/run/sd2/roms/<folder>/` as RomM's `.7z`. Five more A's on Batman each said
+    `error download there` and wrote nothing.
+  - **The first Sync now** took 106 s, 92 s of it RomM's lists: nine platforms, 500 games a page, each page 3 to 17 s
+    (19:19:05 to 19:20:37). It found 140 games: 29 saves taken, 5 conflicts (409s), 27 DS games not on RomM and 3
+    failed. The two syncs after it took 15 s and 13 s: 12 s of each was the DS list fetched whole again for the 27
+    misses. Step 10.
+  - **Four Game Boy saves refused** with `didn't arrive whole (its hash differs)`: saves 143, 131, 158, then 102 three
+    times through "Take RomM's", each said as `resolve-failed down`. RomM hashes a zip by its entries
+    (`assets_handler.py`'s `hash_zip_contents`), and grout uploads Game Boy saves as a zip of `.srm` and `.rtc`
+    (`saves/payload.go`), so those four are taken to be zips. Step 9.
+  - **One overwritten on RomM**: the helper asked for the saves without `optimistic=false`, so RomM had counted save
+    102 as the handheld's when it sent it. The next sync's upload of Link's Awakening's card save got `200` at
+    19:22:28 where it should have got a 409. RomM keeps a slot's last 10 versions, so 102 is still in its history.
+    Step 9.
+  - The other saves taken, some of 55 to 159 bytes from other devices' RetroArch, are probably RetroArch's
+    compressed saves (RZIP), which RetroArch reads whatever its own setting. M3 checks one starts from it.
 
 ## Deviations
 
@@ -858,6 +1099,33 @@ Where the implementation turned out different from this plan, why, and what chan
     test sees the fallback the page says.
   Agreed with the user.
 
+- **26 Oct 2026, the final check: the renders aren't compared with a baseline.** `kiwami` holds both of upstream's lines (`main`
+  and its `release-0.4.2`, merged at `9a8e35e`), so neither alone renders as the fork does with its options off, and
+  this feature changed no upstream file (`git diff kiwami...HEAD` touches none but `docs/FORK.md`). What the
+  comparison would have caught is covered otherwise: `romm-ui.sh` checks that the groups' first two rows are the same
+  pixels with RomM's group as without it, and `make test` passed at every step. Skipped at the user's decision.
+
+- **26 Oct 2026, after the first image: four steps before the final check.** The first image's tests (*Manual
+  tests*, notes of 26 Oct) found two faults: a save RomM sent but the helper refused still counted as the handheld's,
+  and RomM's zipped saves were refused. They also found the platform lists' cost on every Sync now. The user asked
+  for two more things: unpacking a downloaded archive, and RomM's collections on the Games page.
+  - The user chose to do all of it in this feature: steps 9 (the saves), 10 (the lists), 11 (unpacking), 12
+    (collections) and 13 (their manual tests). The final check moves from step 9 to step 14, with A26 to A30 and M13
+    to M16.
+  - Unpacking is a setting, Unpack downloads (Ask, the default, Always or Never), at the user's choice, rather than a
+    question every time.
+  - A `.7z` is unpacked by the LZMA SDK the fork already vendors, decoded to the card as it goes, rather than adding
+    libarchive or p7zip to the image, also at the user's choice.
+  - The collections are the regular ones (Favourites first) and the smart ones; the virtual ones, which RomM makes
+    by the hundred, are left out.
+  - Taken from grout's `argosy-save-sync` branch, RomM's own handheld client:
+    - `optimistic=false`;
+    - the zipped save's shape;
+    - asking for the lists without RomM's extras, and then only for what changed (`cache/populate.go`).
+  - Collections need `collections.read`, which the pairing didn't ask for, so a pairing made before step 12 is told
+    to pair again.
+  Agreed with the user.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -872,4 +1140,9 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 6. Settings: Sync now and the conflicts | done | RomM: Sync now in Settings, with its progress, its result and the conflicts to resolve |
 | 7. The helper's games, downloads and BIOS | done | RomM: RomM's games listed and downloaded to either card, and its BIOS files into /data/bios |
 | 8. Settings: Games, Downloads to and BIOS | done | RomM: Games in Settings, RomM's platforms and games downloaded from the menu, and its BIOS files |
-| 9. Final check | todo | |
+| 9. A save from RomM counted only once in place, and RomM's zipped saves taken | todo | |
+| 10. Sync now without RomM's whole lists every time | todo | |
+| 11. Unpacking a downloaded game, with Unpack downloads in Settings | todo | |
+| 12. RomM's collections on the Games page | todo | |
+| 13. The manual tests of steps 9 to 12 | todo | |
+| 14. Final check | todo | |

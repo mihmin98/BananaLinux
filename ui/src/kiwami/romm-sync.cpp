@@ -114,8 +114,10 @@ namespace banana
 		r.last = rm::last(r.card);
 		r.conflicts = rm::conflicts(r.card);
 		std::string line = firstLine(r.card.status);
-		r.syncLine = starts(line, "running ") || starts(line, "done sync ") || starts(line, "error sync ") ? line : "";
-		bool running = starts(r.syncLine, "running ");
+		// (the status file is every verb's: a download's running line has a field more, the BIOS' names bios)
+		bool running = starts(line, "running ") && std::count(line.begin(), line.end(), '\t') == 2 && line.find("\tbios\t") == std::string::npos;
+		r.syncLine = running || starts(line, "done sync ") || starts(line, "error sync ") ? line : "";
+		running = starts(r.syncLine, "running ");
 		r.syncing = running && savesLocked(r.card.run);
 		r.stopped = running && !r.syncing;
 		int rows = 1 + (int)r.conflicts.size();

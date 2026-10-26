@@ -6,8 +6,10 @@
 # noted in Sync around games' help. The Account page: the server typed (http://
 # added, accounts.conf's other lines kept), pairing by QR code (approved, denied), the check on opening against
 # 5.3.2, 5.5.0, no server and a revoked token, Log out (A then another key, A twice), another server forgetting the
-# pairing. The groups' frame time with the group and without. No token in the log. Needs ui/banana-ui (make ui),
-# python3 and ImageMagick.
+# pairing. Sync now. Games: RomM's platforms, a platform's games (two pages, a search), a download held by the server
+# (its progress, the row, a second one refused), one in the foreground and the library listing both, Downloads to
+# shown only with a second slot and its fallback said; BIOS fetched, then skipped, and busy. The groups' frame time
+# with the group and without. No token in the log. Needs ui/banana-ui (make ui), python3 and ImageMagick.
 # Run by kiwami/tests/ci.sh when banana-ui is built, or by hand:
 #   kiwami/tests/romm-ui.sh        (the shots in $OUT, /tmp/kiwami-romm-ui by default)
 set -e
@@ -95,7 +97,7 @@ for size in 640x480 1024x768; do
 
     # ---- the grid: RomM the eighth tile, the first two rows as with the fork's groups left out ----
     run $size groups "$SET; shot g0"
-    logged "banana-ui: kiwami: rows in RomM: romm kiwami.romm.account romm_autosync kiwami.romm.sync"
+    logged "banana-ui: kiwami: rows in RomM: romm kiwami.romm.account romm_autosync kiwami.romm.sync kiwami.romm.games kiwami.romm.bios"
     KIWAMI_RA_GROUP=0 KIWAMI_ROMM_GROUP=0 run $size six "$SET; shot six"
     logged "banana-ui: kiwami: rows in RomM: none"
     shown g0
@@ -298,6 +300,76 @@ for size in 640x480 1024x768; do
     logged "banana-ui: romm: run sync"
     logged "banana-ui: romm: sync: done sync 0 0 0 $SKIPPED"
     differ running stopped top
+
+    # ---- Games: the platforms when the page opens, the GBA's games and a search, the N64's two pages ----
+    GAMES="$LIST; press down; press down; press down; press down; press a"
+    BIOS="$LIST; press down; press down; press down; press down; press down; press a"
+    G=$FX/roms/gba
+    rm -rf "$FX/bios" "$OUT/run/sd2"
+    run $size games "$GAMES; wait 1; shot platforms; press a; wait 1; shot gba; press y; $(key 1,0 1,6 1,2 2,1 1,4) press start; wait 1; shot search; press b; press up; press a; wait 1; shot n64; press r; wait 1; shot n64-2; press l; wait 1; press up; press a; wait 1"
+    logged "banana-ui: romm: games page"
+    logged "banana-ui: romm: platforms: 6"
+    logged "banana-ui: romm: roms: 6 from 1 of 6"
+    logged 'banana-ui: romm: games: search "quest"'
+    logged "banana-ui: romm: run roms 1 0 quest"
+    logged "banana-ui: romm: roms: 2 from 1 of 2"
+    lines "banana-ui: romm: run roms 7 " "banana-ui: romm: run roms 7 0|banana-ui: romm: run roms 7 50|banana-ui: romm: run roms 7 0|banana-ui: romm: run roms 7 50|"
+    lines "banana-ui: romm: roms: 5" "banana-ui: romm: roms: 50 from 1 of 55|banana-ui: romm: roms: 5 from 51 of 55|banana-ui: romm: roms: 50 from 1 of 55|banana-ui: romm: roms: 5 from 51 of 55|"
+    shown platforms gba search n64 n64-2
+    differ platforms gba bot; differ gba search bot; differ n64 n64-2 bot
+
+    # a download the server holds: its progress, Downloading on the row, a second A starting nothing; then its result
+    spost "/test/slow?ms=2500"
+    run $size dl "$GAMES; wait 1; press a; wait 1; press down; press down; press a; wait 1; shot dl; press a; press b; press b; shot dl-list"
+    logged "banana-ui: romm: run download 105 Fresh Start (USA).gba"
+    logged "banana-ui: romm: download: one is running, nothing started"
+    for i in $(seq 100); do grep -q '^done download' "$OUT/run/romm.status" && break; sleep 0.1; done
+    spost "/test/slow?ms=0"
+    [ -f "$G/Fresh Start (USA).gba" ] || { echo "FAIL $size $name: not downloaded: $(cat "$OUT/run/romm.status")"; fail=1; }
+    run $size dl-done "$GAMES; wait 1; shot dl-done; press b; shot done-list"
+    shown dl dl-list dl-done
+    differ dl dl-done top; differ dl-list done-list bot
+    # in the foreground: its end taken in, the game marked
+    KIWAMI_ROMM_SYNC=1 run $size dl-sync "$GAMES; wait 1; press a; wait 1; press up; press a; wait 1; shot dl-sync"
+    logged "banana-ui: romm: done download 106 $G/Spare Change.gba"
+    # the library lists both (a run of its own: the menu reads the library again at home, which the headless run doesn't)
+    # (the GBA's shelf, the second: each of its games launched in turn, as many as there are files)
+    script="home 0"; for g in $(seq 0 $(($(ls "$G" | grep -c '\.gba$') - 1))); do script="$script; lib 1 $g; press a; wait 3000; wait 1; press b; press b"; done
+    run $size lib "$script"
+    grep -q "^banana-ui: launch [0-9]*: $G/Fresh Start (USA).gba (system gba)\$" "$log" && grep -q "^banana-ui: launch [0-9]*: $G/Spare Change.gba (system gba)\$" "$log" ||
+        { echo "FAIL $size $name: the downloads aren't in the library: $(grep 'launch' "$log" | tr '\n' '|')"; fail=1; }
+
+    # Downloads to: only with a second slot; set to it with the card not in, the download on this card, said so
+    run $size noslot "$LIST"
+    unlogged "romm_target"
+    mkdir -p "$OUT/run/sd2"; : > "$OUT/run/sd2/slot"
+    echo 'romm_target = sd2' >> "$D/settings.conf"
+    run $size slot "$LIST; shot slot"
+    logged "banana-ui: kiwami: rows in RomM: romm kiwami.romm.account romm_autosync kiwami.romm.sync kiwami.romm.games romm_target kiwami.romm.bios"
+    KIWAMI_ROMM_SYNC=1 run $size fallback "$GAMES; wait 1; press a; wait 1; press down; press down; press down; press a; wait 1; shot fallback"
+    logged "banana-ui: romm: done download 104 $G/Nested Quest"
+    logged "banana-ui: romm: download: on this card, the second card isn't in"
+    [ -f "$G/Nested Quest/Nested Quest (USA).gba" ] || { echo "FAIL $size $name: Nested Quest not in its folder"; fail=1; }
+    sed -i '/^romm_target/d' "$D/settings.conf"; rm -rf "$OUT/run/sd2"
+    shown dl-sync fallback slot
+
+    # ---- BIOS: fetched, then skipped as the same; busy while a download holds the lock ----
+    KIWAMI_ROMM_SYNC=1 run $size bios "$BIOS; shot bios0; press a; wait 1; shot bios"
+    logged "banana-ui: romm: bios page"
+    logged "banana-ui: romm: run bios"
+    logged "banana-ui: romm: done bios 2 0 0"
+    [ -f "$FX/bios/gba_bios.bin" ] && [ -f "$FX/bios/bios7.bin" ] || { echo "FAIL $size $name: $(ls "$FX/bios" 2>&1)"; fail=1; }
+    KIWAMI_ROMM_SYNC=1 run $size bios-again "$BIOS; press a; wait 1; shot bios-again"
+    logged "banana-ui: romm: done bios 0 2 0"
+    python3 -c "import fcntl, sys, time; f = open(sys.argv[1], 'a'); fcntl.flock(f, fcntl.LOCK_EX); open(sys.argv[2], 'w').close(); time.sleep(60)" \
+        "$OUT/run/romm-download.lock" "$OUT/locked" & LOCKER=$!
+    for i in $(seq 100); do [ -e "$OUT/locked" ] && break; sleep 0.05; done
+    run $size bios-busy "$BIOS; press a; wait 1; shot bios-busy"
+    logged "banana-ui: romm: bios: busy"
+    kill $LOCKER; wait $LOCKER 2>/dev/null || true; LOCKER=; rm -f "$OUT/locked"
+    shown bios0 bios bios-again bios-busy
+    differ bios0 bios top; differ bios bios-again top
+    rm -rf "$G/Fresh Start (USA).gba" "$G/Spare Change.gba" "$G/Nested Quest" "$FX/bios"
 
     # no server: No server, nothing changed
     sed -i "s|^romm_url=.*|romm_url=$URL_DOWN|" "$A"

@@ -21,10 +21,13 @@
 //   RomM (an eighth group, after RetroAchievements; KIWAMI_ROMM_GROUP=0 leaves it out, for the tests): RomM (romm,
 //   settings.conf, off by default), Account (kiwami.romm.account) and Sync around games (romm_autosync, settings.conf,
 //   on by default; its help says when the card's own systems.conf doesn't start the games through the wrapper) and
-//   Sync now (kiwami.romm.sync: the last sync's result, the conflicts, Syncing while one runs, read from the card). Its
-//   tile has RomM's logo (ra-icon.cpp). A on Account opens the Account page (romm-account.cpp): the server, pairing by
-//   a QR code, logging out, through the RomM helper (romm.h). A on Sync now opens its page (romm-sync.cpp): the sync
-//   started, its progress and result, the conflicts resolved either way.
+//   Sync now (kiwami.romm.sync: the last sync's result, the conflicts, Syncing while one runs, read from the card),
+//   Games (kiwami.romm.games), Downloads to (romm_target, settings.conf, main or sd2: only with a second card slot) and
+//   BIOS (kiwami.romm.bios). Its tile has RomM's logo (ra-icon.cpp). A on Account opens the Account page
+//   (romm-account.cpp): the server, pairing by a QR code, logging out, through the RomM helper (romm.h). A on Sync now
+//   opens its page (romm-sync.cpp): the sync started, its progress and result, the conflicts resolved either way. A on
+//   Games opens RomM's platforms, then a platform's games, a game downloaded with A (romm-games.cpp); A on BIOS fetches
+//   RomM's BIOS files (romm-bios.cpp).
 #include "../settings.h"
 #include <functional>
 #include "grid.h"
@@ -61,7 +64,8 @@ namespace banana
 	private:
 		Settings& st;
 		// the page that shows while Settings' page is KIWAMI: open() sets it, and the page hooks go to its own functions
-		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS, RA_GAMES, RA_GAME, ROMM_ACCOUNT, ROMM_SYNC } pageOpen = Page::NONE;
+		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS, RA_GAMES, RA_GAME, ROMM_ACCOUNT, ROMM_SYNC, ROMM_GAMES, ROMM_BIOS }
+			pageOpen = Page::NONE;
 		int row0 = 0;								// the groups' first row shown, kept as the selection moves
 		int modeAt = -1;							// Mode's value as both its rows last had it
 		bool syncMode();							// a change to one of Mode's two rows shown in the other
@@ -213,5 +217,29 @@ namespace banana
 		bool rommSyncTook(const std::string& out);	// sync's or resolve's answer
 		bool rommSyncPoll();						// the status file again while a sync runs: true when it moved on
 		Result rommSyncA();
+		// the Games page (romm-games.cpp): RomM's platforms on the bottom panel (romm platforms, asked when it opens), A
+		// on one its games, 50 a page (romm roms; L/R or the last row the next page, Y a search on the keyboard), a game
+		// on a card marked; A on a game downloads it (romm download), its progress and result on the top panel
+		Result rommGamesOpen();
+		Result rommGamesPress(Key k);
+		Result rommGamesTouch(float cx, float cy);
+		void rommGamesRender();
+		std::string rommGamesEntryHelp() const;
+		Result rommGamesEntered(std::string& text);
+		bool rommGamesTook(const std::string& out);	// platforms', roms' or download's answer
+		void rommGamesList(long offset);			// a page of the platform's games asked for
+		Result rommGamesA();
+		// a download's or the BIOS' state, shared by both pages: the status file's line when it is theirs, and whether
+		// one runs (the download lock held); logged when it ends, and the library read again after a game came
+		void rommDownloadRead();
+		bool rommDownloadPoll();					// again while one runs and the page shows: true when it moved on
+		void rommDownloadEnded();					// its end: logged, a game marked and the library read again
+		std::string rommDownloadWord(const char* what) const;	// the Games and BIOS rows' values: what runs
+		// the BIOS page (romm-bios.cpp): one row, A fetches RomM's BIOS files (romm bios); its progress, then what came
+		Result rommBiosOpen();
+		Result rommBiosPress(Key k);
+		Result rommBiosTouch(float cx, float cy);
+		void rommBiosRender();
+		bool rommBiosTook(const std::string& out);
 	};
 }

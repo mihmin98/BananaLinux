@@ -91,6 +91,13 @@ class State:
         self.tokens = {}     # token -> device id
         with open(os.path.join(HERE, "library.json")) as f:
             self.library = json.load(f)
+        for fl in self.library.get("filler", []):
+            for i in range(1, fl["count"] + 1):
+                name = fl["name"] % i
+                self.library["roms"].append({"id": fl["base"] + i, "platform_id": fl["platform_id"], "name": name,
+                                             "fs_name": name + "." + fl["ext"],
+                                             "files": [{"file_name": name + "." + fl["ext"], "size": fl["size"],
+                                                        "seed": fl["base"] + i}]})
         self.saves = []      # {id, rom_id, slot, emulator, file_name, hash, updated, data}, oldest first
         self.syncs = {}      # (device, save id) -> {synced, hash, server_hash}
         self.removed = {}    # (rom_id, slot) -> {hash: when}

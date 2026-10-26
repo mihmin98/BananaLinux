@@ -4,7 +4,7 @@
 // helper's check answered (asked when the page opens and after Pair, Log out or a new server), or while a pairing waits,
 // its link's QR code and the code to type. Also the group's part of the hooks: its rows, the card read when Settings
 // opens (no helper run, nothing asked of the server), the rows' values, the helper's runs and answers (Sync now's taken
-// in by romm-sync.cpp).
+// in by romm-sync.cpp, Games' by romm-games.cpp, BIOS' by romm-bios.cpp).
 #include "romm.h"
 #include <algorithm>
 #include <cmath>
@@ -99,6 +99,30 @@ namespace banana
 				"either way.";
 			s.items.push_back(now);
 			keys = on.key + " " + acct.key + " " + sync.key + " " + now.key;
+			Item games;
+			games.section = group; games.icon = "cart"; games.label = "Games"; games.key = "kiwami.romm.games"; games.kind = Item::PAGE;
+			games.help = "RomM's games for Banana's systems, a platform at a time, a game already on a card marked. A on one "
+				"downloads it to the card Downloads to says; the library lists it once it is whole.";
+			s.items.push_back(games);
+			keys += " " + games.key;
+			// (only with a second card slot, as upstream's Second SD card row: bananad's sd2 script makes <run>/sd2/slot)
+			if (access((rm::Card().run + "/sd2/slot").c_str(), F_OK) == 0)
+			{
+				Item target;
+				target.section = group; target.icon = "gear"; target.label = "Downloads to"; target.key = "romm_target";
+				target.help = "The card Games downloads to: this one, or the one in the second slot (its roms folder). While the "
+					"second card isn't in, downloads go to this one, and the Games page says so.";
+				target.file = s.data + "/settings.conf";
+				target.names = { "Main card", "Second card" }; target.values = { "main", "sd2" };
+				s.items.push_back(target);
+				keys += " " + target.key;
+			}
+			Item bios;
+			bios.section = group; bios.icon = "kiwami.romm"; bios.label = "BIOS"; bios.key = "kiwami.romm.bios"; bios.kind = Item::PAGE;
+			bios.help = "RomM's BIOS files for Banana's systems into the card's bios folder. A file already there with the same "
+				"contents is skipped; one that differs is kept as .bak beside it.";
+			s.items.push_back(bios);
+			keys += " " + bios.key;
 		}
 		fprintf(stderr, "banana-ui: kiwami: rows in RomM: %s\n", keys.empty() ? "none" : keys.c_str());
 	}
@@ -124,6 +148,7 @@ namespace banana
 	{
 		romm->account = rm::account(romm->card);
 		rommSyncRead();
+		rommDownloadRead();
 	}
 
 	bool Settings::Kiwami::rommOn() const
@@ -137,6 +162,8 @@ namespace banana
 	{
 		if (!romm) return "";
 		if (key == "kiwami.romm.sync") return rommSyncWord();
+		if (key == "kiwami.romm.games") return rommDownloadWord("download");
+		if (key == "kiwami.romm.bios") return rommDownloadWord("bios");
 		if (key != "kiwami.romm.account") return "";
 		const rm::Account& a = romm->account;
 		return a.url.empty() || a.token.empty() ? "Not paired" : rm::host(a.url);
@@ -157,6 +184,8 @@ namespace banana
 	{
 		std::string line = out.substr(0, out.find('\n'));
 		if (romm->verb == "sync" || romm->verb == "resolve") return rommSyncTook(out);
+		if (romm->verb == "platforms" || romm->verb == "roms" || romm->verb == "download") return rommGamesTook(out);
+		if (romm->verb == "bios") return rommBiosTook(out);
 		if (romm->verb == "check")
 		{
 			romm->check = line.empty() ? "down" : line;
@@ -205,6 +234,7 @@ namespace banana
 	{
 		if (!romm) return false;
 		bool shown = st.page == KIWAMI && pageOpen == Page::ROMM_ACCOUNT, syncShown = st.page == KIWAMI && pageOpen == Page::ROMM_SYNC;
+		bool dlShown = st.page == KIWAMI && (pageOpen == Page::ROMM_GAMES || pageOpen == Page::ROMM_BIOS);
 		if (!shown && romm->qr) { romm->qr.reset(); romm->qrUrl.clear(); }
 		bool changed = false;
 		std::string out;
@@ -219,6 +249,11 @@ namespace banana
 			romm->nextStatus = t + 500;
 			changed |= rommSyncPoll();
 		}
+		if (dlShown && romm->downloading && t >= romm->nextStatus)
+		{
+			romm->nextStatus = t + 500;
+			changed |= rommDownloadPoll();
+		}
 		return changed;
 	}
 
@@ -228,6 +263,8 @@ namespace banana
 		if (romm->job.running()) return 100;
 		if (shown && pageOpen == Page::ROMM_ACCOUNT && starts(romm->pairing, "pairing ")) return std::max(0, (int)(romm->nextStatus - t));
 		if (shown && pageOpen == Page::ROMM_SYNC && romm->syncing) return std::max(0, (int)(romm->nextStatus - t));
+		if (shown && (pageOpen == Page::ROMM_GAMES || pageOpen == Page::ROMM_BIOS) && romm->downloading)
+			return std::max(0, (int)(romm->nextStatus - t));
 		return -1;
 	}
 

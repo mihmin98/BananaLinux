@@ -429,7 +429,8 @@ out=$("$H" platforms) || fail "platforms failed: '$out'"
 2	nds	nds	1	Nintendo DS
 3	psx	psx	1	PlayStation
 4	snes	snes	2	Super Nintendo
-5	genesis	megadrive	1	Sega Mega Drive / Genesis" ] || fail "platforms: '$out'"; ok
+5	genesis	megadrive	1	Sega Mega Drive / Genesis
+7	n64	n64	55	Nintendo 64" ] || fail "platforms: '$out'"; ok
 # a platform's games by name, from an offset, and searched; a game on a card (in games, or by its name) marked
 out=$("$H" roms 1 0) || fail "roms failed: '$out'"
 [ "$out" = "total 6

@@ -1,6 +1,7 @@
 // banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing, each page
 // hook going to the page that is open, and the groups' grid; the pages are in their own files (tailscale.cpp,
-// ra-account.cpp, ra-stats.cpp, ra-games.cpp, ra-game.cpp, romm-account.cpp, romm-sync.cpp).
+// ra-account.cpp, ra-stats.cpp, ra-games.cpp, ra-game.cpp, romm-account.cpp, romm-sync.cpp, romm-games.cpp,
+// romm-bios.cpp).
 #include "ra.h"
 #include "romm.h"
 #include <algorithm>
@@ -147,6 +148,8 @@ namespace banana
 		if (key == "kiwami.ra.games") { pageOpen = Page::RA_GAMES; return raGamesOpen(); }
 		if (key == "kiwami.romm.account") { pageOpen = Page::ROMM_ACCOUNT; return rommAccountOpen(); }
 		if (key == "kiwami.romm.sync") { pageOpen = Page::ROMM_SYNC; return rommSyncOpen(); }
+		if (key == "kiwami.romm.games") { pageOpen = Page::ROMM_GAMES; return rommGamesOpen(); }
+		if (key == "kiwami.romm.bios") { pageOpen = Page::ROMM_BIOS; return rommBiosOpen(); }
 		return NONE;
 	}
 
@@ -155,7 +158,8 @@ namespace banana
 		return pageOpen == Page::TAILSCALE ? tsPress(k) : pageOpen == Page::RA_ACCOUNT ? raPress(k)
 			: pageOpen == Page::RA_STATS ? raStatsPress(k) : pageOpen == Page::RA_GAMES ? raGamesPress(k)
 			: pageOpen == Page::RA_GAME ? raGamePress(k) : pageOpen == Page::ROMM_ACCOUNT ? rommAccountPress(k)
-			: pageOpen == Page::ROMM_SYNC ? rommSyncPress(k) : NONE;
+			: pageOpen == Page::ROMM_SYNC ? rommSyncPress(k) : pageOpen == Page::ROMM_GAMES ? rommGamesPress(k)
+			: pageOpen == Page::ROMM_BIOS ? rommBiosPress(k) : NONE;
 	}
 
 	Settings::Result Settings::Kiwami::touch(float cx, float cy)
@@ -163,7 +167,8 @@ namespace banana
 		return pageOpen == Page::TAILSCALE ? tsTouch(cx, cy) : pageOpen == Page::RA_ACCOUNT ? raTouch(cx, cy)
 			: pageOpen == Page::RA_STATS ? raStatsTouch(cx, cy) : pageOpen == Page::RA_GAMES ? raGamesTouch(cx, cy)
 			: pageOpen == Page::RA_GAME ? raGameTouch(cx, cy) : pageOpen == Page::ROMM_ACCOUNT ? rommAccountTouch(cx, cy)
-			: pageOpen == Page::ROMM_SYNC ? rommSyncTouch(cx, cy) : NONE;
+			: pageOpen == Page::ROMM_SYNC ? rommSyncTouch(cx, cy) : pageOpen == Page::ROMM_GAMES ? rommGamesTouch(cx, cy)
+			: pageOpen == Page::ROMM_BIOS ? rommBiosTouch(cx, cy) : NONE;
 	}
 
 	void Settings::Kiwami::render()
@@ -175,18 +180,20 @@ namespace banana
 		else if (pageOpen == Page::RA_GAME) raGameRender();
 		else if (pageOpen == Page::ROMM_ACCOUNT) rommAccountRender();
 		else if (pageOpen == Page::ROMM_SYNC) rommSyncRender();
+		else if (pageOpen == Page::ROMM_GAMES) rommGamesRender();
+		else if (pageOpen == Page::ROMM_BIOS) rommBiosRender();
 	}
 
 	std::string Settings::Kiwami::entryHelp() const
 	{
 		return pageOpen == Page::TAILSCALE ? tsEntryHelp() : pageOpen == Page::RA_ACCOUNT ? raEntryHelp()
-			: pageOpen == Page::ROMM_ACCOUNT ? rommEntryHelp() : "";
+			: pageOpen == Page::ROMM_ACCOUNT ? rommEntryHelp() : pageOpen == Page::ROMM_GAMES ? rommGamesEntryHelp() : "";
 	}
 
 	Settings::Result Settings::Kiwami::entered(std::string& text)
 	{
 		return pageOpen == Page::TAILSCALE ? tsEntered(text) : pageOpen == Page::RA_ACCOUNT ? raEntered(text)
-			: pageOpen == Page::ROMM_ACCOUNT ? rommEntered(text) : NONE;
+			: pageOpen == Page::ROMM_ACCOUNT ? rommEntered(text) : pageOpen == Page::ROMM_GAMES ? rommGamesEntered(text) : NONE;
 	}
 
 	bool Settings::Kiwami::update(double t)
@@ -198,7 +205,9 @@ namespace banana
 	int Settings::Kiwami::wake(double t, bool shown) const
 	{
 		int best = -1;
-		for (int w : { tsWake(t, shown && pageOpen == Page::TAILSCALE), raWake(), rommWake(t, shown && (pageOpen == Page::ROMM_ACCOUNT || pageOpen == Page::ROMM_SYNC)) })
+		bool rommShown = shown && (pageOpen == Page::ROMM_ACCOUNT || pageOpen == Page::ROMM_SYNC || pageOpen == Page::ROMM_GAMES
+			|| pageOpen == Page::ROMM_BIOS);
+		for (int w : { tsWake(t, shown && pageOpen == Page::TAILSCALE), raWake(), rommWake(t, rommShown) })
 			if (w >= 0 && (best < 0 || w < best)) best = w;
 		return best;
 	}

@@ -670,8 +670,9 @@ detaching, for the tests.
 
 ### 8. Settings: Games, Downloads to and BIOS
 
-- **Files**: `ui/src/kiwami/kiwami.h`, `kiwami.cpp`, `romm.h` (changed); `ui/src/kiwami/romm-games.cpp`,
-  `ui/src/kiwami/romm-bios.cpp` (new); `kiwami/tests/romm-ui.sh` (changed)
+- **Files**: `ui/src/kiwami/kiwami.h`, `kiwami.cpp`, `romm.h`, `romm-account.cpp`, `romm-sync.cpp` (changed);
+  `ui/src/kiwami/romm-games.cpp`, `ui/src/kiwami/romm-bios.cpp` (new); `kiwami/tests/romm-ui.sh`, `cores-ui.sh`,
+  `romm-helper.sh`, `romm-server.py`, `kiwami/tests/romm/library.json` (changed; *Deviations*, 26 Oct)
 - **Change**:
   - **The rows**:
     - `kiwami.romm.games` (a page);
@@ -842,6 +843,21 @@ Where the implementation turned out different from this plan, why, and what chan
   - `done bios` also counts the files that failed (`done bios <fetched> <skipped> <failed>`): a file whose MD5 isn't
     RomM's, or that RomM no longer has, would otherwise go unsaid on step 8's page.
 
+- **26 Oct 2026, step 8: three more files, and filler games for a second page.**
+  - `romm-account.cpp` holds the group's rows and the hooks' routing (step 5 put them there), so the three rows, their
+    values and the two pages' answers and polling are added there.
+  - `romm-sync.cpp`: the helper's status file is every verb's, and Sync now took any `running` line for a sync's, so
+    during a download or a BIOS fetch its page would have said Stopped (a running line, no saves lock held). It now
+    takes only a sync's shape: a download's line has a field more, the BIOS' names `bios`.
+  - `cores-ui.sh` compares every `rows in` line: RomM's has the new rows (as in steps 5 and 6).
+  - A second page needs a platform of more than 50 games: `library.json` gets a `filler` of 55 games on a Nintendo 64
+    platform, which `romm-server.py` makes, and `romm-helper.sh`'s `platforms` line for it.
+  - The headless run doesn't read the library again at home as the menu does after `libChanged`, so the test checks
+    the downloaded games in a run of its own, launching each game of the GBA shelf. The page logs
+    `download: on this card, the second card isn't in` when a download set for the second card landed here, so the
+    test sees the fallback the page says.
+  Agreed with the user.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -855,5 +871,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 5. Settings: the RomM group and its Account page | done | RomM: a group in Settings, after RetroAchievements, with its logo and the Account page |
 | 6. Settings: Sync now and the conflicts | done | RomM: Sync now in Settings, with its progress, its result and the conflicts to resolve |
 | 7. The helper's games, downloads and BIOS | done | RomM: RomM's games listed and downloaded to either card, and its BIOS files into /data/bios |
-| 8. Settings: Games, Downloads to and BIOS | todo | |
+| 8. Settings: Games, Downloads to and BIOS | done | RomM: Games in Settings, RomM's platforms and games downloaded from the menu, and its BIOS files |
 | 9. Final check | todo | |

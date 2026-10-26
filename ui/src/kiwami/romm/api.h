@@ -2,8 +2,10 @@
 // The RomM helper (kiwami): RomM's requests and their replies, as RomM 5.4.1 (tag 9c74d01) answers them: the device
 // flow (backend/endpoints/device/auth.py), the devices (endpoints/device/__init__.py), the heartbeat, the platforms and
 // their games (endpoints/platform.py, endpoints/roms/), and the saves' sync (endpoints/sync/__init__.py,
-// endpoints/saves.py). The parsers take the body and the HTTP status (0: no answer) and need no network, so the unit
+// endpoints/saves.py), the games' and the firmware's files (endpoints/roms/__init__.py's get_rom_content,
+// endpoints/firmware.py). The parsers take the body and the HTTP status (0: no answer) and need no network, so the unit
 // test runs them.
+#include "http.h"
 #include <string>
 #include <vector>
 
@@ -52,11 +54,40 @@ namespace banana::kiwami::romm
 	Platforms parsePlatforms(const std::string& body, long status);
 	Platforms platforms(const Server& s);
 
-	// a page of a platform's games (search "" for all): what the helper keeps of each
-	struct Rom { long id = 0; long long size = 0; std::string fsName, name; };
+	// a page of a platform's games (search "" for all), in order of id or name: what the helper keeps of each. A game
+	// is one file (simple: fs_name is the file's name), or a folder named fs_name holding one file or several; files,
+	// their paths in that folder, come only with a game asked for alone (romDetail)
+	struct RomFile { std::string path; long long size = 0; };
+	struct Rom
+	{
+		long id = 0;
+		long long size = 0;
+		std::string fsName, name, platformSlug;
+		bool simple = true;
+		std::vector<RomFile> files;
+	};
 	struct Roms { bool ok = false; long status = 0, total = 0; std::vector<Rom> items; };
 	Roms parseRoms(const std::string& body, long status);
-	Roms roms(const Server& s, long platform, const std::string& search, long offset, long limit);
+	Roms roms(const Server& s, long platform, const std::string& search, long offset, long limit, const char* order = "id");
+	struct RomDetail { bool ok = false; long status = 0; Rom rom; };
+	RomDetail parseRomDetail(const std::string& body, long status);
+	RomDetail romDetail(const Server& s, long id);
+
+	// a platform's firmware (RomM's BIOS files)
+	struct Firmware { long id = 0, platformId = 0; long long size = 0; std::string fileName, md5; };
+	struct Firmwares { bool ok = false; long status = 0; std::vector<Firmware> list; };
+	Firmwares parseFirmware(const std::string& body, long status);
+	Firmwares firmware(const Server& s, long platform);
+
+	// a file's bytes into file: a game's (one file as itself, several as a zip) or a firmware's. From resume on with a
+	// Range when it is more than 0 (206 appended, 200 the whole file again); given up after 30 s under 1 KB a second,
+	// with no limit on the whole. A zip of several files is always asked for with a Range, from 0 too: RomM then sends
+	// its cached zip, the same bytes each time, which a download cut short can go on with (without one, nginx's mod_zip
+	// builds another, which it can't)
+	Response romContent(const Server& s, const Rom& r, const std::string& file, long long resume,
+		const std::function<void(long long, long long)>& progress);
+	Response firmwareContent(const Server& s, const Firmware& f, const std::string& file, long long resume,
+		const std::function<void(long long, long long)>& progress);
 
 	// ---- the saves' sync ------------------------------------------------------------------------------------------
 	// a save on the card as the negotiation takes it; always in the slot "autosave"

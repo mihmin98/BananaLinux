@@ -1,7 +1,7 @@
 #pragma once
 // The RomM helper (kiwami): a game on the card's RomM id, which RomM pairs saves by.
-//   1. <card>/banana/romm/games, "<system>\t<file name>\t<rom id>" lines: the games downloaded from RomM, and the
-//      matches found before
+//   1. <card>/banana/romm/games, "<system>\t<file name>\t<rom id>" lines: the games downloaded from RomM (a game in
+//      a folder by the folder's name), and the matches found before
 //   2. the platform's list, cached in <card>/banana/romm/platforms/<slug>.tsv ("<id>\t<fs_name>\t<size>\t<name>"
 //      lines; GET /api/platforms, then the platform's games 500 a page): the game's file name against fs_name,
 //      exactly and then without case, and for a game in a folder of its own, the folder's name
@@ -31,6 +31,8 @@ namespace banana::kiwami::romm
 		Games(const Card& c, Server& s, bool refetch, std::function<bool(Server&)> before = nullptr);
 		~Games();
 		long idOf(const System& s, const std::string& rom);	// 0: not on RomM, or not known now
+		void record(const std::string& system, const std::string& name, long id);	// a game's id kept (a download's)
+		bool recorded(const std::string& system, long id);	// a line of games has it
 		void flush();			// the matches kept by batch written to games (the file read again, so a line written
 								// meanwhile stays)
 		bool batch = false;
@@ -52,7 +54,7 @@ namespace banana::kiwami::romm
 		bool cached(const std::string& slug);
 		bool fetch(const Synced& m);
 		long lookUp(const Synced& m, const std::vector<std::string>& names);
-		void record(const std::string& system, const std::string& name, long id);
+		void readRecords();
 		void write(const std::vector<std::vector<std::string>>& add);
 	};
 }

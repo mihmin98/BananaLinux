@@ -153,8 +153,33 @@ namespace banana::kiwami::romm
 		if (!replaceFile(card.dir + "/games", out, error)) log("%s: %s", verb.c_str(), error.c_str());
 	}
 
+	// the record, read once a run
+	void Games::readRecords()
+	{
+		if (recordsRead) return;
+		std::string text;
+		bool there = false;
+		readFile(card.dir + "/games", text, there);
+		std::istringstream in(text);
+		std::string ln;
+		while (std::getline(in, ln))
+		{
+			std::vector<std::string> f = split(ln);
+			if (f.size() >= 3) records.push_back({ f[0], f[1], f[2] });
+		}
+		recordsRead = true;
+	}
+
+	bool Games::recorded(const std::string& system, long id)
+	{
+		readRecords();
+		for (auto& r : records) if (r[0] == system && atol(r[2].c_str()) == id) return true;
+		return false;
+	}
+
 	void Games::record(const std::string& system, const std::string& name, long id)
 	{
+		readRecords();
 		std::vector<std::string> line = { system, field(name), std::to_string(id) };
 		for (auto it = records.begin(); it != records.end();)
 			it = (*it)[0] == line[0] && (*it)[1] == line[1] ? records.erase(it) : it + 1;
@@ -175,21 +200,7 @@ namespace banana::kiwami::romm
 		const Synced* m = synced(s.id);
 		if (!m) return 0;
 		std::vector<std::string> names = namesOf(s, rom);
-		// the record, read once a run
-		if (!recordsRead)
-		{
-			std::string text;
-			bool there = false;
-			readFile(card.dir + "/games", text, there);
-			std::istringstream in(text);
-			std::string ln;
-			while (std::getline(in, ln))
-			{
-				std::vector<std::string> f = split(ln);
-				if (f.size() >= 3) records.push_back({ f[0], f[1], f[2] });
-			}
-			recordsRead = true;
-		}
+		readRecords();
 		for (auto& n : names)
 			for (auto& r : records)
 				if (r[0] == s.id && r[1] == n) return atol(r[2].c_str());

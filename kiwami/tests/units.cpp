@@ -1,12 +1,12 @@
 // The fork's banana-ui code that needs no screen, checked on its own: the JSON reader, Tailscale's status, the
 // device's name, the login's QR code, the devices' list, Settings' grid of groups, RetroAchievements' replies, its
-// account on the card and its games' hashes, RomM's replies and RomM on the card. Built and run by kiwami/tests/ci.sh
+// account on the card and its games' hashes, RomM's replies, RomM on the card and the names its downloads take. Built and run by kiwami/tests/ci.sh
 // with the host's g++ (the vendored C first, make -C ui kiwami-c):
 //   g++ -std=c++17 -Wall -I ui/src kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp
 //       ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp
 //       ui/src/kiwami/rahash.cpp ui/src/kiwami/conf.cpp ui/src/kiwami/rommcard.cpp ui/src/kiwami/romm/api.cpp
 //       ui/src/kiwami/romm/http.cpp ui/src/kiwami/romm/saves.cpp ui/src/kiwami/romm/games.cpp
-//       $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -o units
+//       ui/src/kiwami/romm/download.cpp $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -o units
 //   ./units kiwami/tests/tailscale kiwami/tests/ra system/rootfs/etc/banana/systems.conf
 #include "kiwami/grid.h"
 #include "kiwami/json.h"
@@ -14,6 +14,7 @@
 #include "kiwami/rahash.h"
 #include "kiwami/rastore.h"
 #include "kiwami/romm/api.h"
+#include "kiwami/romm/download.h"
 #include "kiwami/romm/games.h"
 #include "kiwami/romm/saves.h"
 #include "kiwami/rommcard.h"
@@ -942,6 +943,43 @@ static void testRommSaves()
 		"\"limit\": 500, \"offset\": 0}", 200);
 	CHECK(rs.ok && rs.total == 9 && rs.items.size() == 1 && rs.items[0].fsName == "A.gba" && rs.items[0].size == 4096);
 	CHECK(!parseRoms("[]", 200).ok);
+	// a game in the list, and one asked for alone with its files (RomM 5.4.1's SimpleRomSchema and DetailedRomSchema,
+	// the fields the helper reads): one file, one file in a folder of its own, several; the files' paths in the folder
+	rs = parseRoms("{\"items\": [{\"id\": 104, \"platform_slug\": \"gba\", \"fs_name\": \"Nested Quest\", \"name\": \"Nested Quest\", "
+		"\"fs_size_bytes\": 8192, \"has_simple_single_file\": false, \"has_nested_single_file\": true, \"files\": []}], \"total\": 1}", 200);
+	CHECK(rs.ok && rs.items.size() == 1 && rs.items[0].platformSlug == "gba" && !rs.items[0].simple && rs.items[0].files.empty());
+	RomDetail rd = parseRomDetail("{\"id\": 101, \"platform_slug\": \"gba\", \"fs_name\": \"A (USA).gba\", \"name\": \"A\", \"fs_size_bytes\": 4096, "
+		"\"has_simple_single_file\": true, \"full_path\": \"gba/A (USA).gba\", \"files\": [{\"file_name\": \"A (USA).gba\", "
+		"\"full_path\": \"gba/A (USA).gba\", \"file_size_bytes\": 4096}]}", 200);
+	CHECK(rd.ok && rd.rom.simple && rd.rom.files.size() == 1);
+	if (rd.rom.files.size() == 1) { EQ(rd.rom.files[0].path, "A (USA).gba"); IEQ((int)rd.rom.files[0].size, 4096); }
+	rd = parseRomDetail("{\"id\": 104, \"platform_slug\": \"gba\", \"fs_name\": \"Nested\", \"fs_size_bytes\": 8192, "
+		"\"has_simple_single_file\": false, \"full_path\": \"gba/Nested\", \"files\": [{\"file_name\": \"N.gba\", "
+		"\"full_path\": \"gba/Nested/sub/N.gba\", \"file_size_bytes\": 8192}]}", 200);
+	CHECK(rd.ok && !rd.rom.simple && rd.rom.files.size() == 1);
+	if (rd.rom.files.size() == 1) EQ(rd.rom.files[0].path, "sub/N.gba");
+	rd = parseRomDetail("{\"id\": 301, \"platform_slug\": \"psx\", \"fs_name\": \"Disc\", \"has_simple_single_file\": false, "
+		"\"full_path\": \"psx/Disc\", \"files\": [{\"file_name\": \"Disc.cue\", \"full_path\": \"psx/Disc/Disc.cue\"}, "
+		"{\"file_name\": \"Disc.bin\", \"full_path\": \"psx/Disc/Disc.bin\"}]}", 200);
+	CHECK(rd.ok && rd.rom.files.size() == 2);
+	CHECK(!parseRomDetail("{\"detail\": \"Rom with ID 9 not found\"}", 404).ok && parseRomDetail("", 404).status == 404);
+	CHECK(!parseRomDetail("{\"id\": 9}", 200).ok);
+	// the firmware: one missing from RomM's disk left out
+	Firmwares fws = parseFirmware("[{\"id\": 5, \"platform_id\": 1, \"file_name\": \"gba_bios.bin\", \"file_size_bytes\": 16384, "
+		"\"md5_hash\": \"a860e8c0b6d573d191e4ec7db1b1e4f6\", \"missing_from_fs\": false}, {\"id\": 6, \"platform_id\": 1, "
+		"\"file_name\": \"gone.bin\", \"missing_from_fs\": true}]", 200);
+	CHECK(fws.ok && fws.list.size() == 1);
+	if (fws.list.size() == 1) { EQ(fws.list[0].fileName, "gba_bios.bin"); EQ(fws.list[0].md5, "a860e8c0b6d573d191e4ec7db1b1e4f6"); IEQ((int)fws.list[0].size, 16384); }
+	CHECK(!parseFirmware("{\"detail\": \"Forbidden\"}", 403).ok);
+	// the names a download takes from RomM: never out of the system's folder, never one the library hides
+	CHECK(safeName("Pocket (USA).gba") && safeName("Disc Game"));
+	CHECK(!safeName("") && !safeName("..") && !safeName(".romm-1.part") && !safeName("a/b"));
+	CHECK(safePath("sub/N.gba") && safePath("N.gba"));
+	CHECK(!safePath("../N.gba") && !safePath("sub/../../x") && !safePath("/abs") && !safePath("sub//x") && !safePath("sub/"));
+	System abs;
+	abs.folder = "/usr/share/banana/apps/x";
+	EQ(folderOn("/data/roms", *gba), "/data/roms/gba");
+	EQ(folderOn("/data/roms", abs), "/usr/share/banana/apps/x");
 	EQ(isoTime(1792843200123LL), "2026-10-24T12:00:00.123Z");
 	EQ(urlEscape("a b/c"), "a%20b%2Fc");
 

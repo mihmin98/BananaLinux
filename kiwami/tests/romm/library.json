@@ -1,5 +1,5 @@
 {
-  "_comment": "The stand-in RomM server's library (kiwami/tests/romm-server.py): its platforms, their ROMs (each file's bytes made up from its seed and size, so nothing large is kept here) and firmware. The names exercise the helper's matching: exact, case, a game in a folder of its own, one platform Banana has no system for.",
+  "_comment": "The stand-in RomM server's library (kiwami/tests/romm-server.py): its platforms, their ROMs (each file's bytes made up from its seed and size, so nothing large is kept here) and firmware. The names exercise the helper's matching: exact, case, a game in a folder of its own, one platform Banana has no system for. Nested Quest is one file in a folder of its own (fs_name the folder's name), Disc Game several files; Fresh Start and Spare Change are only ever downloaded.",
   "platforms": [
     { "id": 1, "slug": "gba", "name": "Game Boy Advance" },
     { "id": 2, "slug": "nds", "name": "Nintendo DS" },
@@ -15,6 +15,12 @@
       "files": [ { "file_name": "Case Test (Europe).gba", "size": 4096, "seed": 102 } ] },
     { "id": 103, "platform_id": 1, "name": "Core Quest", "fs_name": "Core Quest.gba",
       "files": [ { "file_name": "Core Quest.gba", "size": 4096, "seed": 103 } ] },
+    { "id": 104, "platform_id": 1, "name": "Nested Quest", "fs_name": "Nested Quest",
+      "files": [ { "file_name": "Nested Quest (USA).gba", "size": 8192, "seed": 104 } ] },
+    { "id": 105, "platform_id": 1, "name": "Fresh Start", "fs_name": "Fresh Start (USA).gba",
+      "files": [ { "file_name": "Fresh Start (USA).gba", "size": 8192, "seed": 105 } ] },
+    { "id": 106, "platform_id": 1, "name": "Spare Change", "fs_name": "Spare Change.gba",
+      "files": [ { "file_name": "Spare Change.gba", "size": 4096, "seed": 106 } ] },
     { "id": 201, "platform_id": 2, "name": "Dual Screen", "fs_name": "Dual Screen (USA).nds",
       "files": [ { "file_name": "Dual Screen (USA).nds", "size": 8192, "seed": 201 } ] },
     { "id": 301, "platform_id": 3, "name": "Disc Game", "fs_name": "Disc Game",
@@ -31,6 +37,8 @@
       "files": [ { "file_name": "Spiral.chd", "size": 4096, "seed": 601 } ] }
   ],
   "firmware": [
-    { "id": 501, "platform_id": 1, "file_name": "gba_bios.bin", "size": 16384, "seed": 501 }
+    { "id": 501, "platform_id": 1, "file_name": "gba_bios.bin", "size": 16384, "seed": 501 },
+    { "id": 502, "platform_id": 2, "file_name": "bios7.bin", "size": 16384, "seed": 502 },
+    { "id": 503, "platform_id": 6, "file_name": "dc_boot.bin", "size": 2048, "seed": 503 }
   ]
 }

@@ -412,6 +412,135 @@ waitstatus "paired 5.4.1" "pairing again after the revoke"
 grep -q "pair: the last sync's result dropped" "$LOG" || fail "the dropped result isn't in the log"; ok
 tokens="$tokens $(key romm_token)"
 
+# ---- RomM's games, downloads and BIOS ---------------------------------------------------------------------------
+# a library file's MD5, its bytes made up from its seed as the stand-in server makes them
+seedsum() { python3 -c "import hashlib, sys
+s, n, o, i = int(sys.argv[1]), int(sys.argv[2]), b'', 0
+while len(o) < n: o += hashlib.sha256(b'%d:%d' % (s, i)).digest(); i += 1
+print(hashlib.md5(o[:n]).hexdigest())" "$1" "$2"; }
+dl() { KIWAMI_ROMM_SYNC=1 "$H" download "$1" >/dev/null; }
+# the files whose names start with .romm- in a folder
+temps() { ls -A "$1" 2>/dev/null | grep '^\.romm-' || true; }
+G2=$X/sd2/roms/gba
+
+# RomM's platforms that are Banana's systems' (not the Dreamcast), with their games' counts
+out=$("$H" platforms) || fail "platforms failed: '$out'"
+[ "$out" = "1	gba	gba	6	Game Boy Advance
+2	nds	nds	1	Nintendo DS
+3	psx	psx	1	PlayStation
+4	snes	snes	2	Super Nintendo
+5	genesis	megadrive	1	Sega Mega Drive / Genesis" ] || fail "platforms: '$out'"; ok
+# a platform's games by name, from an offset, and searched; a game on a card (in games, or by its name) marked
+out=$("$H" roms 1 0) || fail "roms failed: '$out'"
+[ "$out" = "total 6
+102	4096	1	Case Test (Europe).gba	Case Test
+103	4096	1	Core Quest.gba	Core Quest
+105	8192	0	Fresh Start (USA).gba	Fresh Start
+104	8192	0	Nested Quest	Nested Quest
+101	4096	1	Pocket Adventure (USA).gba	Pocket Adventure
+106	4096	0	Spare Change.gba	Spare Change" ] || fail "roms 1 0: '$out'"; ok
+grep -q "^GET /api/roms?platform_ids=1&offset=0&limit=50&order_by=name&" "$X/srv.log" || fail "roms: not 50 by name"; ok
+[ "$("$H" roms 1 4 | tr '\t\n' ' ')" = "total 6 101 4096 1 Pocket Adventure (USA).gba Pocket Adventure 106 4096 0 Spare Change.gba Spare Change " ] || fail "roms 1 4: '$("$H" roms 1 4)'"; ok
+[ "$("$H" roms 1 0 quest | cut -f1 | tr '\n' ' ')" = "total 2 103 104 " ] || fail "roms 1 0 quest: '$("$H" roms 1 0 quest)'"; ok
+
+# to the second card, cut short: what came kept under a name the library doesn't list; awake.pid, naming a process
+# that is gone, taken and let go
+printf 'romm_target = sd2\n' > "$B/settings.conf"
+sh -c 'exit 0' & dead=$!; wait "$dead"; echo "$dead" > "$X/run/awake.pid"
+post "/test/cut?bytes=3000"
+dl 104 && fail "a download cut short exited 0" || true
+[ "$(cat "$ST")" = "error download cut" ] || fail "a cut download's status: '$(cat "$ST")'"; ok
+[ "$(stat -c %s "$G2/.romm-104.part")" = 3000 ] && [ ! -e "$G2/Nested Quest" ] || fail "a cut download: $(ls -A "$G2")"; ok
+[ ! -e "$X/run/awake.pid" ] || fail "awake.pid left: $(cat "$X/run/awake.pid")"; ok
+grep -q "download: awake.pid taken" "$LOG" && grep -q "download: awake.pid let go" "$LOG" || fail "awake.pid not taken and let go"; ok
+# ... gone on from there (206): one file in a folder of its own, into its folder, its id recorded; awake.pid of a
+# live process left alone
+post "/test/cut?bytes=0"
+sleep 30 & live=$!; echo "$live" > "$X/run/awake.pid"
+dl 104 || fail "the resumed download failed: '$(cat "$ST")'"
+NQ="$G2/Nested Quest/Nested Quest (USA).gba"
+[ "$(cat "$ST")" = "done download 104 $G2/Nested Quest" ] || fail "the resumed download's status: '$(cat "$ST")'"; ok
+[ "$(sum "$NQ")" = "$(seedsum 104 8192)" ] || fail "the resumed download isn't RomM's file"; ok
+grep -q "download: resumed from 3000 bytes" "$LOG" && grep -q "download GET /api/roms/104/content/Nested%20Quest 206 " "$LOG" || fail "the download didn't resume (206)"; ok
+[ -z "$(temps "$G2")" ] || fail "temporaries left: $(temps "$G2")"; ok
+grep -qxF "gba	Nested Quest	104" "$B/romm/games" || fail "the download's id not recorded: $(cat "$B/romm/games")"; ok
+[ "$(cat "$X/run/awake.pid")" = "$live" ] && grep -q "download: awake.pid is $live's, left alone" "$LOG" || fail "another's awake.pid not left alone"; ok
+kill "$live"; rm "$X/run/awake.pid"
+[ "$("$H" roms 1 0 nested | sed -n 2p | cut -f1,3)" = "104	1" ] || fail "the downloaded game not marked on a card"; ok
+# a server that sends the whole file again (200): started over
+post "/test/ranges?on=0"; post "/test/cut?bytes=3000"
+dl 105 || true
+post "/test/cut?bytes=0"
+dl 105 || fail "the download started over failed: '$(cat "$ST")'"
+[ "$(sum "$G2/Fresh Start (USA).gba")" = "$(seedsum 105 8192)" ] || fail "the download started over isn't RomM's file"; ok
+grep -q "download: RomM sent the whole file again: started over" "$LOG" && grep -q "download GET /api/roms/105/content/Fresh%20Start%20%28USA%29.gba 200 " "$LOG" || fail "the download didn't start over"; ok
+post "/test/ranges?on=1"
+
+# several files, to the main card, cut short and gone on with: RomM's cached zip asked for each time (a Range from 0
+# too, which mod_zip's stream wouldn't resume), unpacked into the game's folder
+printf 'romm_target = main\n' > "$B/settings.conf"
+post "/test/cut?bytes=5000"
+dl 301 || true
+[ "$(stat -c %s "$C/roms/psx/.romm-301.zip.part")" = 5000 ] || fail "several files cut short: $(temps "$C/roms/psx")"; ok
+post "/test/cut?bytes=0"
+dl 301 || fail "the download of several files failed: '$(cat "$ST")'"
+[ "$(grep "^GET /api/roms/301/content/" "$X/srv.log" | sed 's/.* range=//' | tr '\n' ' ')" = "bytes=0- bytes=5000- " ] || fail "several files not asked for with a Range each time: $(grep "^GET /api/roms/301/content/" "$X/srv.log")"; ok
+DG="$C/roms/psx/Disc Game"
+[ "$(cat "$ST")" = "done download 301 $DG" ] || fail "several files' status: '$(cat "$ST")'"; ok
+[ "$(sum "$DG/Disc Game.m3u") $(sum "$DG/Disc Game (Disc 1).cue") $(sum "$DG/Disc Game (Disc 1).bin")" = "$(seedsum 301 40) $(seedsum 302 120) $(seedsum 303 16384)" ] || fail "several files: $(ls -A "$DG")"; ok
+[ "$(ls -A "$DG" | wc -l)" = 3 ] && [ -z "$(temps "$C/roms/psx")" ] || fail "several files: $(ls -A "$DG"), $(temps "$C/roms/psx")"; ok
+grep -qxF "psx	Disc Game	301" "$B/romm/games" || fail "several files: the id not recorded"; ok
+# a game there already: refused, nothing asked for
+dl 101 && fail "a download over a game there succeeded" || true
+[ "$(cat "$ST")" = "error download there $GBA" ] && ! grep -q "^GET /api/roms/101/content" "$X/srv.log" || fail "a game there already: '$(cat "$ST")'"; ok
+# not enough room: nothing written
+KIWAMI_ROMM_FREE=100 dl 105 && fail "a download with no room succeeded" || true
+[ "$(cat "$ST")" = "error download space 8192 100" ] && [ -z "$(temps "$C/roms/gba")" ] && [ ! -e "$C/roms/gba/Fresh Start (USA).gba" ] || fail "no room: '$(cat "$ST")', $(temps "$C/roms/gba")"; ok
+
+# the second card set but not in: to the main card, which the status says while it runs; awake.pid this download's
+# meanwhile, and a second download refused
+printf 'romm_target = sd2\n' > "$B/settings.conf"
+mv "$X/run/sd2/roms" "$X/run/sd2/roms.out"
+post "/test/slow?ms=1500"
+"$H" download 106
+waitstatus "running 0 4096	gba	Spare Change	main card: the second card isn't in" "the fallback while it runs"
+p=$(cat "$X/run/awake.pid" 2>/dev/null)
+tr '\0' ' ' < "/proc/$p/cmdline" | grep -q "romm download 106" || fail "awake.pid isn't the download's while it runs: '$p'"; ok
+out=$("$H" download 105) && st=0 || st=$?
+[ "$st" = 3 ] && [ "$out" = busy ] || fail "a second download: '$out', exit $st"; ok
+waitstatus "done download 106 $C/roms/gba/Spare Change.gba" "the fallback"
+post "/test/slow?ms=0"
+grep -q "download: the second card isn't in: to the main card" "$LOG" || fail "the fallback isn't in the log"; ok
+for i in $(seq 40); do [ -e "$X/run/awake.pid" ] || break; sleep 0.05; done
+[ ! -e "$X/run/awake.pid" ] || fail "awake.pid left after the download"; ok
+mv "$X/run/sd2/roms.out" "$X/run/sd2/roms"
+
+# the temporaries never listed: Sync now (listing as the library does) counts the same games with them there
+sync
+games0=$(grep -o "sync: done: [0-9]* games" "$LOG" | tail -n 1)
+: > "$C/roms/gba/.romm-7.part"; : > "$C/roms/gba/.romm-8.zip.part"; mkdir "$C/roms/gba/.romm-9.dir"; : > "$C/roms/gba/.romm-9.dir/Hidden.gba"
+sync
+[ "$(grep -o "sync: done: [0-9]* games" "$LOG" | tail -n 1)" = "$games0" ] || fail "a temporary was listed: $(grep -o "sync: done: [0-9]* games" "$LOG" | tail -n 2)"; ok
+! grep -q "romm-9.dir\|Hidden.gba" "$LOG" || fail "a temporary's game in the log"; ok
+rm -r "$C/roms/gba/.romm-7.part" "$C/roms/gba/.romm-8.zip.part" "$C/roms/gba/.romm-9.dir"
+
+# BIOS: the mapped platforms' firmware (not the Dreamcast's), then skipped as the same, then one that differs kept
+bios() { KIWAMI_ROMM_SYNC=1 "$H" bios >/dev/null; }
+bios || fail "bios failed: '$(cat "$ST")'"
+[ "$(cat "$ST")" = "done bios 2 0 0" ] || fail "bios: '$(cat "$ST")'"; ok
+[ "$(sum "$C/bios/gba_bios.bin") $(sum "$C/bios/bios7.bin")" = "$(seedsum 501 16384) $(seedsum 502 16384)" ] || fail "bios: the files aren't RomM's"; ok
+[ "$(ls -A "$C/bios" | tr '\n' ' ')" = "bios7.bin gba_bios.bin " ] || fail "bios: $(ls -A "$C/bios")"; ok
+bios
+[ "$(cat "$ST")" = "done bios 0 2 0" ] || fail "bios again: '$(cat "$ST")'"; ok
+printf 'mine' > "$C/bios/gba_bios.bin"
+bios
+[ "$(cat "$ST")" = "done bios 1 1 0" ] || fail "bios with one that differs: '$(cat "$ST")'"; ok
+[ "$(cat "$C/bios/gba_bios.bin.bak")" = mine ] && [ "$(sum "$C/bios/gba_bios.bin")" = "$(seedsum 501 16384)" ] || fail "bios: the one that differed not kept as .bak"; ok
+flock "$X/run/romm-download.lock" sleep 1 & FL=$!; sleep 0.2
+out=$("$H" bios) && st=0 || st=$?
+[ "$st" = 3 ] && [ "$out" = busy ] || fail "bios while a download runs: '$out', exit $st"; ok
+wait "$FL"
+
 # the tokens nowhere but accounts.conf: not in the log, the status file or the server's log
 for t in $tokens; do
     ! grep -qF "$t" "$LOG" "$ST" "$X/srv.log" || fail "a token in the log, the status or the server's log"; ok

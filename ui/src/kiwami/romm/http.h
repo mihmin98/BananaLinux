@@ -25,6 +25,7 @@ namespace banana::kiwami::romm
 		// resume on when it is more than 0 and the server answers 206, else from the start
 		std::string file;
 		long long resume = 0;
+		bool range = false;		// a Range sent from resume even when that is 0
 		long lowSpeedBytes = 0, lowSpeedSecs = 0;	// given up after lowSpeedSecs under lowSpeedBytes a second
 		std::function<void(long long got, long long total)> progress;	// bytes so far and expected (0: unknown)
 	};

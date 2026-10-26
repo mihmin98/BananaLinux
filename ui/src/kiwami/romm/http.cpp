@@ -52,7 +52,7 @@ namespace banana::kiwami::romm
 		{
 			WRITEDATA = 10001, URL = 10002, POSTFIELDS = 10015, USERAGENT = 10018, LOW_SPEED_LIMIT = 19, LOW_SPEED_TIME = 20,
 			HTTPHEADER = 10023, CUSTOMREQUEST = 10036, NOPROGRESS = 43, POST = 47, XFERINFODATA = 10057, NOSIGNAL = 99,
-			RESUME_FROM_LARGE = 30116, POSTFIELDSIZE_LARGE = 30120, TIMEOUT_MS = 155, CONNECTTIMEOUT_MS = 156,
+			RANGE = 10007, POSTFIELDSIZE_LARGE = 30120, TIMEOUT_MS = 155, CONNECTTIMEOUT_MS = 156,
 			WRITEFUNCTION = 20011, XFERINFOFUNCTION = 20219, RESPONSE_CODE = 0x200002
 		};
 
@@ -163,7 +163,9 @@ namespace banana::kiwami::romm
 				cu.setopt(h, POSTFIELDSIZE_LARGE, (long long)r.body.size());
 			}
 			if (r.method != "GET" && r.method != "POST") cu.setopt(h, CUSTOMREQUEST, r.method.c_str());
-			if (r.resume > 0) cu.setopt(h, RESUME_FROM_LARGE, r.resume);
+			// (a Range of its own, not RESUME_FROM, which fails on a 200: Sink takes that as the whole file again)
+			std::string range = std::to_string(r.resume) + "-";
+			if (r.resume > 0 || r.range) cu.setopt(h, RANGE, range.c_str());
 			if (r.progress)
 			{
 				cu.setopt(h, NOPROGRESS, 0L);

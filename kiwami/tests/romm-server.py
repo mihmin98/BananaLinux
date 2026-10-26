@@ -14,8 +14,17 @@
 #   GET  /api/devices/<id>              the device (devices.read), 404 when it isn't the token's user's
 #   DELETE /api/devices/<id>            204, the device and its tokens gone
 #   GET  /api/platforms                 the library's platforms, with their games' counts
-#   GET  /api/roms                      a platform's games (platform_ids, search_term, offset, limit), paged as RomM's
-#                                       {items, total, limit, offset}
+#   GET  /api/roms                      a platform's games (platform_ids, search_term, offset, limit, order_by id or
+#                                       name), paged as RomM's {items, total, limit, offset}
+#   GET  /api/roms/<id>                 a game, with its files (paths in its folder) and how RomM keeps it: one file
+#                                       (fs_name the file's), one file in a folder of its own, or several files
+#   GET  /api/roms/<id>/content/<name>  a game's bytes as endpoints/roms/__init__.py's get_rom_content sends them: one
+#                                       file as itself, several as a zip (stored) with <name>.m3u added when they have
+#                                       none; a Range "bytes=<n>-" answered 206 from there (RomM's nginx). For several
+#                                       files, a Range gets RomM's cached zip and none gets mod_zip's stream, another
+#                                       zip of the same files (here: with data descriptors), as RomM does
+#   GET  /api/firmware                  the firmware (platform_id), as endpoints/firmware.py's FirmwareSchema
+#   GET  /api/firmware/<id>/content/<name>      a firmware file's bytes, Range as a game's
 #   POST /api/sync/negotiate            the saves' negotiation as endpoints/sync/__init__.py's negotiate_sync and
 #                                       handler/sync/comparison.py decide it: saves paired on (rom_id, slot), the
 #                                       newest of a slot the current one, each device's last sync of a save (its time,
@@ -38,13 +47,18 @@
 #   GET  /test/saves                    the saves, as JSON: id, rom_id, slot, emulator, hash, size, file_name, data
 #                                       (the bytes, latin-1), newest last
 #   GET  /test/play-sessions            the play sessions received, as JSON
+#   POST /test/cut?bytes=<n>            each download from then on closed after n bytes of its body (0: whole)
+#   POST /test/ranges?on=0|1            a Range ignored from then on (the whole file again, 200), or answered
+#   POST /test/slow?ms=<n>              each download from then on held n ms before it starts (0: at once)
 # Its library (platforms, ROMs and their files' bytes, firmware) is kiwami/tests/romm/library.json. Each request
-# appends "METHOD path?query auth=<0|1>" to <log file>: whether a token was sent, never the token. With KIWAMI_ROMM_DOWN
+# appends "METHOD path?query auth=<0|1>" to <log file>: whether a token was sent, never the token; and " range=<Range>"
+# when it has one. With KIWAMI_ROMM_DOWN
 # set it closes every connection unanswered, as a server that can't be reached; with KIWAMI_ROMM_STALL=<s> it holds each
 # answer that long, as one that stalls.
 import datetime
 import hashlib
 import http.server
+import io
 import json
 import os
 import secrets
@@ -53,6 +67,7 @@ import threading
 import time
 import urllib.parse
 import uuid
+import zipfile
 
 HERE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "romm")
 DOWN = bool(os.environ.get("KIWAMI_ROMM_DOWN"))
@@ -82,6 +97,9 @@ class State:
         self.sessions = {}   # id -> {device, status}
         self.plays = []      # the play sessions received
         self.next_id = 1
+        self.cut = 0         # downloads closed after this many bytes (0: whole)
+        self.ranges = True   # a Range answered (206)
+        self.slow = 0        # downloads held this many ms first
 
     def new_id(self):
         self.next_id += 1
@@ -100,6 +118,51 @@ class State:
 
     def save_by_id(self, i):
         return next((sv for sv in self.saves if sv["id"] == i), None)
+
+
+# a library file's bytes, made up from its seed: the same every time, so a download resumes into the same file
+def file_bytes(f):
+    out, i = bytearray(), 0
+    while len(out) < f["size"]:
+        out += hashlib.sha256(b"%d:%d" % (f["seed"], i)).digest()
+        i += 1
+    return bytes(out[:f["size"]])
+
+
+# one file kept as itself (fs_name its name), not in a folder of its own
+def simple(r):
+    return len(r["files"]) == 1 and r["files"][0]["file_name"] == r["fs_name"]
+
+
+class Stream(io.RawIOBase):
+    """Bytes written where they can't be sought back to, as mod_zip streams: zipfile then writes data descriptors."""
+    def __init__(self):
+        self.data = bytearray()
+
+    def writable(self):
+        return True
+
+    def write(self, b):
+        self.data += b
+        return len(b)
+
+
+# several files as get_rom_content zips them: each by its path in the game's folder, and <name>.m3u listing them when
+# the game has none; stored, at a fixed time, so the same zip each time. streamed: mod_zip's (no Range), another zip
+# of the same files than the cached one a Range gets
+def rom_zip(r, name, streamed=False):
+    buf = Stream() if streamed else io.BytesIO()
+    files = sorted(r["files"], key=lambda f: f["file_name"])
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as z:
+        def put(n, data):
+            zi = zipfile.ZipInfo(n, (2026, 10, 1, 0, 0, 0))
+            zi.external_attr = 0o100600 << 16
+            z.writestr(zi, data)
+        for f in files:
+            put(f["file_name"], file_bytes(f))
+        if not any(f["file_name"].lower().endswith(".m3u") for f in files):
+            put(name + ".m3u", "\n".join(f["file_name"] for f in files).encode())
+    return bytes(buf.data) if streamed else buf.getvalue()
 
 
 def parse_time(text):
@@ -204,8 +267,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.drop()
         u = urllib.parse.urlsplit(self.path)
         q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query, keep_blank_values=True).items()}
+        rng = self.headers.get("Range")
         with open(self.server.log, "a") as f:
-            f.write("%s %s auth=%d\n" % (method, self.path, bool(self.token())))
+            f.write("%s %s auth=%d%s\n" % (method, self.path, bool(self.token()), " range=" + rng if rng else ""))
         if STALL and not u.path.startswith("/test/"):
             time.sleep(STALL)
         st = self.server.state
@@ -264,6 +328,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if method == "POST" and path == "/test/revoke":
             st.tokens.clear()
             return self.reply(200, {"ok": True})
+        if method == "POST" and path == "/test/cut":
+            st.cut = int(q.get("bytes", "0"))
+            return self.reply(200, {"ok": True})
+        if method == "POST" and path == "/test/ranges":
+            st.ranges = q.get("on", "1") == "1"
+            return self.reply(200, {"ok": True})
+        if method == "POST" and path == "/test/slow":
+            st.slow = int(q.get("ms", "0"))
+            return self.reply(200, {"ok": True})
         if method == "POST" and path == "/test/version":
             st.version = q.get("v", st.version)
             return self.reply(200, {"ok": True})
@@ -300,16 +373,46 @@ class Handler(http.server.BaseHTTPRequestHandler):
             term = q.get("search_term", "").lower()
             if term:
                 items = [r for r in items if all(w in (r["name"] + " " + r["fs_name"]).lower() for w in term.split())]
-            items.sort(key=lambda r: r["id"])
+            if q.get("order_by") == "name":
+                items.sort(key=lambda r: (r["name"].lower(), r["id"]))
+            else:
+                items.sort(key=lambda r: r["id"])
             offset, limit = int(q.get("offset", "0")), int(q.get("limit", "50"))
             if not 1 <= limit <= 10000:
                 return self.detail(422, "limit out of range")
             page = items[offset:offset + limit]
             # (RomM's SimpleRomSchema has some 90 fields; the ones the helper reads, and a summary as heavy as RomM's)
-            return self.reply(200, {"items": [{"id": r["id"], "platform_id": r["platform_id"], "fs_name": r["fs_name"],
-                                               "name": r["name"], "fs_size_bytes": sum(f["size"] for f in r["files"]),
-                                               "summary": "x" * 400} for r in page],
+            return self.reply(200, {"items": [dict(self.rom_fields(r), summary="x" * 400) for r in page],
                                     "total": len(items), "limit": limit, "offset": offset})
+        if parts[:2] == ["api", "roms"] and len(parts) in (3, 5) and method == "GET":
+            r = next((r for r in lib["roms"] if str(r["id"]) == parts[2]), None)
+            if r is None:
+                return self.detail(404, "Rom with ID %s not found" % parts[2])
+            if len(parts) == 3:
+                plat = next(p for p in lib["platforms"] if p["id"] == r["platform_id"])
+                folder = plat["slug"] + "/" + r["fs_name"]
+                return self.reply(200, dict(self.rom_fields(r), full_path=folder,
+                                            files=[{"id": r["id"] * 10 + i, "rom_id": r["id"], "file_name": f["file_name"],
+                                                    "file_path": folder, "file_size_bytes": f["size"],
+                                                    "full_path": (plat["slug"] if simple(r) else folder) + "/" + f["file_name"],
+                                                    "is_top_level": True} for i, f in enumerate(r["files"])]))
+            if parts[3] != "content":
+                return self.detail(404, "Not Found")
+            if len(r["files"]) == 1:
+                return self.content(st, file_bytes(r["files"][0]), "application/octet-stream")
+            cached = st.ranges and self.headers.get("Range", "").startswith("bytes=")
+            return self.content(st, rom_zip(r, urllib.parse.unquote(parts[4]), not cached), "application/zip")
+        if method == "GET" and path == "/api/firmware":
+            pid = int(q["platform_id"]) if q.get("platform_id") else None
+            return self.reply(200, [{"id": fw["id"], "platform_id": fw["platform_id"], "file_name": fw["file_name"],
+                                     "file_size_bytes": fw["size"], "md5_hash": hashlib.md5(file_bytes(fw)).hexdigest(),
+                                     "missing_from_fs": False}
+                                    for fw in lib["firmware"] if pid is None or fw["platform_id"] == pid])
+        if parts[:2] == ["api", "firmware"] and len(parts) == 5 and parts[3] == "content" and method == "GET":
+            fw = next((fw for fw in lib["firmware"] if str(fw["id"]) == parts[2]), None)
+            if fw is None:
+                return self.detail(404, "Firmware with ID %s not found" % parts[2])
+            return self.content(st, file_bytes(fw), "application/octet-stream")
         if method == "POST" and path == "/api/sync/negotiate":
             return self.negotiate(st, dev)
         if method == "POST" and path == "/api/saves":
@@ -353,6 +456,35 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
             return self.reply(201, {"results": [], "created_count": len(p["sessions"]), "skipped_count": 0})
         self.detail(404, "Not Found")
+
+    # a game's fields as SimpleRomSchema has them (of its some 90, the ones the helper reads)
+    def rom_fields(self, r):
+        plat = next(p for p in self.server.state.library["platforms"] if p["id"] == r["platform_id"])
+        return {"id": r["id"], "platform_id": r["platform_id"], "platform_slug": plat["slug"], "fs_name": r["fs_name"],
+                "name": r["name"], "fs_size_bytes": sum(f["size"] for f in r["files"]),
+                "has_simple_single_file": simple(r), "has_nested_single_file": len(r["files"]) == 1 and not simple(r),
+                "has_multiple_files": len(r["files"]) > 1}
+
+    # a file's bytes: from a Range's start (206, from 0 too), unless ranges are off; held first by /test/slow, cut short
+    # after /test/cut's bytes
+    def content(self, st, data, kind):
+        time.sleep(st.slow / 1000)
+        start, rng = None, self.headers.get("Range", "")
+        if st.ranges and rng.startswith("bytes=") and rng.endswith("-"):
+            start = int(rng[6:-1])
+            if start >= len(data):
+                return self.detail(416, "Range Not Satisfiable")
+        body = data[start or 0:]
+        self.send_response(200 if start is None else 206)
+        self.send_header("Content-Type", kind)
+        self.send_header("Content-Length", str(len(body)))
+        if start is not None:
+            self.send_header("Content-Range", "bytes %d-%d/%d" % (start, len(data) - 1, len(data)))
+        self.end_headers()
+        if st.cut and st.cut < len(body):
+            self.wfile.write(body[:st.cut])
+            return self.drop()
+        self.wfile.write(body)
 
     # PlaySessionEntry's rules (end after start, to the second), then kept, one with the same game and start skipped
     def take_plays(self, st, dev, plays):

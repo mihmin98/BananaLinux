@@ -29,11 +29,29 @@
 //                  card's save sent over RomM's (local), or RomM's taken, the card's kept as .bak (server). Prints
 //                  "resolved <n> local|server", or "resolve-failed <why>" and exits 1 with the line left; busy (3) when
 //                  the saves are still locked after 10 s
+//   romm platforms one line each of RomM's platforms that are Banana's systems' (the nine above's):
+//                  "<id>\t<slug>\t<system>\t<games>\t<name>"
+//   romm roms <platform id> <offset> [search]
+//                  "total <n>", then the platform's games from offset, 50 at most, by name, each
+//                  "<id>\t<size>\t<on a card: 0|1>\t<fs_name>\t<name>"; on a card is in <card>/banana/romm/games, or a
+//                  file or folder of that name in the system's folder on either card. Each of these two says
+//                  "error <verb> down|revoked|old|unpaired" and exits 1 when it can't list
+//   romm download <rom id>
+//                  in the background: the game onto romm_target's card (the main card when the second isn't in, which
+//                  the status says), free space checked first, resumed from a download cut short (download.h). The
+//                  status file says "running <bytes> <total>\t<system>\t<name>\t<main card: the second card isn't
+//                  in|>", then "done download <id> <path>" or "error download <why>" (down, cut, revoked, old,
+//                  unpaired, notfound, system, name, there <path>, space <need> <free>, card, unpack <zip>, size)
+//   romm bios      in the background: RomM's firmware of those platforms into <card>/bios, a file there with the same
+//                  MD5 skipped, one with another kept as .bak. "running <done> <total>\tbios\t<file>", then
+//                  "done bios <fetched> <skipped> <failed>" or "error bios down|revoked|old|unpaired"
+//                  With a download or bios already running, each prints busy and exits 3
 // The saves are changed under one lock (<run>/romm-saves.lock): the pull waits for it within its 3 s, the push up to 60 s.
 // The status file is <run>/romm.status, one line; the log <card>/banana/logs/romm.log (http.h), which the token never
 // reaches: the helper reads it from accounts.conf, never from its command line. The paths: rommcard.h.
 // KIWAMI_ROMM_SYNC=1 keeps it in the foreground (the tests); KIWAMI_MODEL moves /proc/device-tree/model.
 #include "api.h"
+#include "download.h"
 #include "games.h"
 #include "http.h"
 #include "saves.h"
@@ -609,8 +627,7 @@ namespace
 	std::vector<std::string> romRoots()
 	{
 		std::vector<std::string> r = { card.card + "/roms" };
-		std::string sd2 = firstLine(card.run + "/sd2/roms");
-		while (!sd2.empty() && (sd2.back() == ' ' || sd2.back() == '/')) sd2.pop_back();
+		std::string sd2 = sd2Roms(card);
 		if (!sd2.empty() && sd2 != r[0]) r.push_back(sd2);
 		return r;
 	}
@@ -846,6 +863,259 @@ namespace
 		return 0;
 	}
 
+	// ---- RomM's games, downloads and BIOS ------------------------------------------------------------------------
+	// a verb's error: to stdout, and to the status file for one in the background (its caller reads that)
+	int failed(const std::string& line, bool background)
+	{
+		if (background) status(line);
+		say(line);
+		return 1;
+	}
+
+	// the account and its server for a verb on RomM's library: false, why set (unpaired, down or old), when there is none
+	bool library(Account& a, Server& s, std::string& why)
+	{
+		a = account(card);
+		if (a.url.empty() || a.token.empty() || a.deviceId.empty()) { why = "unpaired"; return false; }
+		s = server(a, 5000, 30000);
+		std::string version;
+		if (!versionChecked(s, version, why)) { if (why != "down") why = "old"; return false; }
+		return true;
+	}
+
+	// the synced system of one of RomM's platforms, when Banana has it
+	const System* systemOf(const std::string& slug)
+	{
+		for (auto& m : SYNCED)
+			for (const char* x : m.slugs)
+				if (x && slug == x) return findSystem(allSystems(), m.system);
+		return nullptr;
+	}
+
+	// a field of a tab-separated line: tabs and line ends as spaces
+	std::string field(std::string s)
+	{
+		for (auto& c : s) if (c == '\t' || c == '\n' || c == '\r') c = ' ';
+		return s;
+	}
+
+	int listPlatforms()
+	{
+		Account a;
+		Server s;
+		std::string why;
+		if (!library(a, s, why)) return failed("error platforms " + why, false);
+		Platforms p = platforms(s);
+		if (p.status == 401) { noteRevoked(); return failed("error platforms revoked", false); }
+		if (!p.ok) return failed("error platforms down", false);
+		int n = 0;
+		for (auto& pl : p.list)
+			if (const System* sy = systemOf(pl.slug))
+			{
+				printf("%ld\t%s\t%s\t%ld\t%s\n", pl.id, field(pl.slug).c_str(), sy->id.c_str(), pl.romCount, field(pl.name).c_str());
+				n++;
+			}
+		log("platforms: %d of RomM's %zu are Banana's systems'", n, p.list.size());
+		return 0;
+	}
+
+	int listGames(long platform, long offset, const std::string& search)
+	{
+		Account a;
+		Server s;
+		std::string why;
+		if (!library(a, s, why)) return failed("error roms " + why, false);
+		Roms r = roms(s, platform, search, offset < 0 ? 0 : offset, 50, "name");
+		if (r.status == 401) { noteRevoked(); return failed("error roms revoked", false); }
+		if (!r.ok) return failed("error roms down", false);
+		printf("total %ld\n", r.total);
+		Games lookup(card, s, false);
+		std::vector<std::string> roots = romRoots();
+		for (auto& rom : r.items)
+		{
+			bool on = false;
+			if (const System* sy = systemOf(rom.platformSlug))
+			{
+				on = lookup.recorded(sy->id, rom.id);
+				for (auto& root : roots) on = on || (safeName(rom.fsName) && !access((folderOn(root, *sy) + "/" + rom.fsName).c_str(), F_OK));
+			}
+			printf("%ld\t%lld\t%d\t%s\t%s\n", rom.id, rom.size, on ? 1 : 0, field(rom.fsName).c_str(), field(rom.name).c_str());
+		}
+		return 0;
+	}
+
+	// the downloads' lock (a game's or the BIOS'), not waited for: false when another holds it
+	bool lockDownloads()
+	{
+		makeDir(card.run);
+		int fd = open((card.run + "/romm-download.lock").c_str(), O_RDWR | O_CREAT, 0644);
+		return fd < 0 || flock(fd, LOCK_EX | LOCK_NB) == 0;	// (held until the helper exits)
+	}
+
+	// a download's progress in the status file, at most four times a second
+	struct Progress
+	{
+		std::string tail;
+		std::chrono::steady_clock::time_point last;
+		void operator()(long long got, long long total, bool now = false)
+		{
+			auto t = std::chrono::steady_clock::now();
+			if (!now && t - last < std::chrono::milliseconds(250)) return;
+			last = t;
+			status("running " + std::to_string(got) + " " + std::to_string(total) + "\t" + tail);
+		}
+	};
+
+	int download(long id)
+	{
+		if (!lockDownloads()) { say("busy"); return 3; }		// (taken before going into the background: the child keeps it)
+		status("running 0 0\t\t\t");
+		detach();
+		Account a;
+		Server s;
+		std::string why, error;
+		if (!library(a, s, why)) return failed("error download " + why, true);
+		Awake awake(card);
+		RomDetail d = romDetail(s, id);
+		if (d.status == 401) { noteRevoked(); return failed("error download revoked", true); }
+		if (d.status == 404) return failed("error download notfound", true);
+		if (!d.ok) return failed("error download down", true);
+		const Rom& r = d.rom;
+		const System* sy = systemOf(r.platformSlug);
+		if (!sy)
+		{
+			log("download: %s: RomM's %s isn't one of Banana's systems", r.fsName.c_str(), r.platformSlug.c_str());
+			return failed("error download system", true);
+		}
+		// one file as itself, one in a folder of its own, or several (RomM's zip)
+		bool several = r.files.size() > 1, inFolder = several || !r.simple;
+		if (!safeName(r.fsName) || (!several && inFolder && (r.files.empty() || !safePath(r.files[0].path))))
+		{
+			log("download: %ld: a name that can't go on the card (%s)", id, r.fsName.c_str());
+			return failed("error download name", true);
+		}
+		Target t = target(card);
+		std::string note = t.fellBack ? "main card: the second card isn't in" : "";
+		if (t.fellBack) log("download: the second card isn't in: to the main card");
+		std::string dir = folderOn(t.roms, *sy), final = dir + "/" + r.fsName;
+		if (!access(final.c_str(), F_OK)) { log("download: %s is there already", final.c_str()); return failed("error download there " + final, true); }
+		// room for it (for several files, the zip and what it unpacks to), checked before anything is written
+		long long need = several ? 2 * r.size : r.size, free = freeBytes(dir);
+		if (free >= 0 && need > free) return failed("error download space " + std::to_string(need) + " " + std::to_string(free), true);
+		if (!makeDir(dir)) { log("download: can't make %s", dir.c_str()); return failed("error download card", true); }
+
+		std::string base = dir + "/.romm-" + std::to_string(id), part = base + (several ? ".zip.part" : ".part"), tmp = base + ".dir";
+		Progress progress;
+		progress.tail = sy->id + "\t" + field(r.name.empty() ? r.fsName : r.name) + "\t" + note;
+		progress(0, r.size, true);
+		long long expected = several ? 0 : r.files.size() == 1 ? r.files[0].size : r.size;
+		Transfer tr = transfer(part, expected, [&](long long from) {
+			return romContent(s, r, part, from, [&](long long got, long long total) { progress(from + got, total ? from + total : r.size); });
+		});
+		if (tr.status == 401) { noteRevoked(); return failed("error download revoked", true); }
+		if (!tr.ok)
+		{
+			log("download: %s: %s, %s", r.fsName.c_str(), tr.why.c_str(), tr.why == "cut" ? "what came kept to go on from" : "nothing kept");
+			return failed("error download " + tr.why, true);
+		}
+
+		// into place: renamed whole, a folder through .romm-<id>.dir
+		bool ok = true;
+		if (several)
+		{
+			removeTree(tmp);
+			if (!unpack(part, tmp, error))
+			{
+				removeTree(tmp);
+				std::string zip = dir + "/" + r.fsName + ".zip";
+				if (rename(part.c_str(), zip.c_str()) != 0) zip = part;
+				log("download: %s: %s, the zip kept as %s", r.fsName.c_str(), error.c_str(), zip.c_str());
+				return failed("error download unpack " + zip, true);
+			}
+			ok = rename(tmp.c_str(), final.c_str()) == 0;
+			if (ok) unlink(part.c_str());
+		}
+		else if (inFolder)
+		{
+			std::string inside = tmp + "/" + r.files[0].path;
+			ok = makeDir(inside.substr(0, inside.rfind('/'))) && rename(part.c_str(), inside.c_str()) == 0
+				&& rename(tmp.c_str(), final.c_str()) == 0;
+		}
+		else ok = rename(part.c_str(), final.c_str()) == 0;
+		if (!ok) { log("download: can't put %s in place: %s", final.c_str(), strerror(errno)); return failed("error download card", true); }
+		Games lookup(card, s, false);
+		lookup.record(sy->id, r.fsName, r.id);
+		status("done download " + std::to_string(id) + " " + final);
+		log("download: %s: done, %s", r.fsName.c_str(), final.c_str());
+		return 0;
+	}
+
+	int bios()
+	{
+		if (!lockDownloads()) { say("busy"); return 3; }
+		status("running 0 0\tbios\t");
+		detach();
+		Account a;
+		Server s;
+		std::string why;
+		if (!library(a, s, why)) return failed("error bios " + why, true);
+		Awake awake(card);
+		Platforms p = platforms(s);
+		if (p.status == 401) { noteRevoked(); return failed("error bios revoked", true); }
+		if (!p.ok) return failed("error bios down", true);
+		std::vector<Firmware> all;
+		for (auto& pl : p.list)
+		{
+			if (!systemOf(pl.slug)) continue;
+			Firmwares f = firmware(s, pl.id);
+			if (f.status == 401) { noteRevoked(); return failed("error bios revoked", true); }
+			if (!f.ok) return failed("error bios down", true);
+			all.insert(all.end(), f.list.begin(), f.list.end());
+		}
+		std::string dir = card.card + "/bios";
+		int fetched = 0, skipped = 0, failures = 0, done = 0;
+		for (auto& fw : all)
+		{
+			status("running " + std::to_string(done++) + " " + std::to_string(all.size()) + "\tbios\t" + field(fw.fileName));
+			if (!safeName(fw.fileName)) { log("bios: %s: a name that can't go on the card", fw.fileName.c_str()); failures++; continue; }
+			std::string path = dir + "/" + fw.fileName, part = path + ".part", want = lower(fw.md5);
+			std::string have = access(path.c_str(), F_OK) ? "" : fileMd5(path);
+			if (!have.empty() && have == want) { skipped++; log("bios: %s: the same as RomM's, skipped", fw.fileName.c_str()); continue; }
+			if (!makeDir(dir)) { log("bios: can't make %s", dir.c_str()); return failed("error bios card", true); }
+			Transfer tr = transfer(part, fw.size, [&](long long from) { return firmwareContent(s, fw, part, from, nullptr); });
+			if (tr.status == 401) { noteRevoked(); return failed("error bios revoked", true); }
+			if (!tr.ok && (tr.why == "down" || tr.why == "cut")) return failed("error bios down", true);
+			if (!tr.ok) { log("bios: %s: %s", fw.fileName.c_str(), tr.why.c_str()); failures++; continue; }
+			std::string got = fileMd5(part);
+			if (!want.empty() && got != want)
+			{
+				log("bios: %s: didn't arrive whole (its MD5 differs from RomM's), dropped", fw.fileName.c_str());
+				unlink(part.c_str());
+				failures++;
+				continue;
+			}
+			// (RomM gave no MD5: the same bytes as the card's are skipped all the same)
+			if (!have.empty() && have == got) { unlink(part.c_str()); skipped++; log("bios: %s: the same as RomM's, skipped", fw.fileName.c_str()); continue; }
+			if (!have.empty())
+			{
+				if (rename(path.c_str(), (path + ".bak").c_str()) != 0)
+				{
+					log("bios: can't keep %s as .bak", path.c_str());
+					unlink(part.c_str());
+					failures++;
+					continue;
+				}
+				log("bios: %s differs from RomM's, kept as %s.bak", fw.fileName.c_str(), fw.fileName.c_str());
+			}
+			if (rename(part.c_str(), path.c_str()) != 0) { log("bios: can't put %s in place", path.c_str()); failures++; continue; }
+			fetched++;
+			log("bios: %s: fetched", fw.fileName.c_str());
+		}
+		status("done bios " + std::to_string(fetched) + " " + std::to_string(skipped) + " " + std::to_string(failures));
+		log("bios: done: %d fetched, %d skipped, %d failed", fetched, skipped, failures);
+		return 0;
+	}
+
 	// ---- the rest ------------------------------------------------------------------------------------------------
 	int check()
 	{
@@ -899,7 +1169,11 @@ int main(int argc, char** argv)
 	if (verb == "sync" && argc == 2) return syncAll();
 	if (verb == "resolve" && argc == 5 && (!strcmp(argv[3], "local") || !strcmp(argv[3], "server")))
 		return resolve(atoi(argv[2]), argv[3], argv[4]);
+	if (verb == "platforms" && argc == 2) return listPlatforms();
+	if (verb == "roms" && (argc == 4 || argc == 5)) return listGames(atol(argv[2]), atol(argv[3]), argc == 5 ? argv[4] : "");
+	if (verb == "download" && argc == 3 && atol(argv[2]) > 0) return download(atol(argv[2]));
+	if (verb == "bios" && argc == 2) return bios();
 	fprintf(stderr, "usage: romm check | pair | logout | pull <system> <rom> | push|pending <system> <rom> <start> <end> | sync"
-		" | resolve <n> local|server <rom>\n");
+		" | resolve <n> local|server <rom> | platforms | roms <platform id> <offset> [search] | download <rom id> | bios\n");
 	return 2;
 }

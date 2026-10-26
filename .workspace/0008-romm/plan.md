@@ -623,9 +623,9 @@ detaching, for the tests.
 
 ### 7. The helper's games, downloads and BIOS
 
-- **Files**: `ui/src/kiwami/romm/main.cpp`, `api.h`, `api.cpp`, `games.cpp` (changed); `ui/src/kiwami/romm/download.h`,
-  `download.cpp` (new); `kiwami/tests/romm-server.py`, `kiwami/tests/romm/library.json`, `kiwami/tests/romm-helper.sh`,
-  `kiwami/tests/units.cpp` (changed)
+- **Files**: `ui/src/kiwami/romm/main.cpp`, `api.h`, `api.cpp`, `games.h`, `games.cpp`, `http.h`, `http.cpp` (changed);
+  `ui/src/kiwami/romm/download.h`, `download.cpp` (new); `kiwami/tests/romm-server.py`, `kiwami/tests/romm/library.json`,
+  `kiwami/tests/romm-helper.sh`, `kiwami/tests/units.cpp`, `kiwami/tests/ci.sh` (changed; *Deviations*, 26 Oct)
 - **Change**:
   - **`platforms`**: stdout lines `<id>\t<slug>\t<system>\t<rom_count>\t<name>`, for the platforms that map to the nine
     systems.
@@ -686,7 +686,7 @@ detaching, for the tests.
     - A on a game starts `romm download <id>`, then the progress shows on the top panel (the status every 0.5 s).
       When it is done, the library is read again (`libChanged`, as the scrape's end does).
     - With a download running, another A says so.
-  - **`romm-bios.cpp`**: A starts `romm bios`; the progress, then fetched and skipped.
+  - **`romm-bios.cpp`**: A starts `romm bios`; the progress, then fetched, skipped and failed (*Deviations*, 26 Oct).
 - **Tests**: **`romm-ui.sh`**:
   - the platforms page; a platform's games, its second page, a search;
   - a download with its progress shot, then the game in the library (its `lib` log line), marked on the card;
@@ -810,6 +810,38 @@ Where the implementation turned out different from this plan, why, and what chan
   Settings opens or the page is left, no polling on the list), the row's value is `Syncing`, beside A2's list.
   `kiwami/tests/cores-ui.sh` expects the new row in RomM's `rows in` line. Agreed with the user.
 
+- **26 Oct 2026, step 7: a game kept as one file in a folder goes into its folder, and the download reads the game
+  first.** RomM keeps some games as one file in a folder of their own (`has_nested_single_file`: `fs_name` is the
+  folder's name) and sends just that file, so the plan's "renamed to `<fs_name>`" would have left a file with no
+  extension, which the library doesn't list. It now goes to `<fs_name>/<its path in the folder>`, as on RomM, so the
+  on-card mark and the saves' matching find it by the folder's name. To know which of the three a game is (one file,
+  one in a folder, several), `download` first asks for it alone (`GET /api/roms/<id>`, which also gives its platform
+  and its files' sizes). Agreed with the user.
+- **26 Oct 2026, step 7: the stand-in server's downloads are switched by `/test/` requests, not
+  `KIWAMI_ROMM_CUT`.** A second server started with an environment variable wouldn't know the first one's pairing, so
+  every download from it would get a 401. `POST /test/cut?bytes=<n>`, `/test/ranges?on=0|1` (a Range ignored, so the
+  download starts over) and `/test/slow?ms=<n>` (the answer held, so the test sees the progress line, the fallback note
+  and `awake.pid` while the download runs) act on the same server. Agreed with the user.
+- **26 Oct 2026, step 7: found while implementing.**
+  - libcurl's `RESUME_FROM` fails a resumed download when the server answers 200 ("Requested range was not delivered")
+    instead of starting over, so `http.cpp` sends the Range itself (`CURLOPT_RANGE`), and its body sink, which already
+    started a 200 from the beginning, does so.
+  - A game of several files is always asked for with a Range, `bytes=0-` included. RomM 5.4.1 answers a Range with its
+    cached zip (`utils/zip_cache.py`) and no Range with nginx's mod_zip stream, two different zips of the same files,
+    so a first try without a Range, cut short, and resumed from the cache would have joined two archives into a broken
+    one. Asked with a Range each time, every try gets the cached zip; where RomM can't cache it, mod_zip ignores the
+    Range and answers 200, and the download starts over. The stand-in server serves a different zip without a Range
+    (written with data descriptors, as a stream is), and logs each request's Range, so `romm-helper.sh` checks both
+    tries of a cut download of several files asked with one.
+  - `games.h`'s `record` became public, and `recorded(system, id)` was added, for the downloads' record and the on-card
+    mark.
+  - `ci.sh` builds `download.cpp` into the units, which check that a name from RomM can't leave the system's folder or
+    take a name the library hides (`safeName`, `safePath`).
+  - A download of a game already on the target card is refused (`error download there <path>`), with nothing asked for
+    or overwritten.
+  - `done bios` also counts the files that failed (`done bios <fetched> <skipped> <failed>`): a file whose MD5 isn't
+    RomM's, or that RomM no longer has, would otherwise go unsaid on step 8's page.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -822,6 +854,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 4. The wrapper around the games, put into the image's systems.conf | done | RomM: the games' saves synced around each game, through a wrapper in the image's systems.conf |
 | 5. Settings: the RomM group and its Account page | done | RomM: a group in Settings, after RetroAchievements, with its logo and the Account page |
 | 6. Settings: Sync now and the conflicts | done | RomM: Sync now in Settings, with its progress, its result and the conflicts to resolve |
-| 7. The helper's games, downloads and BIOS | todo | |
+| 7. The helper's games, downloads and BIOS | done | RomM: RomM's games listed and downloaded to either card, and its BIOS files into /data/bios |
 | 8. Settings: Games, Downloads to and BIOS | todo | |
 | 9. Final check | todo | |

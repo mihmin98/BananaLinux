@@ -235,6 +235,31 @@ namespace banana::kiwami::romm
 		return parsePlatforms(res.body, res.status);
 	}
 
+	namespace
+	{
+		Rom romOf(const json::Value& e)
+		{
+			Rom rom;
+			rom.id = (long)whole(e["id"]);
+			rom.fsName = e["fs_name"].str();
+			rom.name = e["name"].str();
+			rom.size = whole(e["fs_size_bytes"]);
+			rom.platformSlug = e["platform_slug"].str();
+			rom.simple = e["has_simple_single_file"].type != json::Value::BOOL || e["has_simple_single_file"].b;
+			// each file's path in the game's folder, as get_rom_content names it in its zip (file_name_for_download)
+			std::string folder = e["full_path"].str() + "/";
+			for (auto& f : e["files"].arr)
+			{
+				RomFile rf;
+				std::string full = f["full_path"].str();
+				rf.path = !rom.simple && full.compare(0, folder.size(), folder) == 0 ? full.substr(folder.size()) : f["file_name"].str();
+				rf.size = whole(f["file_size_bytes"]);
+				if (!rf.path.empty()) rom.files.push_back(rf);
+			}
+			return rom;
+		}
+	}
+
 	Roms parseRoms(const std::string& body, long status)
 	{
 		Roms r;
@@ -244,24 +269,92 @@ namespace banana::kiwami::romm
 		r.total = (long)whole(v["total"]);
 		for (auto& e : v["items"].arr)
 		{
-			Rom rom;
-			rom.id = (long)whole(e["id"]);
-			rom.fsName = e["fs_name"].str();
-			rom.name = e["name"].str();
-			rom.size = whole(e["fs_size_bytes"]);
+			Rom rom = romOf(e);
 			if (rom.id && !rom.fsName.empty()) r.items.push_back(rom);
 		}
 		r.ok = true;
 		return r;
 	}
 
-	Roms roms(const Server& s, long platform, const std::string& search, long offset, long limit)
+	Roms roms(const Server& s, long platform, const std::string& search, long offset, long limit, const char* order)
 	{
 		std::string q = "/api/roms?platform_ids=" + std::to_string(platform) + "&offset=" + std::to_string(offset) + "&limit="
-			+ std::to_string(limit) + "&order_by=id&order_dir=asc";
+			+ std::to_string(limit) + "&order_by=" + order + "&order_dir=asc";
 		if (!search.empty()) q += "&search_term=" + urlEscape(search);
 		Response res = perform(to(s, "GET", q));
 		return parseRoms(res.body, res.status);
+	}
+
+	RomDetail parseRomDetail(const std::string& body, long status)
+	{
+		RomDetail d;
+		d.status = status;
+		json::Value v;
+		if (status != 200 || !json::parse(body, v) || v.type != json::Value::OBJ) return d;
+		d.rom = romOf(v);
+		d.ok = d.rom.id && !d.rom.fsName.empty();
+		return d;
+	}
+
+	RomDetail romDetail(const Server& s, long id)
+	{
+		Response res = perform(to(s, "GET", "/api/roms/" + std::to_string(id)));
+		return parseRomDetail(res.body, res.status);
+	}
+
+	Firmwares parseFirmware(const std::string& body, long status)
+	{
+		Firmwares f;
+		f.status = status;
+		json::Value v;
+		if (status != 200 || !json::parse(body, v) || v.type != json::Value::ARR) return f;
+		for (auto& e : v.arr)
+		{
+			Firmware fw;
+			fw.id = (long)whole(e["id"]);
+			fw.platformId = (long)whole(e["platform_id"]);
+			fw.fileName = e["file_name"].str();
+			fw.size = whole(e["file_size_bytes"]);
+			fw.md5 = e["md5_hash"].str();
+			if (fw.id && !fw.fileName.empty() && !e["missing_from_fs"].boolean()) f.list.push_back(fw);
+		}
+		f.ok = true;
+		return f;
+	}
+
+	Firmwares firmware(const Server& s, long platform)
+	{
+		Response res = perform(to(s, "GET", "/api/firmware?platform_id=" + std::to_string(platform)));
+		return parseFirmware(res.body, res.status);
+	}
+
+	namespace
+	{
+		Response content(const Server& s, const std::string& path, const std::string& file, long long resume, bool range,
+			const std::function<void(long long, long long)>& progress)
+		{
+			Request r = to(s, "GET", path);
+			r.range = range;
+			r.totalMs = 0;
+			r.lowSpeedBytes = 1024;
+			r.lowSpeedSecs = 30;
+			r.file = file;
+			r.resume = resume;
+			r.progress = progress;
+			return perform(r);
+		}
+	}
+
+	Response romContent(const Server& s, const Rom& r, const std::string& file, long long resume,
+		const std::function<void(long long, long long)>& progress)
+	{
+		return content(s, "/api/roms/" + std::to_string(r.id) + "/content/" + urlEscape(r.fsName), file, resume, r.files.size() > 1, progress);
+	}
+
+	Response firmwareContent(const Server& s, const Firmware& f, const std::string& file, long long resume,
+		const std::function<void(long long, long long)>& progress)
+	{
+		return content(s, "/api/firmware/" + std::to_string(f.id) + "/content/" + urlEscape(f.fileName), file, resume, false, progress);
 	}
 
 	// ---- the saves' sync --------------------------------------------------------------------------------------------

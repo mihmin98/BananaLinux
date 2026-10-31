@@ -1,8 +1,16 @@
 /output/
 /.buildroot/
 /ui/banana-ui
+/ui/banana-bshare
 /ui/tests/out/
+/ui/tests/pokemon-test
+/ui/tests/gamecomp-test
+/ui/tests/input-test
 /system/bananad/bananad
 /system/bananad/banana-panel-tune
 *.o
 /banana-*.bundle
+
+# Python bytecode
+__pycache__/
+*.pyc

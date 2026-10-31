@@ -253,6 +253,16 @@ namespace banana
 				while (is >> e) cur->exts.push_back(lower(e[0] == '.' ? e.substr(1) : e));
 			}
 		}
+		// the menu's own Files page on a user's copy too: banana/systems.conf replaces this file, and one made before
+		// Files came has no [files] (no way to it otherwise). A [files] of the user's own is taken as it is (an empty
+		// folder and always = no hide the tile)
+		if (std::none_of(defs.begin(), defs.end(), [](const SystemDef& d) { return d.id == "files" || d.run == "banana:files"; }))
+		{
+			SystemDef d;
+			d.id = "files"; d.name = "Files"; d.maker = "Banana"; d.folder = "/usr/share/banana/apps/files";
+			d.exts = { "app" }; d.run = "banana:files"; d.always = true;
+			defs.push_back(d);
+		}
 	}
 
 	// the theme's systems.cfg, read the way ROCKNIXDS reads it (RndsEs.cpp)
@@ -335,7 +345,7 @@ namespace banana
 		}
 		hidden.clear();
 		{
-			// the built-in apps removed in the Store (Döda Kvarter, Bank & Trade): their systems, one per line, left out
+			// the built-in apps removed in the Store (Döda Kvarter, Poketool): their systems, one per line, left out
 			std::ifstream f(storeDir() + "/hidden-systems");
 			while (std::getline(f, ln)) if (!trim(ln).empty() && trim(ln)[0] != '#') hidden.insert(lower(trim(ln)));
 			hidden.erase("rocknixdsstore");	// never the Store itself or its Apps shelf: they'd be gone for good
@@ -531,14 +541,34 @@ namespace banana
 		return r;
 	}
 
+	// Settings > Display & sound > Shown systems: settings.conf's shelf.<id> = auto (on the home row when it has
+	// something to start), hide or show (always, with nothing in it too)
+	std::map<std::string, std::string> Library::shelfModes() const
+	{
+		std::map<std::string, std::string> m;
+		std::ifstream f(dataDir + "/settings.conf");
+		std::string ln;
+		while (std::getline(f, ln))
+		{
+			size_t eq = ln.find('=');
+			if (eq == std::string::npos) continue;
+			std::string k = trim(ln.substr(0, eq)), v = trim(ln.substr(eq + 1));
+			if (k.compare(0, 6, "shelf.") == 0) m[k.substr(6)] = v;
+		}
+		return m;
+	}
+
 	void Library::scan()
 	{
 		loadState();
 		shelves.clear();
 		MediaIndex media;
+		std::map<std::string, std::string> modes = shelfModes();
 		for (auto& def : defs)
 		{
 			if (hidden.count(def.id)) continue;
+			std::string mode = modes.count(def.id) ? modes[def.id] : "auto";
+			if (mode == "hide") continue;
 			Shelf sh;
 			sh.def = def;
 			sh.order = (int)(&def - &defs[0]);
@@ -596,7 +626,11 @@ namespace banana
 				}
 			}
 			std::sort(sh.games.begin(), sh.games.end(), [](const Game& a, const Game& b) { return sortKey(a) < sortKey(b); });
-			if (!sh.games.empty() || def.always) shelves.push_back(sh);
+			// on the home row with something to start in it. PortMaster's own entry counts: it is what gets ports, and
+			// with it left out, deleting the last port took PortMaster off the row too (reachable again only through
+			// Shown systems > Ports > Always; QA 2026-10-26). Shown systems > Ports > Hidden takes it off
+			bool launchable = !sh.games.empty();
+			if (launchable || def.always || mode == "show") shelves.push_back(sh);
 		}
 		arrange();
 		if (lib >= (int)shelves.size()) lib = 0;
@@ -802,7 +836,9 @@ namespace banana
 		for (auto& g : s.games) { if (g.plays > 0) r.played++; secs += g.seconds; }
 		r.time = fmtTime(secs);
 		r.fav = favSystems.count(s.def.id) > 0;
-		int res = resumeIndex(s);
+		// (one of the menu's own pages, as Files: never played, so no "Not played yet" chip for its one entry, nor "Last
+		// played: Files"; X on it opens the page as A does)
+		int res = s.def.run.compare(0, 7, "banana:") == 0 ? -1 : resumeIndex(s);
 		if (res >= 0)
 		{
 			const Game& g = s.games[res];
@@ -834,8 +870,13 @@ namespace banana
 		r.box = g.box; r.cart = g.cart; r.label = g.label;
 		if (r.box.empty() && isDsRom(g.path, systemOf(i).id)) r.box = romIconCover(dataDir, g.path);	// its own icon
 		std::string ext = lower(g.path.substr(g.path.rfind('.') + 1));
-		// the DS ROM's own icon when there is no art (from inside a .zip too)
-		if (ext == "nds" || (ext == "zip" && systemOf(i).id == "nds")) r.rom = g.path;
+		// the DS ROM's own icon on the cartridge: when there is no art (from inside a .zip too), or on every one when the
+		// owner picked the icons (DS cartridges: Game icon)
+		if (ext == "nds" || (ext == "zip" && systemOf(i).id == "nds"))
+		{
+			if (dsCartIcons || g.box.empty()) r.rom = g.path;
+			if (dsCartIcons) r.cartArt = romIconCover(dataDir, g.path);	// ("" without an icon: the art, as before)
+		}
 		r.icon = themedIcon(systemOf(i).id, lookOf(systemOf(i).id).icon);
 		// what the emulator last said of its RetroAchievements (the block is left out until a game has said so)
 		if (g.achB > 0)
@@ -977,6 +1018,8 @@ namespace banana
 		std::vector<std::pair<std::string, std::string>> r;
 		if (library && game >= 0 && game < gameCount()) r.push_back({ "X", "Options" });	// (the game page: a DS game's emulator and shader, any game's name)
 		r.push_back({ "SELECT", "Search" });
+		// the settings (and from them Y: Sleep, Restart, Shut down) said on the home screen, where nothing showed START
+		if (!library) r.push_back({ "START", "Settings" });
 		return r;
 	}
 

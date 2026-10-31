@@ -16,10 +16,10 @@ export KT_REC=$OUT/rec
 STANDIN=$PWD/kiwami/tests/fake-tailscale.sh
 CONF=$FX/data/settings.conf
 fail=0
-# Settings opens on its groups: R four times is Network, A its list, Down twice the Tailscale row (after Wi-Fi and
-# Network). (The headless script updates Settings after a wait, a shot or a touch, not after a press: "wait 1" takes
-# the helper's answer in.)
-ROW="home 0; press start; press r; press r; press r; press r; press a; press down; press down; wait 1"
+# Settings opens on its groups: R four times is Network, A its list, Down five times the Tailscale row (after Wi-Fi,
+# Network and Bluetooth's three rows, before File sharing). (The headless script updates Settings after a wait, a shot
+# or a touch, not after a press: "wait 1" takes the helper's answer in.)
+ROW="home 0; press start; press r; press r; press r; press r; press a; press down; press down; press down; press down; press down; wait 1"
 # a key of the keyboard by touch (row 0-4, column 0-9), as ui/tests/run.sh types
 key() { for rc in "$@"; do awk -v rc=$rc 'BEGIN { split(rc, a, ","); printf "touch 1 %.0f %.0f; ", 18 + a[2] * 60.4 + 27, 80 + a[1] * 66 + 29 }'; done; }
 

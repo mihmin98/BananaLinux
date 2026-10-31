@@ -1,0 +1,34 @@
+#!/bin/sh
+# Over-the-air updates off in the fork's image (BR2_PACKAGE_KIWAMI_OTA_OFF): upstream's update script asks upstream's
+# GitHub releases (and its beta feed), whose image written to the other slot would replace the fork at the next
+# restart. kiwami/post-build.sh makes this the first case of the image's update script for its check, download and
+# beta-login, so Settings > System > Update says why in the place it shows each one's answer: the check's error in
+# banana/updates/.check ("The check failed: ..."), the download's in /run/banana/update-download, the beta channel's
+# login on stdout. Update packages on the card (update list / apply) work as upstream's.
+#   ota-off check [--daily] | download | beta-login
+RUN=${BANANA_RUN:-/run/banana}
+DATA=${BANANA_DATA:-/data/banana}
+BOARD=${BANANA_BOARD:-$(cat /etc/banana/board 2>/dev/null)}
+VERSION=${BANANA_VERSION:-$(cat /etc/banana/version 2>/dev/null)}
+WHY="updates over the air are off in this build of the kiwami fork (upstream's would replace it): copy a kiwami update package (banana-${BOARD:-<board>}-<version>.update.tar) to banana/updates on the card"
+case $1 in
+check)
+    # (Wi-Fi's daily check asks nothing and says nothing)
+    [ "$2" = --daily ] && exit 0
+    mkdir -p $DATA/updates 2>/dev/null
+    printf 'state=error\nerror=%s\nboard=%s\ncurrent=%s\nchannel=github\n' "$WHY" "$BOARD" "$VERSION" > $DATA/updates/.check.new &&
+        mv -f $DATA/updates/.check.new $DATA/updates/.check
+    cat $DATA/updates/.check 2>/dev/null
+    echo "update: $WHY" >&2
+    exit 1 ;;
+download)
+    mkdir -p $RUN 2>/dev/null
+    echo "failed: $WHY" > $RUN/update-download.new && mv -f $RUN/update-download.new $RUN/update-download
+    echo "update: $WHY" >&2
+    exit 1 ;;
+beta-login)
+    echo "$WHY"
+    exit 1 ;;
+esac
+echo "ota-off: $1: not one of check, download, beta-login" >&2
+exit 2

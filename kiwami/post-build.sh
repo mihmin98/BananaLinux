@@ -2,6 +2,7 @@
 # The fork's Buildroot post-build, run after upstream's (buildroot/board/rgds/post-build.sh) and after both rootfs
 # overlays have been copied: changes to upstream's files in the image go here rather than a whole copy in the overlay.
 #   post-build.sh <target dir> <board: rgds | rgds-plus | universal>
+# (BR2_CONFIG, the board's .config, as Buildroot gives it to post-build scripts: the fork's options)
 set -e
 T=$1
 
@@ -34,3 +35,15 @@ awk -v want="gba gb gbc nes snes megadrive n64" '
     END { for (s in need) if (!(s in has)) { print "kiwami/post-build.sh: no ext line for [" s "] in " FILENAME > "/dev/stderr"; bad = 1 }
           exit bad }' "$C" > "$C.tmp" || { rm -f "$C.tmp"; exit 1; }
 mv "$C.tmp" "$C"
+
+# Over-the-air updates off (BR2_PACKAGE_KIWAMI_OTA_OFF): the update script's check, download and beta-login go to the
+# fork's ota-off, which says why, through a first case arm before upstream's own. Upstream's "case $1 in" line is
+# matched exactly: if it moves or changes shape, the build stops here rather than offering upstream's releases.
+if [ -n "$BR2_CONFIG" ] && grep -qx 'BR2_PACKAGE_KIWAMI_OTA_OFF=y' "$BR2_CONFIG"; then
+    U=$T/usr/libexec/banana/update
+    [ -x "$T/usr/libexec/kiwami/ota-off" ] || { echo "kiwami/post-build.sh: no usr/libexec/kiwami/ota-off in the target" >&2; exit 1; }
+    [ "$(grep -c '^case \$1 in$' "$U")" = 1 ] || { echo "kiwami/post-build.sh: no single 'case \$1 in' line in $U" >&2; exit 1; }
+    grep -q '^check|download|beta-login) exec /usr/libexec/kiwami/ota-off ' "$U" ||
+        sed -i '/^case \$1 in$/a check|download|beta-login) exec /usr/libexec/kiwami/ota-off "$@" ;;\t# kiwami: over-the-air updates off' "$U"
+    grep -q '^check|download|beta-login) exec /usr/libexec/kiwami/ota-off ' "$U" || { echo "kiwami/post-build.sh: ota-off not hooked into $U" >&2; exit 1; }
+fi

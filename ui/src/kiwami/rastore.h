@@ -55,8 +55,6 @@ namespace banana::kiwami::ra
 	bool adopt(const Card& c);
 	// signed in with a password the server hasn't given a token for yet (offline, or the setup's step)
 	bool needsToken(const Card& c);
-	// the token for the game panel's account (retroarch.cfg's cheevos_username, which never has the token beside it)
-	std::string panelToken(const Card& c, const std::string& user);
 
 	// the Stats page's numbers for an account, kept for offline: per system in CONSOLES' order
 	struct SystemStats { int started = 0, completed = 0, mastered = 0, unlocked = 0; };

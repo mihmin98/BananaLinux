@@ -173,6 +173,10 @@ namespace banana
 				continue;
 			}
 			fd = f;
+			// the master: the boot's early light-up (--panels-on) may still hold it for a moment; it gives it up as soon
+			// as its modesets are queued (a second at most)
+			masterAtOpen = handOver;
+			for (int t = 0; !handOver && t < 100; t++) { if (drmSetMaster(fd) == 0) { masterAtOpen = true; break; } usleep(10000); }
 			W = found[0].mode.hdisplay; H = found[0].mode.vdisplay;
 			for (int s = 0; s < 2; s++)
 			{
@@ -182,7 +186,7 @@ namespace banana
 				if (!makeBuf(p[s].buf[0]) || !makeBuf(p[s].buf[1])) { err = "can't make scanout buffers"; close(); return false; }
 			}
 			// panels still dark (the boot): both lit at once; else (lit, or the driver won't) as always
-			if (!lightBoth()) restore();
+			if (!lightBoth() && !handOver) restore();
 			return true;
 		}
 		return false;
@@ -220,12 +224,20 @@ namespace banana
 				ok = id && drmModeAtomicAddProperty(req[s], plane, id, values[k]) >= 0;
 			}
 		}
-		int waiting = 0, lit = 0;
+		// (the flip events' counter is a member, not a local: one that comes after the second's wait below would
+		// otherwise be written into a stack frame that is gone, review 0.4.3)
+		int& waiting = lightWaiting;
+		waiting = 0;
+		int lit = 0;
 		for (int s = 0; s < 2 && ok; s++)
-			if (drmModeAtomicCommit(fd, req[s], DRM_MODE_ATOMIC_ALLOW_MODESET | DRM_MODE_ATOMIC_NONBLOCK | DRM_MODE_PAGE_FLIP_EVENT, &waiting) == 0)
+			if (drmModeAtomicCommit(fd, req[s], DRM_MODE_ATOMIC_ALLOW_MODESET | DRM_MODE_ATOMIC_NONBLOCK | DRM_MODE_PAGE_FLIP_EVENT, &lightWaiting) == 0)
 				{ waiting++; lit++; }
-		// both done (a flip event each), a second at most
-		for (int t = 0; t < 100 && waiting > 0; t++)
+		// --panels-on: the master given up now (the menu can take the display while the panels power up), the wait
+		// longer (the RG DS Plus's panels take ~1.2 s): its fd closed on the way, the scanout's black buffers go with it
+		// and the panels stay lit for the menu
+		if (handOver) drmDropMaster(fd);
+		// both done (a flip event each), a second at most (3 for --panels-on)
+		for (int t = 0; t < (handOver ? 300 : 100) && waiting > 0; t++)
 		{
 			pollfd pf = { fd, POLLIN, 0 };
 			if (poll(&pf, 1, 10) > 0)
@@ -244,10 +256,36 @@ namespace banana
 		return lit == 2 && waiting == 0;
 	}
 
+	// Every plane upright: a plane's rotation outlives the program that set it, and the menu draws with the legacy
+	// calls, which never set it. A game that turned the panels' planes (Pocket Native leaves the RG DS Plus's at
+	// rotate-180 + reflect-x, its GL picture's way up) had the menu upside down after it. Only planes not upright are
+	// touched (a property read each otherwise).
+	static void planesUpright(int fd)
+	{
+		drmSetClientCap(fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
+		drmModePlaneRes* pr = drmModeGetPlaneResources(fd);
+		for (uint32_t j = 0; pr && j < pr->count_planes; j++)
+			if (drmModeObjectProperties* pp = drmModeObjectGetProperties(fd, pr->planes[j], DRM_MODE_OBJECT_PLANE))
+			{
+				for (uint32_t i = 0; i < pp->count_props; i++)
+					if (drmModePropertyRes* p = drmModeGetProperty(fd, pp->props[i]))
+					{
+						if (!strcmp(p->name, "rotation") && pp->prop_values[i] != DRM_MODE_ROTATE_0 &&
+							drmModeObjectSetProperty(fd, pr->planes[j], DRM_MODE_OBJECT_PLANE, p->prop_id, DRM_MODE_ROTATE_0) == 0)
+							fprintf(stderr, "banana-ui: display: plane %u was turned (rotation 0x%llx): upright again\n",
+								pr->planes[j], (unsigned long long)pp->prop_values[i]);
+						drmModeFreeProperty(p);
+					}
+				drmModeFreeObjectProperties(pp);
+			}
+		drmModeFreePlaneResources(pr);
+	}
+
 	void Display::restore()
 	{
 		if (fd < 0) return;
 		drmSetMaster(fd);
+		if (leased < 0) planesUpright(fd);
 		for (int s = 0; s < 2; s++)
 			if (s != leased) drmModeSetCrtc(fd, p[s].crtc, p[s].buf[p[s].front].fb, 0, 0, &p[s].conn, 1, (drmModeModeInfo*)p[s].mode);
 		pending = 0;
@@ -354,8 +392,13 @@ namespace banana
 			}
 			else
 			{
-				// no flip (lost master, a modeset in the way): put the buffer up directly
-				drmModeSetCrtc(fd, pn.crtc, bf.fb, 0, 0, &pn.conn, 1, (drmModeModeInfo*)pn.mode);
+				// no flip (lost master, a modeset in the way): put the buffer up directly. The master taken again first:
+				// opened while the menu before it still played its shutdown animation (a restart), the wait in open()
+				// (1 s) ran out, and without the master every flip and every modeset failed: the panels kept the old
+				// picture while frames were drawn for nobody (the first-boot arrival "froze", 2026-10-27)
+				failedFlips++;
+				drmSetMaster(fd);
+				if (drmModeSetCrtc(fd, pn.crtc, bf.fb, 0, 0, &pn.conn, 1, (drmModeModeInfo*)pn.mode) != 0) failedSets++;
 				pn.front = back;
 			}
 		}

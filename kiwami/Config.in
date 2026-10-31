@@ -10,4 +10,11 @@ config BR2_PACKAGE_KIWAMI_RETROARCH_MASTER
 	help
 	  RetroArch built from its master branch at the commit kiwami/local.mk pins, with the fork's patches
 	  (kiwami/patches/retroarch/) instead of upstream's. Off, RetroArch is upstream's release.
+
+config BR2_PACKAGE_KIWAMI_OTA_OFF
+	bool "Over-the-air updates off"
+	help
+	  Settings > System > Update no longer checks or downloads upstream's releases (GitHub, the beta channel), which
+	  would replace the fork: kiwami/post-build.sh sends the update script's check, download and beta-login to
+	  /usr/libexec/kiwami/ota-off, which says so. Update packages on the card still install. Off, upstream's updates.
 endmenu

@@ -1,12 +1,11 @@
 #pragma once
 // banana-ui (kiwami): the fork's rows and pages in Settings. Settings::Kiwami is nested in upstream's Settings (one
 // line in settings.h), so it reads the screen's state and draws with its own helpers (box, text, face...), and
-// settings.cpp calls it through one-line hooks marked "kiwami:". Its own rows' keys start with "kiwami." (the core
-// rows are on upstream's core.<system>, handled by upstream as its own); its pages are Settings' page KIWAMI, and its
-// texts typed on upstream's keyboard come back as ENTRY_KIWAMI.
-//   Other systems > NES, Game Boy, Game Boy Color, Mega Drive (core.nes, core.gb, core.gbc, core.megadrive): upstream's
-//   core or the fork's second one (Mesen, SameBoy, Genesis Plus GX), each row shown when its core is in
-//   /usr/lib/libretro (or KIWAMI_LIBRETRO in the environment: the test's stand-in folder).
+// settings.cpp calls it through one-line hooks marked "kiwami:". Its own rows' keys start with "kiwami."; its pages are
+// Settings' page KIWAMI, and its texts typed on upstream's keyboard come back as ENTRY_KIWAMI.
+//   Other systems: the fork's second cores are choices in upstream's own core rows (a row per system with two cores
+//   installed): Mesen and Genesis Plus GX are in upstream's list already, SameBoy joins the Game Boy's and Game Boy
+//   Color's through kiwami::moreCores (its kiwami: line in coreChoices).
 //   Network > Tailscale (kiwami.tailscale): the state, from the Tailscale helper (/usr/libexec/kiwami/tailscale, or
 //   KIWAMI_TAILSCALE in the environment: the test's stand-in), asked once when Settings opens and only while
 //   settings.conf has tailscale = on. A opens Tailscale's page (tailscale.cpp).
@@ -33,9 +32,6 @@ namespace banana
 		struct Colours { rnds::Color ink, muted, line, accent, onPick, onPickAccent; };
 		static Colours colours(bool light);			// the screen's palette (defined in settings.cpp, beside it)
 		static void rows(Settings& s, const char* group);	// build(): the fork's rows in a group, after upstream's
-		// gameOpen(): the game panel's token when retroarch.cfg has none (always: ra-secrets scrubs it out), from
-		// accounts.conf, where Banana keeps it, for the panel's account
-		static std::string panelToken(const std::string& user, const std::string& data);
 		void opened();								// Settings opening: the rows' values, asked once
 		bool owns(const std::string& key) const { return key.compare(0, 7, "kiwami.") == 0; }
 		Result open(const std::string& key);		// A on a row of the fork's: its page
@@ -164,4 +160,14 @@ namespace banana
 		void raGameBadges();
 		void raBadge(const std::string& name, float x, float y, float size, bool dim);
 	};
+
+	namespace kiwami
+	{
+		// upstream's coreChoices (Settings > Other systems: a system's installed cores, values and names in step), then:
+		// SameBoy for the Game Boy and Game Boy Color when it is installed (the image's /usr/lib/libretro or the Core
+		// Downloader's /data/retroarch/cores), after upstream's; and with KIWAMI_LIBRETRO in the environment (the headless
+		// test's stand-in folder) upstream's own cores found there count as installed, in upstream's order
+		void moreCores(const std::string& system, const std::vector<std::pair<const char*, const char*>>& upstream,
+			std::vector<std::string>& names, std::vector<std::string>& values);
+	}
 }

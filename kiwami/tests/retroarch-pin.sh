@@ -24,7 +24,7 @@ fail() { echo "retroarch-pin: FAIL: $*" >&2; exit 1; }
 # pin (kiwami/local.mk) or turn it off, and update the stamp here.
 UP_VERSION=v1.22.2
 UP_JOYPADS=f3b62b847ed21939b668b897b18bbc1defbaae05
-UP_PATCHES=0a6ab4470613449b3910ca1788386257a32381a6aae1efeef0ae909be1c7f94f
+UP_PATCHES=23c32cc69d5b104bc93ee8b870158bf3eda2743b63d34cc74c99b3e2782d2f66
 # guard: upstream's RetroArch in $KIWAMI_TREE (the repository by default) against the stamps
 guard() {
     t=${KIWAMI_TREE:-.}/buildroot
@@ -103,6 +103,9 @@ check() {
         [ "$(var KIWAMI_RETROARCH_HOTKEYS)" = "$HOTKEYS" ] || fail "${O##*/}: KIWAMI_RETROARCH_HOTKEYS is '$(var KIWAMI_RETROARCH_HOTKEYS)'"
         case " $(var RETROARCH_POST_INSTALL_TARGET_HOOKS) " in *" KIWAMI_RETROARCH_HOTKEYS_INSTALL "*) ;;
         *) fail "${O##*/}: no hotkeys hook in RETROARCH_POST_INSTALL_TARGET_HOOKS" ;; esac
+        # About's version: master and its short commit, after upstream's install wrote the whole one
+        case " $(var RETROARCH_POST_INSTALL_TARGET_HOOKS) " in *" KIWAMI_RETROARCH_VERSION_FILE "*) ;;
+        *) fail "${O##*/}: no version hook in RETROARCH_POST_INSTALL_TARGET_HOOKS" ;; esac
     else
         [ "$v" = v1.22.2 ] || fail "off: RETROARCH_VERSION is '$v', not upstream's v1.22.2"
         [ "$h" = "$PWD/buildroot/package/retroarch/retroarch.hash $PWD/buildroot/patches/retroarch/retroarch.hash" ] ||
@@ -111,8 +114,8 @@ check() {
         [ "$ON_OPTS" = "$c $OPTS" ] || fail "off: RETROARCH_CONF_OPTS isn't the on one's without the fork's: $c"
         [ "$(dirs "$p")" = "$(printf '%s\n' "$PWD/buildroot/package/retroarch" "$PWD/buildroot/patches/retroarch" | sort)" ] ||
             fail "off: the patch step applies $(dirs "$p" | tr '\n' ' ')"
-        case " $(var RETROARCH_POST_INSTALL_TARGET_HOOKS) " in *" KIWAMI_RETROARCH_HOTKEYS_INSTALL "*)
-            fail "off: the hotkeys hook is in RETROARCH_POST_INSTALL_TARGET_HOOKS" ;; esac
+        case " $(var RETROARCH_POST_INSTALL_TARGET_HOOKS) " in *" KIWAMI_RETROARCH_HOTKEYS_INSTALL "*|*" KIWAMI_RETROARCH_VERSION_FILE "*)
+            fail "off: the fork's hooks are in RETROARCH_POST_INSTALL_TARGET_HOOKS" ;; esac
     fi
 }
 

@@ -296,13 +296,6 @@ namespace banana::kiwami::ra
 		return !a.user.empty() && !a.password.empty() && a.token.empty();
 	}
 
-	std::string panelToken(const Card& c, const std::string& user)
-	{
-		// (run-retroarch gives RetroArch accounts.conf's account, so the two name the same one, whatever the case)
-		Account a = account(c);
-		return !user.empty() && sameName(a.user, user) ? a.token : "";
-	}
-
 	bool saveStats(const Card& c, const std::string& name, const Stats& s, std::string& error)
 	{
 		std::string f = fileName(name);

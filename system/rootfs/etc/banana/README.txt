@@ -13,12 +13,20 @@ keyboard there. Or put your network in banana/wifi.conf on a computer:
         psk="password"
     }
 
+Files (a tile on the home screen): copy, move, rename and delete files and folders on this card and the second
+SD card, and make folders. Y marks, X says what can be done. The card's own folders stay where they are.
+A copy keeps Files open till it is done; Y twice stops it.
+
 File sharing: Settings > Network > File sharing puts this card on the network (\\<address>\banana in Windows,
 smb://<address>/banana on a Mac), so games can be copied in over Wi-Fi. It asks for a name and a password:
 name banana, password linux, until you change them in Settings > Network > Sharing name and password (Sharing
 login > Guest: no password, only on a network you trust). The second SD card, while it's in, is \\<address>\sd2.
 DS saves from ROCKNIX beside the games (roms/nds/<game>.dsv) are taken when a game starts here and BananaOS has no save
 for it yet (so a save you delete here comes back from that file; delete or rename the .dsv too).
+
+Bluetooth: Settings > Network > Bluetooth switches it on (off at first: it costs battery), Bluetooth devices
+finds controllers, headphones and speakers in pairing mode and pairs them (A). While Bluetooth headphones are
+connected the sound plays on them and the volume keys change their volume. Pairings: banana/bluetooth.tar.
 
 SSH (for working on Banana itself): put your public key in banana/ssh/authorized_keys, switch on
 Settings > Network > SSH, then ssh root@<address>. Keys only, no passwords.
@@ -29,7 +37,8 @@ menu (an A that stopped working): Settings > Other systems > Reset RetroArch put
 the old ones moved to retroarch/backup-<date>; saves, states and the RetroAchievements account stay.
 
 Settings: banana/settings.conf (menu), banana/bananad.conf (sleep, power), banana/systems.conf (the systems
-list, to add or change emulators: copy banana/systems.conf.default to it and change the copy).
+list, to add or change emulators: only what you change, e.g. "[psx]" and a "run = ..." line under it; it is merged over
+the built-in list, banana/systems.conf.default, so the rest keeps up with updates).
 A DS game's own emulator and shader (X on the game in the library): banana/nds-per-game.conf and
 banana/nds-per-game-shader.conf, one "<game's file name> = <emulator or shader>" a line (none: no shader); a game
 not in them follows Settings > Nintendo DS.

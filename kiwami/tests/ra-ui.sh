@@ -135,16 +135,17 @@ for size in 640x480 1024x768; do
     lines "touch " "banana-ui: touch 116 327: settings result 1|"
     same g7 t7 bot
 
-    # Mode (the group's fourth row): RIGHT on it is Hardcore, and Other systems > RetroAchievements (L three times, its third row) says the
-    # same; the other way round too. (Upstream's rows write /data/retroarch/retroarch.cfg, which the test machine
-    # hasn't got: their values are checked on screen, the file on the device, M1.)
-    OTHER_RA="press l; press l; press l; press down; press down; wait 1"
+    # Mode (the group's fourth row): RIGHT on it is Hardcore, and Other systems > RetroAchievements (B to the groups,
+    # LEFT three times to Other systems, A, its seventh row; L and R in a list go a page) says the same; the other way
+    # round too. (Upstream's rows write /data/retroarch/retroarch.cfg, which the test machine hasn't got: their values
+    # are checked on screen, the file on the device, M1.)
+    OTHER_RA="press b; press left; press left; press left; press a; press down; press down; press down; press down; press down; press down; wait 1"
     run $size mode-before "$SET; $R4; press down; press a; press down; press down; press down; shot mode0; $OTHER_RA; shot ora0"
     unlogged "in both rows"
     run $size mode "$SET; $R4; press down; press a; press down; press down; press down; press right; wait 1; shot mode1; $OTHER_RA; shot ora1"
     logged "banana-ui: kiwami: Mode Hardcore in both rows"
     differ mode0 mode1 bot; differ ora0 ora1 bot
-    run $size mode-back "$SET; press r; press r; press r; press a; press down; press down; press right; wait 1; press left; wait 1; shot ora2; press r; press r; press r; press down; press down; press down; wait 1; shot mode2"
+    run $size mode-back "$SET; press r; press r; press r; press a; press down; press down; press down; press down; press down; press down; press right; wait 1; press left; wait 1; shot ora2; press b; press right; press right; press right; press a; press down; press down; press down; wait 1; shot mode2"
     lines "in both rows" "banana-ui: kiwami: Mode Hardcore in both rows|banana-ui: kiwami: Mode Softcore in both rows|"
     same ora0 ora2 bot; same mode0 mode2 bot
 

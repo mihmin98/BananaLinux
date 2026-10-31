@@ -37,47 +37,31 @@ namespace banana
 		return q + "'";
 	}
 
-	// the libretro cores' folder: KIWAMI_LIBRETRO in the environment (the headless test's stand-in), else the image's
-	static std::string libretro()
+	void kiwami::moreCores(const std::string& system, const std::vector<std::pair<const char*, const char*>>& upstream,
+		std::vector<std::string>& names, std::vector<std::string>& values)
 	{
+		auto has = [&](const std::string& v) { return std::find(values.begin(), values.end(), v) != values.end(); };
 		const char* e = getenv("KIWAMI_LIBRETRO");
-		return e && *e ? e : "/usr/lib/libretro";
+		if (e && *e)
+		{
+			std::vector<std::string> n, v;
+			for (auto& c : upstream)
+				if (has(c.first) || access((std::string(e) + "/" + c.first + "_libretro.so").c_str(), F_OK) == 0) { n.push_back(c.second); v.push_back(c.first); }
+			names = n; values = v;
+		}
+		if ((system == "gb" || system == "gbc") && !has("sameboy"))
+			for (const char* d : { "/usr/lib/libretro", "/data/retroarch/cores", e && *e ? e : "" })
+				if (*d && access((std::string(d) + "/sameboy_libretro.so").c_str(), F_OK) == 0) { names.push_back("SameBoy"); values.push_back("sameboy"); break; }
 	}
 
 	// RetroAchievements > Mode's key: upstream's Other systems > RetroAchievements row's, in retroarch.cfg
 	static const char* const MODE = "cheevos_hardcore_mode_enable";
 
-	// Other systems: the fork's second cores, a row per system shown when the core is in the image. Upstream's
-	// core.<system> keys (run-retroarch reads them) as upstream's Game Boy Advance row has, so upstream loads, saves
-	// and resets them as any choice row; upstream's core first, its default
-	static const struct { const char* key; const char* label; const char* help; const char* names[2]; const char* values[2]; } CORES[] = {
-		{ "core.nes", "NES", "The emulator for NES games. FCEUmm: light and fast. Mesen: the most accurate, and heavier. "
-			"Each keeps its own saves and save states: switching back finds them again.", { "FCEUmm", "Mesen" }, { "fceumm", "mesen" } },
-		{ "core.gb", "Game Boy", "The emulator for Game Boy games. Gambatte: light and accurate. SameBoy: the most accurate, "
-			"and heavier. Each keeps its own saves and save states: switching back finds them again.", { "Gambatte", "SameBoy" }, { "gambatte", "sameboy" } },
-		{ "core.gbc", "Game Boy Color", "The emulator for Game Boy Color games. Gambatte: light and accurate. SameBoy: the most "
-			"accurate, and heavier. Each keeps its own saves and save states: switching back finds them again.", { "Gambatte", "SameBoy" }, { "gambatte", "sameboy" } },
-		{ "core.megadrive", "Mega Drive", "The emulator for Mega Drive games. PicoDrive: the fastest. Genesis Plus GX: more "
-			"accurate, with the better sound, and heavier. Each keeps its own saves and save states: switching back finds them "
-			"again.", { "PicoDrive", "Genesis Plus GX" }, { "picodrive", "genesis_plus_gx" } },
-	};
-
 	void Settings::Kiwami::rows(Settings& s, const char* group)
 	{
 		if (!s.kw) s.kw = std::make_shared<Kiwami>(s);	// (at the first build(), in Settings' constructor)
 		std::string keys;
-		if (strcmp(group, "Other systems") == 0)
-			for (auto& c : CORES)
-			{
-				if (access((libretro() + "/" + c.values[1] + "_libretro.so").c_str(), F_OK) != 0) continue;
-				Item it;
-				it.section = group; it.icon = "gamepad"; it.label = c.label; it.help = c.help;
-				it.file = s.data + "/settings.conf"; it.key = c.key;
-				it.names = { c.names[0], c.names[1] }; it.values = { c.values[0], c.values[1] };
-				s.items.push_back(it);
-				keys += std::string(keys.empty() ? "" : " ") + c.key;
-			}
-		else if (strcmp(group, "Network") == 0)
+		if (strcmp(group, "Network") == 0)
 		{
 			Item it;
 			it.section = group; it.icon = "phone"; it.label = "Tailscale"; it.key = "kiwami.tailscale"; it.kind = Item::PAGE;
@@ -115,16 +99,8 @@ namespace banana
 			s.items.push_back(m);
 			keys = it.key + " " + stats.key + " " + games.key + " " + m.key;
 		}
-		// (the tests read it, and on the device it says which of the fork's cores the image has)
+		// (the tests read it)
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
-	}
-
-	std::string Settings::Kiwami::panelToken(const std::string& user, const std::string& data)
-	{
-		if (user.empty()) return "";	// (achievements off)
-		std::string t = kiwami::ra::panelToken(kiwami::ra::Card(data), user);
-		fprintf(stderr, "banana-ui: ra: game panel: %s\n", t.empty() ? "no token in accounts.conf either" : "the token from accounts.conf");
-		return t;
 	}
 
 	// ---- the hooks, to the page that is open (or, for the rows' values in the background, to each page's part) ------

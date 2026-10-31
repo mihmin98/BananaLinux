@@ -516,41 +516,6 @@ static void testRaCard()
 	if (system(("rm -rf " + t).c_str()) != 0) {}
 }
 
-// the game panel's token, as a RetroArch game leaves the card: retroarch.cfg with the account's name and no token
-// (ra-secrets scrubs it out), accounts.conf with both. The panel (settings.cpp's gameOpen) reads the token from
-// retroarch.cfg and, when it has none there, asks panelToken (its kiwami: line, here as one expression)
-static void testPanelToken()
-{
-	using namespace banana::kiwami::ra;
-	const char* tmp = getenv("TMPDIR");
-	std::string tmpl = std::string(tmp && *tmp ? tmp : "/tmp") + "/kiwami-units-XXXXXX";
-	if (!mkdtemp(&tmpl[0])) { fprintf(stderr, "units: no temporary folder\n"); failed++; return; }
-	std::string t = tmpl;
-	mkdir((t + "/banana").c_str(), 0755);
-	mkdir((t + "/retroarch").c_str(), 0755);
-	Card card(t + "/banana");
-	auto panel = [&card](const std::string& user) {
-		std::string token = confGet(card.retroarch, "cheevos_token");
-		if (token.empty()) token = panelToken(card, user);
-		return token;
-	};
-	spit(card.retroarch, "cheevos_enable = \"true\"\ncheevos_username = \"Alice\"\n");
-	spit(card.accounts, "smb_user=me\nra_user=alice\nra_password=pw1\nra_retroarch_token=tok1\n");
-	EQ(panelToken(card, "Alice"), "tok1");
-	EQ(panel("Alice"), "tok1");
-	// another account in accounts.conf, or none: no token
-	spit(card.accounts, "ra_user=bob\nra_retroarch_token=tok2\n");
-	EQ(panelToken(card, "Alice"), "");
-	unlink(card.accounts.c_str());
-	EQ(panelToken(card, "Alice"), "");
-	EQ(panelToken(card, ""), "");
-	// a card from before the scrub, its token in retroarch.cfg: that one, as before
-	spit(card.retroarch, "cheevos_username = \"Alice\"\ncheevos_token = \"old\"\n");
-	spit(card.accounts, "ra_user=alice\nra_retroarch_token=tok1\n");
-	EQ(panel("Alice"), "old");
-	if (system(("rm -rf " + t).c_str()) != 0) {}
-}
-
 // a file's MD5 as md5sum computes it (not rcheevos' own MD5, which is what is tested)
 static std::string md5sum(const std::string& path)
 {
@@ -716,7 +681,6 @@ int main(int argc, char** argv)
 	testGrid();
 	testRa();
 	testRaCard();
-	testPanelToken();
 	testHash();
 	if (failed) { fprintf(stderr, "units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("units: %d checks passed\n", checks);

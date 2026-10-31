@@ -93,6 +93,43 @@ sed -i '/veto files/d' "$T/usr/libexec/banana/share"
 rm -rf "$T"
 echo "post-build: veto and 7z checked"
 
+# ... and, with BR2_PACKAGE_KIWAMI_OTA_OFF in the board's .config, sends the update script's check, download and
+# beta-login to ota-off (once, the same on a second run, nothing without the option, a stop without upstream's case
+# line); ota-off then says why where Settings shows each one's answer (list and apply, the card's packages, stay upstream's)
+T=$(mktemp -d)
+mkdir -p "$T/usr/libexec/banana" "$T/usr/libexec/kiwami" "$T/etc/banana" "$T/data/updates" "$T/run"
+cp system/rootfs/usr/libexec/banana/share system/rootfs/usr/libexec/banana/update "$T/usr/libexec/banana/"
+cp kiwami/rootfs/usr/libexec/kiwami/ota-off "$T/usr/libexec/kiwami/"
+cp system/rootfs/etc/banana/systems.conf "$T/etc/banana/"
+U=$T/usr/libexec/banana/update
+echo '# BR2_PACKAGE_KIWAMI_OTA_OFF is not set' > "$T/off.config"
+echo 'BR2_PACKAGE_KIWAMI_OTA_OFF=y' > "$T/on.config"
+BR2_CONFIG=$T/off.config sh kiwami/post-build.sh "$T" rgds
+cmp -s "$U" system/rootfs/usr/libexec/banana/update || { echo "ota-off: the update script changed with the option off" >&2; exit 1; }
+BR2_CONFIG=$T/on.config sh kiwami/post-build.sh "$T" rgds
+BR2_CONFIG=$T/on.config sh kiwami/post-build.sh "$T" rgds
+[ "$(grep -c 'ota-off' "$U")" = 1 ] || { echo "ota-off: hooked $(grep -c 'ota-off' "$U") times into the update script" >&2; exit 1; }
+[ "$(grep -A1 '^case \$1 in$' "$U" | tail -n 1 | cut -c1-26)" = 'check|download|beta-login)' ] ||
+    { echo "ota-off: its case isn't the first: $(grep -A1 '^case \$1 in$' "$U" | tail -n 1)" >&2; exit 1; }
+sh -n "$U"
+# (the image's paths, here in $T)
+sed -i "s|/usr/libexec/kiwami/ota-off|$T/usr/libexec/kiwami/ota-off|" "$U"
+upd() { BANANA_DATA=$T/data BANANA_RUN=$T/run BANANA_BOARD=rgds BANANA_VERSION=0.5.0.1 sh "$U" "$@"; }
+! upd check > "$T/out" 2>&1 || { echo "ota-off: the check succeeded" >&2; exit 1; }
+grep -qx 'state=error' "$T/data/updates/.check" && grep -q '^error=updates over the air are off in this build of the kiwami fork' "$T/data/updates/.check" ||
+    { echo "ota-off: the check's answer: $(cat "$T/data/updates/.check")" >&2; exit 1; }
+rm -f "$T/data/updates/.check"
+upd check --daily || { echo "ota-off: the daily check failed" >&2; exit 1; }
+[ ! -e "$T/data/updates/.check" ] || { echo "ota-off: the daily check wrote an answer" >&2; exit 1; }
+! upd download 2>/dev/null || { echo "ota-off: the download succeeded" >&2; exit 1; }
+grep -q '^failed: updates over the air are off' "$T/run/update-download" || { echo "ota-off: the download's answer: $(cat "$T/run/update-download")" >&2; exit 1; }
+! echo secret | upd beta-login > "$T/out" || { echo "ota-off: the beta login succeeded" >&2; exit 1; }
+grep -q 'banana-rgds-<version>.update.tar' "$T/out" || { echo "ota-off: the beta login's answer: $(cat "$T/out")" >&2; exit 1; }
+cp system/rootfs/usr/libexec/banana/update "$U"; sed -i 's/^case \$1 in$/case "$1" in/' "$U"
+! BR2_CONFIG=$T/on.config sh kiwami/post-build.sh "$T" rgds 2>/dev/null || { echo "ota-off: no failure without upstream's case line" >&2; exit 1; }
+rm -rf "$T"
+echo "post-build: over-the-air updates off checked"
+
 # every board configures with the fork's tree and options over upstream's, keeping all of the fork's options
 for b in rgds rgds_plus universal; do
     O=${TMPDIR:-/tmp}/kiwami-config-$b

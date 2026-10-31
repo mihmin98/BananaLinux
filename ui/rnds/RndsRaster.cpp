@@ -441,8 +441,15 @@ namespace rnds
 	static float sFallbackPx = 12, sDeviceScale = 1;
 	void setFallbackFont(std::shared_ptr<Font> f, float pixelSize, float deviceScale)
 	{
-		std::lock_guard<std::mutex> lock(sFtLock);
-		sFallback = f; sFallbackPx = pixelSize; sDeviceScale = deviceScale > 0 ? deviceScale : 1;
+		// the font it replaces is released after the lock: its destructor takes sFtLock (FT_Done_Face), so dropping it
+		// under the lock deadlocked the caller (0.5.0-beta.3: Settings > Credits froze the menu in English, where the
+		// menu had read the CJK font already)
+		std::shared_ptr<Font> old;
+		{
+			std::lock_guard<std::mutex> lock(sFtLock);
+			old = std::move(sFallback);
+			sFallback = std::move(f); sFallbackPx = pixelSize; sDeviceScale = deviceScale > 0 ? deviceScale : 1;
+		}
 	}
 	// the fallback's device size for text of `device` px: the whole multiple of its pixel size nearest the text's em (as
 	// a CJK typeface is set at the same size as the Latin beside it), never under one pixel per pixel
@@ -454,6 +461,7 @@ namespace rnds
 
 	static std::u32string (*sTranslate)(const std::u32string&) = nullptr;
 	void setTranslator(std::u32string (*translate)(const std::u32string&)) { sTranslate = translate; }
+	Translator translator() { return sTranslate; }
 
 	std::shared_ptr<Font> Font::load(const std::string& path)
 	{
@@ -638,6 +646,20 @@ namespace rnds
 	}
 
 	TextLine layoutEllipsis(const std::u32string& text, const TextStyle& st, int maxWidth) { return ellipsisOf(prepared(text, st), st, maxWidth); }
+
+	float marqueeOffset(double elapsed, float overflow, bool* moving, double* wake)
+	{
+		if (moving) *moving = false;
+		if (wake) *wake = -1;
+		if (overflow <= 0) return 0;
+		const double run = overflow / MARQUEE_SPEED * 1000, cycle = MARQUEE_PAUSE + run + MARQUEE_PAUSE;
+		double t = std::fmod(std::max(0.0, elapsed), cycle);
+		if (t < MARQUEE_PAUSE) { if (wake) *wake = MARQUEE_PAUSE - t; return 0; }
+		t -= MARQUEE_PAUSE;
+		if (t < run) { if (moving) *moving = true; if (wake) *wake = 0; return (float)(t / 1000 * MARQUEE_SPEED); }
+		if (wake) *wake = MARQUEE_PAUSE - (t - run);	// (still at the end, then back to the start)
+		return overflow;
+	}
 
 	// Banana: CJK text has no spaces: a line may break between any two of its characters (each its own word, joined
 	// without a space), but not before closing punctuation nor after an opening one

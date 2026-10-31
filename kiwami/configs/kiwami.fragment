@@ -17,3 +17,7 @@ BR2_PACKAGE_KIWAMI_LIBRETRO_GENESIS_PLUS_GX=y
 # which Buildroot reads before any package (and which still reads the output's own local.mk).
 BR2_PACKAGE_KIWAMI_RETROARCH_MASTER=y
 BR2_PACKAGE_OVERRIDE_FILE="$(BR2_EXTERNAL_KIWAMI_PATH)/local.mk"
+
+# Over-the-air updates off: upstream's releases would replace the fork (kiwami/rootfs/usr/libexec/kiwami/ota-off says
+# so on Settings > System > Update); the fork's update packages go on the card
+BR2_PACKAGE_KIWAMI_OTA_OFF=y

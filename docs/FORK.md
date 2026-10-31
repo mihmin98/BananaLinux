@@ -162,7 +162,7 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
        system/rootfs/usr/libexec/banana/share buildroot/package/retroarch/cores.in \
        system/rootfs/usr/libexec/banana/run-retroarch system/rootfs/etc/banana/retroarch.cfg \
        system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
-       buildroot/patches/retroarch/
+       buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update
    ```
    (the systems list, whose `ext` lines `kiwami/post-build.sh` adds `7z` to on seven systems (the build stops if
    one of them is gone; a new cartridge system may want it too), the defconfigs the fork adds to, the share script
@@ -171,9 +171,10 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    wants the same veto), `banana::Menu`, the interface the fork's theme
    implements: when it changes, `git diff $OLD main -- ui/src/carts.cpp` shows how upstream changed its own theme to
    match, and upstream's cores and the launcher that picks one: a core upstream adds that the fork already has
-   (Mesen, SameBoy, Genesis Plus GX) means the fork drops its package and row, and a change to how `run-retroarch`
-   reads `core.<system>`, or a row upstream adds for the NES, Game Boy, Game Boy Color or Mega Drive in
-   `ui/src/settings.cpp`, means the fork's rows have to follow; the fork's `core-overrides` hook sits after
+   (Mesen, SameBoy, Genesis Plus GX) means the fork drops its package, and the fork's cores are choices in upstream's
+   own core rows in Settings > Other systems (`RA_SYSTEMS` in `ui/src/settings.cpp`, which names Mesen and Genesis Plus
+   GX; SameBoy joins the Game Boy's through the fork's `kiwami::moreCores` hook at the end of `coreChoices`), so a
+   change to that table or to how `run-retroarch` reads `core.<system>` has to be followed; the fork's `core-overrides` hook sits after
    `run-retroarch`'s core log line and gives Mesen and SameBoy threaded video, so RetroArch's settings matter too:
    if upstream's `retroarch.cfg` turns `video_threaded` on for every core, the fork's overrides are no longer
    needed, and a moved `rgui_config_directory` moves where they are written. The fork's second hook there sits on the
@@ -187,7 +188,11 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    (`kiwami/patches/retroarch/`) shadow upstream's version and patches, so a change upstream makes there never
    reaches the image. `kiwami/tests/ci.sh` stops when upstream's `RETROARCH_VERSION`, `RETROARCH_JOYPADS_VERSION` or
    patches differ from what the fork last checked, and what to do is in the comment above the stamps in
-   `kiwami/tests/retroarch-pin.sh`).
+   `kiwami/tests/retroarch-pin.sh`; a download upstream adds to `RETROARCH_EXTRA_DOWNLOADS` needs its hash in the
+   fork's `kiwami/patches/retroarch/retroarch.hash`, or the download stops. And the update script: with
+   `BR2_PACKAGE_KIWAMI_OTA_OFF` on, `kiwami/post-build.sh` puts a first case arm after its `case $1 in` line that sends
+   `check`, `download` and `beta-login` to `/usr/libexec/kiwami/ota-off` (the build stops if that line changes shape);
+   a new command of upstream's that fetches from its releases wants the same).
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

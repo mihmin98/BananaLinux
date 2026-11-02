@@ -1777,6 +1777,7 @@ int main(int argc, char** argv)
 		return new RndsMenu(&lib, &be, o.assets, sc, applyTheme(theme, settings["accent"]) == "light" ? "light" : "dark");
 	};
 	std::atomic<bool> ready{ false };
+	const std::vector<std::string> bootRoots = lib.roots();	// kiwami: the second card's folder as the loader's read sees it
 	std::thread loader([&]
 	{
 		double t0 = nowMs();
@@ -1892,6 +1893,7 @@ int main(int argc, char** argv)
 	bool batteryDue = true;
 	RomWatch roms;
 	roms.watch(lib.watchDirs());
+	if (lib.roots() != bootRoots) roms.due = nowMs();	// kiwami: the second card came (or went) during the boot animation, before this watch: read again
 	// the volume and brightness keys' level card, 1.5 s from the last key (bananad changes the level and says so)
 	std::string osdLabel;
 	int osdPercent = 0;

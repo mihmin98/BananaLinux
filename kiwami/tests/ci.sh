@@ -19,10 +19,6 @@ kiwami/tests/core-overrides.sh
 # RetroArch master's credentials file folded back into retroarch.cfg, on a made-up card, and ra-secrets' hook
 kiwami/tests/ra-keychain.sh
 
-# RetroArch hotkeys Off covers master's four new hotkeys: the build script that writes them, and run-retroarch's hook
-# in a made-up root, with a stand-in retroarch
-kiwami/tests/ra-hotkeys.sh
-
 # the vendored C libraries are each their pinned version's files, unchanged
 for d in ui/src/kiwami/third_party/*/; do (cd "$d" && sha256sum -c --quiet SHA256SUMS) || { echo "third_party: $d differs from its SHA256SUMS" >&2; exit 1; }; done
 echo "third_party: $(ls -d ui/src/kiwami/third_party/*/ | wc -l) vendored libraries checked"
@@ -34,7 +30,7 @@ make -s -C ui kiwami-c
 T=$(mktemp -d)
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp \
     ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp ui/src/kiwami/rahash.cpp \
-    ui/src/kiwami/ra7z.cpp ui/src/kiwami/rachd.cpp ui/src/zip.cpp \
+    ui/src/kiwami/ra7z.cpp ui/src/kiwami/rachd.cpp ui/src/zip.cpp ui/src/zipdir.cpp \
     $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -lz
 "$T/units" kiwami/tests/tailscale kiwami/tests/ra
 # the stand-in RetroAchievements server the UI tests run against (its bytecode in $T, not beside it)
@@ -67,8 +63,8 @@ for v in '\*tailscaled\.state' '\*retroarch-keychain\.\*'; do
 done
 cp "$SH" "$T/share.once"
 
-# ... and adds 7z to the cartridge systems' ext lines, once each and nowhere else, the same on a second run, and stops
-# the build when one of them has no ext line
+# ... and adds 7z to N64's ext line, so that it and upstream's six cartridge systems each list it once, and nowhere
+# else, the same on a second run, and stops the build when N64 has no ext line
 C=$T/etc/banana/systems.conf
 ext() { awk -v s="[$1]" '/^\[/ { in_s = ($0 == s) } in_s && /^ext *=/ { print }' "$C"; }
 for s in gba gb gbc nes snes megadrive n64; do

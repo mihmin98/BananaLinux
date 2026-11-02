@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 	}
 }
 EOF
-    cp "$W/drastic" "$W/bananads"; cp "$W/drastic" "$W/retroarch"
+    cp "$W/drastic" "$W/bananads"; cp "$W/drastic" "$W/retroarch"; cp "$W/drastic" "$W/bananafront"
     [ "$1" = --build ] && exit 0
     mkdir -p /data 2>/dev/null || true
     exec unshare -m -p -f --mount-proc sh "$0" --inside "$W" "$ROOTFS"
@@ -92,6 +92,7 @@ for l in green:power red:status amber:charging; do mkdir -p /sys/class/leds/$l; 
 for b in backlight0 backlight1; do mkdir -p /sys/class/backlight/$b; echo 255 > /sys/class/backlight/$b/max_brightness; echo 200 > /sys/class/backlight/$b/brightness; echo 0 > /sys/class/backlight/$b/bl_power; done
 mkfifo /sys/power/state /dev/input/event0
 exec 3<>/dev/input/event0       # a writer that stays, so bananad's poll doesn't see a hang-up
+mkfifo /run/test/touch; exec 4<>/run/test/touch     # the stand-in touchscreen bananad reads unpolled (BANANAD_TEST_TOUCH)
 echo 0 > /run/test/lid
 
 pass=0 fail=0
@@ -111,7 +112,7 @@ gstate() { awk '{print $3}' /proc/$GAME/stat; }
 start() {   # start [bananad.conf lines]
     echo "s2idle [deep]" > /sys/power/mem_sleep     # the kernel's file always lists both
     printf '%s\n' "autosleep_minutes = 0" "sleep_check_hours = 0" "$@" > /data/banana/bananad.conf
-    BANANAD_TEST_LID=/run/test/lid "$W/bananad" & BD=$!
+    BANANAD_TEST_LID=/run/test/lid BANANAD_TEST_TOUCH=/run/test/touch "$W/bananad" & BD=$!
     sleep 0.5
 }
 stop() { kill $BD 2>/dev/null; wait $BD 2>/dev/null || true; }
@@ -299,6 +300,20 @@ grep -qx USR1 /run/test/bananads.log 2>/dev/null && grep -qx saved /run/test/ban
 grep -qx emulator=bananads /data/banana/resume-boot 2>/dev/null && ok "resume-boot: bananads" || bad "resume-boot: $(cat /data/banana/resume-boot 2>/dev/null)"
 stop; POWEROFF=0
 
+echo "10b. BananaFront: SIGUSR1 at the deadline, its automatic state (from /run/banana/game-id) counts as the save"
+mkdir -p /data/states/Gambatte
+export TEST_RESUME="/data/states/Gambatte/Banana Land.state.auto"
+printf 'version=1\nsystem=gb\nrom_base=Banana Land\nstate_dir=/data/states/Gambatte\n' > /run/banana/game-id
+game bananafront "/data/roms/gb/Banana Land.gb"
+start "poweroff_after_sleep_minutes = 0.02"
+ev $EV_KEY $KEY_POWER 1; ev $EV_KEY $KEY_POWER 0
+asleep && ok "suspended on the power button" || bad "no suspend"
+sleep 1.3; : > /sys/class/rtc/rtc0/wakealarm; wake
+poweroff && ok "shut down" || bad "no shutdown"
+grep -qx USR1 /run/test/bananafront.log 2>/dev/null && grep -qx saved /run/test/bananafront.log && ok "bananafront got SIGUSR1 and saved" || bad "bananafront: $(cat /run/test/bananafront.log 2>/dev/null)"
+grep -qx emulator=bananafront /data/banana/resume-boot 2>/dev/null && ok "resume-boot: bananafront" || bad "resume-boot: $(cat /data/banana/resume-boot 2>/dev/null)"
+stop; POWEROFF=0; rm -f /run/banana/game-id /data/banana/resume-boot
+
 export TEST_RESUME=
 echo "11. RetroArch: the slot down to its automatic one, SAVE_STATE, QUIT (through its command pipe)"
 mkdir -p /data/retroarch; printf 'state_slot = "2"\n' > /data/retroarch/retroarch.cfg
@@ -354,6 +369,137 @@ sleep 3     # (bananad looks again within 5 s)
 asleep && ok "asleep once the job is over" || bad "no idle sleep after the job"
 wake
 kill $JOB 2>/dev/null || true
+stop
+# more scenarios, a file per topic (tests/sleep-test.d), run here in turn with the helpers above
+for t in "$HERE"/tests/sleep-test.d/*.sh; do [ -f "$t" ] && . "$t"; done
+
+echo "15. a shutdown with the lid shut never sleeps (#46): bananad's own (power held), then rcK's (the menu's Shut down)"
+# (init here only notes the SIGUSR2, so bananad runs on as it does while rcK unmounts the card)
+start "power_long_ms = 300"
+ev $EV_KEY $KEY_POWER 1; sleep 0.6; ev $EV_KEY $KEY_POWER 0
+poweroff && ok "power held: shutting down" || bad "no shutdown on power held"
+echo 1 > /run/test/lid; ev $EV_SW $SW_LID 1
+asleep 2>/dev/null && { bad "the lid shut during the shutdown wrote mem"; wake; } || ok "no sleep on the lid once shutting down"
+sleep 5.5   # ("lid still closed" is tried again after 5 s without a press)
+asleep 2>/dev/null && { bad "lid still closed slept during the shutdown"; wake; } || ok "no sleep for the lid still closed either"
+stop; POWEROFF=0; echo 0 > /run/test/lid
+start
+: > /run/banana/powering-off     # rcK's first line
+echo 1 > /run/test/lid; ev $EV_SW $SW_LID 1
+asleep 2>/dev/null && { bad "the lid shut during rcK wrote mem"; wake; } || ok "no sleep on the lid while rcK runs"
+echo 0 > /run/test/lid; ev $EV_SW $SW_LID 0; sleep 0.3
+rm -f /run/banana/powering-off
+echo 1 > /run/test/lid; ev $EV_SW $SW_LID 1
+asleep && ok "the lid sleeps again without the flag (a sleep is still a sleep)" || bad "no sleep on the lid"
+echo 0 > /run/test/lid; wake
+stop
+
+echo "16. the buttons heard at once at start, while the sound is still being set up (a slow alsactl restore, #87)"
+mkdir -p "$W/bin"; printf '#!/bin/sh\nsleep 3\n' > "$W/bin/alsactl"; chmod +x "$W/bin/alsactl"
+: > /data/banana/asound.state; : > /run/banana/boot-times
+rm -f /run/banana/game.pid /run/banana/bananad-ready
+P0=$PATH; PATH="$W/bin:$PATH"; start; PATH=$P0
+[ -e /run/banana/bananad-ready ] && ok "bananad-ready at once, for rcS (the sound still being set up)" || bad "no bananad-ready while the sound is set up"
+grep -q 'bananad: sound ready' /run/banana/boot-times && bad "sound ready before alsactl was done" || ok "the sound not ready yet"
+ev $EV_KEY $KEY_POWER 1; ev $EV_KEY $KEY_POWER 0
+# within a second (a bananad still in its setup would take the press only after alsactl's 3 s)
+s=1; for i in $(seq 10); do [ "$(cat /proc/$BD/wchan 2>/dev/null)" = wait_for_partner ] && { s=0; break; }; sleep 0.1; done
+[ $s = 0 ] && ok "the power button heard within a second, during the sound's setup (a sleep)" || bad "the power button not heard during the sound's setup"
+wake
+for i in $(seq 40); do grep -q 'bananad: sound ready' /run/banana/boot-times && break; sleep 0.1; done
+grep -q 'bananad: sound ready' /run/banana/boot-times && ok "boot-times: $(grep 'bananad' /run/banana/boot-times | tr -s ' ' | tr '\n' ';')" || bad "no 'sound ready' in boot-times"
+stop
+rm -f /data/banana/asound.state
+
+echo "15. a download of Files' (banana-fetch's runner in transfer.pid): the lid shut makes it dark, the sleep waits for it"
+asleep_in() { for i in $(seq $(($1 * 10))); do [ "$(cat /proc/$BD/wchan 2>/dev/null)" = wait_for_partner ] && return 0; sleep 0.1; done; return 1; }
+setsid sleep 600 & DL=$!; sleep 0.1; echo $DL > /run/banana/transfer.pid
+start
+echo 1 > /run/test/lid; ev $EV_SW $SW_LID 1; sleep 1
+asleep 2>/dev/null && { bad "it suspended during the download"; wake; } || ok "no suspend during the download"
+[ "$(cat /sys/class/backlight/backlight0/bl_power)" = 4 ] && ok "panels dark" || bad "backlight bl_power $(cat /sys/class/backlight/backlight0/bl_power)"
+grep -q 'lid closed during a download' /data/banana/logs/sleep.log && ok "logged" || bad "not logged"
+kill $DL; wait $DL 2>/dev/null || true      # the download done: asleep within the 5 s look
+asleep_in 9 && ok "asleep once the download is done" || bad "awake after the download"
+grep -q 'sleep (lid closed, the download done)' /data/banana/logs/sleep.log && ok "logged why" || bad "the sleep's reason not logged"
+echo 0 > /run/test/lid; wake
+stop
+echo "   ...and the idle sleep waits for it too"
+setsid sleep 600 & DL=$!; sleep 0.1; echo $DL > /run/banana/transfer.pid
+start "autosleep_minutes = 0.03" "dim_minutes = 0"     # 1.8 s
+sleep 2.5
+asleep 2>/dev/null && { bad "it slept for idleness during a download"; wake; } || ok "no idle sleep during a download"
+kill $DL; wait $DL 2>/dev/null || true
+asleep_in 9 && ok "asleep for idleness once it is done" || bad "no idle sleep after the download"
+wake
+stop
+echo "   ...and with a game running, the lid sleeps as ever"
+setsid sleep 600 & DL=$!; sleep 0.1; echo $DL > /run/banana/transfer.pid
+setsid sleep 600 & GAME=$!; sleep 0.1; echo $GAME > /run/banana/game.pid
+start
+echo 1 > /run/test/lid; ev $EV_SW $SW_LID 1
+asleep && ok "suspended on the lid with a game running (the download is paused)" || bad "no suspend with a game running"
+echo 0 > /run/test/lid; wake
+kill $DL; wait $DL 2>/dev/null || true
+rm -f /run/banana/game.pid /run/banana/transfer.pid
+stop
+echo "   ...and a runner left stopped (banana-ui went away during a game) holds nothing: the lid sleeps"
+setsid sleep 600 & DL=$!; sleep 0.1; kill -STOP $DL; echo $DL > /run/banana/transfer.pid
+start
+echo 1 > /run/test/lid; ev $EV_SW $SW_LID 1
+asleep && ok "suspended on the lid with the runner stopped" || bad "a stopped runner held the sleep"
+echo 0 > /run/test/lid; wake
+kill -CONT $DL; kill $DL; wait $DL 2>/dev/null || true
+rm -f /run/banana/transfer.pid
+
+echo "27. the flight recorder: buttons, the lid, a sleep, touches (no position while typing), a marker (Select held) and the stop, on the card"
+# tev <type> <code> <value>...: events on the stand-in touchscreen, with the monotonic time (as the real one stamps them)
+tev() { python3 -c "
+import struct, sys, time
+t = time.clock_gettime(time.CLOCK_MONOTONIC); s = int(t); u = int((t - s) * 1e6)
+a = [int(x) for x in sys.argv[1:]]
+sys.stdout.buffer.write(b''.join(struct.pack('llHHi', s, u, a[i], a[i + 1], a[i + 2]) for i in range(0, len(a), 3)))" "$@" >&4; }
+rm -rf /data/banana/logs/sessions; rm -f /run/banana/keyboard
+start "recorder = on"
+[ -e /run/banana/recording ] && ok "recording (/run/banana/recording, for the menu's dot)" || bad "no /run/banana/recording"
+F=$(cat /run/banana/recording 2>/dev/null)
+ev $EV_KEY 305 1; ev $EV_KEY 305 0                          # A (BTN_EAST on the RG DS pad)
+tev 3 57 1  3 53 100  3 54 200  0 0 0                      # a touch: tracking id 1 at 100,200, then the report
+tev 3 57 -1  0 0 0                                          # its lift
+sleep 0.5
+: > /run/banana/keyboard
+tev 3 57 2  3 53 300  3 54 50  0 0 0;  tev 3 57 -1  0 0 0  # a touch while typing
+sleep 0.5; rm -f /run/banana/keyboard
+ev $EV_KEY 314 1; ev $EV_KEY 314 0; sleep 0.3                  # a quick Select: no marker
+grep -q "MARK" "$F" 2>/dev/null && bad "a marker from a quick press" || ok "a quick Select: no marker"
+ev $EV_KEY 314 1; sleep 2.4; ev $EV_KEY 314 0                  # Select held 2 s: a marker (written at once)
+sleep 0.5
+grep -q "MARK .*marker 1" "$F" 2>/dev/null && ok "Select held 2 s: the marker on the card at once" || bad "no marker in $F"
+[ "$(cat /sys/class/leds/green:power/brightness)" = 128 ] && ok "the power LED back after its blinks" || bad "LED $(cat /sys/class/leds/green:power/brightness)"
+# banana-ui's events: a datagram on the recorder's socket, copied in (control characters made spaces)
+python3 -c "
+import socket; s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+s.sendto(b'setting\tTurn off when idle: 1 hour -> 5 minutes', '/run/banana/recorder.sock')
+s.sendto(b'game\tstart: Peel Quest\n(nds, run-nds)', '/run/banana/recorder.sock')"
+sleep 0.3
+echo 1 > /run/test/lid; ev $EV_SW $SW_LID 1
+asleep && ok "asleep" || bad "no sleep"
+grep -q "button .*a down" "$F" && grep -q "lid .*closed" "$F" && ok "flushed before the sleep: the button, the lid" || bad "not flushed before the sleep: $(tail -n 3 "$F" 2>/dev/null | tr '\n' '|')"
+grep -q "setting  Turn off when idle: 1 hour -> 5 minutes" "$F" && ok "banana-ui's event copied in (setting)" || bad "no setting line: $(grep -c setting "$F")"
+grep -q "game     start: Peel Quest (nds, run-nds)" "$F" && ok "its newline made a space: one line each" || bad "game line: $(grep game "$F")"
+grep -q "touch .*down 100,200" "$F" && grep -q "touch .*up 100,200" "$F" && ok "the touch, where (100,200)" || bad "touch lines: $(grep touch "$F" | tr '\n' '|')"
+grep -q "keyboard open: where not recorded" "$F" && ! grep -q "300,50" "$F" && ok "the touch while typing, without where" || bad "while typing: $(grep touch "$F" | tr '\n' '|')"
+echo 0 > /run/test/lid; wake; sleep 0.3
+python3 -c "
+import socket; socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM).sendto(b'menu\trestart (Settings)', '/run/banana/recorder.sock')"
+stop    # (SIGTERM, as rcK's: before the unmount, the last lines written out at once, not at the next half-minute)
+grep -q "menu     restart (Settings)" "$F" && grep -q "bananad  stopped" "$F" && ok "stopped: banana-ui's last event and the stop, on the card" || bad "at the stop: $(tail -n 2 "$F" | tr '\n' '|')"
+sed -n '1,2p' "$F" | grep -q "flight recorder" && ok "the session's header" || bad "header: $(head -n1 "$F")"
+start
+[ ! -e /run/banana/recording ] && ok "recorder off: not recording" || bad "recording with recorder off"
+n=$(ls /data/banana/logs/sessions | wc -l)
+ev $EV_KEY 304 1; ev $EV_KEY 304 0; sleep 0.3
+[ "$(ls /data/banana/logs/sessions | wc -l)" = "$n" ] && ok "recorder off: no new session" || bad "a session with recorder off"
 stop
 
 kill $UI $GAME 2>/dev/null || true

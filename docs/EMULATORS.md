@@ -77,8 +77,9 @@ newer of DraStic's `drastic/backup/<game>.dsv` and BananaDS's `saves/nds/<game>.
 form. DraStic's `.dsv` is the raw save; a `.dsv` from DeSmuME (a card scraped under another firmware) carries
 DeSmuME's footer, which `nds-saves` reads (`padded_size`, 36 bytes from the end) and leaves off for BananaDS.
 The size is kept exactly — melonDS picks the save memory from the ROM, and a file of another size is what makes a
-game report its save data as corrupted — and the file replaced is kept as `.bak`. The emulators' own save states
-(`.dss`, `.mst`) are not shared.
+game report its save data as corrupted — and the file replaced is kept as `.bak`. A newer file under 512 bytes is
+no save (the smallest, a 4 Kbit EEPROM's, is 512): it never goes over one with something in it, which goes over it
+instead (#96). The emulators' own save states (`.dss`, `.mst`) are not shared.
 
 ## Settings
 
@@ -94,6 +95,26 @@ the mic off. BananaDS separates the two, because `mic.threshold = 0` means "gate
 rather than "off": its **Microphone** row writes `mic.source = device|none`, and **Mic sensitivity** writes
 `mic.threshold`. The launchers write the mic keys a card is missing once and never touch a card that already has
 them, so a choice made in Settings survives updates.
+
+**Buttons** (Settings > Nintendo DS > Buttons) are the one setting both emulators share, so a DS game plays the same
+in either: what L2, R2, L3 and R3 do, in `banana/settings.conf` (`nds_btn_l2` ... `nds_btn_r3`: L2 swaps the screens,
+R2 fast-forwards on and off, L3 blows on the mic, R3 nothing by default; the RG DS Plus has no R3). F + R saves and
+F + L loads a state in both, whatever they are. `nds-buttons` gives them to each emulator as it starts: BananaDS as
+`BANANADS_INPUT_<BUTTON>`; DraStic as its controls in `drastic.cfg` (save and load state, fast-forward, the fake
+microphone, the menu, a DS button: controls_a, then controls_b), the screens' swap as SuperDrastic's
+`DSFLIP_SWAP_BUTTONS`. DraStic's save and load state controls always have a button, joystick buttons 30 and 31 (no pad
+has them) when none of the four is set to them: SuperDrastic presses them for F + R and F + L, its menu's Save and
+Load and Quick resume (`buildroot/patches/superdrastic/0001-*`). Those lines of `drastic.cfg` are Banana's, set again
+at every start; the rest of DraStic's buttons stay its own menu's.
+
+The other systems have a **Buttons** page too (Settings > Other systems > Buttons; one page for each system, `ra_btn_l2.<system>` ... `ra_btn_r3.<system>` and `ra_swap_ab.<system>`): L2,
+R2, L3 or R3 pressed alone does a job of RetroArch's instead of the game's button (fast-forward on and off, save or
+load a state, the menu, pause, a screenshot, nothing; R2 fast-forwards by default). RetroArch's own hotkeys only work
+with F held, so `run-retroarch` lists the jobs in `/run/banana/ra-buttons` and moves those buttons' RetroPad binds to
+joystick buttons no pad has (30-33; put back after the game), and bananad sends the job's command down RetroArch's
+stdin pipe when the button is pressed without F. PlayStation and N64 games keep the four buttons, which they use.
+The left stick works as the d-pad in every system but N64 (RetroArch's `input_player1_analog_dpad_mode = "1"`, for the
+run only); a PlayStation game with the core's DualShock pad keeps its analog stick.
 
 ## BananaDS
 
@@ -112,8 +133,11 @@ handhelds themselves.
   still shows a new frame each refresh. In QEMU the virtio GPU can't scale planes, so the frame is copied and scaled
   by a whole number on the CPU instead.
 - **Input**: the pad and keyboards read (never grabbed), the bottom touchscreen by `BANANADS_TOUCH`. F + Start quits
-  (with the resume state), F + R saves slot 1, F + L loads it.
-- **In-game menu**: L3 pauses the game and opens SuperDrastic's menu, in BananaOS's colours, on both panels: Resume,
+  (with the resume state), F + R saves slot 1, F + L loads it. Each button does what its `input.<button>` says
+  (`buildroot/patches/bananads/0010-*`, #55, #52): a DS button, or a job (the menu, swap the screens, save or load slot
+  1, fast-forward held or on/off, a screenshot, a blow on the mic while held, nothing). L2, R2, L3 and R3's come from
+  Settings > Nintendo DS > Buttons (below); the others are the pad as printed unless bananads.conf says otherwise.
+- **In-game menu**: F or HOME (or a button set to Menu) pauses the game and opens SuperDrastic's menu, in BananaOS's colours, on both panels: Resume,
   Save and Load (8 slots with their pictures; a load can be undone), Quick settings (volume and brightness the way
   bananad keeps them, the microphone's meter and a blow), Restart game, Quit game. Touch works on it too.
 - **Clocks**: its own governor: under `banana-perf superdrastic`'s `performance` governor it lowers
@@ -151,3 +175,80 @@ wins over the file and would freeze the settings screen's choices. Both launcher
 frame statistics in the log) or `BANANADS_POWER_CPU_LATENCY_US=100` (the cores kept out of deep idle while a game
 runs: ~1.5% faster, a battery cost not measured yet). BananaDS needs no BIOS or firmware files (melonDS's FreeBIOS and a
 generated firmware).
+
+## BananaFront
+
+BananaOS's own frontend for the libretro cores of the systems RetroArch ran (`/usr/bin/bananafront`, source
+`~/banana-emu/BananaFront` until it has a GitHub home; launcher `run-bananafront`). It does what RetroArch did here and
+nothing more, in the same files, so a game goes on in either:
+
+- **Started** by `run-retroarch` when Settings > Other systems > Frontend (`ra_frontend`) says so: `auto` = the
+  systems in run-retroarch's `BF_SYSTEMS` (checked on both handhelds; 2026-11-01: gb gbc gba megadrive pico-8 nes snes),
+  unless RetroAchievements is in Hardcore; `bananafront` = every 2D system; `retroarch` = never. N64 and PlayStation
+  always stay on RetroArch.
+- **Picture:** the game panel by banana-ui's DRM lease (+ a free overlay plane for pop-ups), else DRM master on the
+  panel RetroArch's `video_monitor_index` names. The display plane scales the core's own picture (no GPU); with
+  `ra_shader` the GPU draws libretro's zfast-lcd / zfast-crt / sharp-bilinear (SuperDrastic's shader folder).
+- **Sound:** ALSA `default` at 48 kHz, `ra_audio_latency`'s buffer, dynamic rate control against the panel's refresh.
+- **Files:** RetroArch's names and formats: saves `/data/saves/<core>/<game>.srm` (`/data/saves/gba` for every GBA
+  core), states `/data/states/<core>/<game>.state[N]` (RASTATE in RZIP) + `.png` thumbnails, `.state.auto` for Quick
+  resume (`savestate_auto_save`), screenshots `/data/screenshots/<game>-YYMMDD-HHMMSS.png`, core options read from
+  RetroArch's `config/<core>/<core>.opt` and `<game>.opt` (never written).
+  Archives: a zip's member (stored or deflate) is read in memory; a .7z, or a zip compressed with bzip2, LZMA,
+  Deflate64 and the like, is unpacked with 7zz into `/run/banana/rom-cache/<pid>/` (removed when the game ends).
+- **Buttons:** F + START quit, F + X (or F alone) the menu, F + R / F + L save / load state, F + R2 fast-forward,
+  F + SELECT screenshot, F + Y FPS counter, F + UP / DOWN the slot; L2/R2/L3/R3 alone as Settings > Other systems >
+  Buttons (`ra_btn_*`) says.
+- **Game panel and bananad:** RetroArch's command words on stdin (`SAVE_STATE`, `LOAD_STATE`, `MENU_TOGGLE`,
+  `FAST_FORWARD`, `QUIT`, `READ_CORE_MEMORY`, `AUDIO_REINIT`... + `SAVE_STATE_SLOT n` / `LOAD_STATE_SLOT n`),
+  replies on stdout; RetroAchievements' `[RCHEEVOS]` lines in `/run/banana/retroarch.log` for the panel; SIGUSR1 =
+  quit with the automatic state (bananad's Power off after sleeping), SIGTERM = quit with the saves written.
+- **Companion:** `/run/banana/game-id` and the shared-memory export of COMPANION-SPEC.md (BANANA_COMPANION).
+- **RetroAchievements:** rcheevos with the setup's account (accounts.conf; RetroArch's token reused), softcore or
+  hardcore as RetroArch's setting, answers cached in `/data/banana/ra-cache` for offline starts.
+- **Clock:** by default the system's profile (schedutil) chooses, with a floor under it: `scaling_min_freq` goes up a
+  step on a late frame or when a second's slowest frame passes 80 % of a refresh, down after 10 s without (max
+  1416 MHz, put back at exit; `BANANAFRONT_FLOOR=0` turns it off). `bananafront_cpugov = on`: its own clock governor
+  instead (performance governor + `scaling_max_freq`, per game, remembered in `/data/bananafront/cpugov`).
+- **Slow frames:** a frame that misses its refresh is caught up (run with its picture not shown) in the same refresh
+  when two fit, else while the next flip waits, so the sound never loses a frame to it.
+- Logs: `/data/banana/logs/bananafront.log` (a stats line every 10 s with `BANANAFRONT_STATS=<file>`).
+## BananaNES
+
+BananaNES is the NES / Famicom core: a fork of libretro-fceumm (github.com/libretro/libretro-fceumm, by CaH4e3 and the
+FCEUmm developers; GPL-2.0, history and licence kept) tuned for the Cortex-A55 handhelds. It is a libretro core
+(`/usr/lib/libretro/banananes_libretro.so`, package `buildroot/package/libretro-banananes`) that runs in BananaFront or
+RetroArch: Settings > Other systems > NES core. It reports itself as "FCEUmm", so saves, save states and core options are the
+same files as libretro-fceumm's: switching cores loses nothing.
+
+- **Exactness**: its output (picture, sound, save RAM, save state bytes) is identical to libretro-fceumm's on every ROM
+  checked: the stress ROM, a VRC3 cycle-IRQ test ROM, three free homebrew games, 136 community accuracy test ROMs
+  (blargg and others), 687 register-fuzz runs over every mapper, under other core options (PAL, Dendy, sound quality, overclocking, no sprite limit, NTSC filter, palettes,
+  overscan crop), on the PC and on the RG DS. Savestates load across the two cores. One deliberate difference: upstream's VRC2 save state (mappers 22, 23, 25) ended with unrelated bytes because an array lacked its terminator; BananaNES writes it terminated.
+- **Speed** (RG DS, stress ROM): BananaFront pinned at 1416 MHz 1.19 ms per frame against 3.93 ms (the title scene
+  busy-waits on $2002 like polling games do); 60 % -> 29 % of a core with the governor; RetroArch's CPU work over the whole
+  9-scene loop -38 %. Core options cost less too (CPU seconds for 3000 frames, RG DS at 1416 MHz): sound quality High 16.6 -> 8.2, Very High 20.0 -> 11.2, NTSC filter 15.7 -> 8.4. What does it: -O3 -flto and profile-guided optimisation, the CPU core's registers and cycle counters
+  kept in locals with inline RAM/ROM fast paths and an APU hook that only runs at its events, the palette table rebuilt only when
+  the palette changes, run-length APU mixing, NEON for the palette blit, the sprite scan and the background tiles.
+- **Companion**: the libretro memory map has RAM at 0x0000, PRG-RAM at 0x6000 (named ram / sram / exram), `companion/nes/` in
+  its repo holds the tier-1 definition of the stress ROM.
+- **Tests and tools** (in the BananaNES repo, `banana/tools`): `check-all.sh` (every exactness check), `devcheck.sh` (the same on a
+  handheld), `nesrun` (a headless libretro host), the stress ROM and its drivers (`tools/stress-roms/nes`).
+
+## BananaSNES
+
+BananaSNES (`libretro-bananasnes`, `bananasnes_libretro.so`; https://github.com/JorreFog/BananaSNES) is Snes9x (the libretro port, the core
+0.5.0 ships) tuned for the two handhelds and run by BananaFront. Snes9x's licence allows free distribution only, so BananaSNES is free
+too; the credit for the emulation is the Snes9x authors' (`LICENSE` in the repo).
+
+- **Chosen** per system in Settings > Other systems > Super Nintendo > core (BananaSNES next to Snes9x); the default stays Snes9x in RetroArch until
+  it is switched after the tests on both handhelds. Chosen, BananaSNES runs in BananaFront even with Frontend on Auto (`run-retroarch`).
+- **What differs from Snes9x**: only changes that measured faster on the handhelds' stress ROM and left the picture and sound bit-identical
+  (checked on 70 example ROMs and the stress ROM's three variants, and EarthBound's first minute on the Plus): a lazily advanced SPC700 timer set,
+  rendering in 16-line bands (all layers of a band before the next, for the A55's shared cache), profile-guided optimisation with a profile
+  recorded on the Plus; plus the complete libretro memory map for the game companion (WRAM $7E0000, cartridge SRAM at the virtual $1000000, SA-1 I-RAM).
+- **Measured** (tools/stress-roms/snes v4, BananaFront on the RG DS Plus, 1992 MHz, the stress loop): retro_run per frame racer / action / town / audio:
+  Snes9x 3.97 / 3.98 / 5.12 / 3.66 ms -> BananaSNES 3.51 / 3.53 / 4.32 / 3.17 ms (-11 to -16%); SA-1 variant -15%, Super FX variant -9%; with BananaFront's
+  clock governor the stock core needs a 1156 MHz mean for the same smoothness, BananaSNES holds 805 MHz. Against RetroArch + Snes9x the whole process uses
+  25-37% less CPU. EarthBound (owner's game, Plus): identical picture and sound for 3600 frames, about -5% on top of the lazy timers (the profile is from the
+  stress ROM and homebrew). Details, every attempt and the exactness gates: the repo's BANANA.md and tools/stress-roms/snes/CALIBRATION.md.

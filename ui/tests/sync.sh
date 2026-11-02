@@ -47,7 +47,7 @@ echo "the user's own" > "$OUT/ra/roms/gba/Old Game (USA).gba"
 bs ra pair "$U" > "$OUT/romm-pair.log" 2>&1 & PP=$!
 for i in $(seq 30); do grep -q '^pair ' "$OUT/ra/run/sync.status" 2>/dev/null && break; sleep 0.2; done
 UC=$(st ra | cut -d' ' -f2)
-case "$(st ra)" in "pair "*" $U/pair/device") ;; *) bad "RomM pairing showed no code: $(st ra)";; esac
+case "$(st ra)" in "pair $UC $U/pair/device?user_code=$UC") ;; *) bad "RomM pairing showed no code, or an address without it (#141): $(st ra)";; esac
 curl -s -XPOST "$U/test/approve" -d "{\"user_code\": \"$UC\"}" >/dev/null
 wait $PP || bad "RomM pairing failed: $(cat "$OUT/romm-pair.log")"
 grep -q '"token": "rmm_' "$OUT/ra/banana/romsync.json" || bad "no RomM token on the card"
@@ -89,6 +89,68 @@ grep -q "^nds	nds/Peel Quest (USA).nds	.*	0	0$" "$OUT/pick-games.tsv" || bad "ga
 : > "$OUT/rc/banana/homesync-games.txt"
 bs rc sync > "$OUT/pick-sync2.log" 2>&1 || bad "pick sync 2: $(tail -3 "$OUT/pick-sync2.log")"
 has "rc/roms/gba/Banana Run (USA).gba"
+# games to the second SD card (homesync_roms_to = sd2; its roms folder is the one run/sd2/roms names, as the sd2
+# script writes it): new games go there with their covers and gamelist, a game already on this card stays here, a
+# card that's out holds its games back (never this card instead), and back in nothing downloads twice
+card rd
+CODE=$(curl -s -XPOST "$U/test/paircode" | python3 -c 'import json,sys; print(json.load(sys.stdin)["code"])')
+bs rd pair "$U" "$CODE" >/dev/null 2>&1 || bad "rd: pairing failed: $(st rd)"
+printf 'homesync_roms_to = sd2\n' > "$OUT/rd/banana/settings.conf"
+S2=$OUT/rd-sd2/roms; mkdir -p "$S2" "$OUT/rd/run/sd2" "$OUT/rd/roms/nds"; echo "$S2" > "$OUT/rd/run/sd2/roms"; : > "$OUT/rd/run/sd2/slot"
+cp "$L/nds/Peel Quest (USA).nds" "$OUT/rd/roms/nds/"
+bs rd sync > "$OUT/sd2-sync1.log" 2>&1 || bad "sd2 sync: $(tail -3 "$OUT/sd2-sync1.log")"
+[ -f "$S2/gba/Banana Run (USA).gba" ] && [ -f "$S2/gba/media/box/Banana Run (USA).png" ] || bad "sd2: the new game and its cover aren't on the second card"
+grep -q '<path>./Banana Run (USA).gba</path>' "$S2/gba/gamelist.xml" 2>/dev/null || bad "sd2: no gamelist entry on the second card"
+[ -e "$OUT/rd/roms/gba/Banana Run (USA).gba" ] && bad "sd2: a game for the second card came to this one"
+[ -e "$S2/nds/Peel Quest (USA).nds" ] && bad "sd2: a game already on this card was downloaded to the second card"
+bs rd games 2>/dev/null | grep -q "^gba	gba/Banana Run (USA).gba	.*	1$" || bad "sd2: games doesn't list the second card's game as on the handheld"
+rm "$OUT/rd/run/sd2/roms"
+bs rd sync > "$OUT/sd2-sync2.log" 2>&1
+grep -q "the second SD card is out" "$OUT/sd2-sync2.log" || bad "sd2: the card being out wasn't reported: $(tail -2 "$OUT/sd2-sync2.log")"
+[ -e "$OUT/rd/roms/gba/Banana Run (USA).gba" ] && bad "sd2: with the second card out, its game came to this card"
+echo "$S2" > "$OUT/rd/run/sd2/roms"
+bs rd sync > "$OUT/sd2-sync3.log" 2>&1 || bad "sd2 sync 3: $(tail -3 "$OUT/sd2-sync3.log")"
+grep -q "0 to download" "$OUT/sd2-sync3.log" || bad "sd2: back in, a game downloaded again: $(head -2 "$OUT/sd2-sync3.log")"
+# a game the sync put on this card, deleted from it since: it comes back as a new game, to the second card
+rm "$OUT/rd/roms/nds/Peel Quest (USA).nds"
+bs rd sync > "$OUT/sd2-sync4.log" 2>&1 || bad "sd2 sync 4: $(tail -3 "$OUT/sd2-sync4.log")"
+[ -f "$S2/nds/Peel Quest (USA).nds" ] || bad "sd2: a game deleted from this card came back to it, not to the second card"
+[ -e "$OUT/rd/roms/nds/Peel Quest (USA).nds" ] && bad "sd2: a game deleted from this card was downloaded to it again"
+# a fresh second card (in, but no roms folder): the sync makes the folder and runs the sd2 scan (a stand-in here that
+# writes the path as the sd2 script does), and the games go there
+card rf
+CODE=$(curl -s -XPOST "$U/test/paircode" | python3 -c 'import json,sys; print(json.load(sys.stdin)["code"])')
+bs rf pair "$U" "$CODE" >/dev/null 2>&1 || bad "rf: pairing failed: $(st rf)"
+printf 'homesync_roms_to = sd2\n' > "$OUT/rf/banana/settings.conf"
+mkdir -p "$OUT/rf-sd2" "$OUT/rf/run/sd2"; : > "$OUT/rf/run/sd2/slot"
+printf '#!/bin/sh\n[ -d "%s/roms" ] && echo "%s/roms" > "%s"\n' "$OUT/rf-sd2" "$OUT/rf-sd2" "$OUT/rf/run/sd2/roms" > "$OUT/sd2-scan"; chmod +x "$OUT/sd2-scan"
+BANANA_SD2=$OUT/rf-sd2 BANANA_SD2_SCAN=$OUT/sd2-scan bs rf sync > "$OUT/sd2-fresh.log" 2>&1 || bad "sd2 fresh card: $(tail -3 "$OUT/sd2-fresh.log")"
+[ -f "$OUT/rf-sd2/roms/gba/Banana Run (USA).gba" ] || bad "sd2: a fresh second card got no roms folder and games: $(grep -i 'second\|error' "$OUT/sd2-fresh.log" | head -2)"
+# games copied by hand to the second card: adopted there (recorded as the second card's), so the next sync downloads
+# nothing; and a state that recorded them as this card's (0.5.0.1-romm's bug) heals: adopted again, nothing downloaded
+card rg
+CODE=$(curl -s -XPOST "$U/test/paircode" | python3 -c 'import json,sys; print(json.load(sys.stdin)["code"])')
+bs rg pair "$U" "$CODE" >/dev/null 2>&1 || bad "rg: pairing failed: $(st rg)"
+printf 'homesync_roms_to = sd2\nhomesync.gba = off\nhomesync.psx = off\n' > "$OUT/rg/banana/settings.conf"
+G2=$OUT/rg-sd2/roms; mkdir -p "$G2/nds" "$OUT/rg/run/sd2"; echo "$G2" > "$OUT/rg/run/sd2/roms"; : > "$OUT/rg/run/sd2/slot"
+cp "$L/nds/Peel Quest (USA).nds" "$G2/nds/"
+bs rg sync > "$OUT/sd2-adopt1.log" 2>&1 || bad "sd2 adopt: $(tail -3 "$OUT/sd2-adopt1.log")"
+grep -q "0 to download" "$OUT/sd2-adopt1.log" || bad "sd2: a game on the second card was downloaded again: $(head -2 "$OUT/sd2-adopt1.log")"
+grep -q '"nds/Peel Quest (USA).nds": "sd2"' "$OUT/rg/banana/romsync.json" || bad "sd2: an adopted game wasn't recorded as the second card's"
+bs rg sync > "$OUT/sd2-adopt2.log" 2>&1
+grep -q "0 to download" "$OUT/sd2-adopt2.log" || bad "sd2: the next sync downloaded an adopted game: $(head -2 "$OUT/sd2-adopt2.log")"
+[ -e "$OUT/rg/roms/nds/Peel Quest (USA).nds" ] && bad "sd2: an adopted game came to this card"
+python3 -I -c 'import json,sys; p=sys.argv[1]; d=json.load(open(p)); d["state"]["where"]={}; json.dump(d, open(p, "w"))' "$OUT/rg/banana/romsync.json"
+bs rg sync > "$OUT/sd2-adopt3.log" 2>&1
+grep -q "0 to download" "$OUT/sd2-adopt3.log" || bad "sd2: a state with the game recorded on this card downloaded it again: $(head -2 "$OUT/sd2-adopt3.log")"
+grep -q '"nds/Peel Quest (USA).nds": "sd2"' "$OUT/rg/banana/romsync.json" || bad "sd2: the state wasn't healed"
+# homesync_roms_to = sd2 on a handheld without a second slot (a card moved over): new games come to this card
+card re
+CODE=$(curl -s -XPOST "$U/test/paircode" | python3 -c 'import json,sys; print(json.load(sys.stdin)["code"])')
+bs re pair "$U" "$CODE" >/dev/null 2>&1 || bad "re: pairing failed: $(st re)"
+printf 'homesync_roms_to = sd2\n' > "$OUT/re/banana/settings.conf"
+bs re sync > "$OUT/sd2-noslot.log" 2>&1 || bad "sd2 without a slot: $(tail -3 "$OUT/sd2-noslot.log")"
+has "re/roms/gba/Banana Run (USA).gba"
 # a sync killed while it runs (Stop, a shutdown): the status says "error stopped" at once, not "running" for 120 s
 # (killed by its sync.pid, as the menu's Stop does: $! is a subshell under dash, Ubuntu's sh, and killing that would
 # leave banana-sync running with the lock held, so every later sync of this card would say "already running")
@@ -155,7 +217,53 @@ grep -q "changed on the card, kept" "$OUT/romm-sync4.log" || bad "a ROM changed 
 rm -rf "$L/nds" "$L/gba" "$L/psx"; bs ra sync > "$OUT/romm-sync5.log" 2>&1
 has "ra/roms/psx/Disc Game (USA).m3u"
 bs ra status | grep -q "paired with RomM 5.4.1" || bad "status: $(bs ra status)"
+# each sync's report kept on the card (banana/logs/sync.log, the one before as sync.log.1)
+grep -q "^done: " "$OUT/ra/banana/logs/sync.log" 2>/dev/null || bad "no sync report in banana/logs/sync.log"
+[ -f "$OUT/ra/banana/logs/sync.log.1" ] || bad "the sync before's report wasn't kept as sync.log.1"
+# an automatic sync with Auto sync off says nothing and leaves the last report where it is
+cp "$OUT/ra/banana/logs/sync.log" "$OUT/sync-log-before"
+bs ra sync --auto quit >/dev/null 2>&1
+cmp -s "$OUT/sync-log-before" "$OUT/ra/banana/logs/sync.log" || bad "an automatic sync that did nothing replaced the last sync's report"
 bs ra forget; [ -f "$OUT/ra/banana/romsync.json" ] && bad "forget left the pairing"
+
+# ---------------------------------------------------------------- RomM on https (#109)
+# behind a certificate of its own making (no CA on the handheld for it): https typed is used as it is, the check
+# refuses it until Settings' Check certificate is Off, and http to the TLS port is a quick none, not a hang
+TLS=$OUT/tls; mkdir -p "$TLS"
+if openssl req -x509 -newkey rsa:2048 -nodes -subj /CN=romm.lan -days 2 -keyout "$TLS/key.pem" -out "$TLS/cert.pem" >/dev/null 2>&1; then
+    TP=$(port)
+    FAKE_ROMM_TLS="$TLS/cert.pem:$TLS/key.pem" python3 "$HERE/tests/fake-romm.py" "$TP" "$L" 2> "$OUT/romm-tls.log" & PIDS="$PIDS $!"
+    for i in $(seq 50); do curl -sk "https://127.0.0.1:$TP/api/heartbeat" >/dev/null && break; sleep 0.1; done
+    card ta
+    [ "$(bs ta probe "https://127.0.0.1:$TP" | cut -d' ' -f1)" = none ] || bad "https: a certificate of no CA's was taken with Check certificate On"
+    printf 'homesync_tls = off\n' > "$OUT/ta/banana/settings.conf"
+    [ "$(bs ta probe "https://127.0.0.1:$TP")" = "romm https://127.0.0.1:$TP RomM 5.4.1" ] || bad "https probe: $(bs ta probe "https://127.0.0.1:$TP")"
+    t0=$(date +%s); r=$(bs ta probe "127.0.0.1:$TP"); t1=$(date +%s)
+    [ "$(echo "$r" | cut -d' ' -f1)" = none ] || bad "http to the TLS port: $r"
+    [ $((t1 - t0)) -le 3 ] || bad "http to the TLS port took $((t1 - t0)) s"
+    # a bare address: Romhost's 8092 first, https (443) when nothing answers on the http ports. 443 needs its own network
+    # namespace (root in there, nobody's port 443 out here)
+    if unshare -rn true 2>/dev/null; then
+        export BIN OUT HERE TLS L
+        unshare -rn sh -c '
+            ip link set lo up
+            BANANA_SYNC_NAME=t "$BIN" --root "$OUT/ta" --run "$OUT/ta/run" --status "$OUT/ta/run/sync.status" probe 127.0.0.1 > "$OUT/tls-none.txt"
+            FAKE_ROMM_TLS="$TLS/cert.pem:$TLS/key.pem" python3 "$HERE/tests/fake-romm.py" 443 "$L" 2>> "$OUT/romm-tls.log" & A=$!
+            for i in $(seq 50); do curl -sk https://127.0.0.1/api/heartbeat >/dev/null && break; sleep 0.1; done
+            BANANA_SYNC_NAME=t "$BIN" --root "$OUT/ta" --run "$OUT/ta/run" --status "$OUT/ta/run/sync.status" probe 127.0.0.1 > "$OUT/tls-443.txt"
+            python3 "$HERE/tests/fake-romm.py" 8092 "$L" 2>> "$OUT/romm-tls.log" & B=$!
+            for i in $(seq 50); do curl -s http://127.0.0.1:8092/api/heartbeat >/dev/null && break; sleep 0.1; done
+            BANANA_SYNC_NAME=t "$BIN" --root "$OUT/ta" --run "$OUT/ta/run" --status "$OUT/ta/run/sync.status" probe 127.0.0.1 > "$OUT/tls-8092.txt"
+            kill $A $B'
+        [ "$(cat "$OUT/tls-none.txt")" = "none  " ] || bad "a bare address with nothing there: $(cat "$OUT/tls-none.txt")"
+        [ "$(cat "$OUT/tls-443.txt")" = "romm https://127.0.0.1 RomM 5.4.1" ] || bad "a bare address didn't find https on 443: $(cat "$OUT/tls-443.txt")"
+        [ "$(cat "$OUT/tls-8092.txt")" = "romm http://127.0.0.1:8092 RomM 5.4.1" ] || bad "a bare address didn't try 8092 first: $(cat "$OUT/tls-8092.txt")"
+    else
+        echo "SKIP sync: a bare address on 443 (no unshare -rn here)"
+    fi
+else
+    echo "SKIP sync: https (no openssl)"
+fi
 
 # ---------------------------------------------------------------- Romhost
 RS=${ROMHOST_SRC:-$HOME/romhost}; RPY=${ROMHOST_PY:-python3}
@@ -208,7 +316,7 @@ if [ -x "$HERE/banana-ui" ]; then
     BANANA_SYNC="$HERE/tests/fake-sync.sh" FAKE_SYNC_LOG="$SL" "$HERE/banana-ui" --headless "$OUT/ui-" --size 640x480 --assets "$HERE/assets/rnds" \
         --splash "$HERE/assets/splash" --banana "$HERE/assets/banana" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
         --roms "$FX/roms" --data "$FX/data" \
-        --script "home 0; wait 2400; press start; press r; press r; press r; press r; press a; press up; shot hs-row; press a; shot hs-page; press a; wait 300; shot hs-code; press a; press start; wait 300; shot hs-paired; press down; shot hs-sync; press b; press b" \
+        --script "home 0; wait 2400; press start; press r; press r; press r; press a; press up; press up; shot hs-row; press a; shot hs-page; press a; wait 300; shot hs-code; press a; press start; wait 300; shot hs-paired; press down; shot hs-sync; press b; press b" \
         2> "$OUT/ui.log" || bad "banana-ui (Home server) exited $?"
     grep -q '^discover' "$SL" || bad "the Server row didn't look on the LAN: $(cat "$SL")"
     grep -q 'pair http://192.168.50.96:8092 .' "$SL" || bad "the code wasn't sent to pair: $(cat "$SL")"

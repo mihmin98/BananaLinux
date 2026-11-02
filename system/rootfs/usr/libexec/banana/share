@@ -2,7 +2,7 @@
 # File sharing: the card's data partition (/data: roms, bios, saves, banana/...) on the network over SMB3, through
 # the kernel's own server (ksmbd, a module loaded only now) and ksmbd-tools. Off until switched on there (Settings >
 # Network > File sharing). It asks for a name and a password (#24: Windows refuses guest logins), banana and linux
-# until changed in Settings > Network > Sharing name and password (banana/accounts.conf's smb_user and smb_password,
+# until changed in Settings > Network > File sharing > Sharing name and password (banana/accounts.conf's smb_user and smb_password,
 # a file the share itself never shows); Sharing login > Guest opens it to anyone with no password instead. The second
 # SD card, while it's in, is a share of its own beside it (\\<address>\sd2, #25), with the same login.
 #   share up | down | restart     (restart: again with the login as it is now, if it is on)
@@ -45,9 +45,10 @@ up)
 	store dos attributes = no
 	hide dot files = yes
 	; secrets stay off the network (neither listed nor opened, in any folder; a card in a computer still has them):
-	; the SSH host key, the RetroAchievements account and tokens, the Wi-Fi networks' passwords
+	; the SSH host key, the RetroAchievements account and tokens, the Wi-Fi networks' passwords, Files' servers' (nas.conf,
+	; its key nas.key)
 	; (a leading * because ksmbd matches an open against the whole path, a listing against the bare name)
-	veto files = /*host_key_ed25519/*accounts.conf/*ra.token/*wifi.conf/
+	veto files = /*host_key_ed25519/*accounts.conf/*ra.token/*wifi.conf/*nas.conf/*nas.key/
 CONF
     # the second SD card while it's in (the RG DS Plus: sd2 restarts the share when it goes in or out), as \\<address>\sd2
     if grep -q ' /run/sd2 ' /proc/mounts; then

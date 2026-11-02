@@ -16,10 +16,15 @@ keyboard there. Or put your network in banana/wifi.conf on a computer:
 Files (a tile on the home screen): copy, move, rename and delete files and folders on this card and the second
 SD card, and make folders. Y marks, X says what can be done. The card's own folders stay where they are.
 A copy keeps Files open till it is done; Y twice stops it.
+Files also gets games from a NAS or a computer over SMB, SFTP or FTP (Add a server in its list), into the folder
+their type says or any folder you choose, and unpacks zip, 7z and RAR archives (X, Unpack... on one on the card).
+Its servers are kept in banana/nas.conf (a remembered password sealed for this handheld: another one, or a
+computer, can't open it), its downloads in banana/downloads, its log in banana/logs/downloads.log. Download
+options there: banana/settings.conf's files_* lines.
 
 File sharing: Settings > Network > File sharing puts this card on the network (\\<address>\banana in Windows,
 smb://<address>/banana on a Mac), so games can be copied in over Wi-Fi. It asks for a name and a password:
-name banana, password linux, until you change them in Settings > Network > Sharing name and password (Sharing
+name banana, password linux, until you change them in Settings > Network > File sharing > Sharing name and password (Sharing
 login > Guest: no password, only on a network you trust). The second SD card, while it's in, is \\<address>\sd2.
 DS saves from ROCKNIX beside the games (roms/nds/<game>.dsv) are taken when a game starts here and BananaOS has no save
 for it yet (so a save you delete here comes back from that file; delete or rename the .dsv too).
@@ -29,10 +34,10 @@ finds controllers, headphones and speakers in pairing mode and pairs them (A). W
 connected the sound plays on them and the volume keys change their volume. Pairings: banana/bluetooth.tar.
 
 SSH (for working on Banana itself): put your public key in banana/ssh/authorized_keys, switch on
-Settings > Network > SSH, then ssh root@<address>. Keys only, no passwords.
+Settings > Network > File sharing > SSH, then ssh root@<address>. Keys only, no passwords.
 
 RetroArch (the systems other than the DS): F + a button in a game, F + X its menu, F + Start quits.
-Settings > Other systems > RetroArch hotkeys: Off leaves only those two. A button bound away in RetroArch's
+A button bound away in RetroArch's
 menu (an A that stopped working): Settings > Other systems > Reset RetroArch puts its settings back to Banana's,
 the old ones moved to retroarch/backup-<date>; saves, states and the RetroAchievements account stay.
 
@@ -41,7 +46,9 @@ list, to add or change emulators: only what you change, e.g. "[psx]" and a "run 
 the built-in list, banana/systems.conf.default, so the rest keeps up with updates).
 A DS game's own emulator and shader (X on the game in the library): banana/nds-per-game.conf and
 banana/nds-per-game-shader.conf, one "<game's file name> = <emulator or shader>" a line (none: no shader); a game
-not in them follows Settings > Nintendo DS.
+not in them follows Settings > Nintendo DS. Its other rows the same way: nds-per-game-res.conf (BananaDS's 3D
+resolution), nds-per-game-timing.conf (BananaDS's timing: accurate or fast), nds-per-game-3d.conf (DraStic's
+Threaded 3D), nds-per-game-mic.conf (the microphone).
 A game's own name and sort title (X on any game in the library): banana/game-titles.tsv, one
 "<system>/<game's file> TAB name TAB sort title" a line; scraping box art again leaves it alone. A gamelist.xml's
 <sortname> sorts the game too.

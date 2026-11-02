@@ -17,6 +17,13 @@ export BANANADS_SAVES=/data/saves/nds BANANADS_STATES=/data/states/nds BANANADS_
 export BANANADS_FRONTEND=kms BANANADS_SAVE_DIR=/data/saves/nds BANANADS_STATE_DIR=/data/states/nds
 [ -f $L/bananads.log ] && mv -f $L/bananads.log $L/bananads.1.log
 export BANANADS_LOG_FILE=$L/bananads.log
+# Settings > Nintendo DS > Buttons (nds-buttons): L2, R2, L3 and R3's jobs, the same as SuperDrastic's (over any
+# input.l2... in bananads.conf; the other buttons are the pad as printed, or bananads.conf's)
+for b in l2 r2 l3 r3; do
+    export BANANADS_INPUT_$(echo $b | tr a-z A-Z)=$(/usr/libexec/banana/nds-buttons get $b)
+done
+# ...and Swap A/B and X/Y: the pad's A the DS's B and so on (off: bananads.conf's input.a... or the pad as printed)
+[ "$(/usr/libexec/banana/nds-buttons swapab)" = on ] && export BANANADS_INPUT_A=b BANANADS_INPUT_B=a BANANADS_INPUT_X=y BANANADS_INPUT_Y=x
 # Settings > Nintendo DS with BananaDS chosen: its own settings, kept in its own file (bananads.conf, which BananaDS
 # reads itself): the shader (kms.shader, SuperDrastic's shader pass on SuperDrastic's shader files), the 3D resolution
 # (render.scale) and the rest. A card from before they were BananaDS's own gets DraStic's choices copied over once.
@@ -51,7 +58,7 @@ fi
 # records the real microphone through ALSA's "default" (bananad points it at the rk817 in /run/banana/asound.conf),
 # and threshold=0.05 is Settings' "Medium". Written to the file, never exported: an exported BANANADS_MIC_SOURCE or
 # BANANADS_MIC_THRESHOLD would win over the file and freeze the settings screen's choices. A card that already
-# names them (including source=none, Settings > Nintendo DS > Microphone Off) is left as it is. Before 0.4.3 the one
+# names them (including source=none, Settings > Nintendo DS > BananaDS > Microphone Off) is left as it is. Before 0.4.3 the one
 # Microphone row's Off wrote mic.threshold = 0, which BananaDS reads as "gate off" (every sound through): such a card
 # gets source=none (what Off meant) and Medium's threshold instead.
 M=$D/.banana-mic-src
@@ -84,7 +91,7 @@ if [ ! -e /run/banana/asound.conf ]; then
 elif ! grep -q 'capture\.pcm *{ *type plug' /run/banana/asound.conf; then
     echo "run-bananads: /run/banana/asound.conf has a capture.pcm without the 48 kHz plug: the mic may not start" >&2
 fi
-# Settings > Nintendo DS > Low latency (experimental): bananads.conf's kms.lowlat (off, on), which BananaDS reads itself
+# Settings > Nintendo DS > BananaDS > Low latency (experimental): bananads.conf's kms.lowlat (off, on), which BananaDS reads itself
 # (its docs/SETTINGS.md): no frame queue, each frame aimed at the panels' refresh. Run-ahead (runahead1, runahead2)
 # left Settings in 0.5.0: it never fit a refresh on these handhelds (agent-qa LL2: a 9-18 ms snapshot on top of two
 # frames), so a card that has it gets On, which is what BananaDS did with it anyway. Said in the log, for a report
@@ -108,6 +115,18 @@ fi
 # the game's own 3D resolution (its page: 1, 2, or 3 or 4 (experimental)), for this run (the environment wins over bananads.conf)
 r=$(/usr/libexec/banana/nds-game-option nds-per-game-res.conf "$1")
 case $r in 1|2|3|4) echo "run-bananads: ${1##*/} has its own 3D resolution: ${r}x" >&2; export BANANADS_RENDER_SCALE=$r ;; esac
+# the game's own timing (its page: Accurate, core.slice = 64, or Fast, auto: the two CPUs run up to 512 cycles apart
+# away from IPC, up to ~10% faster in HeartGold), for this run, so a game that takes Fast (Origin HeartGold at 2x on the
+# RG DS Plus) has it while one it breaks (Golden Sun: Dark Dawn) stays Accurate
+t=$(/usr/libexec/banana/nds-game-option nds-per-game-timing.conf "$1")
+case $t in
+accurate) echo "run-bananads: ${1##*/} has its own timing: accurate" >&2; export BANANADS_CORE_SLICE=64 ;;
+fast) echo "run-bananads: ${1##*/} has its own timing: fast" >&2; export BANANADS_CORE_SLICE=auto ;;
+# (dsi: Fast, and the ARM9 at the DSi's 133 MHz, BananaDS's core.arm9_mhz: the game's own lost frames on a DS's 67 MHz
+# ARM9 gone, as Origin HeartGold's authors suggest DSi mode for its 60 fps overworld; and the game card's transfers 8x
+# faster, core.card_fast=3: at each area border Origin HeartGold still lost 7-10 of its own frames at 133 MHz, 4-5 so)
+dsi) echo "run-bananads: ${1##*/} has its own timing: fast, DSi CPU" >&2; export BANANADS_CORE_SLICE=auto BANANADS_CORE_ARM9_MHZ=133 BANANADS_CORE_CARD_FAST=3 ;;
+esac
 # the game's own shader (its page, X in the library: nds-game-shader), for this run only (the environment wins over
 # bananads.conf)
 s=$(/usr/libexec/banana/nds-game-shader "$1")

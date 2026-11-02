@@ -72,6 +72,38 @@ namespace banana
 		return plane ? plane : any;
 	}
 
+	// a free overlay plane the CRTC can use (none in use by anything: fb 0), for the lease: the game's frontend draws
+	// its pop-ups and FPS counter there over the game (BananaFront); 0 when there is none
+	static uint32_t overlayPlane(int fd, uint32_t crtc)
+	{
+		drmModeRes* res = drmModeGetResources(fd);
+		drmModePlaneRes* pr = drmModeGetPlaneResources(fd);
+		int idx = -1;
+		for (int i = 0; res && i < res->count_crtcs; i++) if (res->crtcs[i] == crtc) idx = i;
+		uint32_t plane = 0;
+		for (uint32_t j = 0; pr && idx >= 0 && j < pr->count_planes && !plane; j++)
+		{
+			drmModePlane* pl = drmModeGetPlane(fd, pr->planes[j]);
+			if (!pl) continue;
+			bool overlay = false;
+			if (drmModeObjectProperties* pp = drmModeObjectGetProperties(fd, pl->plane_id, DRM_MODE_OBJECT_PLANE))
+			{
+				for (uint32_t k = 0; k < pp->count_props; k++)
+					if (drmModePropertyRes* q = drmModeGetProperty(fd, pp->props[k]))
+					{
+						if (!strcmp(q->name, "type") && pp->prop_values[k] == DRM_PLANE_TYPE_OVERLAY) overlay = true;
+						drmModeFreeProperty(q);
+					}
+				drmModeFreeObjectProperties(pp);
+			}
+			if (overlay && (pl->possible_crtcs & (1u << idx)) && !pl->fb_id) plane = pl->plane_id;
+			drmModeFreePlane(pl);
+		}
+		if (pr) drmModeFreePlaneResources(pr);
+		if (res) drmModeFreeResources(res);
+		return plane;
+	}
+
 	bool Display::makeBuf(Buf& b)
 	{
 		drm_mode_create_dumb c = {};
@@ -291,6 +323,26 @@ namespace banana
 		pending = 0;
 	}
 
+	// every panel the menu owns to black at once (see kms.h): both buffers zeroed, the first modeset up, and the flip
+	// bookkeeping reset so the menu's next present() writes a full frame into the hidden buffer and flips to it
+	void Display::blank()
+	{
+		if (fd < 0) return;
+		for (int s = 0; s < 2; s++)
+		{
+			if (s == leased) continue;
+			Panel& pn = p[s];
+			for (int b = 0; b < 2; b++)
+				if (pn.buf[b].map) memset(pn.buf[b].map, 0, pn.buf[b].size);
+			pn.front = 0;
+			pn.missed[0] = Damage();
+			pn.missed[1] = Damage();
+			drmSetMaster(fd);
+			drmModeSetCrtc(fd, pn.crtc, pn.buf[0].fb, 0, 0, &pn.conn, 1, (drmModeModeInfo*)pn.mode);
+		}
+		pending = 0;
+	}
+
 	// a CRTC's property by name: its id, and its value (0, 0 when there is none)
 	static uint32_t crtcProp(int fd, uint32_t crtc, const char* name, uint64_t* value = nullptr)
 	{
@@ -460,8 +512,11 @@ namespace banana
 		if (fd < 0 || s < 0 || s > 1) return -1;
 		uint32_t plane = primaryPlane(fd, p[s].crtc);
 		if (!plane) return -1;
-		uint32_t objs[3] = { p[s].conn, p[s].crtc, plane }, lessee = 0;
-		int l = drmModeCreateLease(fd, objs, 3, 0, &lessee);	// (no CLOEXEC: the game's process inherits it)
+		// (and an overlay plane when there is a free one: BananaFront's pop-ups over the game; RetroArch ignores it)
+		const uint32_t over = overlayPlane(fd, p[s].crtc);
+		uint32_t objs[4] = { p[s].conn, p[s].crtc, plane, over }, lessee = 0;
+		int l = drmModeCreateLease(fd, objs, over ? 4 : 3, 0, &lessee);	// (no CLOEXEC: the game's process inherits it)
+		if (l < 0 && over) l = drmModeCreateLease(fd, objs, 3, 0, &lessee);
 		if (l >= 0) leased = s;
 		return l;
 	}

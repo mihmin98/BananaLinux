@@ -2,7 +2,8 @@
 # .7z games on their shelves, headless: kiwami/post-build.sh run on a stand-in target, then banana-ui with the
 # post-built systems.conf over a library of empty files, launching the first game of every shelf. A .7z game is listed
 # and launched on each of the seven cartridge systems (Super Nintendo's as .7Z, Mega Drive's in a subfolder), and not
-# on the DS or the PlayStation; with upstream's own systems.conf, none is. Needs ui/banana-ui (make ui).
+# on the DS or the PlayStation; with upstream's own systems.conf, its six are (since 0.5.1) and N64's isn't. Needs
+# ui/banana-ui (make ui).
 # Run by kiwami/tests/ci.sh when banana-ui is built, or by hand:
 #   kiwami/tests/7z-ui.sh        (the logs in $OUT, /tmp/kiwami-7z by default)
 set -e
@@ -49,10 +50,13 @@ done
 grep -q 'launch [0-9]*: .*\.7z (system \(nds\|psx\))$' "$log" &&
     { echo "FAIL kiwami: a .7z game on the DS or the PlayStation: $(grep '(system \(nds\|psx\))' "$log")"; fail=1; }
 
-# upstream's own: no .7z game anywhere, so what lists them is post-build's edit
+# upstream's own: the six cartridge systems' .7z games, not N64's, so what lists N64's is post-build's edit
 launches system/rootfs/etc/banana/systems.conf upstream
-grep -q 'launch [0-9]*: .*\.7[zZ] (system ' "$OUT/upstream.log" &&
-    { echo "FAIL upstream: a .7z game launched: $(grep 'launch [0-9]*: ' "$OUT/upstream.log")"; fail=1; }
+log=$OUT/upstream.log
+[ "$(grep -c 'launch [0-9]*: .*\.7[zZ] (system \(gba\|gb\|gbc\|nes\|snes\|megadrive\))$' "$log")" = 6 ] ||
+    { echo "FAIL upstream: not upstream's six .7z games launched: $(grep 'launch [0-9]*: ' "$log")"; fail=1; }
+grep -q 'launch [0-9]*: .*\.7z (system \(n64\|nds\|psx\))$' "$log" &&
+    { echo "FAIL upstream: a .7z game launched on N64, the DS or the PlayStation: $(grep '(system \(n64\|nds\|psx\))' "$log")"; fail=1; }
 
 [ $fail = 0 ] && echo "7z-ui: all checks passed ($OUT)"
 exit $fail

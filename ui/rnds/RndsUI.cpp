@@ -736,7 +736,7 @@ namespace rnds
 				}
 			}
 			char k[48];
-			snprintf(k, sizeof k, "cart:%dx%d:", dw, dh);
+			snprintf(k, sizeof k, "cart2:%dx%d:", dw, dh);
 			std::string key = std::string(k) + art0.scan + "|" + art0.label + "|" + art0.box + "|" + art0.icon;
 			if (auto e = find(key)) return e->sp;
 			std::shared_ptr<const Bitmap> shellRef = shell;
@@ -761,10 +761,21 @@ namespace rnds
 				}
 				if (!art.empty())
 				{
-					// the shell's whole label (x 4..96, y 4..90): the art is all there is on it, no header or margin
+					// the shell's whole label (x 4..96, y 4..90): the art is all there is on it, no header or margin. All of
+					// it, fitted, on the plain label where it leaves room (#108: cut to the window, a title screen lost its
+					// sides)
 					int wx = (int)std::lround(4 * sc), wy = (int)std::lround(4 * sc);
 					int ww = (int)std::lround(96 * sc) - wx, wh = (int)std::lround(90 * sc) - wy;
-					blit(master, coverTop(art, ww, wh), wx, wy);
+					for (int y = wy; y < wy + wh; y++)
+						for (int x = wx; x < wx + ww; x++)
+						{
+							uint8_t* p = &master.px[((size_t)y * mw + x) * 4];
+							p[0] = (uint8_t)(plain >> 24); p[1] = (uint8_t)(plain >> 16); p[2] = (uint8_t)(plain >> 8); p[3] = 255;
+						}
+					float fw, fh;
+					containSize(art.w, art.h, ww, wh, fw, fh);
+					int aw = std::max(1, (int)std::lround(fw)), ah = std::max(1, (int)std::lround(fh));
+					blit(master, resize(art, aw, ah), wx + (ww - aw) / 2, wy + (wh - ah) / 2);
 				}
 				if (!shellCopy.empty())
 					blit(master, mw == shellCopy.w && mh == shellCopy.h ? shellCopy : resizeNearest(shellCopy, mw, mh), 0, 0);
@@ -830,6 +841,13 @@ namespace rnds
 		// the box cover fitted into COVER_W x COVER_H CSS px (its fitted CSS size in the cache entry). Banana: a square,
 		// the frame drawCover always draws (was 214 x 280, the frame the picture's own size)
 		static constexpr float COVER_W = 214, COVER_H = 214;
+		static void coverFit(int iw, int ih, float& cssW, float& cssH)
+		{
+			float fw, fh;
+			containSize(iw, ih, (int)COVER_W, (int)COVER_H, fw, fh);
+			cssW = std::max(1.0f, std::round(fw));
+			cssH = std::max(1.0f, std::round(fh));
+		}
 		CacheEntry* coverArt(const std::string& path)
 		{
 			if (path.empty()) return nullptr;
@@ -840,13 +858,30 @@ namespace rnds
 			{
 				Bitmap img = decodeFile(path);
 				if (img.empty()) return Bitmap();
-				float fw, fh;
-				containSize(img.w, img.h, (int)COVER_W, (int)COVER_H, fw, fh);
-				cssW = std::max(1.0f, std::round(fw));
-				cssH = std::max(1.0f, std::round(fh));
+				coverFit(img.w, img.h, cssW, cssH);
 				return resize(img, (int)std::lround(cssW * sc), (int)std::lround(cssH * sc));
 			});
 			return nullptr;
+		}
+
+		// Banana: a cover's frame while its picture is decoded, at the picture's fitted size from the file's header
+		// (imageSize): the square frame meanwhile shrank to the picture when it came, on every game's first showing.
+		// Kept per path (a few bytes each); the square without a sizer or a readable header
+		std::map<std::string, std::pair<float, float>> coverSizes;
+		void coverFrame(const std::string& path, float& w, float& h)
+		{
+			auto it = coverSizes.find(path);
+			if (it == coverSizes.end())
+			{
+				float fw = COVER_W, fh = COVER_H;
+				int iw, ih;
+				if (imageSize(path, iw, ih))
+				{
+					coverFit(iw, ih, fw, fh);
+				}
+				it = coverSizes.emplace(path, std::make_pair(fw, fh)).first;
+			}
+			w = it->second.first; h = it->second.second;
 		}
 
 		// the shine that sweeps over the cover: a slanted band, A8, w x h CSS px plus the slant
@@ -1347,10 +1382,11 @@ namespace rnds
 			b.shadows = { outer(3, 3, SHADE40) };
 			return b;
 		}
-		// the box art's frame: a pixel border, no fill (the cover covers it)
+		// the box art's backing: no border round the picture (owner, 0.5.1: the light frame round the box art went), its
+		// shadow kept; the fill shows only while a picture loads or for a game without one (the system's icon on it)
 		BoxCss coverBox()
 		{
-			BoxCss b; b.key = "cover"; b.radius = 4; b.border = 3; b.borderColor = P.frameBorder; b.bg = P.frameBg;
+			BoxCss b; b.key = "cover"; b.radius = 4; b.border = 0; b.borderColor = P.frameBorder; b.bg = P.frameBg;
 			b.shadows = { outer(4, 4, SHADE40) };
 			return b;
 		}
@@ -1392,7 +1428,7 @@ namespace rnds
 		BoxCss plateBox()
 		{
 			BoxCss b; b.key = "plate"; b.radius = 18; b.border = 3; b.borderColor = EDGE; b.bg = Color::hex(accent.base);
-			b.bands = { Band{ 0, 14, Color::hex(accent.light) }, Band{ 132, -1, Color::hex(accent.dark) } };
+			b.bands = { Band{ 0, 14, Color::hex(accent.light) }, Band{ 150, -1, Color::hex(accent.dark) } };
 			b.shadows = { inset(0, -8, 0, Color(0, 0, 0, 0.35f)), outer(4, 4, SHADE40) };
 			return b;
 		}
@@ -1551,9 +1587,13 @@ namespace rnds
 			bool pending = ce == nullptr && !gm.box.empty();
 			if (ce && !ce->sp.valid()) ce = nullptr;
 			// Banana: the frame fits the picture (fitted into COVER_W x COVER_H, centred on the same spot): a DS box's
-			// frame no longer stands taller than the box (owner, 0.5.0). The square frame only while the picture loads
-			// or for a game without one (the system's icon in it); the shadow follows the frame's width
+			// frame no longer stands taller than the box (owner, 0.5.0). While the picture loads, the frame it will have
+			// (coverFrame); the square for a game without one (the system's icon in it); the shadow follows the frame's width
 			float w = ce ? ce->cssW : COVER_W, h = ce ? ce->cssH : COVER_H;
+			if (pending)
+			{
+				coverFrame(gm.box, w, h);
+			}
 			const float FW = w, FH = h;
 			float b = bob();
 			float x = std::round(cx - FW / 2), y = std::round(cy - FH / 2) + ry;
@@ -1565,7 +1605,7 @@ namespace rnds
 				float rw = fw - r * r * 10;
 				be->fill(std::round(X(cx - rw / 2)), std::round(X(fy - 1 + r * 2)), std::round(X(rw)), std::round(X(2)), fl);
 			}
-			drawBox(coverBox(), x - 3, y - 3 + b, FW + 6, FH + 6);
+			drawBox(coverBox(), x, y + b, FW, FH);	// (no border: the picture's own size; it was 3 px wider all round)
 			if (pending) return;		// the picture is on its way: the empty frame meanwhile
 			x += std::round((FW - w) / 2); y += std::round((FH - h) / 2);
 			if (ce)
@@ -1789,6 +1829,17 @@ namespace rnds
 			}
 			else
 			{
+				// Banana: the covers either side decoded on the worker now, so stepping to one draws it at once (as the
+				// systems' chips above). Asked for first: the worker takes the newest job first, so this game's own
+				// cover (asked for in drawCover) still comes before them
+				int n = count();
+				if (ui->mView == LIBRARY && n > 1)
+				{
+					for (int k = -1; k <= 1; k += 2)
+					{
+						coverArt(game((ui->mGame + k + n) % n).box);
+					}
+				}
 				const GameInfo& gm = game(ui->mGame);
 				drawCover(gm, sy, ry);
 				drawGameInfo(gm, sy, ry);
@@ -1871,7 +1922,7 @@ namespace rnds
 		{
 			std::u32string t = upper(utf8to32(game(ui->mGame).title));
 			char32_t c = t.empty() ? U'#' : t[0];
-			bool letter = (c >= U'A' && c <= U'Z') || (c >= 0xc0 && c <= 0x17f && c != 0xd7 && c != 0xf7);
+			bool letter = (c >= U'A' && c <= U'Z') || (c >= 0xc0 && c <= 0x17f && c != 0xd7 && c != 0xf7) || (c >= 0x400 && c <= 0x42f);
 			if (!letter || !M->hasGlyph(c)) c = U'#';
 			const float w = 36, h = 30, ptrH = 8;
 			float top = 391 - ptrH - h + 3;				// the pointer's tip 3 px over the thumb

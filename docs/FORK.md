@@ -160,27 +160,28 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    ```sh
    git diff $OLD main -- system/rootfs/etc/banana/systems.conf buildroot/configs/ ui/src/menu.h \
        system/rootfs/usr/libexec/banana/share buildroot/package/retroarch/cores.in \
-       system/rootfs/usr/libexec/banana/run-retroarch system/rootfs/etc/banana/retroarch.cfg \
+       system/rootfs/usr/libexec/banana/run-retroarch system/rootfs/usr/libexec/banana/run-bananafront \
+       system/rootfs/etc/banana/retroarch.cfg \
        system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
        buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update
    ```
-   (the systems list, whose `ext` lines `kiwami/post-build.sh` adds `7z` to on seven systems (the build stops if
-   one of them is gone; a new cartridge system may want it too), the defconfigs the fork adds to, the share script
+   (the systems list, whose N64 `ext` line `kiwami/post-build.sh` adds `7z` to (upstream lists it on the other six
+   cartridge systems; the build stops if N64's line is gone; a new cartridge system without it may want it too), the defconfigs the fork adds to, the share script
    whose `veto files` `kiwami/post-build.sh` adds tailscaled's state and RetroArch master's credentials files
    (`*retroarch-keychain.*`) to (the build stops if the line changes shape; a new place where upstream shares the card
    wants the same veto), `banana::Menu`, the interface the fork's theme
    implements: when it changes, `git diff $OLD main -- ui/src/carts.cpp` shows how upstream changed its own theme to
    match, and upstream's cores and the launcher that picks one: a core upstream adds that the fork already has
    (Mesen, SameBoy, Genesis Plus GX) means the fork drops its package, and the fork's cores are choices in upstream's
-   own core rows in Settings > Other systems (`RA_SYSTEMS` in `ui/src/settings.cpp`, which names Mesen and Genesis Plus
+   own core rows in Settings > Other systems > Emulators (`RA_SYSTEMS` in `ui/src/settings.cpp`, which names Mesen and Genesis Plus
    GX; SameBoy joins the Game Boy's through the fork's `kiwami::moreCores` hook at the end of `coreChoices`), so a
    change to that table or to how `run-retroarch` reads `core.<system>` has to be followed; the fork's `core-overrides` hook sits after
    `run-retroarch`'s core log line and gives Mesen and SameBoy threaded video, so RetroArch's settings matter too:
    if upstream's `retroarch.cfg` turns `video_threaded` on for every core, the fork's overrides are no longer
-   needed, and a moved `rgui_config_directory` moves where they are written. The fork's second hook there sits on the
-   line after upstream's `HOTKEYS` list, and adds RetroArch master's hotkeys to it (`/usr/share/kiwami/ra-hotkeys`):
-   a change to the list conflicts next to the hook, and if upstream adds one of master's hotkeys to it, the master
-   build stops (`kiwami/retroarch-hotkeys.sh`) and the name comes out of `KIWAMI_RETROARCH_HOTKEYS`. And
+   needed, and a moved `rgui_config_directory` moves where they are written. They apply only when RetroArch runs the
+   game: before the core is picked, `run-retroarch` hands the systems in its `BF_SYSTEMS` to upstream's BananaFront
+   (`run-bananafront`, which takes `core.<system>` too and reads no `.cfg` overrides) while Settings > Other systems >
+   Frontend is on Auto, so a change to that list or to how Auto chooses changes what runs the fork's cores. And
    RetroAchievements' secrets: the fork's `ra-keychain` hook is the first line of `ra-secrets`' `scrub`, which folds
    RetroArch master's credentials file back into `retroarch.cfg` before upstream's scrub reads it. If upstream
    reworks `scrub`, the hook stays first in it; a new caller of the scrub gets the fold with no change. And upstream's
@@ -192,7 +193,13 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    fork's `kiwami/patches/retroarch/retroarch.hash`, or the download stops. And the update script: with
    `BR2_PACKAGE_KIWAMI_OTA_OFF` on, `kiwami/post-build.sh` puts a first case arm after its `case $1 in` line that sends
    `check`, `download` and `beta-login` to `/usr/libexec/kiwami/ota-off` (the build stops if that line changes shape);
-   a new command of upstream's that fetches from its releases wants the same).
+   a new command of upstream's that fetches from its releases wants the same). And Settings' order: `build()` sorts the
+   tiles and each page's rows by its `ORDER` table, and the fork's `kiwami:` line in its `place` gives each of the
+   fork's entries the place of the one it follows (`Kiwami::place`, `ui/src/kiwami/kiwami.cpp`: the RetroAchievements
+   tile after System, Network's Tailscale after Bluetooth); a name upstream drops from `ORDER` sends the fork's entry
+   to upstream's own placing (a tile after the tileless sections, out of reach), which `ra-ui.sh` and
+   `tailscale-ui.sh` catch. Upstream's own tests reach Network's rows from both ends (two Downs to Bluetooth, Up to
+   File sharing, two Ups to Home server), which is why Tailscale sits between Bluetooth and Home server.
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

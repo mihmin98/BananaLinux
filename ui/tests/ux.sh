@@ -25,6 +25,10 @@ ux_run row "home 0; wait 2400; shot ux-row-first; press left; wait 2400; shot ux
 ux_check row "press left: used, view 0 sys 7"     # (six systems, Bshare and Files: Ports with PortMaster alone is off the row)
 ux_lt "$(ux_std "$OUT/$size-ux-row-first-bot.png" 210 80 30 200)" 0.08 || { echo "FAIL $size: something drawn left of the first system"; fail=1; }
 ux_lt "$(ux_std "$OUT/$size-ux-row-last-bot.png" 210 80 400 200)" 0.08 || { echo "FAIL $size: something drawn right of the last system"; fail=1; }
+# the plate's START on its accent, the dark band below it (#128: the band cut through the letters): the plate under
+# START (y 328) the same colour as above it (y 300)
+ux_mean() { convert "$1" -crop "$(awk -v k=$ux_k -v y=$2 'BEGIN { printf "%dx%d+%d+%d", 100 * k, 4 * k, 270 * k, y * k }')" -format '%[fx:int(255*mean.r)] %[fx:int(255*mean.g)] %[fx:int(255*mean.b)]' info: 2>/dev/null; }
+[ "$(ux_mean "$OUT/$size-ux-row-first-bot.png" 328)" = "$(ux_mean "$OUT/$size-ux-row-first-bot.png" 300)" ] || { echo "FAIL $size: the plate's dark band runs into START"; fail=1; }
 
 # the box art's frame (Pixel): it fits the picture (owner, 0.5.0: a square frame stood taller than a DS box): a tall
 # cover's frame top is elsewhere than a wide one's, and a game without one keeps the square
@@ -32,10 +36,37 @@ convert -size 260x420 "gradient:#3d9e9a-black" "$UXFX/roms/nds/media/box/Peel Qu
 ux_run cover "lib 0 0; wait 2400; shot ux-cover-wide; press right; wait 2400; shot ux-cover-none; press right; wait 2400; shot ux-cover-tall"
 ux_strip() { convert "$1" -crop "$(awk -v k=$ux_k -v y=$2 -v h=$3 'BEGIN { printf "%dx%d+%d+%d", 250 * k, h * k, 38 * k, y * k }')" +repage "$4"; }
 for s in wide none tall; do
-    ux_strip "$OUT/$size-ux-cover-$s-top.png" 146 9 "$OUT/$size-ux-cover-$s-edge.png"
+    ux_strip "$OUT/$size-ux-cover-$s-top.png" 146 14 "$OUT/$size-ux-cover-$s-edge.png"	# (to y 160: the picture's own top edge, no border round it since 0.5.1)
     ux_strip "$OUT/$size-ux-cover-$s-top.png" 380 14 "$OUT/$size-ux-cover-$s-shadow.png"
 done
 [ "$(ux_diff "$OUT/$size-ux-cover-wide-edge.png" "$OUT/$size-ux-cover-tall-edge.png")" = 0 ] && { echo "FAIL $size: the frame didn't follow the cover's shape"; fail=1; }
+
+# Last played with DS cartridges: Game icon (#107): the chip's cartridge shows the ROM's own icon (Yellow Planet's
+# yellow disc) as the reel does, not its box art (blue here); with the default, the box as before
+RIFX=$OUT/ux-resume-fixture-$size
+rm -rf "$RIFX"; "$HERE/tests/fixture.sh" "$RIFX" >/dev/null
+convert -size 420x380 "gradient:#4060d0-black" "$RIFX/roms/nds/media/box/Yellow Planet [!].png"
+printf 'nds/Yellow Planet [!].zip\t2\t600\t%s\n' "$(date +%s)" >> "$RIFX/data/playstats.tsv"
+UXFX_SAVE=$UXFX; UXFX=$RIFX
+ux_run resume-box "home 0; wait 2400; shot ux-resume-box"
+echo "ds_cart_art = icon" >> "$RIFX/data/settings.conf"
+ux_run resume-icon "home 0; wait 2400; shot ux-resume-icon"
+UXFX=$UXFX_SAVE
+ux_yellow() { convert "$1" -crop "$(awk -v k=$ux_k 'BEGIN { printf "%dx%d+%d+%d", 30 * k, 30 * k, 233 * k, 333 * k }')" -format '%[fx:mean.r > 0.8 && mean.b < 0.3]' info: 2>/dev/null; }
+[ "$(ux_yellow "$OUT/$size-ux-resume-icon-top.png")" = 1 ] || { echo "FAIL $size: Last played doesn't show the DS game's icon (Game icon)"; fail=1; }
+[ "$(ux_yellow "$OUT/$size-ux-resume-box-top.png")" = 0 ] || { echo "FAIL $size: Last played shows the icon over the box art (default)"; fail=1; }
+
+# a cartridge's label art is all on the label, fitted, on the plain label where it leaves room (#108: it was cut to
+# the window): a title screen (256x192, a green strip down its left side) keeps its strip, the label shows above it
+mkdir -p "$RIFX/roms/nds/media/label"
+convert -size 256x192 xc:'#203080' -fill '#30c040' -draw 'rectangle 0,0 31,191' "$RIFX/roms/nds/media/label/Banana Kart DS.png"
+sed -i '/^ds_cart_art = /d' "$RIFX/data/settings.conf"	# (the label art, not the icons)
+UXFX=$RIFX
+ux_run label "lib 0 0; wait 2400; shot ux-label"
+UXFX=$UXFX_SAVE
+ux_rgb() { convert "$1" -crop "$(awk -v k=$ux_k -v w=$2 -v h=$3 -v x=$4 -v y=$5 'BEGIN { printf "%dx%d+%d+%d", w * k, h * k, x * k, y * k }')" -format "%[fx:$6]" info: 2>/dev/null; }
+[ "$(ux_rgb "$OUT/$size-ux-label-bot.png" 4 30 281 230 'mean.g > 0.6 && mean.r < 0.3')" = 1 ] || { echo "FAIL $size: the label art cut at its sides"; fail=1; }
+[ "$(ux_rgb "$OUT/$size-ux-label-bot.png" 40 3 300 206 'mean > 0.85')" = 1 ] || { echo "FAIL $size: no plain label above a wide label art"; fail=1; }
 
 # the text on the accent (Auto): dark or light by contrast, the second line in the accent's hue and readable (4.5:1);
 # blue's sublabel is a blue, not the brown that suited yellow only. Light: white text, the plate's START too
@@ -52,11 +83,12 @@ ux_check ink-light "inkon f0b429: ink ffffff"
 sed -i 's/^accent_text = .*//' "$UXFX/data/settings.conf"
 
 # L/R go a page: five games in a list (the shoulders name the games they land on), five rows in a settings list
-# (Display & sound: R twice from Theme is Clock, Right sets 12-hour)
-ux_run page "lib 0 0; wait 2400; shot ux-page; press r; press l; press start; press a; press r; press r; press right; press b; press b"
+# (Display & sound, the third tile: R twice from Volume is its last row, up is Menu look; A opens it, Clock is its first
+# row, Right sets 12-hour)
+ux_run page "lib 0 0; wait 2400; shot ux-page; press r; press l; press start; press r; press r; press a; press r; press r; press up; press a; press right; press b; press b; press b"
 ux_check page "press r: used, view 1 sys 0 game 4"
 ux_check page "press l: used, view 1 sys 0 game 0"
-grep -q '^clock = 12h' "$UXFX/data/settings.conf" || { echo "FAIL $size: R twice in Display & sound didn't reach Clock"; fail=1; }
+grep -q '^clock = 12h' "$UXFX/data/settings.conf" || { echo "FAIL $size: R twice in Display & sound and Menu look didn't reach Clock"; fail=1; }
 sed -i 's/^clock = 12h/clock = 24h/' "$UXFX/data/settings.conf"
 
 # no noise: the home bubble has no second line repeating the name ("Nintendo DS" / "Nintendo"), and no count under a
@@ -82,7 +114,7 @@ ux_run poweroff "home 0; press start; press y; press down; press down; press a; 
 # DS games); the library is read again without it
 mkdir -p "$UXFX/saves/nds" "$UXFX/states/nds" "$UXFX/drastic/backup" "$UXFX/bios"
 for f in "saves/nds/Peel Quest.sav" "states/nds/Peel Quest.ml1" "drastic/backup/Peel Quest.dsv" "saves/nds/Peel Quest 2.sav" "bios/Peel Quest.bin" "saves/nds/Split Racers (USA).sav"; do echo x > "$UXFX/$f"; done
-D7="press down; press down; press down; press down; press down; press down; press down; press down;"  # (8 rows: + 3D resolution)
+D7="press down; press down; press down; press down; press down; press down; press down; press down; press down;"  # (9 rows: + 3D resolution, + Timing)
 ux_run delete-keep "lib 0 3; press x; $D7 press a; press b; press b; lib 0 3; press x; $D7 press a; shot ux-delete-ask; press a; wait 300; shot ux-delete-done"
 [ ! -e "$UXFX/roms/nds/Split Racers (USA).nds" ] && [ -e "$UXFX/saves/nds/Split Racers (USA).sav" ] && [ -e "$UXFX/roms/nds/media/box/Split Racers (USA).png" ] \
     || { echo "FAIL $size: Delete game (the game only): $(ls "$UXFX/roms/nds" "$UXFX/saves/nds" | tr '\n' ' ')"; fail=1; }
@@ -96,11 +128,28 @@ for f in "saves/nds/Peel Quest 2.sav" "bios/Peel Quest.bin" "roms/nds/Banana Kar
     [ -e "$UXFX/$f" ] || { echo "FAIL $size: Delete game took $f"; fail=1; }
 done
 
+# a card without roms/ports (#78: a deleted PortMaster folder once kept the menu from starting): the menu starts and
+# Ports is off the row; with Shown systems > Ports > Always its shelf is on it (one more tile), and opens empty; a
+# roms/ports that is a broken link the same
+NPFX=$OUT/ux-noports-fixture-$size
+rm -rf "$NPFX"; "$HERE/tests/fixture.sh" "$NPFX" >/dev/null
+UXFX_SAVE=$UXFX; UXFX=$NPFX
+ux_run noports "home 0; wait 2400; shot ux-noports; press left"
+ux_check noports "press left: used, view 0 sys 7"
+echo "shelf.ports = show" >> "$NPFX/data/settings.conf"
+ux_run noports-show "home 0; press left; press left; press left; press left; press a; wait 2400; shot ux-noports-show"
+ux_check noports-show "press left: used, view 0 sys 8"
+ux_check noports-show "press a: used, view 1 sys 5"
+ln -s nowhere "$NPFX/roms/ports"
+ux_run noports-link "home 0; press left; press left; press left; press left; press a; wait 2400; shot ux-noports-link"
+ux_check noports-link "press a: used, view 1 sys 5"
+UXFX=$UXFX_SAVE
+
 # the home row: a system with nothing to start is left off, Ports with PortMaster's own entry alone is on it (PortMaster
-# gets ports: deleting the last port must not take it away); Display & sound > Shown systems (R twice, down) hides one
-# (Game Boy Advance), then Ports (the row before Files, the last)
+# gets ports: deleting the last port must not take it away); Display & sound > Shown systems (R twice to the last row,
+# Menu look, then up) hides one (Game Boy Advance), then Ports (the row before Files, the last)
 UXP=$UXFX/roms/ports; mkdir -p "$UXP"; printf '#!/bin/bash\n' > "$UXP/PortMaster.sh"
-ux_run shelves "home 0; press left; press start; press a; press r; press r; press down; press a; press down; press right; press up; press up; press up; press right; press b; press start; home 0; press left"
+ux_run shelves "home 0; press left; press start; press r; press r; press a; press r; press a; press down; press right; press up; press up; press up; press right; press b; press start; home 0; press left"
 grep -q '^shelf.gba = hide' "$UXFX/data/settings.conf" && grep -q '^shelf.ports = hide' "$UXFX/data/settings.conf" || { echo "FAIL $size: shown systems: $(grep shelf "$UXFX/data/settings.conf" | tr '\n' ' ')"; fail=1; }
 # the row's systems: n at first with Ports (left from the first is n - 1), n - 1 without the GBA, n - 2 without Ports
 first=$(sed -n 's/.*press left: used, view 0 sys \([0-9]*\).*/\1/p' "$OUT/$size-shelves.log" | head -1)
@@ -109,23 +158,38 @@ first=$(sed -n 's/.*press left: used, view 0 sys \([0-9]*\).*/\1/p' "$OUT/$size-
 sed -i '/^shelf\./d' "$UXFX/data/settings.conf"
 
 # System > Language (its first row) asks before switching, No first: right then A keeps English; right, down, A
-# switches (the menu starts again: settings result 9, LANGUAGE)
-ux_run langask "home 0; press start; press r; press r; press r; press r; press r; press a; press right; shot ux-langask; press a"
-grep -q '^language = zh-cn' "$UXFX/data/settings.conf" && { echo "FAIL $size: the language switched without a Yes"; fail=1; }
+# switches (the menu starts again: settings result 9, LANGUAGE) to the first language after English, ru
+ux_run langask "home 0; press start; press r; press r; press r; press r; press r; press a; press down; press right; shot ux-langask; press a"
+grep -q '^language = ' "$UXFX/data/settings.conf" && { echo "FAIL $size: the language switched without a Yes"; fail=1; }
 ux_check langask "press a: settings result 1"
-ux_run langyes "home 0; press start; press r; press r; press r; press r; press r; press a; press right; press down; press a"
-grep -q '^language = zh-cn' "$UXFX/data/settings.conf" || { echo "FAIL $size: Yes didn't switch the language"; fail=1; }
+ux_run langyes "home 0; press start; press r; press r; press r; press r; press r; press a; press down; press right; press down; press a"
+grep -q '^language = ru' "$UXFX/data/settings.conf" || { echo "FAIL $size: Yes didn't switch the language"; fail=1; }
 sed -i '/^language = /d' "$UXFX/data/settings.conf"
 
-# System > Credits (after About: up four from the first row) opens the credits from credits.txt; with no names in it,
-# no row (up four is then Restart, an action: A only arms it)
-ux_run credits "home 0; press start; press r; press r; press r; press r; press r; press a; press up; press up; press up; press up; shot ux-credits-row; press a; shot ux-credits; press down; press b" BANANA_CREDITS="$HERE/../system/rootfs/etc/banana/credits.txt"
+# System > Credits (after About, before Hotkeys: up two from the first row) opens the credits from credits.txt; with no
+# names in it, no row (up two is then About, which A leaves as it is)
+ux_run credits "home 0; press start; press r; press r; press r; press r; press r; press a; press down; press down; press down; press down; press down; press down; shot ux-credits-row; press a; shot ux-credits; press down; press b" BANANA_CREDITS="$HERE/../system/rootfs/etc/banana/credits.txt"
 ux_lt 1000 "$(ux_diff "$OUT/$size-ux-credits-bot.png" "$OUT/$size-ux-credits-row-bot.png")" || { echo "FAIL $size: Credits didn't open"; fail=1; }
 grep -q 'Majirefy = ' "$HERE/../system/rootfs/etc/banana/credits.txt" || { echo "FAIL: credits.txt lost Majirefy's credit"; fail=1; }
 
 # System > Hotkeys (its last row: up from the first) opens the list of hotkeys, B back to System on its row
-ux_run hotkeys "home 0; press start; press r; press r; press r; press r; press r; press a; press up; press a; wait 400; shot ux-hotkeys; press b; wait 400; shot ux-hotkeys-back"
+ux_run hotkeys "home 0; press start; press r; press r; press r; press r; press r; press a; press down; press down; press down; press down; press a; wait 400; shot ux-hotkeys; press b; wait 400; shot ux-hotkeys-back"
 ux_lt 1000 "$(ux_diff "$OUT/$size-ux-hotkeys-bot.png" "$OUT/$size-ux-hotkeys-back-bot.png")" || { echo "FAIL $size: Hotkeys didn't open"; fail=1; }
+# Nintendo DS > SuperDrastic (its sixth row) opens that emulator's own page, and Hotkeys there (third from its end) its
+# hotkeys; B back on that row, B again back on SuperDrastic in Nintendo DS
+ux_run hotkeys-sd "home 0; press start; press a; press down; press down; wait 400; shot ux-ds-row; press a; press up; press up; press up; wait 400; shot ux-sd-page; press a; wait 400; shot ux-hotkeys-sd; press b; wait 400; shot ux-hotkeys-sd-back; press b; wait 400; shot ux-sd-back"
+ux_lt 1000 "$(ux_diff "$OUT/$size-ux-ds-row-bot.png" "$OUT/$size-ux-sd-page-bot.png")" || { echo "FAIL $size: Nintendo DS > SuperDrastic didn't open"; fail=1; }
+ux_lt 1000 "$(ux_diff "$OUT/$size-ux-hotkeys-sd-bot.png" "$OUT/$size-ux-hotkeys-sd-back-bot.png")" || { echo "FAIL $size: SuperDrastic > Hotkeys didn't open"; fail=1; }
+# (the list's header, its title and "row / rows" (x 18-622, y 16-66), the same: the same page and row, wherever it scrolled)
+ux_head() { convert "$1" -crop "$(awk -v k=$ux_k 'BEGIN { printf "%dx%d+%d+%d", 604 * k, 50 * k, 18 * k, 16 * k }')" +repage "$2"; }
+for s in sd-page hotkeys-sd-back ds-row sd-back; do ux_head "$OUT/$size-ux-$s-bot.png" "$OUT/$size-ux-$s-head.png"; done
+[ "$(ux_diff "$OUT/$size-ux-sd-page-head.png" "$OUT/$size-ux-hotkeys-sd-back-head.png")" = 0 ] || { echo "FAIL $size: B from SuperDrastic's hotkeys wasn't back on its Hotkeys row"; fail=1; }
+[ "$(ux_diff "$OUT/$size-ux-ds-row-head.png" "$OUT/$size-ux-sd-back-head.png")" = 0 ] || { echo "FAIL $size: B from SuperDrastic wasn't back on its row in Nintendo DS"; fail=1; }
+# Other systems > Picture & sound (its fifth row) opens its page (Shader first), B back on its row
+ux_run ra-picture "home 0; press start; press r; press a; press down; wait 400; shot ux-ra-row; press a; wait 400; shot ux-ra-picture; press b; wait 400; shot ux-ra-back"
+for s in ra-row ra-picture ra-back; do ux_head "$OUT/$size-ux-$s-bot.png" "$OUT/$size-ux-$s-head.png"; done
+ux_lt 1000 "$(ux_diff "$OUT/$size-ux-ra-row-bot.png" "$OUT/$size-ux-ra-picture-bot.png")" || { echo "FAIL $size: Other systems > Picture & sound didn't open"; fail=1; }
+[ "$(ux_diff "$OUT/$size-ux-ra-row-head.png" "$OUT/$size-ux-ra-back-head.png")" = 0 ] || { echo "FAIL $size: B from Picture & sound wasn't back on its row in Other systems"; fail=1; }
 
 # the wordmark's B (tools/make-logo.py's B_GLYPH): square corners on the left, so it doesn't read as a G; in the boot
 # animation's mask (word.png) its top-left and bottom-left pixels are set
@@ -137,7 +201,7 @@ ux_run splash-b "splash ux-boot-word 700"
 # (the RG DS Plus adds a note to the Shader rows); "helpcheck" lays each out as the panel does
 HCFX=$OUT/ux-help-fixture-$size
 rm -rf "$HCFX"; "$HERE/tests/fixture.sh" "$HCFX" >/dev/null
-for hl in en zh-cn; do
+for hl in en zh-cn ru; do
     for he in superdrastic bananads; do
         for hb in rgds rgds-plus; do
             touch "$HCFX/data/settings.conf"; sed -i '/^language\b/d; /^nds_emulator\b/d' "$HCFX/data/settings.conf"
@@ -146,7 +210,7 @@ for hl in en zh-cn; do
             BANANA_BOARD=$hb "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --splash "$HERE/assets/splash" \
                 --banana "$HERE/assets/banana" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$HCFX/roms" --data "$HCFX/data" \
                 --script "home 0; helpcheck" 2> "$OUT/$size-$hn.log" || { echo "FAIL $size: banana-ui ($hn) exited $?"; fail=1; }
-            [ "$hl" = en ] || ux_check $hn "language: .*(zh-cn)"
+            [ "$hl" = en ] || ux_check $hn "language: .*($hl)"
             hc=$(sed -n 's/.*helpcheck: \([0-9]*\) texts/\1/p' "$OUT/$size-$hn.log")
             [ "${hc:-0}" -ge 100 ] || { echo "FAIL $size ($hn): helpcheck checked ${hc:-no} texts"; fail=1; }
             grep 'helpcheck .*OVERFLOW' "$OUT/$size-$hn.log" | sed "s/^banana-ui: helpcheck /FAIL $size ($hn): help text too long: /" | grep . && fail=1

@@ -3,13 +3,16 @@
 // line in settings.h), so it reads the screen's state and draws with its own helpers (box, text, face...), and
 // settings.cpp calls it through one-line hooks marked "kiwami:". Its own rows' keys start with "kiwami."; its pages are
 // Settings' page KIWAMI, and its texts typed on upstream's keyboard come back as ENTRY_KIWAMI.
-//   Other systems: the fork's second cores are choices in upstream's own core rows (a row per system with two cores
-//   installed): Mesen and Genesis Plus GX are in upstream's list already, SameBoy joins the Game Boy's and Game Boy
-//   Color's through kiwami::moreCores (its kiwami: line in coreChoices).
-//   Network > Tailscale (kiwami.tailscale): the state, from the Tailscale helper (/usr/libexec/kiwami/tailscale, or
+//   Other systems > Emulators: the fork's second cores are choices in upstream's own core rows (a row per system with
+//   two cores installed): Mesen and Genesis Plus GX are in upstream's list already, SameBoy joins the Game Boy's and
+//   Game Boy Color's through kiwami::moreCores (its kiwami: line in coreChoices). (With Frontend on Auto, upstream's
+//   BananaFront runs them, as it does upstream's cores for those systems.)
+//   Settings' order: upstream's build() sorts tiles and rows by its ORDER table; Kiwami::place (a kiwami: line in its
+//   place) gives the fork's tile and rows the place of the one each follows.
+//   Network > Tailscale (kiwami.tailscale), after Bluetooth: the state, from the Tailscale helper (/usr/libexec/kiwami/tailscale, or
 //   KIWAMI_TAILSCALE in the environment: the test's stand-in), asked once when Settings opens and only while
 //   settings.conf has tailscale = on. A opens Tailscale's page (tailscale.cpp).
-//   RetroAchievements (a seventh group, after System; KIWAMI_RA_GROUP=0 in the environment leaves it out, for the
+//   RetroAchievements (a seventh group, the tile after System; KIWAMI_RA_GROUP=0 in the environment leaves it out, for the
 //   tests): Account (kiwami.ra.account), Stats (kiwami.ra.stats), Games on this card (kiwami.ra.games) and Mode (upstream's cheevos_hardcore_mode_enable, the same setting as Other
 //   systems > RetroAchievements, the two rows kept in step). Its tile has RetroAchievements' logo (ra-icon.cpp), and the
 //   grid, three tiles a row, shows two rows at a time, scrolling to the third (grid.h). A on Account opens the Account
@@ -32,6 +35,8 @@ namespace banana
 		struct Colours { rnds::Color ink, muted, line, accent, onPick, onPickAccent; };
 		static Colours colours(bool light);			// the screen's palette (defined in settings.cpp, beside it)
 		static void rows(Settings& s, const char* group);	// build(): the fork's rows in a group, after upstream's
+		using Order = std::vector<std::pair<std::string, std::vector<std::string>>>;
+		static int place(const Order& order, const std::string& section, const std::string& name);	// build()'s ORDER: the fork's own place, -1 none
 		void opened();								// Settings opening: the rows' values, asked once
 		bool owns(const std::string& key) const { return key.compare(0, 7, "kiwami.") == 0; }
 		Result open(const std::string& key);		// A on a row of the fork's: its page

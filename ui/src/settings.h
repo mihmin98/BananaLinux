@@ -1,4 +1,5 @@
 #pragma once
+#include "complink.h"
 // banana-ui: the settings screen (Start in the menu), drawn in ROCKNIXDS Pixel's look with the engine's own pieces
 // (its box styles painted by rnds::paintBox, Pixelify Sans, the theme's pixel icons). Bottom panel: the list, one
 // row per setting in the slots' style, ◀ value ▶ on the right, and the B / A chips; top panel: the setting's
@@ -10,6 +11,7 @@
 //   /data/drastic/config/drastic.cfg  the DS's 3D resolution
 //   /sys/class/backlight + /data/banana/backlight   brightness
 // and the shelf's Files (settings_files.cpp): the cards' folders, copied, moved, renamed and deleted through fileops.h
+// and its servers (settings_servers.cpp): banana/nas.conf through banana-fetch, its jobs in banana/downloads
 #include "../rnds/RndsUI.h"
 #include "input.h"
 #include "wifi.h"
@@ -53,6 +55,10 @@ namespace banana
 		// they are done at once)
 		bool filesAsync = false;
 		bool filesWorking() const;	// a Files job still at work on its thread (the headless test waits for it)
+		// a roms folder on the second card not offered to the library yet (a download or an unpacking made it): offered
+		void offerSd2Roms();
+		// banana-fetch's session (Files' servers) stopped: when Settings closes, and the menu at its end
+		void closeServers();
 		// a card came or went (the host saw the mount table change): Files' cards again; true when that changed the page
 		bool cardsChanged();
 		// a line for the log (a Files job's outcome, an action refused): the host's logf
@@ -82,13 +88,22 @@ namespace banana
 		std::vector<std::string> deletedFiles;	// what the last Delete game removed (DELETED)
 		int gridCount() const;	// the groups with a tile (Power has none)
 		int powerGroup() const;	// -1: none
+		// the on-screen keyboard is up (a password or an account being typed): the flight recorder leaves touches'
+		// positions out while it is
+		bool typing() const { return mOpen && page == KEYBOARD; }
+		bool devOn = false;		// System's Developer options row unlocked (settings.conf's developer; PR #94)
+		int aboutTaps = 0;		// A's on System > About so far (seven unlock it)
 		bool animating() const;	// the highlight or the list still easing into place: frames wanted
 
 		// The game panel (settings.cpp, end): while a RetroArch game runs on one panel through a DRM lease, the other
 		// shows the game's RetroAchievements (progress and the latest unlocks with their badges) and touch tiles for
 		// RetroArch (save, load, its menu, fast forward, quit), in the in-game menu's look.
-		enum GameAction { G_NONE, G_SAVE, G_LOAD, G_MENU, G_FFWD, G_QUIT };
+		enum GameAction { G_NONE, G_SAVE, G_LOAD, G_MENU, G_FFWD, G_QUIT, G_LOADSLOT };
 		void gameOpen(const std::string& title, const std::string& system, int screen, bool touch);
+		// the game's file (before gameOpen): its save states' names (RetroArch's: <name>.state, .state1 ... in
+		// /data/states, thumbnails <state>.png) for the panel's States view (a tap on the achievements box)
+		void gameRom(const std::string& rom, const std::string& stateDir = "/data/states");
+		int gameSlot() const { return gSlotPick; }	// G_LOADSLOT's slot
 		void gameClose();
 		bool gameUpdate(double nowMs);		// true: the panel changed (a log line, a reply, a badge, a flash ending)
 		// true once after something the player should see came up on the panel (an achievement unlocked): it wakes a
@@ -103,6 +118,9 @@ namespace banana
 		// the game companion (gamecomp.h) for another GBA game with a definition: its seven pages as tabs, the same way
 		// (set before gameOpen, null after gameClose; never both)
 		gcomp::Engine* gameComp = nullptr;
+		// the emulator's memory export (complink.h), when it attached to it: its RetroAchievements block (rich presence,
+		// unlocks, the achievements closest to done) replaces RetroArch's log (set before gameOpen, null after gameClose)
+		const CompLink* link = nullptr;
 		// (tests) every page of the game companion's game drawn once, its values as read so far: a line for each page
 		// that needs more than one screen, a tab that falls back to the page's kind, a short reference page
 		int gcAudit(const std::function<void(const std::string&)>& log);
@@ -167,6 +185,7 @@ namespace banana
 		struct Item
 		{
 			std::string section, icon, label, help;
+			std::string mirror;						// a hotkeys page's L2 to R3 (INFO): the row whose value it shows
 			std::string file, key;					// where it is kept ("" for the special ones)
 			std::vector<std::string> names, values;	// shown, stored
 			int at = 0;
@@ -183,11 +202,16 @@ namespace banana
 		// the groups (the items' sections, in order): Settings opens on a grid of them, as the in-game menu's main page;
 		// A opens one's list, B goes back to the grid
 		std::vector<std::string> groups;
+		std::map<std::string, std::string> groupIcon;	// a section's icon: its first row's as build adds them, whatever ORDER puts first
 		int gsel = 0;
 		bool inGroups = true;
 		int groupOf(int item) const;			// the group an item is in
 		int groupStart(int g) const, groupEnd(int g) const;	// its items: [start, end)
-		std::string groupHint(int g) const;		// what is in it, for its tile
+		std::string groupHint(int g, int names = 2) const;	// what is in it, for its tile (its first rows' names)
+		// a section's place: the tile's section down to its own, through the rows that open each subpage
+		// (Nintendo DS, SuperDrastic, SuperDrastic hotkeys); a tile's section alone
+		std::vector<std::string> sectionPath(const std::string& section) const;
+		const Item* itemByKey(const std::string& key) const;	// the first row with that key, or none
 		Result pressGroups(Key k);
 		void renderGroups();
 		bool downOnRow = false;
@@ -195,7 +219,7 @@ namespace banana
 		std::string about, wifiInfo, ip;
 
 		// the Wi-Fi pages: the networks around, and the keyboard for a password (settings-wifi.cpp)
-		enum Page { LIST, NETWORKS, KEYBOARD, UPDATES, SETUP, GAME, ARTPICK, COLORS, BLUETOOTH, THEMES, CREDITS, PICKGAMES, FILES, BSHARE, KIWAMI } page = LIST;	// kiwami: KIWAMI, the fork's pages
+		enum Page { LIST, NETWORKS, KEYBOARD, UPDATES, SETUP, GAME, ARTPICK, COLORS, BLUETOOTH, THEMES, CREDITS, PICKGAMES, FILES, BSHARE, SERVERS, KIWAMI } page = LIST;	// kiwami: KIWAMI, the fork's pages
 		// Home server > Choose games: the server's games (banana-sync games), a system at a time, ticked to sync
 		struct PickGame { std::string sys, key, title; long long bytes = 0; bool on = false, there = false; };
 		std::vector<PickGame> pickGames;
@@ -241,9 +265,9 @@ namespace banana
 		// run-nds: "<ROM file name> = superdrastic|bananads", no line = Settings > Nintendo DS > Emulator)
 		// the game page (X on a DS game): its own emulator and shader, each "As in Settings" (index 0) or a choice
 		std::string pgTitle, pgRom;
-		int pgRow = 0, pgTop = 0, pgEmu = 0, pgShader = 0, pg3d = 0, pgMic = 0, pgRes = 0;	// (pg3d, pgMic, pgRes: 0 as in Settings)
+		int pgRow = 0, pgTop = 0, pgEmu = 0, pgShader = 0, pg3d = 0, pgMic = 0, pgRes = 0, pgTiming = 0;	// (pg3d, pgMic, pgRes, pgTiming: 0 as in Settings)
 		bool pgNds = true;
-		enum PgRow { PG_EMU, PG_SHADER, PG_3D, PG_MIC, PG_NAME, PG_SORT, PG_ART, PG_DELETE, PG_RES };
+		enum PgRow { PG_EMU, PG_SHADER, PG_3D, PG_MIC, PG_NAME, PG_SORT, PG_ART, PG_DELETE, PG_RES, PG_TIMING };
 		bool pgDelAll = false, pgDelArmed = false;	// Delete game: its saves, states and art too; A pressed once
 		std::string pgPath;	// the game's file (Box art: banana-scrape --match)
 		std::string pgScraped;	// the game's title without its own name (the page's name compares with it)
@@ -259,7 +283,7 @@ namespace banana
 		void renderGame();
 		// the keyboard types a text for a purpose: a Wi-Fi password, or an account's name or password
 		// (banana/accounts.conf: RetroAchievements for DraStic and RetroArch, ScreenScraper for the scraper to come)
-		enum Entry { ENTRY_WIFI, ENTRY_RA_USER, ENTRY_RA_PASS, ENTRY_SS_USER, ENTRY_SS_PASS, ENTRY_SMB_USER, ENTRY_SMB_PASS, ENTRY_GAME_NAME, ENTRY_GAME_SORT, ENTRY_ART_SEARCH, ENTRY_DS_NAME, ENTRY_SEARCH, ENTRY_HS_ADDR, ENTRY_HS_CODE, ENTRY_BETA_PASS, ENTRY_FOLDER, ENTRY_RENAME, ENTRY_BSHARE_PIN, ENTRY_BSHARE_MYPIN, ENTRY_KIWAMI } entry = ENTRY_WIFI;	// kiwami: ENTRY_KIWAMI, a text for the fork's pages
+		enum Entry { ENTRY_WIFI, ENTRY_RA_USER, ENTRY_RA_PASS, ENTRY_SS_USER, ENTRY_SS_PASS, ENTRY_SMB_USER, ENTRY_SMB_PASS, ENTRY_GAME_NAME, ENTRY_GAME_SORT, ENTRY_ART_SEARCH, ENTRY_DS_NAME, ENTRY_SEARCH, ENTRY_HS_ADDR, ENTRY_HS_CODE, ENTRY_BETA_PASS, ENTRY_FOLDER, ENTRY_RENAME, ENTRY_BSHARE_PIN, ENTRY_BSHARE_MYPIN, ENTRY_SERVER, ENTRY_KIWAMI } entry = ENTRY_WIFI;	// kiwami: ENTRY_KIWAMI, a text for the fork's pages
 		std::string entryTitle, entrySub;
 		std::string entryHelp;		// what the keyboard is for, when the purpose says it itself (Files' names, Bshare's PINs)
 		size_t entryMax = 63;		// the longest text (Wi-Fi's 63; a path or an address is longer)
@@ -409,7 +433,9 @@ namespace banana
 		// instead of GitHub. The password typed once, checked with the site by the update script (beta-login, the
 		// password on its stdin: never on a command line), kept on the card for the script alone (banana/updates/.beta)
 		wifi::Job betaJob;
-		bool betaOn() const;			// the password is there: check and download ask the beta server
+		bool betaOn() const;
+		bool betaKept() const;					// the beta password on the card (on or only turned off)
+		std::string betaRun(const char* what);	// update beta-on / beta-off / beta-forget			// the password is there: check and download ask the beta server
 		bool betaDone();				// the password check's answer taken
 		Result pressBeta();
 	public:
@@ -417,7 +443,7 @@ namespace banana
 		void typeText(const std::string& t) { if (page == KEYBOARD) pw += t; }	// (the headless test: text typed at once)
 	private:
 
-		// Bluetooth (Settings > Network > Bluetooth devices): the devices known and found, paired, connected, through
+		// Bluetooth (Settings > Network > Bluetooth > Bluetooth devices): the devices known and found, paired, connected, through
 		// the bluetooth script (BANANA_BLUETOOTH: the test's stand-in)
 		std::string btTool;
 		wifi::Job btListJob, btScanJob, btActJob;
@@ -552,6 +578,44 @@ namespace banana
 		int filesWake(double nowMs) const;
 		Result finishFilesEntry();
 		void sd2Scan();	// the sd2 script again (Files: a roms folder made on the second card is offered to the library)
+		// Files and its servers' pages (settings_servers.cpp), each other's ways in. Files lists the servers beside the
+		// cards and chooses a folder by its own navigation; a server's files copied wait in Files' clipboard
+		struct RemoteClip
+		{
+			struct Item { std::string name; bool dir = false, link = false; int64_t size = -1; };
+			std::string server, title, dir;	// the server's id and name, the folder the items are in
+			std::vector<Item> items;
+		};
+		struct ServerInfo { std::string id, title, protocol, address; bool plainFtp = false; };
+		void filesShow(const std::string& dir, const std::string& focus, bool actions);	// Files on a folder (its actions open)
+		void filesRoot(const std::string& focus, const std::string& message);	// Files' list: "job", "server:<id>"; its settings: "add", "options"
+		void pickFolder(int purpose, const std::string& start, const std::string& what);	// 1 a download's folder, 2 an unpacking's
+		void setRemoteClip(const RemoteClip& c);
+		// Files' servers (settings_servers.cpp): a server's folders, a download's or an unpacking's page, the job in the
+		// background, a server's editor, the options; banana-fetch does the network and the unpacking (nas.h)
+		struct Servers;
+		std::shared_ptr<Servers> srv;
+		Servers& servers();
+		void serversRefresh();			// the servers' list and the job read again (Files opened)
+		std::vector<ServerInfo> serverList();
+		// the job in the background, for Files' list: false when there is none
+		bool fetchJobRow(std::string& label, std::string& value, std::string& title, std::string& state, bool& warn);
+		std::set<std::string> fetchParts();	// the .part files the job at work still writes (Files leaves them alone)
+		void openServer(const std::string& id);
+		void editServer(const std::string& id);	// "" a new one
+		void openServerOptions();
+		void openFetchJob();
+		std::string pasteDownload(const RemoteClip& c, const std::string& dir);	// "" when its page opened, else why not
+		void unpackArchives(const std::vector<std::string>& archives, const std::string& dir);
+		void folderPicked(const std::string& dir);
+		void pickCancelled();
+		bool serversCardsChanged();
+		Result pressServers(Key k);
+		Result touchServers(float cx, float cy);
+		void renderServers();
+		bool updateServers(double nowMs);
+		int serversWake(double nowMs) const;
+		Result finishServersEntry();
 		// Bshare (settings_bshare.cpp): its pages, reading banana-bshare's files in /run/banana
 		struct Bshare;
 		std::shared_ptr<Bshare> bs;
@@ -567,8 +631,17 @@ namespace banana
 		struct Kiwami; std::shared_ptr<Kiwami> kw;	// kiwami: the fork's rows and pages (ui/src/kiwami/)
 		std::string gTitle, gSystem;
 		int gScreen = 1, gFlash = -1, gDown = -1;
+		// the States view (universal companion tier 0): slots 0-9 with their thumbnails; a slot tapped twice loads it
+		bool gStates = false;
+		int gSlotSel = -1, gSlotPick = -1;
+		std::string gStateBase;			// <state dir>/<the game's name> (the dir found at each scan)
+		std::string gStateRoot, gStateName;	// /data/states, the game's name
+		struct StateFile { long long mtime = 0; rnds::TexPtr tex; };
+		StateFile gStateFiles[10];
+		double gStatesScan = 0;
+		void gameStatesScan();
+		void gameStatesFrame(const SPal& p);
 		bool gTouch = true;
-		bool gHotkeys = true;	// Settings > Other systems > RetroArch hotkeys: off, F + R and the like do nothing
 		double gFlashUntil = 0;
 		int gSeen = -1;						// the watch's generation last drawn
 		int awardsSeen = 0; bool wake = false;	// (gameWake)
@@ -664,7 +737,7 @@ namespace banana
 		void iconCentred(const std::string& name, float cx, float y, int scale);
 		void arrow(bool right, float x, float y, const rnds::Color& c);
 		void face(const std::string& key, const std::string& label, float x, float w);
-		float faceWidth(const std::string& key, const std::string& label);
+		float faceWidth(const std::string& key, const std::string& label, float most = FACE_MAX);
 		// a page's buttons along the bottom panel: B and the page's others from the left, its main one (right) at the
 		// right. Drawn and tapped from the same list, so a tap presses the chip it is on (or the nearest one).
 		struct Chip { Key key; std::string face, label; bool right = false; };

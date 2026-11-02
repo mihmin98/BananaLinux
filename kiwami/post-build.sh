@@ -23,11 +23,13 @@ veto() {
 veto '*tailscaled.state' '\*tailscaled\.state'
 veto '*retroarch-keychain.*' '\*retroarch-keychain\.\*'
 
-# 7z ROMs: the cartridge systems also list .7z games, which RetroArch (built with 7z support) unpacks when the game
-# starts, as it does .zip ones. A chosen system with no ext line stops the build rather than leaving it out; a line
-# that already lists 7z is left as it is. Written through a temporary, so a failed run leaves the file as it was.
+# 7z ROMs: the Nintendo 64 also lists .7z games, which RetroArch (built with 7z support) unpacks when the game starts,
+# as it does .zip ones. Upstream lists them on the other cartridge systems (GBA, GB, GBC, NES, SNES, Mega Drive) since
+# 0.5.1, which BananaFront unpacks with 7zz; N64 always runs on RetroArch. A chosen system with no ext line stops the
+# build rather than leaving it out; a line that already lists 7z is left as it is. Written through a temporary, so a
+# failed run leaves the file as it was.
 C=$T/etc/banana/systems.conf
-awk -v want="gba gb gbc nes snes megadrive n64" '
+awk -v want="n64" '
     BEGIN { n = split(want, w, " "); for (i = 1; i <= n; i++) need[w[i]] = 1 }
     /^\[.*\]$/ { sec = substr($0, 2, length($0) - 2) }
     (sec in need) && /^ext *=/ { if ($0 !~ /[ =]7z( |$)/) $0 = $0 " 7z"; has[sec] = 1 }

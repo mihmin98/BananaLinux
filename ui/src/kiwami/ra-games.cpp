@@ -1,8 +1,8 @@
 // banana-ui (kiwami): RetroAchievements' games on this card, A on Settings > RetroAchievements > Games on this card.
 // The games come from the menu's library (kiwami/library.h, set by main.cpp's kiwami: line): every game of the nine
 // systems' shelves (the second card's too) that an emulator recorded achievements for (play stats' unlocked and total:
-// BananaDS and SuperDrastic after each game, RetroArch through the game panel, with Second screen on), under the title
-// the menu shows. The bottom panel lists them, the last played first, with unlocked / total and a bar; the top one
+// BananaDS and SuperDrastic after each game, RetroArch and BananaFront through the game panel, with Second screen
+// on), under the title the menu shows. The bottom panel lists them, the last played first, with unlocked / total and a bar; the top one
 // shows the selected game. Nothing is asked of the server here: A on a game opens its achievements (ra-game.cpp).
 #include "library.h"
 #include "ra.h"
@@ -105,8 +105,8 @@ namespace banana
 		Colours p = colours(st.light);
 		int n = (int)ra->games.size();
 		ra->gsel = std::max(0, std::min(ra->gsel, n - 1));
-		const std::string help = "The games Banana has seen achievements for. RetroArch games appear after one played with "
-			"Settings > Other systems > Second screen on.";
+		const std::string help = "The games Banana has seen achievements for. Other systems' games (RetroArch or BananaFront) appear "
+			"after one played with Settings > Other systems > Second screen on.";
 
 		// ---- top: the selected game ----
 		if (n == 0) raTop("Games on this card", "", "No games with achievements yet: a game shows here once its emulator "

@@ -5,6 +5,7 @@ states}.py, roms/__init__.py, roms/files.py). Python standard library only; the 
 
     fake-romm.py <port> <library dir>      the library: <platform fs_slug>/<rom file or folder>, covers as
                                            <library>/covers/<rom id>.png once /test/cover is called
+FAKE_ROMM_TLS=<cert.pem>:<key.pem> serves https instead (RomM behind a reverse proxy with a certificate of its own).
 Test hooks: POST /test/approve {"user_code"} (a user approving the device in RomM's web UI), POST /test/paircode
 -> {"code"} (a client token's pairing code), POST /test/save {"rom_id","file_name","data"(hex)} (a save written from
 another device or the web UI), POST /test/delete-rom {"id"}, GET /test/log (the requests seen).
@@ -14,6 +15,7 @@ import http.server
 import json
 import os
 import secrets
+import ssl
 import sys
 import threading
 import time
@@ -77,7 +79,8 @@ def roms():
                 "fs_size_bytes": sum(f["file_size_bytes"] for f in files), "name": stem.split(" (")[0],
                 "summary": f"About {stem}.", "metadatum": {"rom_id": rid, "genres": ["Puzzle"], "publishers": ["Banana"],
                                                          "first_release_date": 1262304000000},
-                "path_cover_large": f"/assets/romm/resources/roms/{p['id']}/{rid}/cover/big.png?ts=1" if os.path.exists(cover) else "",
+                # (?ts= is RomM's updated_at as Python prints a datetime: a space and a "+" in it)
+                "path_cover_large": f"/assets/romm/resources/roms/{p['id']}/{rid}/cover/big.png?ts=2026-10-31 15:44:32.123456+00:00" if os.path.exists(cover) else "",
                 "has_multiple_files": multi, "has_simple_single_file": not multi, "missing_from_fs": False,
                 "files": files, "full_path": full})
     return out
@@ -290,4 +293,9 @@ class Server(http.server.ThreadingHTTPServer):
     daemon_threads = True
 
 
-Server((os.environ.get("FAKE_ROMM_BIND", "127.0.0.1"), PORT), H).serve_forever()
+srv = Server((os.environ.get("FAKE_ROMM_BIND", "127.0.0.1"), PORT), H)
+if os.environ.get("FAKE_ROMM_TLS"):
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(*os.environ["FAKE_ROMM_TLS"].split(":", 1))
+    srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
+srv.serve_forever()

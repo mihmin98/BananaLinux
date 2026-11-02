@@ -1,7 +1,7 @@
 #!/bin/sh
 # The fork's cores in banana-ui's Settings, headless at both panel sizes, against stand-in libretro folders
 # (KIWAMI_LIBRETRO, empty files named as the cores: upstream's image's cores, with or without the fork's): upstream's
-# own core rows in Other systems (a row per system with two cores installed) offer Mesen for the NES, Genesis Plus GX
+# own core rows in Other systems > Emulators (a row per system with two cores installed) offer Mesen for the NES, Genesis Plus GX
 # for the Mega Drive and SameBoy (kiwami::moreCores, its kiwami: line) for the Game Boy and Game Boy Color; browsing
 # writes nothing, Right writes each core, a missing core's setting is kept. Needs ui/banana-ui (make ui) and
 # ImageMagick (the test library's art).
@@ -14,17 +14,18 @@ OUT=${OUT:-${TMPDIR:-/tmp}/kiwami-cores}
 FX=$OUT/fixture
 rm -rf "$OUT"; mkdir -p "$OUT/all" "$OUT/sameboy" "$OUT/upstream"
 for d in all sameboy upstream; do
-    for c in gpsp mgba gambatte fceumm snes9x picodrive pcsx_rearmed mupen64plus_next; do : > "$OUT/$d/${c}_libretro.so"; done
+    for c in gpsp mgba bananagba gambatte fceumm banananes snes9x bananasnes picodrive pcsx_rearmed mupen64plus_next; do
+        : > "$OUT/$d/${c}_libretro.so"
+    done
 done
 : > "$OUT/all/mesen_libretro.so"; : > "$OUT/all/sameboy_libretro.so"; : > "$OUT/all/genesis_plus_gx_libretro.so"
 : > "$OUT/sameboy/sameboy_libretro.so"
 CONF=$FX/data/settings.conf
 fail=0
-# Settings opens on its groups: R three times is Other systems, A its list (on Screen). Its last rows, Up from Screen
-# (it goes round): Reset RetroArch, RetroArch hotkeys, then the core rows in upstream's order, the last first (GBA,
-# Game Boy Color, Game Boy, NES, Mega Drive; Super Nintendo, PlayStation and N64 have one core here, so no row)
-OTHER="home 0; press start; press r; press r; press r; press a"
-up() { n=$1; s=""; while [ $n -gt 0 ]; do s="$s; press up"; n=$((n - 1)); done; echo "${s#; }"; }
+# Settings opens on its groups: R once is Other systems, A its list (on Buttons), Down five times its Emulators row,
+# A that page: the core rows in upstream's order, from the first (GBA, Game Boy Color, Game Boy, NES, Super Nintendo,
+# then Mega Drive only with Genesis Plus GX; PlayStation and N64 have one core here, so no row)
+OTHER="home 0; press start; press r; press a; press down; press down; press down; press down; press down; press a"
 
 # a fresh card: the fixture, and the settings.conf banana-ui writes at its first start
 card() {
@@ -61,30 +62,32 @@ shown() {
 differ() { cmp -s "$OUT/$size-$1-top.png" "$OUT/$size-$2-top.png" && { echo "FAIL $size $name: $1 and $2 are the same"; fail=1; }; true; }
 
 for size in 640x480 1024x768; do
-    # the five core rows with the fork's cores, a shot of each (each its own help); browsing writes nothing
+    # the six core rows with the fork's cores, a shot of each (each its own name and choice); browsing writes nothing
     card
-    run $size rows all "$OTHER; $(up 3); wait 400; shot md; press up; wait 400; shot nes; press up; wait 400; shot gb; press up; wait 400; shot gbc; press up; wait 400; shot gba"
-    shown md nes gb gbc gba
-    differ md nes; differ nes gb; differ gb gbc; differ gbc gba
+    run $size rows all "$OTHER; wait 400; shot gba; press down; wait 400; shot gbc; press down; wait 400; shot gb; press down; wait 400; shot nes; press down; wait 400; shot snes; press down; wait 400; shot md"
+    shown gba gbc gb nes snes md
+    differ gba gbc; differ gbc gb; differ gb nes; differ nes snes; differ snes md
     cmp -s "$OUT/before.conf" "$CONF" || { echo "FAIL $size rows: browsing changed settings.conf: $(diff "$OUT/before.conf" "$CONF" | tr '\n' ' ')"; fail=1; }
 
-    # Right on each: the fork's core, after upstream's (Game Boy and Game Boy Color: Gambatte, mGBA, then SameBoy)
+    # Right on each: the fork's core, after upstream's (Game Boy and Game Boy Color: Gambatte, mGBA, then SameBoy; NES:
+    # FCEUmm, BananaNES, then Mesen; Mega Drive: PicoDrive, then Genesis Plus GX)
     card
-    run $size set all "$OTHER; $(up 3); press right; press up; press right; press up; press right; press right; press up; press right; press right"
+    run $size set all "$OTHER; press down; press right; press right; press down; press right; press right; press down; press right; press right; press down; press down; press right"
     has "core.megadrive = genesis_plus_gx" "core.nes = mesen" "core.gb = sameboy" "core.gbc = sameboy" "core.gba = gpsp"
-    changed "core.megadrive = genesis_plus_gx core.nes = mesen core.gb = sameboy core.gbc = sameboy "
+    changed "core.gbc = sameboy core.gb = sameboy core.nes = mesen core.megadrive = genesis_plus_gx "
 
-    # SameBoy alone: the Game Boy rows offer it, the NES and the Mega Drive have no row (Up three is the Game Boy)
+    # SameBoy alone: the Game Boy rows offer it; the Mega Drive has no row (Down from the Super Nintendo goes round to
+    # the GBA, whose Right is mGBA: its line is the template's, so it changes in place, first)
     card
-    run $size sameboy sameboy "$OTHER; $(up 3); press right; press right; press up; press right; press right"
-    changed "core.gb = sameboy core.gbc = sameboy "
+    run $size sameboy sameboy "$OTHER; press down; press right; press right; press down; press right; press right; press down; press down; press down; press right"
+    changed "core.gba = mgba core.gbc = sameboy core.gb = sameboy "
 
-    # none of the fork's: upstream's rows alone, two choices each (Right twice goes round), and a card's core naming a
-    # missing one kept
+    # none of the fork's: upstream's rows alone, two choices each for the Game Boys (Right twice goes round), and a
+    # card's core naming a missing one kept
     card "core.nes = mesen"
-    run $size upstream upstream "$OTHER; $(up 3); press right; press up; press right; press right"
+    run $size upstream upstream "$OTHER; press down; press right; press right; press down; press right"
     has "core.gb = mgba" "core.gbc = gambatte" "core.nes = mesen"
-    changed "core.gb = mgba core.gbc = gambatte "
+    changed "core.gbc = gambatte core.gb = mgba "
 done
 [ $fail = 0 ] && echo "cores-ui: all checks passed ($OUT)"
 exit $fail

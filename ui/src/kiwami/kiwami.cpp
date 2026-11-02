@@ -103,6 +103,22 @@ namespace banana
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
 	}
 
+	int Settings::Kiwami::place(const Order& order, const std::string& section, const std::string& name)
+	{
+		// the fork's tile and rows, each given the place of upstream's it follows (it comes after it: build() adds it
+		// later, and a tie keeps that order)
+		static const struct { const char* section; const char* name; const char* after; } FOLLOWS[] = {
+			{ "", "RetroAchievements", "System" },	// the tiles
+			{ "Network", "Tailscale", "Bluetooth" },
+		};
+		for (auto& f : FOLLOWS)
+			if (section == f.section && name == f.name)
+				for (auto& o : order)
+					if (o.first == section)
+						for (size_t i = 0; i < o.second.size(); i++) if (o.second[i] == f.after) return (int)i;
+		return -1;
+	}
+
 	// ---- the hooks, to the page that is open (or, for the rows' values in the background, to each page's part) ------
 	void Settings::Kiwami::opened()
 	{

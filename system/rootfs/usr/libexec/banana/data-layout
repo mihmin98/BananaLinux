@@ -5,7 +5,7 @@ D=/data
 # makes it again at every menu start)
 SYSTEMS=/etc/banana/systems.conf
 /usr/libexec/banana/systems-merge 2>/dev/null && [ -s /run/banana/systems.conf ] && SYSTEMS=/run/banana/systems.conf
-mkdir -p $D/banana/logs $D/banana/updates $D/bios $D/saves $D/states  # (banana/updates: where the release notes say to put an update)
+mkdir -p $D/banana/logs $D/banana/updates $D/banana/downloads $D/bios $D/saves $D/states  # (banana/updates: where the release notes say to put an update; banana/downloads: Files' downloads and unpackings, the jobs)
 # the Store's cache, its apps, and their entries (the Apps shelf's folder: it must be there for the menu to watch it)
 mkdir -p $D/store/data $D/store/apps $D/store/tiles
 # every system's folder (its "folder", or its id; not an app's absolute one, which ships with the system)
@@ -21,6 +21,6 @@ cmp -s /etc/banana/systems.conf $D/banana/systems.conf.default 2>/dev/null || cp
 # Banana's own READMEs, kept up to date with the system (each says so in its first line: a copy from an older version
 # told of settings that had moved)
 cmp -s /etc/banana/README.txt $D/banana/README.txt 2>/dev/null || cp /etc/banana/README.txt $D/banana/README.txt
-# DS shaders of your own (Settings > Nintendo DS > Shader lists them), with how to make one
+# DS shaders of your own (Settings > Nintendo DS > SuperDrastic or BananaDS > Shader lists them), with how to make one
 mkdir -p $D/banana/shaders; cmp -s /etc/banana/shaders-README.txt $D/banana/shaders/README.txt 2>/dev/null || cp /etc/banana/shaders-README.txt $D/banana/shaders/README.txt 2>/dev/null
 exit 0

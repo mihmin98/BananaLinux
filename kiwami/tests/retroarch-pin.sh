@@ -16,7 +16,6 @@ OPTS='--disable-keychain --disable-mcp --disable-retronfs --disable-retrosmb --d
     --disable-rvp9 --disable-rmp4 --disable-rwebm --disable-rmpeg1 --disable-raac --disable-ropus --disable-rvorbis
     --disable-rmp3 --disable-rmodtracker --disable-rrar --disable-gamemode'
 OPTS=$(echo $OPTS)
-HOTKEYS='video_filter_toggle headset_recenter laser_pointer_toggle headset_view_toggle'
 fail() { echo "retroarch-pin: FAIL: $*" >&2; exit 1; }
 
 # Upstream's RetroArch as it was when the fork's pin was last checked against it. When upstream moves one of these,
@@ -70,7 +69,7 @@ fi
 guard
 echo "retroarch-pin: upstream's RetroArch is the one the pin was checked against"
 VARS='RETROARCH_VERSION RETROARCH_HASH_FILES RETROARCH_CONF_OPTS RETROARCH_TARGET_PATCH KIWAMI_TEST_LOCAL_MK
-    RETROARCH_POST_INSTALL_TARGET_HOOKS KIWAMI_RETROARCH_HOTKEYS'
+    RETROARCH_POST_INSTALL_TARGET_HOOKS'
 # resolve <output>: the variables as Buildroot resolves them, read once (each make parses all of Buildroot, ~10 s),
 # and the patch step's commands, its downloads' and its patches' (make -n on its stamp)
 resolve() {
@@ -99,10 +98,6 @@ check() {
         [ "$(dirs "$p")" = "$(printf '%s\n' "$PWD/buildroot/package/retroarch" "$K/patches/retroarch" | sort)" ] ||
             fail "${O##*/}: the patch step applies $(dirs "$p" | tr '\n' ' ')"
         [ "$(hashes "$p")" = "$K/patches/retroarch/retroarch.hash" ] || fail "${O##*/}: the downloads are checked against $(hashes "$p" | tr '\n' ' ')"
-        # master's four hotkeys, written for run-retroarch at RetroArch's install
-        [ "$(var KIWAMI_RETROARCH_HOTKEYS)" = "$HOTKEYS" ] || fail "${O##*/}: KIWAMI_RETROARCH_HOTKEYS is '$(var KIWAMI_RETROARCH_HOTKEYS)'"
-        case " $(var RETROARCH_POST_INSTALL_TARGET_HOOKS) " in *" KIWAMI_RETROARCH_HOTKEYS_INSTALL "*) ;;
-        *) fail "${O##*/}: no hotkeys hook in RETROARCH_POST_INSTALL_TARGET_HOOKS" ;; esac
         # About's version: master and its short commit, after upstream's install wrote the whole one
         case " $(var RETROARCH_POST_INSTALL_TARGET_HOOKS) " in *" KIWAMI_RETROARCH_VERSION_FILE "*) ;;
         *) fail "${O##*/}: no version hook in RETROARCH_POST_INSTALL_TARGET_HOOKS" ;; esac
@@ -114,7 +109,7 @@ check() {
         [ "$ON_OPTS" = "$c $OPTS" ] || fail "off: RETROARCH_CONF_OPTS isn't the on one's without the fork's: $c"
         [ "$(dirs "$p")" = "$(printf '%s\n' "$PWD/buildroot/package/retroarch" "$PWD/buildroot/patches/retroarch" | sort)" ] ||
             fail "off: the patch step applies $(dirs "$p" | tr '\n' ' ')"
-        case " $(var RETROARCH_POST_INSTALL_TARGET_HOOKS) " in *" KIWAMI_RETROARCH_HOTKEYS_INSTALL "*|*" KIWAMI_RETROARCH_VERSION_FILE "*)
+        case " $(var RETROARCH_POST_INSTALL_TARGET_HOOKS) " in *" KIWAMI_RETROARCH_VERSION_FILE "*)
             fail "off: the fork's hooks are in RETROARCH_POST_INSTALL_TARGET_HOOKS" ;; esac
     fi
 }

@@ -22,6 +22,7 @@ namespace banana
 			const char* const* allowed;	// ENUM
 			int min, max;				// INTEGER
 			bool emulator = false;		// EMULATOR scope (also true for Type CORE below)
+			bool perSystem = false;		// <key>.<system> too: a system's own (findSystem)
 		};
 
 		// each list ends in nullptr: valid() walks it to the end
@@ -32,14 +33,21 @@ namespace banana
 		const char* const ACCENT_TEXT[] = { "auto", "dark", "light", nullptr };
 		const char* const ACCENTS[] = { "yellow", "blue", "red", "green", "purple", "pink", nullptr };
 		const char* const SHADERS[] = { "off", "lcd", "crt", "sharp", nullptr };
+		const char* const FRONTEND[] = { "auto", "bananafront", "retroarch", nullptr };
 		const char* const NDS[] = { "superdrastic", "bananads", nullptr };
 		const char* const PANEL[] = { "panel", "off", nullptr };
 		const char* const IDLE[] = { "dim", "off", "on", nullptr };
 		const char* const BOXART[] = { "libretro", "both", "twilight", nullptr };
 		const char* const HOMESYNC_AUTO[] = { "off", "quit", "both", nullptr };
+		const char* const CARD_SD2[] = { "card", "sd2", nullptr };
 		const char* const LATENCY[] = { "32", "64", "128", nullptr };
 		const char* const LOGIN[] = { "password", "guest", nullptr };
 		const char* const BT_AUDIO[] = { "latency", "quality", nullptr };
+		// Nintendo DS > Buttons: L2, R2, L3 and R3's job in both DS emulators (nds-buttons)
+		// Other systems > Buttons > a system: L2, R2, L3 and R3 in its RetroArch games (run-retroarch, bananad)
+		const char* const RA_BTN[] = { "game", "ff", "save", "load", "menu", "pause", "screenshot", "none", nullptr };
+		const char* const NDS_BTN[] = { "a", "b", "x", "y", "l", "r", "start", "select", "swap", "save", "load", "ff", "blow", "menu", "none", nullptr };
+		const char* const ASK[] = { "ask", "always", "never", nullptr };
 
 		// (language is left out on purpose: a reset keeps the menu's language, and the codes are lang/'s files)
 		// The values /etc/banana/settings.conf documents, and the ones a card is completed with when that file is
@@ -65,12 +73,25 @@ namespace banana
 			{ "bt_audio", "latency", ENUM, BT_AUDIO, 0, 0 },
 			{ "quick_resume", "off", ENUM, ON_OFF, 0, 0, true },
 			{ "sd2_roms", "on", ENUM, ON_OFF, 0, 0 },
+			{ "ra_frontend", "auto", ENUM, FRONTEND, 0, 0, true },
+			{ "bananafront_cpugov", "off", ENUM, ON_OFF, 0, 0, true },
+			{ "bananafront_lowlat", "on", ENUM, ON_OFF, 0, 0, true },
 			{ "ra_shader", "off", ENUM, SHADERS, 0, 0, true },
 			{ "ra_border", "off", ENUM, ON_OFF, 0, 0, true },
 			{ "ra_audio_latency", "64", ENUM, LATENCY, 0, 0, true },
 			{ "ra_vsync", "on", ENUM, ON_OFF, 0, 0, true },
-			{ "ra_hotkeys", "on", ENUM, ON_OFF, 0, 0, true },
+			// (only as <key>.<system>, a system's own: these are their values; the template has R2's fast-forward)
+			{ "ra_btn_l2", "game", ENUM, RA_BTN, 0, 0, true, true },
+			{ "ra_btn_r2", "game", ENUM, RA_BTN, 0, 0, true, true },
+			{ "ra_btn_l3", "game", ENUM, RA_BTN, 0, 0, true, true },
+			{ "ra_btn_r3", "game", ENUM, RA_BTN, 0, 0, true, true },
+			{ "ra_swap_ab", "off", ENUM, ON_OFF, 0, 0, true, true },
 			{ "nds_emulator", "superdrastic", ENUM, NDS, 0, 0, true },
+			{ "nds_btn_l2", "swap", ENUM, NDS_BTN, 0, 0, true },
+			{ "nds_btn_r2", "ff", ENUM, NDS_BTN, 0, 0, true },
+			{ "nds_btn_l3", "blow", ENUM, NDS_BTN, 0, 0, true },
+			{ "nds_btn_r3", "none", ENUM, NDS_BTN, 0, 0, true },
+			{ "nds_swap_ab", "off", ENUM, ON_OFF, 0, 0, true },
 			{ "share", "off", ENUM, ON_OFF, 0, 0 },
 			{ "share_login", "password", ENUM, LOGIN, 0, 0 },
 			{ "ssh", "off", ENUM, ON_OFF, 0, 0 },
@@ -82,11 +103,17 @@ namespace banana
 			{ "update_prerelease", "on", ENUM, ON_OFF, 0, 0 },
 			{ "update_daily", "off", ENUM, ON_OFF, 0, 0 },
 			{ "homesync_roms", "on", ENUM, ON_OFF, 0, 0 },
+			{ "homesync_roms_to", "card", ENUM, CARD_SD2, 0, 0 },
 			{ "homesync_states", "off", ENUM, ON_OFF, 0, 0 },
 			{ "homesync_auto", "off", ENUM, HOMESYNC_AUTO, 0, 0 },
+			{ "homesync_tls", "on", ENUM, ON_OFF, 0, 0 },
 			{ "boxart_twilight_url", "https://boxart.kirovair.com", TEXT, nullptr, 0, 0 },
 			{ "boxart_twilight_key", "tb2_9f4c1d7a3e8b5062", TEXT, nullptr, 0, 0 },
 			{ "bshare_receive", "off", ENUM, BSHARE_RECEIVE, 0, 0 },
+			{ "files_unpack", "ask", ENUM, ASK, 0, 0 },
+			{ "files_delete_archive", "ask", ENUM, ASK, 0, 0 },
+			{ "files_unwrap", "on", ENUM, ON_OFF, 0, 0 },
+			{ "files_hidden", "off", ENUM, ON_OFF, 0, 0 },
 			{ "core.gba", "gpsp", CORE, nullptr, 0, 0 },
 		};
 
@@ -94,6 +121,23 @@ namespace banana
 		{
 			for (const auto& k : KEYS) if (key == k.key) return &k;
 			return nullptr;
+		}
+
+		// <key>.<system> for a perSystem key (Other systems > Buttons > a system's page: ra_btn_l2.gba, ra_swap_ab.snes...;
+		// run-retroarch): the key's own values. No default here: a card without the line has the template's, else the
+		// row's first (the game's own, off)
+		const KeyDef* findSystem(const std::string& key)
+		{
+			size_t dot = key.find('.');
+			if (dot == std::string::npos || dot + 1 == key.size()) return nullptr;
+			const KeyDef* base = find(key.substr(0, dot));
+			return base && base->perSystem ? base : nullptr;
+		}
+
+		// a key settings.conf knows: the schema's, a core.<system> or a system's own hotkeys and buttons
+		bool knownKey(const std::string& key)
+		{
+			return find(key) != nullptr || key.rfind("core.", 0) == 0 || findSystem(key) != nullptr;
 		}
 
 		std::string trim(const std::string& s)
@@ -156,6 +200,7 @@ namespace banana
 		bool validKey(const std::string& key, const std::string& value)
 		{
 			if (const KeyDef* k = find(key)) return valid(*k, value);
+			if (const KeyDef* k = findSystem(key)) return valid(*k, value);
 			// core.<system>: a system added to systems.conf gets the same core rule without a schema entry of its own
 			if (key.rfind("core.", 0) == 0)
 			{
@@ -225,7 +270,7 @@ namespace banana
 
 	bool settingIsEmulator(const std::string& key)
 	{
-		if (key.rfind("core.", 0) == 0) return true;
+		if (key.rfind("core.", 0) == 0 || findSystem(key)) return true;
 		const KeyDef* k = find(key);
 		return k && (k->emulator || k->type == CORE);
 	}
@@ -281,7 +326,7 @@ namespace banana
 			if (!ln.empty() && ln.back() == '\r') l.raw.pop_back();
 			if (split(ln, l.key, l.value))
 			{
-				l.known = find(l.key) != nullptr || l.key.rfind("core.", 0) == 0;
+				l.known = knownKey(l.key);
 				if (l.known) last[l.key] = (int)lines.size();
 			}
 			lines.push_back(l);
@@ -323,7 +368,7 @@ namespace banana
 			std::string v = defaultFor(key);
 			return validKey(key, v) ? v : "";
 		};
-		auto known = [&](const std::string& key) { return find(key) != nullptr || key.rfind("core.", 0) == 0; };
+		auto known = [&](const std::string& key) { return knownKey(key); };
 		auto inScope = [&](const std::string& key)
 		{
 			bool emu = settingIsEmulator(key);

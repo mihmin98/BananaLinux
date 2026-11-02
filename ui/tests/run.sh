@@ -18,6 +18,20 @@ sh "$HERE/../tools/systems-history.sh" --check || fail=1
 make -s -C "$HERE" tests/pokemon-test >/dev/null && "$HERE/tests/pokemon-test" "$OUT" 2> "$OUT/pokemon-test.log" || { echo "FAIL the Pokémon companion's decoder: $(grep FAIL "$OUT/pokemon-test.log" | head -3)"; fail=1; }
 # the game companion's engine (matching, reads, values), and the made-up ROMs and replies for the game panel's run below
 make -s -C "$HERE" tests/gamecomp-test >/dev/null && "$HERE/tests/gamecomp-test" "$OUT" "$HERE/tests/companions" "$HERE/../system/rootfs/usr/share/banana/companions" 2> "$OUT/gamecomp-test.log" || { echo "FAIL the game companion's engine: $(grep FAIL "$OUT/gamecomp-test.log" | head -3)"; fail=1; }
+make -s -C "$HERE" tests/complink-test >/dev/null && TMPDIR="$OUT" "$HERE/tests/complink-test" 2> "$OUT/complink-test.log" || { echo "FAIL the companion's shared-memory link: $(grep FAIL "$OUT/complink-test.log" | head -3)"; fail=1; }
+# the DS Pokémon companion's ROM reader: containers and text on data made from the documented layouts (the player's
+# own ROMs: tests/nds-rom-test <roms dir> [cache dir], on a PC that has them)
+make -s -C "$HERE" tests/nds-rom-test >/dev/null && "$HERE/tests/nds-rom-test" 2> "$OUT/nds-rom-test.log" || { echo "FAIL the DS companion's ROM reader: $(grep FAIL "$OUT/nds-rom-test.log" | head -3)"; fail=1; }
+# the DS Pokémon companion's guide: the validator on the shipped data, then the loader on a made-up file and on the data
+GD="$HERE/../system/rootfs/usr/share/banana/companions/nds-pokemon"
+python3 -I "$HERE/../tools/companions/nds-validate.py" -q > "$OUT/nds-validate.log" 2>&1 || { echo "FAIL the DS Pokémon guide data: $(grep -m3 error "$OUT/nds-validate.log")"; fail=1; }
+make -s -C "$HERE" tests/guide-test >/dev/null && "$HERE/tests/guide-test" "$HERE/tests/nds-guide" "$GD" > "$OUT/guide-test.log" 2>&1 || { echo "FAIL the DS Pokémon guide's loader: $(grep -m3 FAIL "$OUT/guide-test.log")"; fail=1; }
+# the DS Pokémon companion's pages on made-up games: every page at both sizes and in a few themes as PNGs
+# ($OUT/nds-pages/, for a look), and their touches (tabs, rows, dragging, Normal/Shiny, Back to game)
+make -s -C "$HERE" tests/nds-pages-test >/dev/null && "$HERE/tests/nds-pages-test" "$OUT" "$HERE/assets/rnds" "$HERE/../system/rootfs/usr/share/banana/themes" 2> "$OUT/nds-pages-test.log" || { echo "FAIL the DS companion's pages: $(grep FAIL "$OUT/nds-pages-test.log" | head -3)"; fail=1; }
+# the DS Pokémon companion's RAM reader (synthetic RAM in every game's layout)
+make -s -C "$HERE" tests/nds-ram-test >/dev/null && "$HERE/tests/nds-ram-test" 2> "$OUT/nds-ram-test.log" || { echo "FAIL the DS companion's RAM reader: $(grep FAIL "$OUT/nds-ram-test.log" | head -3)"; fail=1; }
+make -s -C "$HERE" tests/nds-logic-test >/dev/null && "$HERE/tests/nds-logic-test" 2> "$OUT/nds-logic-test.log" || { echo "FAIL the DS companion's advice: $(grep FAIL "$OUT/nds-logic-test.log" | head -3)"; fail=1; }
 # the left stick as a d-pad: its deadzone and hysteresis
 make -s -C "$HERE" tests/input-test >/dev/null && "$HERE/tests/input-test" 2> "$OUT/input-test.log" || { echo "FAIL the stick: $(grep FAIL "$OUT/input-test.log" | head -3)"; fail=1; }
 # every icon the theme's systems.cfg names is there (Poketool's tile pointed at the old Bank & Trade logo)
@@ -70,7 +84,7 @@ for size in 640x480 1024x768; do
     "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" \
         --splash "$HERE/assets/splash" --banana "$HERE/assets/banana" \
         --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$FX/roms" --data "$FX/data" \
-        --script "splash boot-drop 200; splash boot-word 700; splash boot-click 1100 1; home 0; wait 2400; shot home; bench 120; press a; wait 2400; shot lib; press right; wait 2400; shot lib2; bench 120; press a; wait 3000; shot ready; press b; press b; press start; shot settings; press a; press down; shot settings-list; press r; shot settings-page; press b; press r; press r; press r; press r; press r; press a; shot settings-system; press down; press right; shot settings-tz; press b; press b; romicon $FX/roms/nds/Yellow Planet [!].zip; romicon $FX/roms/nds/Peel Quest.nds; battery 50; battery 19; shot battery-low; press left; battery 18; battery 4; wait 2400; shot battery-empty; battery 4 charging; shot battery-charging; battery 19; \
+        --script "splash boot-drop 200; splash boot-word 700; splash boot-click 1100 1; home 0; wait 2400; shot home; bench 120; press a; wait 2400; shot lib; press right; wait 2400; shot lib2; bench 120; press a; wait 3000; shot ready; press b; press b; press start; shot settings; press a; press down; shot settings-list; press r; shot settings-page; press b; press r; press r; press r; press r; press r; press a; shot settings-system; press down; press down; press right; shot settings-tz; press b; press b; romicon $FX/roms/nds/Yellow Planet [!].zip; romicon $FX/roms/nds/Peel Quest.nds; battery 50; battery 19; shot battery-low; press left; battery 18; battery 4; wait 2400; shot battery-empty; battery 4 charging; shot battery-charging; battery 19; \
             outro bye-start 0; outro bye-eject 330; outro bye-word 520; outro bye-fall 820; outro bye-crt 1030; outro bye-end 1300" \
         2> "$log" || { echo "FAIL $size: banana-ui exited $?"; fail=1; continue; }
     check() { grep -q "$1" "$log" || { echo "FAIL $size: no '$1'"; fail=1; }; }
@@ -116,7 +130,7 @@ for size in 640x480 1024x768; do
     key() { for rc in "$@"; do awk -v rc=$rc 'BEGIN { split(rc, a, ","); printf "touch 1 %.0f %.0f; ", 18 + a[2] * 60.4 + 27, 80 + a[1] * 66 + 29 }'; done; }
     BANANA_WIFI="$HERE/tests/fake-wifi.sh" FAKE_WIFI_CONF="$FX/data/wifi.conf" "$HERE/banana-ui" --headless "$OUT/$size-" --size $size \
         --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$FX/roms" --data "$FX/data" \
-        --script "home 0; press start; press r; press r; press r; press r; press a; press down; shot wifi-row; press down; shot share-row; press up; press a; shot wifi-list; press a; \
+        --script "home 0; press start; press r; press r; press r; press a; press down; shot wifi-row; press down; shot share-row; press up; press a; shot wifi-list; press a; \
             $(key 3,4 2,0 3,5) press start; shot wifi-short; $(key 2,0 3,5 2,0 0,0 0,1) shot wifi-keys; press start; wait 2500; shot wifi-joined; \
             press y; press down; press down; press a; wait 2500; press up; press a; press x; $(key 1,0 1,1 1,2 1,3 1,4 1,5 4,0 1,6 1,7) press start; \
             wait 2500; shot wifi-end" 2> "$wlog" || { echo "FAIL $size: banana-ui (Wi-Fi) exited $?"; fail=1; }
@@ -134,17 +148,17 @@ for size in 640x480 1024x768; do
     printf 'ctrl_interface=/run/wpa\nnetwork={\n\tssid="Cafe Free"\n\tkey_mgmt=NONE\n\tpriority=2\n}\nnetwork={\n\tssid="Banana Home"\n\tpsk="oldpassw"\n\tpriority=1\n}\n' > "$conf"
     BANANA_WIFI="$HERE/tests/fake-wifi.sh" FAKE_WIFI_CONF="$conf" "$HERE/banana-ui" --headless "$OUT/$size-" --size $size \
         --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$FX/roms" --data "$FX/data" \
-        --script "home 0; press start; press r; press r; press r; press r; press a; press down; press a; wait 2500; shot wifi-saved-list; press a; shot wifi-saved; wait 2500; shot wifi-saved-joined" 2> "$nlog" || { echo "FAIL $size: banana-ui (saved Wi-Fi) exited $?"; fail=1; }
+        --script "home 0; press start; press r; press r; press r; press a; press down; press a; wait 2500; shot wifi-saved-list; press a; shot wifi-saved; wait 2500; shot wifi-saved-joined" 2> "$nlog" || { echo "FAIL $size: banana-ui (saved Wi-Fi) exited $?"; fail=1; }
     [ "$(sed -n 's/^[[:space:]]*ssid=//p' "$conf" | tr '\n' '|')" = '"Banana Home"|"Cafe Free"|' ] || { echo "FAIL $size: saved network not moved first: $(grep ssid= "$conf" | tr -d '\t' | tr '\n' ' ')"; fail=1; }
     grep -q 'psk="oldpassw"' "$conf" && grep -q 'priority=3' "$conf" && [ "$(grep -c priority= "$conf")" = 2 ] || { echo "FAIL $size: the saved block: $(tr -d '\t' < "$conf" | tr '\n' ' ')"; fail=1; }
     rm -f "$conf"
-    # Bluetooth: Settings > Network > Bluetooth switched on (the script's up), Bluetooth devices: a search (a stand-in
+    # Bluetooth: Settings > Network > Bluetooth (its page) > Bluetooth switched on (the script's up), Bluetooth devices: a search (a stand-in
     # bluetooth script: headphones, a pad, an 8BitDo that refuses), the headphones paired (and connected), forgotten,
     # the 8BitDo's refusal, the headphones paired again, then Bluetooth off (down); settings.conf keeps it off
     blog=$OUT/$size-bt.log; BT=$OUT/$size-bt; rm -rf "$BT"
     BANANA_BLUETOOTH="$HERE/tests/fake-bluetooth.sh" FAKE_BT="$BT" "$HERE/banana-ui" --headless "$OUT/$size-" --size $size \
         --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$FX/roms" --data "$FX/data" \
-        --script "home 0; press start; press r; press r; press r; press r; press a; press down; press down; shot bt-row; press right; wait 300; \
+        --script "home 0; press start; press r; press r; press r; press a; press down; press down; shot bt-row; press a; press right; wait 300; \
             press down; shot bt-devices-row; press a; shot bt-list; press down; press a; shot bt-paired; press y; shot bt-forgot; press up; press a; shot bt-refused; \
             press down; press a; press b; press up; press left; wait 300; shot bt-off; press down; press down; press right; wait 300; shot bt-audio" 2> "$blog" || { echo "FAIL $size: banana-ui (Bluetooth) exited $?"; fail=1; }
     [ "$(grep -v '^devices$' "$BT/log" 2>/dev/null | tr '\n' '|')" = "up|up|scan|pair AA:BB:CC:DD:EE:01|forget AA:BB:CC:DD:EE:01|pair AA:BB:CC:DD:EE:03|pair AA:BB:CC:DD:EE:01|down|audio|" ] \
@@ -155,12 +169,12 @@ for size in 640x480 1024x768; do
     for s in bt-row bt-devices-row bt-list bt-paired bt-forgot bt-refused bt-off bt-audio; do
         [ -s "$OUT/$size-$s-top.png" ] && [ -s "$OUT/$size-$s-bot.png" ] || { echo "FAIL $size: no $s shot"; fail=1; }
     done
-    # the file sharing login (#24): Network > Sharing name and password, the keyboard on the name (banana), START, then
+    # the file sharing login (#24): Network > File sharing (two up from the first row) > Sharing name and password, the keyboard on the name (banana), START, then
     # on the password (linux), START: both in accounts.conf, where the share script reads them
     alog=$OUT/$size-smb.log
     rm -f "$FX/data/accounts.conf"
     "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
-        --roms "$FX/roms" --data "$FX/data" --script "home 0; press start; press r; press r; press r; press r; press a; press up; press up; press up; press a; shot smb-name; \
+        --roms "$FX/roms" --data "$FX/data" --script "home 0; press start; press r; press r; press r; press a; press up; press a; press down; press down; press a; shot smb-name; \
             press b; press start; shot smb-pass; press start; wait 300; shot smb-done" 2> "$alog" || { echo "FAIL $size: banana-ui (sharing login) exited $?"; fail=1; }
     grep -qx 'smb_user=banan' "$FX/data/accounts.conf" && grep -qx 'smb_password=linux' "$FX/data/accounts.conf" || { echo "FAIL $size: accounts.conf: $(tr '\n' ' ' < "$FX/data/accounts.conf" 2>/dev/null)"; fail=1; }
     rm -f "$FX/data/accounts.conf"
@@ -178,7 +192,7 @@ for size in 640x480 1024x768; do
     # touch, START; up to Name, one letter deleted, START: both in game-titles.tsv, and the game first on the shelf
     tlog=$OUT/$size-titles.log; T="$FX/data/game-titles.tsv"; rm -f "$T"
     "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
-        --roms "$FX/roms" --data "$FX/data" --script "lib 0 4; press x; press down; press down; press down; press down; press down; press down; shot titles-page; press a; $(key 2,0) press start; \
+        --roms "$FX/roms" --data "$FX/data" --script "lib 0 4; press x; press down; press down; press down; press down; press down; press down; press down; shot titles-page; press a; $(key 2,0) press start; \
             press up; press a; press b; press start; wait 300; shot titles-done" 2> "$tlog" || { echo "FAIL $size: banana-ui (titles) exited $?"; fail=1; }
     [ "$(cat "$T" 2>/dev/null)" = "$(printf 'nds/Yellow Planet [!].zip\tYellow Plane\ta')" ] || { echo "FAIL $size: game-titles.tsv: $(cat "$T" 2>/dev/null)"; fail=1; }
     "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
@@ -206,29 +220,29 @@ for size in 640x480 1024x768; do
     grep -q "resume after power-off: /run/sd2/roms/gba/Later.gba is on the second SD card, waiting" "$rlog" || { echo "FAIL $size: second card game: $(tail -n 3 "$rlog")"; fail=1; }
     [ -e "$FX/data/resume-boot" ] && { echo "FAIL $size: resume-boot (second card) not consumed"; fail=1; }
     rm -f "$FX/data/resume-boot"
-    # Screen colours (N3): Display & sound > Screen colours (the sixth row), Red down 10 steps, A: the bottom screen corrected, red 0.90
+    # Screen colours (N3): Display & sound > Screen colours (the eighth row), Red down 10 steps, A: the bottom screen corrected, red 0.90
     # in screen-colors.conf; then X (no correction) and A: "none"
     clog=$OUT/$size-colors.log; CF="$FX/data/screen-colors.conf"; rm -f "$CF"
     L10="press left; press left; press left; press left; press left; press left; press left; press left; press left; press left;"
     "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
-        --roms "$FX/roms" --data "$FX/data" --script "home 0; press start; press a; press down; press down; press down; press down; press down; press a; press down; $L10 shot colors; press a" 2> "$clog" \
+        --roms "$FX/roms" --data "$FX/data" --script "home 0; press start; press r; press r; press a; press down; press down; press down; press down; press down; press down; press down; press a; press down; $L10 shot colors; press a" 2> "$clog" \
         || { echo "FAIL $size: banana-ui (screen colours) exited $?"; fail=1; }
     grep -qx 'screen = bottom' "$CF" && grep -qx 'red = 0.90' "$CF" || { echo "FAIL $size: screen-colors.conf: $(tr '\n' ' ' < "$CF" 2>/dev/null)"; fail=1; }
     # X is no correction on the Screen row too: from the bottom kept, X then Right is None -> the bottom again (it
     # stayed "Correct the bottom" and Right went to the top); Red one step (0.99) and A keep that
     "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
-        --roms "$FX/roms" --data "$FX/data" --script "home 0; press start; press a; press down; press down; press down; press down; press down; press a; press x; press right; press down; press left; press a" 2>> "$clog" \
+        --roms "$FX/roms" --data "$FX/data" --script "home 0; press start; press r; press r; press a; press down; press down; press down; press down; press down; press down; press down; press a; press x; press right; press down; press left; press a" 2>> "$clog" \
         || { echo "FAIL $size: banana-ui (screen colours X) exited $?"; fail=1; }
     grep -qx 'screen = bottom' "$CF" && grep -qx 'red = 0.99' "$CF" || { echo "FAIL $size: X didn't set the Screen row to None: $(grep -v '^#' "$CF" | tr '\n' ' ')"; fail=1; }
     "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
-        --roms "$FX/roms" --data "$FX/data" --script "home 0; press start; press a; press down; press down; press down; press down; press down; press a; press x; press a" 2>> "$clog" \
+        --roms "$FX/roms" --data "$FX/data" --script "home 0; press start; press r; press r; press a; press down; press down; press down; press down; press down; press down; press down; press a; press x; press a" 2>> "$clog" \
         || { echo "FAIL $size: banana-ui (screen colours 2) exited $?"; fail=1; }
     grep -qx 'screen = none' "$CF" && grep -qx 'red = 1.00' "$CF" || { echo "FAIL $size: X then A didn't take the correction away: $(tr '\n' ' ' < "$CF")"; fail=1; }
     # a file edited by hand (review M1/L1): a capital, an empty value, a letter O for a zero, an indented key: the page
     # opens on them read as meant (empty and wrong: the default, not the bottom of the range), and A keeps that
     printf 'screen = Bottom\nred =\ngreen = O.9\n  blue = 0.8\n' > "$CF"
     "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
-        --roms "$FX/roms" --data "$FX/data" --script "home 0; press start; press a; press down; press down; press down; press down; press down; press a; press a" 2>> "$clog" \
+        --roms "$FX/roms" --data "$FX/data" --script "home 0; press start; press r; press r; press a; press down; press down; press down; press down; press down; press down; press down; press a; press a" 2>> "$clog" \
         || { echo "FAIL $size: banana-ui (screen colours 3) exited $?"; fail=1; }
     [ "$(grep -E '^(screen|red|green|blue) ' "$CF" | tr '\n' ' ')" = "screen = bottom red = 1.00 green = 1.00 blue = 0.80 " ] || { echo "FAIL $size: a hand-edited file: $(grep -v '^#' "$CF" | tr '\n' ' ')"; fail=1; }
     rm -f "$CF"
@@ -266,6 +280,17 @@ for size in 640x480 1024x768; do
         --roms "$FX/roms" --data "$FX/data" --script "lib 0 0; press x; press down; press down; press right" 2>> "$plog3" \
         || { echo "FAIL $size: banana-ui (4x prompt 3) exited $?"; fail=1; }
     [ -e "$FR" ] && { echo "FAIL $size: leaving 4x asked or kept it: $(cat "$FR")"; fail=1; }
+    # a DS game's own BananaDS timing (Origin HeartGold's Fast while Golden Sun stays Accurate): down to Timing (the row
+    # after Microphone), right (Accurate), right (Fast): kept at once; left twice back to "As in Settings": no file left
+    FT="$FX/data/nds-per-game-timing.conf"; rm -f "$FT"
+    "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
+        --roms "$FX/roms" --data "$FX/data" --script "lib 0 0; press x; press down; press down; press down; press down; press down; press right; press right; shot pergame-timing; press b" 2>> "$plog3" \
+        || { echo "FAIL $size: banana-ui (game timing) exited $?"; fail=1; }
+    [ "$(cat "$FT" 2>/dev/null)" = "Banana Kart DS.nds = fast" ] || { echo "FAIL $size: game timing: $(cat "$FT" 2>&1)"; fail=1; }
+    "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
+        --roms "$FX/roms" --data "$FX/data" --script "lib 0 0; press x; press down; press down; press down; press down; press down; press left; press left; press a" 2>> "$plog3" \
+        || { echo "FAIL $size: banana-ui (game timing 2) exited $?"; fail=1; }
+    [ -e "$FT" ] && { echo "FAIL $size: timing back to As in Settings left $(cat "$FT")"; fail=1; }
     # review fixes on the game page and the keyboard: m7 a pre-filled "Café" loses its whole é to one B (not half of it);
     # m4 a name of its own deleted, then the scraped one typed again: no name of its own; m6 a sharing name with the
     # password step left by B: nothing written
@@ -273,13 +298,13 @@ for size in 640x480 1024x768; do
     printf 'nds/Yellow Planet [!].zip\tCafé\t\n' > "$TT"
     run_r() { "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
         --roms "$FX/roms" --data "$FX/data" --script "$1" 2>> "$rlog" || { echo "FAIL $size: banana-ui (review) exited $?"; fail=1; }; }
-    run_r "lib 0 1; press x; press down; press down; press down; press down; press down; press a; press b; press start"
+    run_r "lib 0 1; press x; press down; press down; press down; press down; press down; press down; press a; press b; press start"
     [ "$(cat "$TT")" = "$(printf 'nds/Yellow Planet [!].zip\tCaf\t')" ] || { echo "FAIL $size: m7 UTF-8 delete: $(od -c "$TT" | head -2 | tr -s ' ')"; fail=1; }
     printf 'nds/Yellow Planet [!].zip\tCustom\t\n' > "$TT"
-    run_r "lib 0 1; press x; press down; press down; press down; press down; press down; press a; press b; press b; press b; press b; press b; press b; press start; press a; shot review-m4; press start"
+    run_r "lib 0 1; press x; press down; press down; press down; press down; press down; press down; press a; press b; press b; press b; press b; press b; press b; press start; press a; shot review-m4; press start"
     [ -s "$TT" ] && { echo "FAIL $size: m4 the scraped name typed again kept a name: $(cat "$TT")"; fail=1; }
     rm -f "$TT" "$FX/data/accounts.conf"
-    run_r "home 0; press start; press r; press r; press r; press r; press a; press up; press up; press up; press a; press b; press start; press b"
+    run_r "home 0; press start; press r; press r; press r; press a; press up; press a; press down; press down; press a; press b; press start; press b"
     [ -e "$FX/data/accounts.conf" ] && grep -q smb_user "$FX/data/accounts.conf" && { echo "FAIL $size: m6 the name was written without the password"; fail=1; }
     rm -f "$FX/data/accounts.conf"
     # Box art by name (#28): X on the last DS game, up to Box art (the last row but Delete game), A types (its name, as it is), START
@@ -312,36 +337,40 @@ for size in 640x480 1024x768; do
     rlog=$OUT/$size-reset.log
     # (ra_vsync = lcd: a value from another key's list, which the start (normalizeSettings) must put back; the system
     # reset leaves ra_vsync alone)
-    for kv in "theme = light" "sounds = off" "core.gba = mgba" "ra_shader = crt" "ra_vsync = lcd"; do
+    # (a system's own RetroArch button, ra_btn_l2.snes, an emulator key the system reset keeps; ra_btn_r3.gba = bogus
+    # a value its list hasn't, which the start drops: no line is the template's or the game's own)
+    for kv in "theme = light" "sounds = off" "core.gba = mgba" "ra_shader = crt" "ra_vsync = lcd" "ra_btn_l2.snes = load" "ra_btn_r3.gba = bogus"; do
         k=${kv%% *}
         grep -q "^$k = " "$FX/data/settings.conf" && sed -i "s/^$k = .*/$kv/" "$FX/data/settings.conf" || printf '%s\n' "$kv" >> "$FX/data/settings.conf"
     done
-    # groups: Display & sound, Sleep & power, Nintendo DS, Other systems, Network, System (five R's); System's rows
-    # from the first (Language, Time zone, Update, Test versions, Update check, Box art, Box art from, Previous version,
-    # First-time setup): down nine to Reset system settings, A twice
+    # groups: Nintendo DS, Other systems, Display & sound, Network, Sleep & power, System (five R's); System's rows
+    # from the first (Language, Time zone, Updates, Box art, First-time setup): down five to Reset system settings, A twice
     run_reset() { "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" \
         --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$FX/roms" --data "$FX/data" --script "$1" 2>> "$rlog" ||
         { echo "FAIL $size: banana-ui (reset) exited $?"; fail=1; }; }
-    run_reset "home 0; press start; press r; press r; press r; press r; press r; press a; press down; press down; press down; press down; press down; press down; press down; press down; press down; press a; press a; wait 300; shot reset-system"
+    run_reset "home 0; press start; press r; press r; press r; press r; press r; press a; press up; press up; press a; press a; wait 300; shot reset-system"
     grep -q '^theme = dark' "$FX/data/settings.conf" || { echo "FAIL $size: system reset didn't restore theme: $(grep '^theme' "$FX/data/settings.conf")"; fail=1; }
     grep -q '^sounds = on' "$FX/data/settings.conf" || { echo "FAIL $size: system reset didn't restore sounds"; fail=1; }
     grep -q '^ra_vsync = on' "$FX/data/settings.conf" || { echo "FAIL $size: an invalid ra_vsync was kept: $(grep '^ra_vsync' "$FX/data/settings.conf")"; fail=1; }
     grep -q '^core.gba = mgba' "$FX/data/settings.conf" || { echo "FAIL $size: system reset wiped an emulator core: $(grep '^core.gba' "$FX/data/settings.conf")"; fail=1; }
     grep -q '^ra_shader = crt' "$FX/data/settings.conf" || { echo "FAIL $size: system reset wiped ra_shader"; fail=1; }
-    # down ten from the first row to Reset emulator settings, A twice (theme and sounds are already back)
-    run_reset "home 0; press start; press r; press r; press r; press r; press r; press a; press down; press down; press down; press down; press down; press down; press down; press down; press down; press down; press a; press a; wait 300; shot reset-emulator"
+    grep -q '^ra_btn_l2.snes = load' "$FX/data/settings.conf" || { echo "FAIL $size: a system's own RetroArch button was lost: $(grep '^ra_btn_l2' "$FX/data/settings.conf" | tr '\n' ' ')"; fail=1; }
+    grep -q '^ra_btn_r3.gba' "$FX/data/settings.conf" && { echo "FAIL $size: an invalid ra_btn_r3.gba was kept"; fail=1; }
+    # down six from the first row to Reset emulator settings, A twice (theme and sounds are already back)
+    run_reset "home 0; press start; press r; press r; press r; press r; press r; press a; press up; press a; press a; wait 300; shot reset-emulator"
     grep -q '^core.gba = gpsp' "$FX/data/settings.conf" || { echo "FAIL $size: emulator reset didn't restore core.gba: $(grep '^core.gba' "$FX/data/settings.conf")"; fail=1; }
     grep -q '^ra_shader = off' "$FX/data/settings.conf" || { echo "FAIL $size: emulator reset didn't restore ra_shader"; fail=1; }
+    grep -q '^ra_btn_l2.snes' "$FX/data/settings.conf" && { echo "FAIL $size: emulator reset left a system's own RetroArch button"; fail=1; }
     grep -q '^theme = dark' "$FX/data/settings.conf" || { echo "FAIL $size: emulator reset wiped a system key"; fail=1; }
     for s in reset-system reset-emulator; do
         [ -s "$OUT/$size-$s-top.png" ] && [ -s "$OUT/$size-$s-bot.png" ] || { echo "FAIL $size: no $s shot"; fail=1; }
     done
-    # an action is A's alone: on Shut down (two up from System's first row: Hotkeys is the list's last), RIGHT twice (as a
-    # held RIGHT repeats) isn't the second press; A twice then is (result 6: POWEROFF)
+    # an action is A's alone: on Shut down (Power, Y on the groups: up from Sleep, its first row), RIGHT twice (as a held
+    # RIGHT repeats) isn't the second press; A twice then is (result 6: POWEROFF)
     alog=$OUT/$size-action.log
     "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" \
         --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$FX/roms" --data "$FX/data" \
-        --script "home 0; press start; press r; press r; press r; press r; press r; press a; press up; press up; press right; press right; press a; press a" \
+        --script "home 0; press start; press y; press up; press right; press right; press a; press a" \
         2> "$alog" || { echo "FAIL $size: banana-ui (action) exited $?"; fail=1; }
     [ "$(grep -c 'press right: settings result 0' "$alog")" = 2 ] && grep -q 'press a: settings result 6' "$alog" ||
         { echo "FAIL $size: Shut down by RIGHT, or not by A: $(grep 'press [ar]' "$alog" | tail -4 | tr '\n' ' ')"; fail=1; }
@@ -513,7 +542,8 @@ for size in 640x480 1024x768; do
     "$HERE/tests/fixture.sh" "$FM" >/dev/null
     rm -rf "$SD2"/* 2>/dev/null || true
     N=$FM/roms/nds G=$FM/roms/gba
-    # in gba: X, down to Delete, RIGHT twice (as a held RIGHT repeats); B, RIGHT twice on the file
+    # in gba: X, down to Delete, RIGHT twice (as a held RIGHT repeats: a page down, to Mark all); B, RIGHT twice in the
+    # folder (pages too): nothing deleted or copied
     run_fm "homeid files; press a; press a; press down; press a; press down; press a; press x; press down; press down; press down; \
         press right; press right; press b; press right; press right"
     fhas "$G/Orchard Tactics.gba"; grep -q "files: Deleted\|files: copy" "$mlog" && { echo "FAIL $size: files: RIGHT chose an action"; fail=1; }
@@ -551,6 +581,11 @@ for size in 640x480 1024x768; do
     mkdir -p "$FM/swipe"; for i in 00 01 02 03 04 05 06 07 08 09 10 11; do : > "$FM/swipe/f$i"; done
     run_fm "homeid files; press a; press a; press down; press down; press a; swipe 300 300 300 100; press x"
     fcheck "files: actions for f05:"
+    # LEFT and RIGHT turn a page (5 rows), L and R go to the first and last rows: in swipe, from f00, RIGHT twice is f10,
+    # R f11, LEFT f06, L f00 (X on each: its actions)
+    run_fm "homeid files; press a; press a; press down; press down; press a; press right; press right; press x; press b; press r; press x; \
+        press b; press left; press x; press b; press l; press x"
+    for f in f10 f11 f06 f00; do fcheck "files: actions for $f:"; done
     # a systems.conf of the user's made before Files (no [files]): the tile is there all the same
     awk '/^\[files\]/ { skip = 1; next } /^\[/ { skip = 0 } !skip' "$HERE/../system/rootfs/etc/banana/systems.conf" > "$OUT/systems-nofiles.conf"
     nlog=$OUT/$size-nofiles.log
@@ -566,6 +601,225 @@ for size in 640x480 1024x768; do
         done
     done
     case $SD2 in /dev/shm/*) rm -rf "$SD2" ;; esac
+    # Files' servers (settings_servers.cpp), with banana-fetch itself (built when this computer has its libraries; the
+    # top Makefile's test does it) and its test protocol, "dir", standing in for a server (a folder here; only with
+    # BANANA_FETCH_TEST=1). Headless, the menu runs banana-fetch's runner to the end at once. A server's folder browsed,
+    # two files marked and downloaded into the folder their type says (the zip unpacked, as asked; RIGHT on the server
+    # logs in to nothing); a folder made and chosen through Files' own navigation (and a choice given up on); a file
+    # copied on the server and pasted into a new folder of the card (not into banana/); an archive on the card unpacked
+    # where it is; an option changed, a server added, a locked server's password typed; the connection lost with Wi-Fi
+    # off (the folder back once it connects, B out of it meanwhile); a job's runner at work beside the menu (its
+    # progress, the retry's countdown, X Stop and Y Cancel tapped); a server's folder of long names within the cache
+    if [ -x "$HERE/banana-fetch" ]; then
+        SV=$OUT/sv-$size; slog=$OUT/$size-servers.log; NAS=$OUT/nas-$size; SRUN=$OUT/srun-$size
+        "$HERE/tests/fixture.sh" "$SV" >/dev/null
+        rm -rf "$NAS" "$SRUN"; mkdir -p "$NAS/Games/nds" "$NAS/Games/gba" "$SRUN"; : > "$slog"
+        head -c 70000 /dev/urandom > "$NAS/Games/nds/Alpha Quest.nds"
+        head -c 1000 /dev/zero > "$NAS/Games/gba/Echo.gba"
+        python3 - "$NAS/Games/nds/Beta Racer.zip" "$SV/Delta.zip" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], 'w', zipfile.ZIP_DEFLATED) as z:
+    z.writestr('Beta Racer.nds', b'B' * 50000)
+with zipfile.ZipFile(sys.argv[2], 'w', zipfile.ZIP_DEFLATED) as z:
+    z.writestr('Delta/Delta.gba', b'D' * 30000)
+PY
+        printf '[locked]\nname = Locked\nprotocol = dir\nhost = %s\nuser = u\nremember = no\n\n[testnas]\nname = Test NAS\nprotocol = dir\nhost = %s\nguest = yes\nstart = /Games\n' \
+            "$NAS" "$NAS" > "$SV/data/nas.conf"
+        SV_SD2=""  # (the second card: set only where a scenario wants it)
+        run_sv() { BANANA_SD2="$SV_SD2" BANANA_FETCH="$HERE/banana-fetch" BANANA_FETCH_TEST=1 BANANA_FETCH_TEST_FAST=1 BANANA_FETCH_TEST_PASSWORD=qwe BANANA_RUN="$SRUN" \
+            "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --banana "$HERE/assets/banana" \
+            --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$SV/roms" --data "$SV/data" --script "$1" 2>> "$slog" ||
+            { echo "FAIL $size: banana-ui (servers) exited $?"; fail=1; }; }
+        scheck() { grep -q "$1" "$slog" || { echo "FAIL $size: servers: no '$1'"; fail=1; }; }
+        # (headless, a press the menu takes isn't followed by its update: "wait 1" lets banana-fetch's answer in)
+        # one card: Files opens on its list all the same (the servers are in it), and B at the card's root comes back to
+        # it; B there closes Files
+        n=$(wc -l < "$slog")
+        run_sv "homeid files; press a; shot sv-one-root; press a; shot sv-one-card; press b; shot sv-one-back; press b"
+        tail -n +$((n + 1)) "$slog" | grep '^banana-ui: press b' | head -n 1 | grep -q 'settings result' &&
+            tail -n +$((n + 1)) "$slog" | grep '^banana-ui: press b' | sed -n 2p | grep -q 'settings closed' ||
+            { echo "FAIL $size: servers: with one card, B at its root didn't come back to Files' list"; fail=1; }
+        # Files' list: This card, Locked, Test NAS (Add a server and Download options are START's). RIGHT on Test NAS twice
+        # (a page down: it stays on the last row, and logs in to nothing), then A: its
+        # /Games (gba, nds); in nds Alpha Quest.nds and Beta Racer.zip marked, X, Download: the folder by type (roms/nds),
+        # Unpack archives (No: the DS plays zips) turned to Yes; START. B on the job's page comes back to nds, B up to
+        # /Games, / and Files' list
+        run_sv "homeid files; press a; shot sv-root; press down; press down; press right; press right; press a; wait 1; shot sv-browse; \
+            press down; press a; wait 1; press y; press down; press y; press x; shot sv-actions; press a; press down; press right; shot sv-target; \
+            press start; wait 1; wait 300; shot sv-status; fetchdone; shot sv-done; press b; wait 1; press b; wait 1; press b; wait 1; press b; shot sv-root-done"
+        [ "$(grep -c 'servers: connected to Test NAS' "$slog")" = 1 ] || { echo "FAIL $size: servers: RIGHT on a server logged in"; fail=1; }
+        scheck "servers: connected to Test NAS (DIR), home /"
+        scheck "servers: /Games/nds: 2 entries"
+        scheck "2 files from Test NAS into $SV/roms/nds$"
+        scheck "notice: Downloaded: 2 files from Test NAS"
+        scheck "servers: /: 1 entries"
+        cmp -s "$NAS/Games/nds/Alpha Quest.nds" "$SV/roms/nds/Alpha Quest.nds" || { echo "FAIL $size: servers: Alpha Quest.nds wasn't downloaded"; fail=1; }
+        [ -f "$SV/roms/nds/Beta Racer.nds" ] && cmp -s "$NAS/Games/nds/Beta Racer.zip" "$SV/roms/nds/Beta Racer.zip" ||
+            { echo "FAIL $size: servers: Beta Racer.zip wasn't downloaded and unpacked, the zip kept"; fail=1; }
+        printf 'target = /Games/nds\tdata:roms/nds\n' | grep -qxFf - "$SV/data/nas.conf" || { echo "FAIL $size: servers: the folder wasn't remembered"; fail=1; }
+        # Files' list: Last download, This card, Locked, Test NAS... /Games/gba's Echo.gba, Download: the folder roms/gba;
+        # A on it: Files on roms/gba, X makes Hacks (opened at once, empty), A chooses it; START. Then the same again: the folder
+        # is Hacks (last time), and B from it up to the cards and once more gives the choice up
+        run_sv "homeid files; press a; press down; press down; press down; press a; wait 1; press a; wait 1; press x; press a; press a; shot sv-pick; \
+            press x; type Hacks; press start; shot sv-pick-new; press a; shot sv-picked; press start; wait 1; wait 300; fetchdone; press b; wait 1; \
+            press x; press a; press a; press b; press b; press b; press b; press b; shot sv-pick-cancelled"
+        scheck "files: Made the folder Hacks."
+        scheck "files: folder chosen: $SV/roms/gba/Hacks$"
+        scheck "1 files from Test NAS into $SV/roms/gba/Hacks$"
+        scheck "files: no folder chosen"
+        [ -f "$SV/roms/gba/Hacks/Echo.gba" ] || { echo "FAIL $size: servers: Echo.gba isn't in the folder chosen"; fail=1; }
+        printf 'target = /Games/gba\tdata:roms/gba/Hacks\n' | grep -qxFf - "$SV/data/nas.conf" || { echo "FAIL $size: servers: the folder chosen wasn't remembered"; fail=1; }
+        # the second card in (Files' list: Last download, This card, Second SD card, Locked, Test NAS...): Echo.gba again,
+        # its folder Hacks as last time, chosen again in Files by A on its file (Echo.gba: A takes the folder shown, as Y),
+        # and the Card row turned to the second card: the same folder there (made by the
+        # download). The page's job done, START closes Files before the runner's word comes: its banner over the menu
+        SV_SD2=$OUT/svsd2-$size; rm -rf "$SV_SD2"; mkdir -p "$SV_SD2"
+        n=$(wc -l < "$slog")
+        run_sv "homeid files; press a; press down; press down; press down; press down; press a; wait 1; press a; wait 1; press x; press a; \
+            press a; press a; press down; press right; shot sv-card; press start; wait 1; wait 300; press start; shot sv-closed; fetchdone; shot sv-banner"
+        scheck "1 files from Test NAS into $SV_SD2/roms/gba/Hacks$"
+        tail -n +$((n + 1)) "$slog" | grep -q "files: folder chosen: $SV/roms/gba/Hacks$" ||
+            { echo "FAIL $size: servers: A on a file didn't choose the folder shown"; fail=1; }
+        [ -f "$SV_SD2/roms/gba/Hacks/Echo.gba" ] || { echo "FAIL $size: servers: Echo.gba isn't on the second card"; fail=1; }
+        tail -n +$((n + 1)) "$slog" | grep -A 3 'press start: settings closed' | grep -q 'notice: Downloaded: Echo.gba' ||
+            { echo "FAIL $size: servers: no banner for a job done with Files closed"; fail=1; }
+        cmp -s "$OUT/$size-sv-closed-top.png" "$OUT/$size-sv-banner-top.png" && { echo "FAIL $size: servers: the banner isn't drawn over the menu"; fail=1; }
+        printf 'target = /Games/gba\tsd2:roms/gba/Hacks\n' | grep -qxFf - "$SV/data/nas.conf" || { echo "FAIL $size: servers: the second card's folder wasn't remembered"; fail=1; }
+        SV_SD2=""
+        # Alpha Quest.nds copied (X, Copy) on the server; up and out to This card: Paste here in its banana folder (here
+        # data) refused; on roms, X, New folder Downloads; in it, X, Paste here: the Download page on it, START
+        run_sv "homeid files; press a; press down; press down; press down; press a; wait 1; press down; press a; wait 1; press a; press down; press a; \
+            shot sv-copied; press b; wait 1; press b; wait 1; press b; wait 1; press up; press up; press a; press a; press x; press a; shot sv-banana; \
+            press b; press down; press x; press down; press down; press a; type Downloads; press start; press a; press x; shot sv-paste; press a; \
+            shot sv-paste-target; press start; wait 1; wait 300; fetchdone"
+        scheck "servers: copy 1 from Test NAS /Games/nds"
+        scheck "files: paste refused: Not into banana/"
+        scheck "files: download 1 from Test NAS into $SV/Downloads$"
+        cmp -s "$NAS/Games/nds/Alpha Quest.nds" "$SV/Downloads/Alpha Quest.nds" || { echo "FAIL $size: servers: the paste didn't download into Downloads"; fail=1; }
+        ls "$SV/data" | grep -q 'Alpha' && { echo "FAIL $size: servers: something went into banana/"; fail=1; }
+        # This card's root (data, Downloads, roms, Delta.zip): Delta.zip, X, Unpack...: the folder it is in, Delete the
+        # archive after (Options' Ask) to Yes, START: its one folder unwrapped; B back to the card's folder, without it
+        run_sv "homeid files; press a; press down; press a; press down; press down; press down; press x; press down; press down; press down; press down; \
+            shot sv-unpack-action; press a; shot sv-unpack; press down; press right; press start; wait 1; wait 300; fetchdone; shot sv-unpacked; press b; shot sv-unpack-back"
+        scheck "1 archive unpacked into $SV$"
+        scheck "notice: Unpacked Delta.zip"
+        [ "$(cat "$SV/Delta.gba" 2>/dev/null | wc -c)" = 30000 ] || { echo "FAIL $size: servers: Delta.zip wasn't unpacked on the card"; fail=1; }
+        [ -e "$SV/Delta.zip" ] && { echo "FAIL $size: servers: Delta.zip wasn't deleted, as asked"; fail=1; }
+        # two archives marked among other files (Packs: Notes.txt, One.zip, Two.zip): Unpack... takes the archives, one job
+        mkdir -p "$SV/Packs"; echo notes > "$SV/Packs/Notes.txt"
+        python3 - "$SV/Packs" <<'PY'
+import sys, zipfile
+for n in ('One', 'Two'):
+    with zipfile.ZipFile(sys.argv[1] + '/' + n + '.zip', 'w', zipfile.ZIP_DEFLATED) as z:
+        z.writestr(n + '.gba', n[0].encode() * 1000)
+PY
+        run_sv "homeid files; press a; press down; press a; press down; press down; press a; press down; press y; press down; press y; press x; \
+            shot sv-multi-actions; press down; press down; press down; press a; shot sv-multi; press start; wait 1; wait 300; fetchdone; press b; shot sv-multi-back"
+        scheck "files: actions for 2 items: Copy, Move, Delete, Unpack..., New folder, Mark all"
+        scheck "2 archives unpacked into $SV/Packs$"
+        scheck "notice: Unpacked 2 archives"
+        [ "$(cat "$SV/Packs/One.gba" "$SV/Packs/Two.gba" 2>/dev/null | wc -c)" = 2000 ] || { echo "FAIL $size: servers: the two archives weren't unpacked"; fail=1; }
+        # an archive with a password (7zz's): Unpack... looks into it, the keyboard asks; a wrong one asks again; the right
+        # one unpacks it. Neither is in the log
+        if command -v 7zz >/dev/null; then
+            cp "$HERE/tests/archives/encrypted.7z" "$SV/Packs/"
+            run_sv "homeid files; press a; press down; press a; press down; press down; press a; press x; press down; press down; press down; press down; \
+                press a; press start; wait 1; shot sv-arcpw; type wrong; press start; wait 1; shot sv-arcpw-wrong; type Secret123; press start; wait 1; \
+                wait 300; fetchdone; shot sv-arcpw-done"
+            scheck "servers: inspect: password: "
+            scheck "servers: inspect: wrong_password: "
+            scheck "1 archive unpacked into $SV/Packs$"
+            [ "$(cat "$SV/Packs/game.nds" 2>/dev/null | wc -c)" = 32768 ] || { echo "FAIL $size: servers: the archive with a password wasn't unpacked"; fail=1; }
+            grep -q 'Secret123\|wrong$' "$slog" && { echo "FAIL $size: servers: a password is in the log"; fail=1; }
+            ls "$SRUN"/*.apw >/dev/null 2>&1 && { echo "FAIL $size: servers: the archive's password file stayed in /run"; fail=1; }
+            for s in sv-arcpw sv-arcpw-wrong sv-arcpw-done; do for p in top bot; do [ -s "$OUT/$size-$s-$p.png" ] || { echo "FAIL $size: no $s"; fail=1; }; done; done
+        else
+            echo "SKIP $size: servers: an archive with a password (no 7zz)"
+        fi
+        # START on Files' list: its settings (Add a server, Download options). Download options: Unpack after a download to
+        # Always; B back to the settings, on Download options; Add a server: SFTP, its address typed (qwe), START saves it;
+        # Locked: its password typed (qwe)
+        run_sv "homeid files; press a; press start; shot sv-settings; press down; press a; press right; shot sv-options; press b; press up; press a; \
+            press down; press right; press down; press a; type qwe; press start; shot sv-edit; press start; wait 1; shot sv-saved"
+        grep -q '^files_unpack = always$' "$SV/data/settings.conf" || { echo "FAIL $size: servers: Download options didn't keep Unpack after a download"; fail=1; }
+        grep -q '^host = qwe$' "$SV/data/nas.conf" && grep -q '^protocol = sftp$' "$SV/data/nas.conf" ||
+            { echo "FAIL $size: servers: the server added isn't in nas.conf"; fail=1; }
+        scheck "servers: server .* saved"
+        run_sv "homeid files; press a; press down; press down; press a; shot sv-password; type qwe; press start; wait 1; shot sv-locked"
+        scheck "servers: connected to Locked (DIR), home /"
+        # the lid shut in a server's folder: Wi-Fi unloaded, back only a while after the lid opens. In nds the connection
+        # is gone (the 3rd listing) and connecting again fails (the 2nd connection): SELECT reads the folder in vain, then
+        # B connects again by itself and goes up to /Games. And with B first: Files' list, not nds for good
+        export BANANA_FETCH_TEST_DROPLIST=3 BANANA_FETCH_TEST_OFFLINE=2
+        n=$(wc -l < "$slog")
+        run_sv "homeid files; press a; press down; press down; press down; press down; press a; wait 1; press down; press a; wait 1; \
+            press select; wait 1; press b; wait 1; shot sv-reconnected"
+        tail -n +$((n + 1)) "$slog" | grep -A 4 "servers: list: network: " | grep -q "servers: /Games: 2 entries" ||
+            { echo "FAIL $size: servers: the folder didn't come back after connecting again failed"; fail=1; }
+        n=$(wc -l < "$slog")
+        run_sv "homeid files; press a; press down; press down; press down; press down; press a; wait 1; press down; press a; wait 1; \
+            press b; wait 1; shot sv-unreachable; press b"
+        tail -n +$((n + 1)) "$slog" | grep -A 2 "servers: list: network: " | grep -q "press b: settings closed" ||
+            { echo "FAIL $size: servers: B didn't get out of the folder of a server that can't be reached"; fail=1; }
+        unset BANANA_FETCH_TEST_DROPLIST BANANA_FETCH_TEST_OFFLINE
+        # a job's runner at work beside the menu (started here, a piece every 100 ms, the connection cut at 1 MB): its row
+        # first in Files' list; the job's page while it downloads (its two bars) and while it waits to try again; X Stop
+        # tapped twice stops it, its part and its job kept (the part shown as downloading, nothing to do with it); then Y
+        # Cancel tapped twice deletes both. ("sleep": real time, for the runner)
+        head -c 3000000 /dev/urandom > "$NAS/Games/nds/Gamma Big.nds"
+        JOB=$SV/data/downloads/20990101-000000-1.job
+        printf 'title = Gamma Big.nds\nserver = testnas\nunpack = no\ntemp_root = %s\nget\t3000000\t/Games/nds/Gamma Big.nds\t%s\n' "$SV" "$SV/roms/nds/Gamma Big.nds" > "$JOB"
+        BANANA_DATA="$SV/data" BANANA_RUN="$SRUN" BANANA_FETCH_TEST=1 BANANA_FETCH_TEST_DELAY=100 BANANA_FETCH_TEST_CUT=1000000 "$HERE/banana-fetch" run 2>> "$slog" & rp=$!
+        upto() { i=0; until grep -q "^$1 " "$SRUN/fetch/status" 2>/dev/null || [ $i -ge 100 ]; do sleep 0.1; i=$((i + 1)); done; }
+        upto get
+        run_sv "homeid files; press a; shot sv-job-row; press a; shot sv-progress"
+        upto retry
+        run_sv "homeid files; press a; press a; shot sv-retry; touch 1 180 442; shot sv-stop; touch 1 180 442; sleep 1500; wait 600; shot sv-stopped"
+        wait $rp || true
+        grep -q '^stopped' "$SRUN/fetch/status" && [ -f "$JOB" ] && [ -s "$SV/roms/nds/Gamma Big.nds.part" ] ||
+            { echo "FAIL $size: servers: X Stop (tapped) didn't stop the download, its part and job kept: $(cat "$SRUN/fetch/status")"; fail=1; }
+        # (This card: data, Downloads, Packs, roms; roms: gb, gba, nds; nds: media, Alpha Quest.nds, Banana Kart DS.nds,
+        # Beta Racer.nds, Beta Racer.zip, Gamma Big.nds.part)
+        run_sv "homeid files; press a; press down; press a; press down; press down; press down; press a; press down; press down; press a; \
+            press down; press down; press down; press down; press down; shot sv-part; press x"
+        scheck "files: actions for This card/roms/nds: New folder, Mark all"
+        run_sv "homeid files; press a; press a; touch 1 180 442; shot sv-cancel; touch 1 180 442; wait 1; shot sv-cancelled"
+        scheck "servers: $JOB cancelled"
+        [ ! -e "$JOB" ] && [ ! -e "$SV/roms/nds/Gamma Big.nds.part" ] || { echo "FAIL $size: servers: Y Cancel (tapped) left the job or its part"; fail=1; }
+        cmp -s "$OUT/$size-sv-progress-top.png" "$OUT/$size-sv-retry-top.png" && { echo "FAIL $size: servers: the retry's countdown looks like the progress"; fail=1; }
+        # a server's folder of long names scrolled through (DOWN, then a frame, as the device draws it), on a card of its
+        # own: the settings' texture cache keeps to its budget, and banana-ui's memory with it
+        NAMES=$OUT/names-$size; rm -rf "$NAMES"; mkdir -p "$NAMES/nas" "$NAMES/data" "$NAMES/run" "$NAMES/roms"
+        i=1; while [ $i -le 200 ]; do : > "$NAMES/nas/$i - Mystery Dungeon - Explorers of the Long Name, Special Edition (Europe) (En,Fr,De,Es,It) (Rev 1).nds"; i=$((i + 1)); done
+        printf '[names]\nname = Names\nprotocol = dir\nhost = %s\nguest = yes\n' "$NAMES/nas" > "$NAMES/data/nas.conf"
+        S=""; i=1; while [ $i -lt 200 ]; do S="$S press down; frame;"; i=$((i + 1)); done
+        n=$(wc -l < "$slog")
+        BANANA_FETCH="$HERE/banana-fetch" BANANA_FETCH_TEST=1 BANANA_RUN="$NAMES/run" "$HERE/banana-ui" --headless "$OUT/$size-" --size $size \
+            --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$SV/roms" --data "$NAMES/data" \
+            --script "homeid files; press a; press down; press a; wait 1; frame; mem; $S mem; shot sv-names" 2>> "$slog" ||
+            { echo "FAIL $size: banana-ui (a server's folder of long names) exited $?"; fail=1; }
+        scheck "servers: /: 200 entries"
+        m0=$(tail -n +$((n + 1)) "$slog" | grep 'mem: RSS' | head -n 1); m1=$(tail -n +$((n + 1)) "$slog" | grep 'mem: RSS' | tail -n 1)
+        if [ -z "$m0" ] || [ "$m0" = "$m1" ]; then echo "FAIL $size: servers: no mem lines from the folder of long names"; fail=1
+        else
+            kb() { echo "$1" | sed 's/.*RSS[^0-9]*\([0-9]*\) kB.*/\1/'; }
+            grown=$(( ($(kb "$m1") - $(kb "$m0")) / 1024 ))
+            [ $grown -lt 64 ] || { echo "FAIL $size: servers: 200 long names scrolled through took $grown MB more"; fail=1; }
+            echo "$m1" | awk '{ sub(/.*settings cache /, ""); exit !($3 <= $7) }' ||
+                { echo "FAIL $size: servers: the settings' texture cache went past its budget: ${m1##*settings cache }"; fail=1; }
+        fi
+        for s in sv-one-root sv-one-card sv-one-back sv-card sv-closed sv-banner sv-multi-actions sv-multi sv-multi-back sv-root sv-browse sv-actions sv-target sv-status sv-done sv-root-done sv-pick sv-pick-new sv-picked sv-pick-cancelled sv-copied \
+            sv-banana sv-paste sv-paste-target sv-unpack-action sv-unpack sv-unpacked sv-unpack-back sv-settings sv-options sv-edit sv-saved sv-password \
+            sv-locked sv-reconnected sv-unreachable sv-job-row sv-progress sv-retry sv-stop sv-stopped sv-part sv-cancel sv-cancelled sv-names; do
+            for p in top bot; do
+                f=$OUT/$size-$s-$p.png
+                [ -s "$f" ] || { echo "FAIL $size: no $f"; fail=1; continue; }
+                [ "$(convert "$f" -format '%[fx:standard_deviation>0.01]' info:)" = 1 ] || { echo "FAIL $size: $f is blank"; fail=1; }
+            done
+        done
+    else
+        echo "SKIP $size: Files' servers (no ui/banana-fetch: make -C ui banana-fetch, with libcurl, libssh2 and OpenSSL's dev packages)"
+    fi
     # Bshare's pages (settings_bshare.cpp) against a stand-in helper (its arguments noted, a send's state written): a
     # device's request accepted into a folder chosen on the card (Location), a game in roms/gb (the first folder) sent
     # to a device seen, Options' Receive when closed turned to Ask
@@ -607,11 +861,69 @@ for size in 640x480 1024x768; do
     grep -q "^send mac-fp $FX/roms/gb/Pocket Peel.gb$" "$BRUN/args" && grep -q "^send --pin 4242 mac-fp $FX/roms/gb/Pocket Peel.gb$" "$BRUN/args" ||
         { echo "FAIL $size: bshare: the PIN wasn't asked for and sent: $(cat "$BRUN/args")"; fail=1; }
     sed -i '/^bshare_/d' "$FX/data/settings.conf"
+    # settings.conf values not in their lists are put back to the defaults at start (the lists of allowed values were
+    # read on past their ends: "accent = on" or "nds_emulator = off" could pass, the next list's values, or the menu crash)
+    vlog=$OUT/$size-values.log
+    sed -i '/^accent = /d; /^nds_emulator = /d' "$FX/data/settings.conf"
+    printf 'accent = on\nnds_emulator = off\n' >> "$FX/data/settings.conf"
+    "$HERE/banana-ui" --headless "$OUT/$size-values-" --size $size --assets "$HERE/assets/rnds" \
+        --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$FX/roms" --data "$FX/data" --script "home 0" 2> "$vlog" ||
+        { echo "FAIL $size: banana-ui (invalid settings) exited $?"; fail=1; }
+    grep -q '^accent = yellow$' "$FX/data/settings.conf" || { echo "FAIL $size: an invalid accent kept: $(grep '^accent' "$FX/data/settings.conf")"; fail=1; }
+    grep -q '^nds_emulator = superdrastic$' "$FX/data/settings.conf" || { echo "FAIL $size: an invalid DS emulator kept: $(grep '^nds_emulator' "$FX/data/settings.conf")"; fail=1; }
     grep 'bench:' "$log" | sed "s/^banana-ui: /$size /"
+    # the game panel with an emulator's RetroAchievements block (the universal companion's tier 0: rich presence and the
+    # achievements closest to done, from BananaFront's rcheevos through the shared memory)
+    printf 'state 3\ngame 0\nrp Lv 23 Charmeleon, Viridian Forest, 3 badges\nnear 101 68 34/50 Collect 50 coins in World 1\nnear 102 40 2/5 Beat every boss without a hit\n' > "$OUT/ra1.txt"
+    "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
+        --roms "$FX/roms" --data "$FX/data" --script "home 0; gamepanel 1 /nonexistent.gba; rablock $OUT/ra1.txt; gshot ra-block" 2> "$OUT/$size-rablock.log" ||
+        { echo "FAIL $size: banana-ui (RA block) exited $?"; fail=1; }
+    # the game panel's save states (tier 0): a tap on the achievements box opens them, a slot tapped twice loads it
+    SD=$OUT/states-$size; mkdir -p "$SD"; echo x > "$SD/test.state"; echo y > "$SD/test.state3"
+    convert -size 240x160 xc:'#3a8a4a' "$SD/test.state3.png" 2>/dev/null
+    "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
+        --roms "$FX/roms" --data "$FX/data" --script "home 0; gstates $SD; gamepanel 1 /x.gba; gtouch 300 150; gtouch 400 150; gshot states-sel; gtouch 400 150" 2> "$OUT/$size-states.log" ||
+        { echo "FAIL $size: banana-ui (save states) exited $?"; fail=1; }
+    grep -q "gtouch 400 150: action 6" "$OUT/$size-states.log" || { echo "FAIL $size: slot 3 tapped twice didn't load it"; fail=1; }
+    grep -q "rablock .*: state 3 rp 'Lv 23 Charmeleon, Viridian Forest, 3 badges' near 2" "$OUT/$size-rablock.log" || { echo "FAIL $size: the RA block wasn't read"; fail=1; }
+    [ "$(convert "$OUT/$size-ra-block-bot.png" -format '%[fx:standard_deviation>0.01]' info: 2>/dev/null)" = 1 ] || { echo "FAIL $size: the RA block panel is blank"; fail=1; }
 done
 # updates over the air (#69): the update script against a stand-in for GitHub, and the Update page
 OUT="$OUT" "$HERE/tests/ota.sh" || fail=1
 # home server sync (banana-sync) against a stand-in RomM and, when its source is here, the real Romhost
 OUT="$OUT" "$HERE/tests/sync.sh" || fail=1
+# the flight recorder's part in banana-ui: with /run/banana/recording there, its events go to the recorder's socket
+# (a stand-in for bananad here): Settings opened, a group, a setting changed (old -> new), closed, a library
+if [ -w /run ] || [ -w /run/banana ]; then
+    mkdir -p /run/banana; rm -f /run/banana/recorder.sock; : > /run/banana/recording
+    python3 -I - "$OUT/recorder.txt" <<'PY' &
+import socket, sys, time
+s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM); s.bind('/run/banana/recorder.sock'); s.settimeout(0.5)
+out, end = open(sys.argv[1], 'w'), time.time() + 20
+while time.time() < end:
+    try: out.write(s.recv(400).decode() + '\n'); out.flush()
+    except socket.timeout: pass
+PY
+    L=$!; sleep 0.5
+    "$HERE/banana-ui" --headless "$OUT/rec-" --size 640x480 --assets "$HERE/assets/rnds" \
+        --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$FX/roms" --data "$FX/data" \
+        --script "home 0; press start; press r; press a; press right; press left; press b; press b; press a; wait 300" 2> "$OUT/rec.log" ||
+        { echo "FAIL: banana-ui (recorder) exited $?"; fail=1; }
+    sleep 0.5; kill $L 2>/dev/null; rm -f /run/banana/recording /run/banana/recorder.sock
+    R=$OUT/recorder.txt
+    # (the Developer options page and Settings' own events are not in this port: the menu's screens, a game, Settings closed)
+    for want in "settings	closed" "menu	library: "; do
+        grep -qF "$want" "$R" || { echo "FAIL: the recorder: no '$want' ($(tr '\n' '|' < "$R"))"; fail=1; }
+    done
+fi
+# the DS companion's overlay (nds/overlay.h, COMPANION-SPEC section 10) end to end: banana-ui paints the test page
+# while a child plays BananaDS's part (the icon, a tap open, a drag, the page's Back to game), at both panel sizes;
+# the pictures it took are left as <size>-ndsoverlay-{icon,open,drag}.png
+for size in 640x480 1024x768; do
+    "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" \
+        --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$FX/roms" --data "$FX/data" \
+        --script "ndsoverlay" 2> "$OUT/$size-ndsoverlay.log" ||
+        { echo "FAIL $size: the DS companion's overlay: $(grep -h 'FAIL\|ndsoverlay:' "$OUT/$size-ndsoverlay.log" | head -2)"; fail=1; }
+done
 [ $fail = 0 ] && echo "banana-ui: all checks passed ($OUT)"
 exit $fail

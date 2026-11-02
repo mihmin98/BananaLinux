@@ -1266,6 +1266,9 @@ settings		Sync now	立即同步
 settings		Copies the server's games (with their covers and names) to the card and syncs the saves both ways. It carries on in the background; the handheld doesn't sleep while games download. Files of your own are never replaced or deleted: only the ones a sync put there.	将服务器上的游戏（含封面与名称）复制到卡上，并双向同步存档。它在后台持续进行；下载游戏时主机不会休眠。你自己的文件绝不会被替换或删除：仅同步放入的那些文件。
 settings		Download: the server's games for the systems below come to the card (and leave it when they leave the server). Saves only: the games stay as they are and only the saves sync.	下载：下方各系统对应的游戏会从服务器来到卡上（服务器移除时卡上也随之移除）。仅存档：游戏保持不变，仅同步存档。
 settings		Saves only	仅存档
+settings		Games go to	游戏下载到
+settings		Where downloaded games go. Second SD card: its roms folder (made if it has none), while it's in and Second SD card shows its games. A game already on a card stays there; with the second card out, its games wait for the next sync.	下载的游戏存放的位置。第二张 SD 卡：其 roms 文件夹（没有时会自动创建），前提是卡已插入且“第二张 SD 卡”设为显示其游戏。已在某张卡上的游戏会留在原处；第二张卡未插入时，其游戏会等到下次同步。
+settings		This card	本卡
 settings		Save states	即时存档
 settings		On: save states sync too, not only the games' own saves (RomM; on Romhost its Devices page decides). Quick-resume states never sync.	开：即时存档也会同步，而不只是游戏自身的存档（RomM；在 Romhost 上由其 Devices 页面决定）。快速继续的状态永不同步。
 settings		Auto sync	自动同步
@@ -1292,7 +1295,7 @@ settings		No Romhost answered. Server address	没有 Romhost 响应。服务器�
 settings		Romhost or RomM	Romhost 或 RomM
 settings		Asking {name} for a pairing code...	正在向 {name} 请求配对码…
 settings		Nothing answers there as a Romhost or RomM server. Check the address (and :port) and that the handheld is on the same network.	那里没有以 Romhost 或 RomM 服务器身份响应的设备。请检查地址（及 :port）以及掌机是否在同一网络上。
-settings		On {hsName}, open {url} (signed in) and enter {code}, then approve this handheld. Waiting...	在 {hsName} 上，打开 {url}（已登录）并输入 {code}，然后批准此掌机。等待中…
+settings		On {hsName}, open {url} (signed in) and approve this handheld (code {code}). Waiting...	在 {hsName} 上，打开 {url}（已登录）并批准此掌机（配对码 {code}）。等待中…
 settings		Paired with {ln}. Sync now, below, gets the games and saves.	已与 {ln} 配对。下方的「立即同步」会获取游戏与存档。
 settings		Pairing didn't work: {ln}.	配对失败：{ln}。
 settings		None right now.	当前无。
@@ -1325,7 +1328,7 @@ settings		Beetle PSX	Beetle PSX
 settings		ParaLLEl N64	ParaLLEl N64
 settings		The picture's shader for this game only, in either emulator; the others follow Settings > Nintendo DS > Shader. None scales smoothly and costs no GPU work.	仅本游戏的画面着色器，两种模拟器均可；其余游戏遵循 设置 > Nintendo DS > 着色器。None 平滑缩放且不占用 GPU。
 settings		RetroArch {ra}, updated with BananaOS.	RetroArch {ra}，随 BananaOS 更新。
-settings		Not paired. A looks for Romhost on the network (Homeport > ROMs > Pair a device shows its code); when none answers, type the address of a Romhost or a RomM server (a name or IP, and :port if it isn't the usual one). RomM then shows a code to enter on its Pair device page.	未配对。按 A 在网络上查找 Romhost（Homeport > ROMs > Pair a device 会显示其配对码）；若无响应，请输入 Romhost 或 RomM 服务器的地址（名称或 IP，非默认端口时加 :port）。随后 RomM 会显示一个需在「Pair device」页面输入的配对码。
+settings		Not paired. A looks for Romhost on the network (Homeport > ROMs > Pair a device shows its code); when none answers, type the address of a Romhost or a RomM server (a name or IP, and :port if it isn't the usual one). For RomM, the handheld then shows an address to open in RomM to approve it.	未配对。按 A 在网络上查找 Romhost（Homeport > ROMs > Pair a device 会显示其配对码）；若无响应，请输入 Romhost 或 RomM 服务器的地址（名称或 IP，非默认端口时加 :port）。对于 RomM，掌机随后会显示一个地址，在 RomM 中打开该地址即可批准。
 settings		Paired with {n}. A pairs again (another server, or after the handheld was removed there).	已与 {n} 配对。按 A 可重新配对（更换服务器，或在掌机已从该处移除后）。
 settings		Last sync: {g} files of games down, {rm} removed; saves {up} up, {dn} down{cf}{er}	上次同步：游戏文件下载 {g}，移除 {rm}；存档上传 {up}，下载 {dn}{cf}{er}
 settings		; {cf} in conflict (on Romhost: decide in Homeport; on RomM the newer won and the other is kept on the card as a .bak)	；{cf} 个冲突（Romhost 上：在 Homeport 中决定；RomM 上：较新的获胜，另一个作为 .bak 保留在卡上）
@@ -1586,3 +1589,9 @@ menu		Open Bshare to accept.	打开 Bshare 以接受。
 menu		In banana/received.	已保存在 banana/received。
 menu		Games went into their system's folder.	游戏已放入对应系统的文件夹。
 menu		Nothing was sent.	没有发送任何内容。
+# (the game page's Timing rows below are a machine-translated draft, not Majirefy's: for them to check)
+settings		This game's timing	本游戏的时序
+settings		BananaDS only. Fast lets the DS's two CPUs run longer between meeting for this game (up to about 10% faster in HeartGold and hacks of it like Origin HeartGold), Accurate is melonDS's own. Fast can break a game (Golden Sun: Dark Dawn loses its 3D world): if this one goes wrong, set it back. The others follow Settings > Nintendo DS > Timing.	仅限 BananaDS。快速：本游戏中 DS 的两颗 CPU 在同步间隔更长（在心金及其改版如起源心金中最多约快 10%）；精确：melonDS 自身的方式。快速可能会让游戏出错（黄金太阳：漆黑的黎明会丢失 3D 世界）：如果本游戏出问题，请改回来。其他游戏遵循 设置 > Nintendo DS > 时序。
+# (the game page's "Fast, DSi CPU" timing below is a machine-translated draft, not Majirefy's: for them to check)
+settings		Fast, DSi CPU	快速，DSi CPU
+settings		BananaDS only. Fast lets the DS's two CPUs run longer between meeting for this game (up to about 10% faster in HeartGold and hacks of it like Origin HeartGold), Accurate is melonDS's own. Fast can break a game (Golden Sun: Dark Dawn loses its 3D world): if this one goes wrong, set it back. Fast, DSi CPU also runs the game's main CPU at the DSi's 133 MHz: a game that slows down by itself on a DS (Origin HeartGold's busy towns) keeps its speed, for more of the handheld's power. The others follow Settings > Nintendo DS > Timing.	仅限 BananaDS。快速：本游戏中 DS 的两颗 CPU 在同步间隔更长（在心金及其改版如起源心金中最多约快 10%）；精确：melonDS 自身的方式。快速可能会让游戏出错（黄金太阳：漆黑的黎明会丢失 3D 世界）：如果本游戏出问题，请改回来。“快速，DSi CPU”还会让游戏的主 CPU 以 DSi 的 133 MHz 运行：在 DS 上自身会变慢的游戏（起源心金的热闹城镇）可保持速度，但会多用掌机的性能。其他游戏遵循 设置 > Nintendo DS > 时序。

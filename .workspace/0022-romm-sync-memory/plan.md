@@ -1,6 +1,6 @@
 # 0022 RomM sync memory: plan
 
-Issue: #22 · Branch: `k/0022-romm-sync-memory` · Investigation: [investigation.md](investigation.md) · Status: approved
+Issue: #22 · Branch: `k/0022-romm-sync-memory` · Investigation: [investigation.md](investigation.md) · Status: done
 
 ## Summary
 
@@ -383,10 +383,10 @@ put it back for M4.
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | Update to this branch's image. Over SSH, `free -m`. Settings > Network > Home server > **Sync now**, with the user's RomM; move around the menu while it runs. When it ends, `free -m` again. Run Sync now a second time (nothing new). | Both syncs end with a result in Settings; the menu answers throughout; nothing freezes. While the list is read, the bar fills with "Listing games" and `<system> <n> / <total>` under it. `sync.log` ends with `done:` and then `memory: peak <n> kB`, with `<n>` under 100000 (about 50000 expected for 6000 games). | `/data/banana/logs/sync.log` and `sync.log.1` (both syncs); the two `free -m` outputs | A2, A6, A9 | not run |
-| M2 | rgds-plus | Over SSH, start `while p=$(pidof banana-sync); do grep VmHWM /proc/$p/status; sleep 1; done; echo done` and leave it waiting (start it a second time if it ends before the list is opened). Open Settings > Network > Home server > **Choose games**. Scroll through two systems' lists. | The list appears with every system's games (1000+ each); no freeze. The loop's last `VmHWM` is under 100000 kB. | the SSH loop's output (copied from the terminal) | A1, A3, A9 | not run |
-| M3 | rgds-plus | Set Auto sync to **Leaving a game**. Start a game whose save is on RomM (or make a new save), then quit it. | Back in the menu without a freeze; the save is uploaded or downloaded as upstream would. `sync.log` shows the saves lines, `done:` and `memory: peak`. | `/data/banana/logs/sync.log` | A2, A5, A6, A9 | not run |
-| M4 | rgds-plus | Set Auto sync to **And on Wi-Fi**. Reboot, and use the menu for 2 minutes after Wi-Fi connects (the sync starts 25 s after). | The menu stays usable; a new `sync.log`, timed after the boot, ends with `done:` and `memory: peak`. | `/data/banana/logs/sync.log` | A6, A9 | not run |
+| M1 | rgds-plus | Update to this branch's image. Over SSH, `free -m`. Settings > Network > Home server > **Sync now**, with the user's RomM; move around the menu while it runs. When it ends, `free -m` again. Run Sync now a second time (nothing new). | Both syncs end with a result in Settings; the menu answers throughout; nothing freezes. While the list is read, the bar fills with "Listing games" and `<system> <n> / <total>` under it. `sync.log` ends with `done:` and then `memory: peak <n> kB`, with `<n>` under 100000 (about 50000 expected for 6000 games). | `/data/banana/logs/sync.log` and `sync.log.1` (both syncs); the two `free -m` outputs | A2, A6, A9 | skipped (2026-11-03, the user's decision: no logs collected; the fix accepted, *Notes*) |
+| M2 | rgds-plus | Over SSH, start `while p=$(pidof banana-sync); do grep VmHWM /proc/$p/status; sleep 1; done; echo done` and leave it waiting (start it a second time if it ends before the list is opened). Open Settings > Network > Home server > **Choose games**. Scroll through two systems' lists. | The list appears with every system's games (1000+ each); no freeze. The loop's last `VmHWM` is under 100000 kB. | the SSH loop's output (copied from the terminal) | A1, A3, A9 | skipped (2026-11-03, the user's decision: no logs collected; the fix accepted, *Notes*) |
+| M3 | rgds-plus | Set Auto sync to **Leaving a game**. Start a game whose save is on RomM (or make a new save), then quit it. | Back in the menu without a freeze; the save is uploaded or downloaded as upstream would. `sync.log` shows the saves lines, `done:` and `memory: peak`. | `/data/banana/logs/sync.log` | A2, A5, A6, A9 | skipped (2026-11-03, the user's decision: no logs collected; the fix accepted, *Notes*) |
+| M4 | rgds-plus | Set Auto sync to **And on Wi-Fi**. Reboot, and use the menu for 2 minutes after Wi-Fi connects (the sync starts 25 s after). | The menu stays usable; a new `sync.log`, timed after the boot, ends with `done:` and `memory: peak`. | `/data/banana/logs/sync.log` | A6, A9 | skipped (2026-11-03, the user's decision: no logs collected; the fix accepted, *Notes*) |
 
 Notes from the runs (what the logs showed, what was fixed):
 
@@ -394,6 +394,19 @@ Notes from the runs (what the logs showed, what was fixed):
   handheld didn't freeze. Sync now stayed on "Starting" with an empty bar for about 2 minutes and the user stopped
   it; there was no `sync.log`, which is written from the report's first line, after the listing. Not recorded as an
   outcome: it led to step 3 (*Deviations*), and M1 runs again on an image with it.
+- **After step 3 (2026-11-03, RG DS Plus, image 0.5.2.2 built from `6c7cd6e`, the same RomM):** the user reports the
+  sync working: Sync now's "Listing games" bar shows the listing's progress, and the handheld doesn't freeze. No logs
+  were collected (no `sync.log`, `VmHWM` loop or `free -m`). M1-M4 are marked skipped at the user's decision, and the
+  fix is accepted on that observation (*Deviations*). The user asked for an elapsed time and ETA for every phase of a
+  sync: left for a feature of its own, after this one.
+- **The final check after step 3 (2026-11-03, at `6c7cd6e`):** `make test`, `make -C ui`, `banana-sync` with
+  `-Wall -Wextra -Werror`, bananad with `-Werror` and `kiwami/tests/ci.sh .buildroot` pass. `romm-list.sh`: games
+  67 MB, dry run 68 MB, saves-only 67-68 MB peak (the bound 100 MB), 12 requests of 200, 12 `Listing games`
+  statuses, `sync.log`'s own peak about 69400 kB. `--compare` against `main`'s build: `main`'s peaks at 402 MB; the
+  games, dry run, cards, `state` and saves the same (311 files). The hooks: the two commands of `docs/FORK.md` name
+  the same 11 files; this feature adds `ui/src/sync.cpp`'s 8 lines and `ui/Makefile`'s 1, each marked `kiwami:`. The
+  renders' comparison (above) holds: since it, only `ui/src/sync.cpp` and `ui/src/kiwami/syncmem.h` changed under
+  `ui/`, and banana-ui's sources include neither.
 
 Automated parts of the final check (2026-11-03, on the branch at `d43fe21` (step 2) with this step's changes):
 
@@ -443,6 +456,11 @@ Where the implementation turned out different from this plan, why, and what chan
   bound: the bound becomes 100 MB (A1, A2), and `--compare`'s check of `main`'s build a fixed 256 MB (it peaks at
   403 MB). The final check becomes step 4; its automated parts run again after step 3, and the manual tests run on
   an image with step 3.
+- **2026-11-03, final check: the manual tests skipped, the fix accepted.** On the image with step 3, the user saw Sync
+  now list with progress and finish without a freeze, and chose not to collect the logs: M1-M4 are recorded as
+  skipped, and the final check is done without "the manual tests below all passed". A9 (no freeze on the device,
+  Sync now, Choose games, a saves-only and an automatic sync) rests on the user's observation of Sync now, not on logs;
+  the memory line (A6) and the listing's peak on the device (A1, A2) weren't read there.
 - **2026-11-03, final check: `--compare` reports every difference before it stops**, so the cards are compared even
   when the other build's peak is low (how the check of a build that drops `summary` was made).
 
@@ -455,4 +473,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 1. 50 games a page, each kept small, with a test of a large library | done | RomM sync memory: 50 games a page, each kept to the fields banana-sync reads |
 | 2. The sync's peak memory in its report | done | RomM sync memory: the sync's peak memory at the end of its report |
 | 3. Progress while the list is read, and 200 games a page | done | RomM sync memory: Sync now's progress while RomM's list is read, 200 games a page |
-| 4. Final check | in progress: automated parts done (to run again after step 3); manual tests M1-M4 to run | RomM sync memory: compared with upstream's banana-sync, and a note for merges |
+| 4. Final check | done (manual tests skipped, *Deviations*) | RomM sync memory: compared with upstream's banana-sync, and a note for merges; RomM sync memory: the final check done |

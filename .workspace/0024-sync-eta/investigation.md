@@ -226,6 +226,13 @@ estimates.
 7. Sleep in the elapsed time? *Answered*: no, awake time only (`CLOCK_MONOTONIC`).
 8. Additions? *Answered*: phase times in `sync.log`, and Files' style for the line.
 9. The row's label, help and place on the Home server page (proposed: "Sync times", Off/On, after Sync now, where it
-   is read), and the setting's key name. *Unanswered*: for the plan.
+   is read), and the setting's key name. *Answered* (planning): **Show sync times**, Off/On, right after Sync now,
+   key `kiwami_sync_times`.
 10. The ETA's threshold (proposed: 3 s and something done) and the throttle of the new phases' writes (proposed:
-    four a second). *Unanswered*: for the plan.
+    four a second). *Answered* (planning): 3 s and one unit done; at most one write every 250 ms, plus each phase's
+    first and last item.
+11. How the headless test gets a sync to show, since upstream reads the fixed `/run/banana/sync.status`? *Answered*
+    (planning): a test-only `KIWAMI_SYNC_RUN=<dir>` in the environment; the fork's code reads the status, pid and
+    times from there and puts the status into Settings' `syncLine`.
+12. When Settings wakes for the clock? *Answered* (planning): only while the Sync now row is selected (where the line
+    shows); elsewhere as upstream.

@@ -313,6 +313,7 @@ one commit.
 - Every acceptance criterion is met: each is listed by at least one automated or manual test, and those passed.
 - **Files**:
   - `kiwami/tests/romm-list.sh` (changed, `--compare`)
+  - `kiwami/tests/romm-big.py` (changed: a one-file game's content, see *Deviations*)
   - `docs/FORK.md` (changed)
   - `.workspace/0022-romm-sync-memory/plan.md` (changed: Progress, manual test outcomes, notes)
 - **Commit**: `RomM sync memory: the final check, compared with upstream's banana-sync, and a note for merges`
@@ -349,9 +350,47 @@ put it back for M4.
 
 Notes from the runs (what the logs showed, what was fixed):
 
+Automated parts of the final check (2026-11-03, on the branch at `d43fe21` (step 2) with this step's changes):
+
+- `make test`, `make -C ui`, `make -C ui banana-sync CXXFLAGS="-O2 -Werror"`, `make -C system/bananad
+  CFLAGS="-O2 -Werror"` and `kiwami/tests/ci.sh .buildroot` all pass. `romm-list.sh`: games 35-36 MB, dry run 35 MB,
+  saves-only 35 MB peak (the bound 64 MB), 48 requests of 50, 18 keys of `manifest()` kept, `sync.log`'s own peak
+  about 36600 kB.
+- `romm-list.sh --compare` against `main`'s `banana-sync` (built from `git show main:ui/src/...`): `main`'s peaks at
+  402-404 MB listing the games (6.3 times the bound); `games`, the dry run's files and `roms:` line identical; on the
+  30-a-system library, the real sync's cards (311 files in `roms/`, covers, `.m3u`, `gamelist.xml`) and `saves/`
+  identical, and so is `romsync.json`'s `state`. Both builds' real sync ends with 1 for the same six errors: game 11's
+  null `file_size_bytes` read as 0, a size mismatch (upstream's handling, kept). A build whose `slim()` drops
+  `summary` fails the comparison on the cards' `gamelist.xml` (`<desc>` missing), so it catches a dropped field.
+- The hooks: `git diff --stat main...HEAD` and `git grep -n 'kiwami:'` (`docs/FORK.md`) name the same 11 files; this
+  feature adds only `ui/src/sync.cpp`'s 6 lines and `ui/Makefile`'s 1 (`git diff kiwami...HEAD`: 7 lines added, the
+  4 upstream lines they replace removed).
+- The renders: `make test` here and in `kiwami`'s tree at `29b8dbe` (the commit before this feature), run side by
+  side: all 1314 PNGs in `ui/tests/out/` pixel-identical. The rootfs gains no file (a header compiled into
+  `banana-sync`, and tests).
+- `kiwami/DEPENDENCIES.md` unchanged (no dependency added); `docs/FORK.md` has the note for merges;
+  `docs/ARCHITECTURE.md` and `CLAUDE.md` don't describe the listing.
+
 ## Deviations
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
+
+- **2026-11-03, final check: the stand-in's one-file games fixed.** `romm-big.py` (step 1) sent a one-file game's
+  download as `rom <game id>` while its `files[]` entry gave the size and hashes of `rom <file id>`, so in the
+  `--compare` run both builds failed 150 of 311 downloads the same way and the real-sync comparison checked little.
+  The game's file now holds the game's own content; only game 11 (null `file_size_bytes`, on purpose) fails, in both
+  builds. Step 1's checks were unaffected (the listing and the dry run download nothing). The fix goes in the final
+  check's commit, `kiwami/tests/romm-big.py` added to its files.
+- **2026-11-03, final check: the renders' baseline is `kiwami` before this feature (`29b8dbe`), not `main`.** The fork's
+  earlier features already show in `make test`'s renders, and this feature doesn't touch banana-ui's sources. The
+  copy was made with `git archive kiwami` into `/tmp` (read-only git), not a worktree.
+- **2026-11-03, final check: in two commits.** Its automated parts (`--compare`, the stand-in's fix, the
+  `docs/FORK.md` note, the notes above) are committed first, as
+  `RomM sync memory: compared with upstream's banana-sync, and a note for merges`, so the image for the manual tests
+  is built from a clean tree. The manual tests' outcomes and the final check marked done follow in a second commit,
+  `RomM sync memory: the final check done`.
+- **2026-11-03, final check: `--compare` reports every difference before it stops**, so the cards are compared even
+  when the other build's peak is low (how the check of a build that drops `summary` was made).
 
 ## Progress
 
@@ -361,4 +400,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. 50 games a page, each kept small, with a test of a large library | done | RomM sync memory: 50 games a page, each kept to the fields banana-sync reads |
 | 2. The sync's peak memory in its report | done | RomM sync memory: the sync's peak memory at the end of its report |
-| 3. Final check | todo | |
+| 3. Final check | in progress: automated parts done; manual tests M1-M4 to run | RomM sync memory: compared with upstream's banana-sync, and a note for merges |

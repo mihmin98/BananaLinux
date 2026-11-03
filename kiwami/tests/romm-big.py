@@ -45,8 +45,8 @@ def content(fid):
     return f"rom {fid}\n".encode()
 
 
-def file_entry(fid, rid, name, path, size_null=False):
-    data = content(fid)
+# a file's entry in files[]; data: its content (a game of one file is downloaded whole, as the game's own content)
+def file_entry(fid, rid, name, path, data, size_null=False):
     return {"id": fid, "rom_id": rid, "file_name": name, "file_path": path, "file_size_bytes": None if size_null else len(data),
             "full_path": f"/romm/library/{path}/{name}", "crc_hash": None, "md5_hash": hashlib.md5(data).hexdigest(),
             "sha1_hash": hashlib.sha1(data).hexdigest(), "ra_hash": "", "category": None, "is_top_level": True}
@@ -75,12 +75,12 @@ def game(p, i):
         fs_name = f"../Escape (USA).{ext}"
     if multi:
         names = [f"{stem}.cue", f"{stem} (Track 1).bin", f"{stem} (Track 2).bin", "readme.txt"]
-        files = [file_entry(rid * 10 + k, rid, n, f"{fs}/{stem}") for k, n in enumerate(names)]
+        files = [file_entry(rid * 10 + k, rid, n, f"{fs}/{stem}", content(rid * 10 + k)) for k, n in enumerate(names)]
     elif i == 8:
         files = []
     else:
-        files = [file_entry(rid * 10, rid, fs_name, fs, size_null=i == 11)]
-    size = sum(len(content(f["id"])) for f in files) if files else len(content(rid))
+        files = [file_entry(rid * 10, rid, fs_name, fs, content(rid), size_null=i == 11)]
+    size = sum(len(content(f["id"])) for f in files) if multi else len(content(rid))
     cover = f"/assets/romm/resources/roms/{p}/{rid}/cover/big.{'jpg' if i == 3 else 'png'}{TS}"
     meta = {"rom_id": rid, "genres": ["Action", "Puzzle"], "franchises": ["Banana"], "collections": [], "companies": ["Banana", "Peel"],
             "game_modes": ["Single player"], "age_ratings": ["E"], "first_release_date": 1262304000000 + i * 86400000,

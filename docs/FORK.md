@@ -199,7 +199,12 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    tile after System, Network's Tailscale after Bluetooth); a name upstream drops from `ORDER` sends the fork's entry
    to upstream's own placing (a tile after the tileless sections, out of reach), which `ra-ui.sh` and
    `tailscale-ui.sh` catch. Upstream's own tests reach Network's rows from both ends (two Downs to Bluetooth, Up to
-   File sharing, two Ups to Home server), which is why Tailscale sits between Bluetooth and Home server.
+   File sharing, two Ups to Home server), which is why Tailscale sits between Bluetooth and Home server. And RomM's
+   game list in banana-sync: `ui/src/sync.cpp`'s `Romm::list()` asks for 50 games a page and keeps each as
+   `syncmem::slim()`'s copy (`ui/src/kiwami/syncmem.h`), and `doSync` ends its report with the peak memory. A field
+   upstream starts reading in `Romm::manifest()` has to be kept by `slim()`, and `kiwami/tests/romm-list.sh` stops on
+   one it drops. If upstream fixes the listing's memory its own way, the merge takes upstream's and drops the fork's
+   lines and header.
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

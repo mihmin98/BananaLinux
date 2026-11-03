@@ -4,15 +4,25 @@
 # and a saves-only sync stay under 64 MB where upstream's held every page's whole tree. Against romm-big.py's 400
 # games on each of six systems (and 3ds, which Banana has no system for), about 25 KB of JSON a game with RomM's
 # provider blocks: the peak of each run (the child's ru_maxrss), the requests made, the games listed with RomM's edge
-# cases, the dry run's files, the saves downloaded by name, and the peak memory each sync's report ends with. Also slim()'s unit tests (syncmem-units.cpp), and the
-# guard: every key Romm::manifest() reads is kept by syncmem.h, so a field upstream starts reading isn't dropped.
-# Needs g++ and python3. Run by kiwami/tests/ci.sh, or by hand:
+# cases, the dry run's files, the saves downloaded by name, and the peak memory each sync's report ends with. Also
+# slim()'s unit tests (syncmem-units.cpp), and the guard: every key Romm::manifest() reads is kept by syncmem.h, so a
+# field upstream starts reading isn't dropped. Needs g++ and python3. Run by kiwami/tests/ci.sh, or by hand:
 #   kiwami/tests/romm-list.sh
+#   kiwami/tests/romm-list.sh --compare <other banana-sync>
+# --compare (local, the final check against main's build) also runs the other build on the same library: its games
+# list and dry run have to be the same as this one's, and its peak at least 4 times the bound (the library reproduces
+# upstream's problem). Then each build syncs a library of 30 games a system for real, and a saves-only sync after,
+# onto a card of its own: the two cards' roms/ and saves/, and romsync.json's state, have to be the same.
 set -e
+OTHER=
+if [ "$1" = --compare ]; then
+    [ -x "$2" ] || { echo "romm-list: --compare needs another banana-sync, not \"$2\"" >&2; exit 2; }
+    OTHER=$(cd "$(dirname "$2")" && pwd)/$(basename "$2")
+fi
 cd "$(dirname "$0")/../.."
 T=$(mktemp -d)
-SRV=
-trap '[ -z "$SRV" ] || kill $SRV 2>/dev/null; rm -rf "$T"' EXIT
+SRV= SRV2=
+trap '[ -z "$SRV" ] || kill $SRV 2>/dev/null; [ -z "$SRV2" ] || kill $SRV2 2>/dev/null; rm -rf "$T"' EXIT
 fail() { echo "romm-list: $*" >&2; exit 1; }
 failed=
 err() { echo "romm-list: $*" >&2; failed=1; }
@@ -43,17 +53,21 @@ KEYS=$(guard ui/src/sync.cpp) || fail "$KEYS"
 python3 kiwami/tests/romm-big.py "$T/port" "$T/requests.log" 400 40 & SRV=$!
 for i in $(seq 100); do [ -s "$T/port" ] && break; sleep 0.1; done
 [ -s "$T/port" ] || fail "the stand-in RomM didn't start"
-C=$T/card
-mkdir -p "$C/banana" "$C/run" "$C/roms"
-printf '{"backend": "romm", "server": "http://127.0.0.1:%s", "token": "rmm_test", "name": "test"}\n' "$(cat "$T/port")" > "$C/banana/romsync.json"
-# bs <out> <args...>: banana-sync on the card, its stdout in <out>; its peak resident size (kB) in $KB
+# card <dir> <port file>: a card paired with the stand-in at that port
+card() {
+    mkdir -p "$1/banana" "$1/run" "$1/roms"
+    printf '{"backend": "romm", "server": "http://127.0.0.1:%s", "token": "rmm_test", "name": "test"}\n' "$(cat "$2")" > "$1/banana/romsync.json"
+}
+C=$T/card BIN=$T/banana-sync
+card "$C" "$T/port"
+# bs <out> <args...>: banana-sync ($BIN) on the card ($C), its stdout in <out>; its peak resident size (kB) in $KB
 bs() {
     out=$1; shift
     KB=$(python3 -c 'import resource, subprocess, sys
 with open(sys.argv[1], "w") as o:
     rc = subprocess.call(sys.argv[2:], stdout=o)
 print(resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss)
-sys.exit(rc)' "$out" "$T/banana-sync" --root "$C" --run "$C/run" --status "$C/run/sync.status" "$@")
+sys.exit(rc)' "$out" "$BIN" --root "$C" --run "$C/run" --status "$C/run/sync.status" "$@")
 }
 BOUND=65536
 
@@ -106,5 +120,42 @@ LOGKB=$(tail -n 1 "$LOG" 2>/dev/null | sed -n 's/^memory: peak \([0-9]*\) kB$/\1
 [ -n "$LOGKB" ] || err "sync.log: the last line isn't memory: peak <n> kB ($(tail -n 1 "$LOG" 2>/dev/null))"
 [ -z "$LOGKB" ] || [ "$LOGKB" -lt $BOUND ] || err "sync.log: the saves-only sync's own peak $LOGKB kB, over the 64 MB bound"
 [ -z "$failed" ] || exit 1
+
+if [ -n "$OTHER" ]; then
+    # the other build on the same library: the same games and the same files to download, at 4 times the bound or more
+    BIN=$OTHER
+    bs "$T/other-games.out" games || fail "the other banana-sync's games failed: $(head -n 3 "$T/other-games.out")"
+    OGAMES=$KB
+    cmp -s "$T/games.out" "$T/other-games.out" || { diff "$T/other-games.out" "$T/games.out" | head -n 10 >&2; err "games: not the other build's list"; }
+    [ "$OGAMES" -ge $((BOUND * 4)) ] || err "the other banana-sync peaked at $((OGAMES / 1024)) MB: the library doesn't reproduce upstream's problem"
+    bs "$T/other-dry.out" sync --dry-run || fail "the other banana-sync's dry run failed: $(tail -n 3 "$T/other-dry.out")"
+    files() { grep '^  [+-] ' "$1"; sed -n 's/^\(roms: .*\), [0-9.]* GB free/\1/p' "$1"; }
+    files "$T/dry.out" > "$T/dry.files"; files "$T/other-dry.out" > "$T/other-dry.files"
+    cmp -s "$T/dry.files" "$T/other-dry.files" || { diff "$T/other-dry.files" "$T/dry.files" | head -n 10 >&2; err "the dry run: not the other build's files"; }
+    [ "$(grep -c '^roms: ' "$T/dry.files")" = 1 ] || err "the dry run: no roms: line to compare"
+    # a real sync and a saves-only sync from each build, each onto its own card, of a smaller library
+    python3 kiwami/tests/romm-big.py "$T/port2" "$T/requests2.log" 30 40 & SRV2=$!
+    for i in $(seq 100); do [ -s "$T/port2" ] && break; sleep 0.1; done
+    [ -s "$T/port2" ] || fail "the second stand-in RomM didn't start"
+    for b in this other; do
+        C=$T/card-$b BIN=$T/banana-sync
+        [ $b = this ] || BIN=$OTHER
+        card "$C" "$T/port2"
+        bs "$T/$b-sync.out" sync && echo 0 > "$T/$b-sync.rc" || echo $? > "$T/$b-sync.rc"
+        bs "$T/$b-saves.out" sync --saves-only && echo 0 > "$T/$b-saves.rc" || echo $? > "$T/$b-saves.rc"
+        python3 -c 'import json, sys; print(json.dumps(json.load(open(sys.argv[1])).get("state"), indent=1, sort_keys=True))' \
+            "$C/banana/romsync.json" > "$T/$b-state.json"
+    done
+    for r in sync saves; do
+        cmp -s "$T/this-$r.rc" "$T/other-$r.rc" || err "the $r runs ended differently: $(cat "$T/this-$r.rc"), the other's $(cat "$T/other-$r.rc")"
+    done
+    [ "$(find "$T/card-this/roms" -type f | wc -l)" -gt 100 ] || err "the real sync: only $(find "$T/card-this/roms" -type f | wc -l) files on the card"
+    for d in roms saves; do
+        diff -r "$T/card-this/$d" "$T/card-other/$d" > "$T/$d.diff" || { head -n 10 "$T/$d.diff" >&2; err "the real sync: the cards' $d/ differ"; }
+    done
+    cmp -s "$T/this-state.json" "$T/other-state.json" || { diff "$T/other-state.json" "$T/this-state.json" | head -n 10 >&2; err "the real sync: romsync.json's state differs"; }
+    [ -z "$failed" ] || exit 1
+    echo "romm-list: the other banana-sync peaked at $((OGAMES / 1024)) MB listing the games; its games, dry run, cards, state and saves the same ($(find "$T/card-this/roms" -type f | wc -l) files, sync $(cat "$T/this-sync.rc"), saves $(cat "$T/this-saves.rc"))"
+fi
 
 echo "romm-list: games $((GAMES / 1024)) MB, dry run $((DRY / 1024)) MB, saves $((SAVES / 1024)) MB peak; 48 requests of 50; $KEYS keys of manifest() kept; sync.log's peak $LOGKB kB"

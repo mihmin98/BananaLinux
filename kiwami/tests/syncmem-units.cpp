@@ -1,10 +1,11 @@
 // banana-sync's RomM listing held small (ui/src/kiwami/syncmem.h), checked on its own: slim()'s copy of a game answers
 // every read Romm::manifest() makes exactly as the game RomM sent does, edge cases included, holds nothing else, and
-// lets the rest of the page go. Built and run by kiwami/tests/romm-list.sh with the host's g++:
+// lets the rest of the page go; and the peak memory a sync's report ends with. Built and run by kiwami/tests/romm-list.sh with the host's g++:
 //   g++ -std=c++17 -Wall -Werror -I ui/src kiwami/tests/syncmem-units.cpp ui/src/json.cpp -o syncmem-units
 //   ./syncmem-units
 #include "kiwami/syncmem.h"
 #include <cstdio>
+#include <regex>
 #include <set>
 #include <string>
 
@@ -194,10 +195,25 @@ static void testFreed()
 	EQ(kept->get("metadatum")->get("genres")->arr[0]->s, "Action");
 }
 
+// the peak memory line: VmHWM's number from /proc/<pid>/status, "unknown" without one
+static void testPeak()
+{
+	EQ(syncmem::peakFrom("VmPeak:\t  9000 kB\nVmHWM:\t    2345 kB\nVmRSS:\t 100 kB\n"), "2345 kB");
+	EQ(syncmem::peakFrom("VmHWM:\t 77 kB"), "77 kB");
+	EQ(syncmem::peakFrom("VmRSS:\t 100 kB\n"), "unknown");
+	EQ(syncmem::peakFrom("VmHWM:\n"), "unknown");
+	EQ(syncmem::peakFrom("VmHWM:\nVmRSS:\t 100 kB\n"), "unknown");
+	EQ(syncmem::peakFrom(""), "unknown");
+	std::string p = syncmem::peak();
+	if (!std::regex_match(p, std::regex("[0-9]+ kB"))) { failed++; fprintf(stderr, "syncmem-units: FAIL peak() on this host is \"%s\"\n", p.c_str()); }
+	checks++;
+}
+
 int main()
 {
 	testSlim();
 	testFreed();
+	testPeak();
 	if (failed) { fprintf(stderr, "syncmem-units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("syncmem-units: %d checks passed\n", checks);
 	return 0;

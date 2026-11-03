@@ -1732,6 +1732,7 @@ namespace
 		saveConf(c);
 		status("done " + std::string(sum) + " " + std::to_string(errors.size()) + "|" + (errors.empty() ? note : errors[0]));
 		say("done: %d games down, %d removed, %d saves up, %d down, %d conflicts, %zu errors", downloaded, removed, up, down, sconf + (int)conflicts.size(), errors.size());
+		say("memory: peak %s", banana::kiwami::syncmem::peak().c_str());	// kiwami: for reports of a sync that strains the handheld
 		return errors.empty() ? 0 : 1;
 	}
 }

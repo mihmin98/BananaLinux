@@ -4,7 +4,7 @@
 # and a saves-only sync stay under 64 MB where upstream's held every page's whole tree. Against romm-big.py's 400
 # games on each of six systems (and 3ds, which Banana has no system for), about 25 KB of JSON a game with RomM's
 # provider blocks: the peak of each run (the child's ru_maxrss), the requests made, the games listed with RomM's edge
-# cases, the dry run's files, and the saves downloaded by name. Also slim()'s unit tests (syncmem-units.cpp), and the
+# cases, the dry run's files, the saves downloaded by name, and the peak memory each sync's report ends with. Also slim()'s unit tests (syncmem-units.cpp), and the
 # guard: every key Romm::manifest() reads is kept by syncmem.h, so a field upstream starts reading isn't dropped.
 # Needs g++ and python3. Run by kiwami/tests/ci.sh, or by hand:
 #   kiwami/tests/romm-list.sh
@@ -89,6 +89,9 @@ grep -qx '  + psx/Game 0007 (USA).m3u' "$T/dry.out" || err "the dry run: no psx/
 grep -qx '  + gba/1942 (USA).gba' "$T/dry.out" || err "the dry run: no gba/1942 (USA).gba"
 ! grep -q '^  + .*\(Escape (USA)\|Game 0001 (\)' "$T/dry.out" || err "the dry run: a skipped game's file to download"
 [ "$DRY" -lt $BOUND ] || err "the dry run peaked at $((DRY / 1024)) MB, over the 64 MB bound"
+# (its report on stdout only, as a dry run writes no sync.log: the peak memory right after the done: line)
+grep -A1 '^done: ' "$T/dry.out" | tail -n 1 | grep -qx 'memory: peak [0-9]* kB' ||
+    err "the dry run: no memory: peak line after done: ($(grep -A1 '^done: ' "$T/dry.out" | tail -n 1))"
 
 # a saves-only sync (leaving a game): the saves matched to their games through the list, downloaded under their names
 bs "$T/saves.out" sync --saves-only || fail "the saves-only sync failed: $(tail -n 3 "$T/saves.out")"
@@ -96,6 +99,12 @@ SAVES=$KB
 [ "$(cat "$C/saves/Game 0010 (USA).srm" 2>/dev/null)" = "gba save 10" ] || err "the saves-only sync: no saves/Game 0010 (USA).srm"
 [ "$(cat "$C/saves/nds/Game 0010 (USA).sav" 2>/dev/null)" = "nds save 10" ] || err "the saves-only sync: no saves/nds/Game 0010 (USA).sav"
 [ "$SAVES" -lt $BOUND ] || err "the saves-only sync peaked at $((SAVES / 1024)) MB, over the 64 MB bound"
+# its report on the card ends with done: and then the peak memory, under the bound
+LOG=$C/banana/logs/sync.log
+tail -n 2 "$LOG" 2>/dev/null | head -n 1 | grep -q '^done: ' || err "sync.log: the line before the last isn't done: ($(tail -n 2 "$LOG" 2>/dev/null | head -n 1))"
+LOGKB=$(tail -n 1 "$LOG" 2>/dev/null | sed -n 's/^memory: peak \([0-9]*\) kB$/\1/p')
+[ -n "$LOGKB" ] || err "sync.log: the last line isn't memory: peak <n> kB ($(tail -n 1 "$LOG" 2>/dev/null))"
+[ -z "$LOGKB" ] || [ "$LOGKB" -lt $BOUND ] || err "sync.log: the saves-only sync's own peak $LOGKB kB, over the 64 MB bound"
 [ -z "$failed" ] || exit 1
 
-echo "romm-list: games $((GAMES / 1024)) MB, dry run $((DRY / 1024)) MB, saves $((SAVES / 1024)) MB peak; 48 requests of 50; $KEYS keys of manifest() kept"
+echo "romm-list: games $((GAMES / 1024)) MB, dry run $((DRY / 1024)) MB, saves $((SAVES / 1024)) MB peak; 48 requests of 50; $KEYS keys of manifest() kept; sync.log's peak $LOGKB kB"

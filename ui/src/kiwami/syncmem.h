@@ -8,7 +8,11 @@
 // A key manifest() starts reading has to be added to the lists below, or slim() drops it and the card's games and
 // gamelists change; kiwami/tests/romm-list.sh stops on one that isn't there.
 #include "../json.h"
+#include <cctype>
+#include <fstream>
 #include <memory>
+#include <sstream>
+#include <string>
 
 namespace banana::kiwami::syncmem
 {
@@ -86,5 +90,25 @@ namespace banana::kiwami::syncmem
 			out->obj.emplace_back("metadatum", o);
 		}
 		return out;
+	}
+
+	// the process's peak resident size, for the end of a sync's report (sync.log): the number on the VmHWM line of a
+	// /proc/<pid>/status text as "<n> kB", or "unknown" when there is no such line or no number on it
+	inline std::string peakFrom(const std::string& status)
+	{
+		size_t at = status.compare(0, 6, "VmHWM:") == 0 ? 0 : status.find("\nVmHWM:");
+		if (at == std::string::npos) return "unknown";
+		size_t i = status.find(':', at) + 1, end = status.find('\n', i);
+		std::string line = status.substr(i, end == std::string::npos ? std::string::npos : end - i), n;
+		for (char c : line) if (isdigit((unsigned char)c)) n += c; else if (!n.empty()) break;
+		return n.empty() ? "unknown" : n + " kB";
+	}
+	inline std::string peak()
+	{
+		std::ifstream f("/proc/self/status");
+		if (!f) return "unknown";
+		std::stringstream ss;
+		ss << f.rdbuf();
+		return peakFrom(ss.str());
 	}
 }

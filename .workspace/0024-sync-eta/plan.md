@@ -475,5 +475,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. banana-sync keeps each phase's time, with the silent steps as phases | done | Sync times: banana-sync keeps each phase's time, with the silent steps as phases |
-| 2. The times under Sync now's bar, and the Show sync times row | todo | |
+| 2. The times under Sync now's bar, and the Show sync times row | done | Sync times: the times under Sync now's bar, and the Show sync times row |
 | 3. Final check | todo | |

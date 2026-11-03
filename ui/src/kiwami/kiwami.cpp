@@ -1,6 +1,6 @@
 // banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing, each page
 // hook going to the page that is open, and the groups' grid; the pages are in their own files (tailscale.cpp,
-// ra-account.cpp, ra-stats.cpp, ra-games.cpp, ra-game.cpp).
+// ra-account.cpp, ra-stats.cpp, ra-games.cpp, ra-game.cpp), and Show sync times' line in sync-times.cpp.
 #include "ra.h"
 #include <algorithm>
 #include <cstdio>
@@ -99,6 +99,20 @@ namespace banana
 			s.items.push_back(m);
 			keys = it.key + " " + stats.key + " " + games.key + " " + m.key;
 		}
+		else if (strcmp(group, "Home server") == 0)
+		{
+			// Show sync times (sync-times.cpp), right after Sync now: Home server isn't in build()'s ORDER, so its rows
+			// stay in the order they're added, and the hook's place is the row's
+			Item it;
+			it.section = group; it.icon = "phone"; it.label = "Show sync times"; it.key = "kiwami_sync_times";
+			it.help = "On: while a sync runs, the line under Sync now's bar shows how long the current step has taken, its "
+				"time left once there's a rate to go on, and the whole sync's time. Each step's time also goes in the sync's "
+				"report (banana/logs/sync.log).";
+			it.file = s.data + "/settings.conf";
+			it.names = { "Off", "On" }; it.values = { "off", "on" };
+			s.items.push_back(it);
+			keys = it.key;
+		}
 		// (the tests read it)
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
 	}
@@ -172,14 +186,15 @@ namespace banana
 
 	bool Settings::Kiwami::update(double t)
 	{
-		bool mode = syncMode(), ra = raUpdate();
-		return tsUpdate(t) || mode || ra;
+		bool mode = syncMode(), ra = raUpdate(), times = timesUpdate(t);
+		return tsUpdate(t) || mode || ra || times;
 	}
 
 	int Settings::Kiwami::wake(double t, bool shown) const
 	{
-		int w = tsWake(t, shown && pageOpen == Page::TAILSCALE), r = raWake();
-		return w < 0 ? r : r < 0 ? w : std::min(w, r);
+		int w = tsWake(t, shown && pageOpen == Page::TAILSCALE), r = raWake(), s = timesWake(t);
+		w = w < 0 ? r : r < 0 ? w : std::min(w, r);
+		return w < 0 ? s : s < 0 ? w : std::min(w, s);
 	}
 
 	// ---- the groups' grid: the first row shown follows the selection (grid.h); logged when it moves, for the tests ---

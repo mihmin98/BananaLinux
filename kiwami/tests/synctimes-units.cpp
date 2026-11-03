@@ -1,6 +1,8 @@
 // banana-sync's phase times (ui/src/kiwami/synctimes.h), checked on their own: a status line's phase, the times file
 // written at each phase's start and removed when the sync ends, the report's times: lines, nothing at all when the
-// setting is off, and the 250 ms throttle of the steps that had no status of their own. Built and run by
+// setting is off, and the 250 ms throttle of the steps that had no status of their own. And the menu's side: the
+// clocks, the time left (as Files writes one, and the rule for each phase), the line, the times file read, and the
+// next tick. Built and run by
 // kiwami/tests/sync-times.sh with the host's g++:
 //   g++ -std=c++17 -Wall -Werror -I ui/src kiwami/tests/synctimes-units.cpp -o synctimes-units
 //   ./synctimes-units
@@ -158,6 +160,68 @@ static void testThrottle()
 	CHECK(!exists(timesPath()));
 }
 
+// ---- the menu's side
+// a number as text with one decimal, so EQ shows both sides
+static std::string d1(double d) { char b[64]; snprintf(b, sizeof b, "%.1f", d); return b; }
+// ui/src/settings_files.cpp's duration(), copied: left() has to write a time as Files does
+static std::string filesDuration(double s)
+{
+	if (s < 60) return std::to_string((int)s + 1) + " s";
+	if (s < 3600) return std::to_string((int)(s / 60) + 1) + " min";
+	return std::to_string((int)(s / 3600)) + " h " + std::to_string((int)(s / 60) % 60) + " min";
+}
+
+static void testMenu()
+{
+	EQ(synctimes::clock(0), "0:00");
+	EQ(synctimes::clock(5400), "0:05");
+	EQ(synctimes::clock(3599999), "59:59");
+	EQ(synctimes::clock(3600000), "1:00:00");
+	EQ(synctimes::clock(3723400), "1:02:03");
+	EQ(synctimes::clock(-5), "0:00");
+
+	EQ(synctimes::left(44.2), "45 s");
+	EQ(synctimes::left(150), "3 min");
+	EQ(synctimes::left(3900), "1 h 5 min");
+	int differ = 0;
+	for (double s = 0; s <= 7200; s += 0.7) if (synctimes::left(s) != filesDuration(s)) differ++;
+	CHECK(differ == 0);
+	EQ(synctimes::left(1e9), filesDuration(359999));
+
+	EQ(d1(synctimes::secondsLeft("running 5 20 Games 3/10|g", 10400)), "41.6");	// (files 41.6 > MB 31.2)
+	EQ(d1(synctimes::secondsLeft("running 0 1 Games 4/10|g", 6000)), "14.0");		// (files only)
+	EQ(d1(synctimes::secondsLeft("running 4 10 Games 1/10|g", 4000)), "6.0");		// (MB only: no file done)
+	EQ(d1(synctimes::secondsLeft("running 5 20 Games 3/10|g", 2999)), "-1.0");
+	EQ(d1(synctimes::secondsLeft("running 60 180 Listing games|gba 60 / 30", 6000)), "12.0");
+	EQ(d1(synctimes::secondsLeft("running 60 0 Listing games|gba 60", 6000)), "-1.0");
+	EQ(d1(synctimes::secondsLeft("running 1 12 Saves|a.srm", 5000)), "-1.0");		// (none done)
+	EQ(d1(synctimes::secondsLeft("running 4 12 Saves|a.srm", 6000)), "18.0");
+	EQ(d1(synctimes::secondsLeft("running 0 0 |x", 9000)), "-1.0");
+	EQ(d1(synctimes::secondsLeft("running 12 12 Saves|a.srm", 6000)), "0.5");		// (the last in hand: 11 of 12 done)
+	EQ(d1(synctimes::secondsLeft("done 1 0 0 0 0 0|", 9000)), "-1.0");
+
+	synctimes::Times t{ 1, 2001, 92001, "Games" };
+	EQ(synctimes::line("running 5 20 Games 3/10|g", t, 102401), "Games \xc2\xb7 0:10 \xc2\xb7 42 s left \xc2\xb7 sync 1:40");
+	EQ(synctimes::line("running 5 20 Games 3/10|g", t, 94001), "Games \xc2\xb7 0:02 \xc2\xb7 sync 1:32");
+	synctimes::Times saves{ 1, 2001, 92001, "Saves" };
+	EQ(synctimes::line("running 5 20 Games 3/10|g", saves, 102401), "");
+	EQ(synctimes::line("done 1 0 0 0 0 0|", t, 102401), "");
+
+	synctimes::Times p;
+	CHECK(synctimes::parse("4242 2001 92001 Checking the card", p));
+	CHECK(p.pid == 4242 && p.syncStart == 2001 && p.phaseStart == 92001);
+	EQ(p.phase, "Checking the card");
+	synctimes::Times q;
+	CHECK(!synctimes::parse("x", q));
+	CHECK(!synctimes::parse("", q));
+	CHECK(!synctimes::parse("4242 1", q));
+	CHECK(!synctimes::parse("4242 1 2", q));
+	CHECK(q.pid == 0 && q.phase.empty());	// (left as it was)
+
+	CHECK(synctimes::nextTick({ 1, 0, 400, "X" }, 1250) == 150);
+	CHECK(synctimes::nextTick({ 1, 0, 0, "X" }, 3000) == 1000);
+}
+
 int main()
 {
 	char tmpl[] = "/tmp/synctimes-units.XXXXXX";
@@ -167,6 +231,7 @@ int main()
 	testTracker();
 	testOff();
 	testThrottle();
+	testMenu();
 	unlink(timesPath().c_str());
 	rmdir(dir.c_str());
 	if (failed) { fprintf(stderr, "synctimes-units: %d of %d checks failed\n", failed, checks); return 1; }

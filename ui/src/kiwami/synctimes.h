@@ -9,8 +9,11 @@
 // sync killed leaves it, and the menu takes it only while its pid is sync.pid's. Each phase's duration, with its last
 // counts, goes at the end of the sync's report (report()). The steps that write no status of their own (the card
 // checked against the list, files removed, the gamelists, the saves read) get one through tick(), at most every
-// TICK_MS. With the setting off, none of this writes anything. Header-only: banana-sync is built from sync.cpp and
+// TICK_MS. With the setting off, none of this writes anything. banana-ui's side is at the end: the times file read
+// (parse()), and the line drawn under the bar (line(): the phase, its time, its time left, the sync's time), worked
+// out live from the status and the two starts (sync-times.cpp). Header-only: banana-sync is built from sync.cpp and
 // json.cpp alone.
+#include <algorithm>
 #include <cstdio>
 #include <ctime>
 #include <sstream>
@@ -184,5 +187,94 @@ namespace banana::kiwami::synctimes
 		snprintf(b, sizeof b, "times: sync %.1f s", (monoMs() - t.syncStart) / 1000.0);
 		out.push_back(b);
 		return out;
+	}
+
+	// ---- the menu's side (ui/src/kiwami/sync-times.cpp): the line under Sync now's bar, from the status and sync.times
+	struct Times { long long pid = 0, syncStart = 0, phaseStart = 0; std::string phase; };
+	// sync.times' line; false when it isn't one
+	inline bool parse(const std::string& line, Times& t)
+	{
+		std::istringstream in(line);
+		Times r;
+		if (!(in >> r.pid >> r.syncStart >> r.phaseStart)) return false;
+		std::getline(in, r.phase);
+		if (r.phase.empty() || r.phase[0] != ' ') return false;
+		r.phase.erase(0, 1);
+		while (!r.phase.empty() && (r.phase.back() == '\n' || r.phase.back() == '\r')) r.phase.pop_back();
+		if (r.phase.empty()) return false;
+		t = r;
+		return true;
+	}
+
+	// elapsed: 0:05, 59:59, 1:00:00, 1:02:03 (floored to the second; nothing below 0:00)
+	inline std::string clock(double ms)
+	{
+		long long s = ms > 0 ? (long long)(ms / 1000) : 0;
+		char b[32];
+		if (s < 3600) snprintf(b, sizeof b, "%lld:%02lld", s / 60, s % 60);
+		else snprintf(b, sizeof b, "%lld:%02lld:%02lld", s / 3600, s / 60 % 60, s % 60);
+		return b;
+	}
+
+	// a time left as Files writes one (settings_files.cpp's duration(), in its anonymous namespace): 45 s, 3 min,
+	// 1 h 5 min; capped at 359999 s as Files caps it
+	inline std::string left(double s)
+	{
+		if (s > 359999) s = 359999;
+		if (s < 60) return std::to_string((int)s + 1) + " s";
+		if (s < 3600) return std::to_string((int)(s / 60) + 1) + " min";
+		return std::to_string((int)(s / 3600)) + " h " + std::to_string((int)(s / 60) % 60) + " min";
+	}
+
+	constexpr double ETA_AFTER_MS = 3000;	// no estimate before the phase has run this long
+
+	// the phase's time left in seconds, -1 for none: its elapsed time times (total - done) / done, once it has run
+	// ETA_AFTER_MS and done one. Listing games: the games read of the expected; Games: the larger of the MB (the bar's)
+	// and the files (Games i/N: i - 1 done of N); any other: the item in hand less one, of the total
+	inline double secondsLeft(const std::string& status, double phaseMs)
+	{
+		long long a, b;
+		std::string what;
+		if (!detail::fields(status, a, b, what) || phaseMs < ETA_AFTER_MS) return -1;
+		std::string phase = phaseOf(status);
+		auto est = [&](long long done, long long total) -> double {
+			if (done < 1 || total <= 0) return -1;
+			if (done >= total) return 0;
+			return phaseMs / 1000.0 * (double)(total - done) / (double)done;
+		};
+		double s;
+		if (phase == "Listing games") s = est(a, b);
+		else if (phase == "Games")
+		{
+			long long i = 0, n = 0;
+			detail::stripCount(what, &i, &n);
+			s = std::max(est(std::min(a, b), b), est(i - 1, n));
+		}
+		else s = est(a - 1, b);
+		return s < 0 ? -1 : std::min(s, 359999.0);
+	}
+
+	// the line under Sync now's bar: "<phase> · <phase's time> · <time left> left · sync <sync's time>" (no time left
+	// without an estimate); "" when the status isn't running, or its phase isn't the times file's
+	inline std::string line(const std::string& status, const Times& t, double now)
+	{
+		std::string phase = phaseOf(status);
+		if (phase.empty() || phase != t.phase) return "";
+		const std::string dot = " \xc2\xb7 ";	// (as Files writes it)
+		double s = secondsLeft(status, now - t.phaseStart);
+		return phase + dot + clock(now - t.phaseStart) + (s >= 0 ? dot + left(s) + " left" : "") + dot + "sync " + clock(now - t.syncStart);
+	}
+
+	// ms to the next whole second of either clock, at least 1
+	inline int nextTick(const Times& t, double now)
+	{
+		int best = 1000;
+		for (long long start : { t.syncStart, t.phaseStart })
+		{
+			long long e = (long long)now - start, m = e % 1000;
+			if (m < 0) m += 1000;
+			best = std::min(best, (int)(1000 - m));
+		}
+		return std::max(1, best);
 	}
 }

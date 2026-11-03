@@ -359,6 +359,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. 50 games a page, each kept small, with a test of a large library | todo | |
+| 1. 50 games a page, each kept small, with a test of a large library | done | RomM sync memory: 50 games a page, each kept to the fields banana-sync reads |
 | 2. The sync's peak memory in its report | todo | |
 | 3. Final check | todo | |

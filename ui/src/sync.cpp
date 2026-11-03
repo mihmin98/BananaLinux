@@ -23,6 +23,7 @@
 // downloads go to <file>.part, are checked, then renamed; gamelist.xml is merged; saves never sync while a game runs.
 #include "json.h"
 #include "sync_util.h"
+#include "kiwami/syncmem.h"	// kiwami: RomM's game list kept small (banana-sync's memory)
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstdarg>
@@ -900,10 +901,10 @@ namespace
 			}
 			for (auto& pf : platforms)
 			{
-				for (long long off = 0;; off += 500)
+				for (long long off = 0;; off += banana::kiwami::syncmem::PAGE)	// kiwami: 50 a page, upstream 500
 				{
 					std::string q = "/api/roms?platform_ids=" + std::to_string(pf.first) + "&platform_id=" + std::to_string(pf.first) +
-						"&limit=500&offset=" + std::to_string(off) + "&order_by=name&with_char_index=false&with_filter_values=false&with_rom_id_index=false";
+						"&limit=" + std::to_string(banana::kiwami::syncmem::PAGE) + "&offset=" + std::to_string(off) + "&order_by=name&with_char_index=false&with_filter_values=false&with_rom_id_index=false&with_provider_metadata=false";	// kiwami: 50 a page, and no provider metadata (RomM after 5.4.1)
 					Resp rr = call("GET", q);
 					if (rr.code != 200) { err = "roms: " + rr.error(); return false; }
 					JPtr page = rr.json();
@@ -912,11 +913,11 @@ namespace
 					for (auto& it : items->arr)
 					{
 						if ((long long)it->num("platform_id") != pf.first) continue;
-						romJson.push_back(it);
+						romJson.push_back(banana::kiwami::syncmem::slim(*it));	// kiwami: only what manifest() reads; the page is freed
 						roms.push_back({ (long long)it->num("id"), pf.second, it->str("fs_name_no_ext", stemOf(it->str("fs_name"))), it->str("fs_name") });
 					}
 					long long total = page->isArr() ? (long long)items->arr.size() : (long long)page->num("total", -1);
-					if (page->isArr() || items->arr.size() < 500 || (total >= 0 && off + 500 >= total)) break;
+					if (page->isArr() || items->arr.size() < banana::kiwami::syncmem::PAGE || (total >= 0 && off + banana::kiwami::syncmem::PAGE >= total)) break;	// kiwami: 50 a page
 				}
 			}
 			listed = true;

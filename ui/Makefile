@@ -38,6 +38,7 @@ banana-scrape: src/scrape.cpp
 # home server sync (Settings > Network > Home server): Romhost and RomM, games, box art and saves
 banana-sync: src/sync.cpp src/sync_util.h src/json.cpp src/json.h
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ src/sync.cpp src/json.cpp -ldl
+banana-sync: src/kiwami/syncmem.h	# kiwami: the fork's RomM listing, a header sync.cpp includes
 
 # Bshare (the shelf's tile): files to and from phones and computers with LocalSend, run by banana-ui while Receive
 # is on or its page is open (settings_bshare.cpp)

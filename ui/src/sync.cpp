@@ -23,6 +23,7 @@
 // downloads go to <file>.part, are checked, then renamed; gamelist.xml is merged; saves never sync while a game runs.
 #include "json.h"
 #include "sync_util.h"
+#include "kiwami/syncmem.h"	// kiwami: RomM's game list kept small (banana-sync's memory)
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstdarg>
@@ -898,12 +899,13 @@ namespace
 				if (folder.empty() || skip.count(folder)) continue;
 				platforms[(long long)p->num("id")] = folder;
 			}
+			banana::kiwami::syncmem::Listing listing(*j, platforms);	// kiwami: Sync now's progress while the list is read
 			for (auto& pf : platforms)
 			{
-				for (long long off = 0;; off += 500)
+				for (long long off = 0;; off += banana::kiwami::syncmem::PAGE)	// kiwami: syncmem::PAGE a page, upstream 500
 				{
 					std::string q = "/api/roms?platform_ids=" + std::to_string(pf.first) + "&platform_id=" + std::to_string(pf.first) +
-						"&limit=500&offset=" + std::to_string(off) + "&order_by=name&with_char_index=false&with_filter_values=false&with_rom_id_index=false";
+						"&limit=" + std::to_string(banana::kiwami::syncmem::PAGE) + "&offset=" + std::to_string(off) + "&order_by=name&with_char_index=false&with_filter_values=false&with_rom_id_index=false&with_provider_metadata=false";	// kiwami: syncmem::PAGE a page, and no provider metadata (RomM after 5.4.1)
 					Resp rr = call("GET", q);
 					if (rr.code != 200) { err = "roms: " + rr.error(); return false; }
 					JPtr page = rr.json();
@@ -912,11 +914,12 @@ namespace
 					for (auto& it : items->arr)
 					{
 						if ((long long)it->num("platform_id") != pf.first) continue;
-						romJson.push_back(it);
+						romJson.push_back(banana::kiwami::syncmem::slim(*it));	// kiwami: only what manifest() reads; the page is freed
 						roms.push_back({ (long long)it->num("id"), pf.second, it->str("fs_name_no_ext", stemOf(it->str("fs_name"))), it->str("fs_name") });
 					}
 					long long total = page->isArr() ? (long long)items->arr.size() : (long long)page->num("total", -1);
-					if (page->isArr() || items->arr.size() < 500 || (total >= 0 && off + 500 >= total)) break;
+					if (statusLine.compare(0, 8, "running ") == 0) status(listing.page(pf.second, (long long)items->arr.size(), off + (long long)items->arr.size(), page->isArr() ? -1 : total));	// kiwami: Sync now's progress (a sync's status only: Choose games has none)
+					if (page->isArr() || items->arr.size() < banana::kiwami::syncmem::PAGE || (total >= 0 && off + banana::kiwami::syncmem::PAGE >= total)) break;	// kiwami: syncmem::PAGE a page
 				}
 			}
 			listed = true;
@@ -1731,6 +1734,7 @@ namespace
 		saveConf(c);
 		status("done " + std::string(sum) + " " + std::to_string(errors.size()) + "|" + (errors.empty() ? note : errors[0]));
 		say("done: %d games down, %d removed, %d saves up, %d down, %d conflicts, %zu errors", downloaded, removed, up, down, sconf + (int)conflicts.size(), errors.size());
+		say("memory: peak %s", banana::kiwami::syncmem::peak().c_str());	// kiwami: for reports of a sync that strains the handheld
 		return errors.empty() ? 0 : 1;
 	}
 }

@@ -69,10 +69,14 @@ Wait for the answers. Skip the round only when nothing is open, and say why in t
 
 ### 3. The GitHub issue
 
-Write the issue's text, in a code block ready to paste:
+Write the issue's text, ready to paste into GitHub's form, in two separate blocks:
 
-- a **title** in the repository's prose style (plain descriptive English, no conventional-commit prefix);
-- a **description**: what and why, in a few short paragraphs, plus what is out of scope if that was decided.
+- a **title** in the repository's prose style (plain descriptive English, no conventional-commit prefix), in a
+  plain code block of its own;
+- a **description**: what and why, in a few short paragraphs, plus what is out of scope if that was decided. It is
+  written as GitHub Markdown (code spans for paths, settings, endpoints and commands; lists where they help) and given
+  in a ```` ```markdown ```` code block, so it is pasted with its formatting as is. No "Title:" or "Description:" labels
+  inside the blocks.
 
 Neither refers to upstream's or another repository's issues and pull requests (no `<owner>/<repo>#12`, `GH-12` or
 link to one), nor `@` mentions their people: GitHub would show the fork's issue on theirs (`CLAUDE.md`, *This fork*).

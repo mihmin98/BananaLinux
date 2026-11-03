@@ -21,3 +21,6 @@ __pycache__/
 *.pyc
 /ui/tests/nds-rom-test
 /ui/tests/nds-rom-dump
+/ui/tests/nds-ram-test
+/ui/tests/nds-logic-test
+/ui/tests/nds-romfile-test

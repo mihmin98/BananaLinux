@@ -205,7 +205,11 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    status Settings draws as Sync now's bar ("Listing games"), and `doSync` ends its report with the peak memory. A field
    upstream starts reading in `Romm::manifest()` has to be kept by `slim()`, and `kiwami/tests/romm-list.sh` stops on
    one it drops. If upstream fixes the listing's memory its own way, the merge takes upstream's and drops the fork's
-   lines and header.
+   lines and header. And the sync's phase times (Home server > Show sync times, `ui/src/kiwami/synctimes.h`):
+   `status()` in `ui/src/sync.cpp` hands each line it writes to `synctimes::seen()`, which starts a phase on each new
+   title, and the steps that write no status of their own get a `tick()` line at the top of their loops (`want`,
+   `gone`, the gamelists, RomM's and Romhost's saves listing). A title upstream rewords, or a new step that writes no
+   status, shows in `kiwami/tests/sync-times.sh`'s phase lists, which then need the new name.
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

@@ -11,6 +11,8 @@
 #   GET /api/roms                              platform_ids (or platform_id), limit, offset; items and total. Other
 #                                              parameters are ignored, as RomM 5.4.1 does (with_provider_metadata too)
 #   GET /api/roms/<id>/content/<name>          a game's one file: "rom <id>\n"
+#                                              (after 3 s for the game ROMM_BIG_SLOW=<id> names in the environment, so
+#                                              a test can look at a sync while it downloads)
 #   GET /api/roms/<file id>/files/content/<n>  a file of a game of several: "rom <file id>\n"
 #   GET /assets/romm/resources/roms/...        a small PNG, or a JPEG for a .jpg
 #   GET /api/saves, /api/saves/<id>/content    two saves: GBA's and DS's game 10
@@ -28,6 +30,7 @@ import http.server
 import json
 import os
 import sys
+import time
 import urllib.parse
 
 PORT_FILE, LOG, N, ACH = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
@@ -38,6 +41,7 @@ PNG = bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010806000000"
                     "1f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a4c00000000049454e44ae426082")
 JPEG = bytes.fromhex("ffd8ffe000104a46494600010100000100010000ffd9")
 TS = "?ts=2026-10-31 15:44:32.123456+00:00"
+SLOW = int(os.environ.get("ROMM_BIG_SLOW") or 0)
 SAVES = {1: (200010, "Game 0010 (USA).srm", b"gba save 10\n"), 2: (100010, "Game 0010 (USA).sav", b"nds save 10\n")}
 
 
@@ -174,6 +178,8 @@ class H(http.server.BaseHTTPRequestHandler):
         if p.startswith("/api/roms/") and "/files/content/" in p:
             return self.send(200, content(int(parts[3])), "application/octet-stream")
         if p.startswith("/api/roms/") and "/content/" in p:
+            if int(parts[3]) == SLOW:
+                time.sleep(3)
             return self.send(200, content(int(parts[3])), "application/octet-stream")
         if p == "/api/saves":
             pid = int(q.get("platform_id", 0))

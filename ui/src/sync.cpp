@@ -24,6 +24,7 @@
 #include "json.h"
 #include "sync_util.h"
 #include "kiwami/syncmem.h"	// kiwami: RomM's game list kept small (banana-sync's memory)
+#include "kiwami/synctimes.h"	// kiwami: each phase's time (Home server > Show sync times)
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstdarg>
@@ -60,6 +61,7 @@ namespace
 	{
 		if (s == statusLine) return;
 		statusLine = s;
+		banana::kiwami::synctimes::seen(s);	// kiwami: a phase's start, for the menu's line and the report
 		if (verbose) fprintf(stderr, "status: %s\n", s.c_str());
 		std::string tmp = STATUS + ".new";
 		if (FILE* f = fopen(tmp.c_str(), "w")) { fprintf(f, "%s\n", s.c_str()); fclose(f); rename(tmp.c_str(), STATUS.c_str()); }
@@ -803,6 +805,7 @@ namespace
 			bool first = true;
 			for (auto& kv : local)
 			{
+				banana::kiwami::synctimes::tick(status, "Reading saves", local.size(), baseOf(kv.first));	// kiwami:
 				std::string p = ROOT + "/" + kv.first;
 				sums[kv.first] = hashFile(p, "sha1");
 				if (sums[kv.first].empty()) continue;
@@ -1071,6 +1074,7 @@ namespace
 			for (auto& r : roms) romById[r.id] = r;
 			for (auto& pf : platforms)
 			{
+				banana::kiwami::synctimes::tick(status, kind == "save" ? "Reading saves" : "Reading states", platforms.size(), pf.second);	// kiwami:
 				Resp r = call("GET", api + "?platform_id=" + std::to_string(pf.first) + (kind == "save" && !dev.empty() ? "&" + dev : ""));
 				if (r.code != 200) { errors.push_back(kind + "s: " + r.error()); return false; }
 				JPtr j = r.json();
@@ -1297,6 +1301,7 @@ namespace
 		for (auto& kv : want)
 		{
 			const MFile& f = *kv.second;
+			banana::kiwami::synctimes::tick(status, "Checking the card", want.size(), baseOf(f.path));	// kiwami:
 			bool sd = onSd2.count(f.path) > 0;
 			if (sd && sd2.empty())
 			{
@@ -1417,6 +1422,7 @@ namespace
 		}
 		for (auto& rel : gone)
 		{
+			banana::kiwami::synctimes::tick(status, "Removing", gone.size(), baseOf(rel));	// kiwami:
 			bool sd = c.where.count(rel) > 0;
 			if (sd && sd2.empty())
 			{
@@ -1433,6 +1439,7 @@ namespace
 		// the card the game is on (the second card's while it's in)
 		for (auto& s : m.systems)
 		{
+			banana::kiwami::synctimes::tick(status, "Gamelists", m.systems.size(), s.folder);	// kiwami:
 			std::vector<std::vector<std::pair<std::string, std::string>>> ours[2];
 			for (auto& g : s.games)
 			{
@@ -1676,6 +1683,7 @@ namespace
 	{
 		auto set = readConf(SETTINGS);
 		auto get = [&](const std::string& k, const std::string& d) { auto i = set.find(k); return i == set.end() || i->second.empty() ? d : i->second; };
+		banana::kiwami::synctimes::start(get("kiwami_sync_times", "off") == "on", RUN);	// kiwami: Show sync times
 		Conf c = loadConf();
 		if (!c.paired()) { if (autoWhy.empty()) status("error not paired"); return 2; }
 		if (!autoWhy.empty())
@@ -1735,6 +1743,7 @@ namespace
 		status("done " + std::string(sum) + " " + std::to_string(errors.size()) + "|" + (errors.empty() ? note : errors[0]));
 		say("done: %d games down, %d removed, %d saves up, %d down, %d conflicts, %zu errors", downloaded, removed, up, down, sconf + (int)conflicts.size(), errors.size());
 		say("memory: peak %s", banana::kiwami::syncmem::peak().c_str());	// kiwami: for reports of a sync that strains the handheld
+		for (auto& l : banana::kiwami::synctimes::report()) say("%s", l.c_str());	// kiwami: each phase's time (Show sync times)
 		return errors.empty() ? 0 : 1;
 	}
 }

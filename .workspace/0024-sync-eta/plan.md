@@ -244,8 +244,9 @@ Each step is one commit, and leaves the tree building and `make test` passing.
        order of 4, each matching `^times: <phase> [0-9]+\.[0-9] s`. `Listing games` ends in `, 180 of 180`, and
        `Games` has `MB,` and `files`. The last is `times: sync <x> s`.
     7. **Removing** (A3): it restarts the stand-in with 25 games (no slow game) and syncs card A again. The phases are
-       `Starting,Listing games,Checking the card,Removing,Gamelists,Reading saves,Saves,Reading states`, and
-       `Removing`'s last line is `running <R> <R> Removing|...`.
+       `Starting,Listing games,Checking the card,Games,Removing,Gamelists,Reading saves,Saves,Reading states` (Games:
+       game 11's six files, which fail on their null size, tried again; see *Deviations*), and `Removing`'s last line
+       is `running <R> <R> Removing|...`.
     8. **Saves only** (A3): `bs -v sync --saves-only` on card A gives `Starting,Listing games,Reading saves,Saves,
        Reading states`.
     9. **Off** (A1): card B without the key, the same two syncs. The `status:` lines contain no `Checking the card`,
@@ -459,12 +460,20 @@ Notes from the runs (what the logs showed, what was fixed):
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
 
+- **2026-11-03, step 1, `sync-times.sh`'s second sync.** The plan expected no Games phase in the second sync (the
+  stand-in with 25 games). There is one: `romm-big.py`'s edge case 11 (a file whose `file_size_bytes` is null) ends in
+  "size mismatch" on every sync, so each sync downloads game 11's six files again (`Games 1/6` to `6/6`). The
+  edge case is the stand-in's, and `romm-list.sh` relies on it, so the test expects
+  `Starting,Listing games,Checking the card,Games,Removing,...` instead (step 1's item 7 updated). For the same reason
+  every sync against the stand-in exits 1 with its `done` status, so the test doesn't require exit 0: the phase lists
+  end in `done`, and `--compare` checks that both builds end the same way.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. banana-sync keeps each phase's time, with the silent steps as phases | todo | |
+| 1. banana-sync keeps each phase's time, with the silent steps as phases | done | Sync times: banana-sync keeps each phase's time, with the silent steps as phases |
 | 2. The times under Sync now's bar, and the Show sync times row | todo | |
 | 3. Final check | todo | |

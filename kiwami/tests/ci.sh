@@ -40,6 +40,12 @@ rm -rf "$T"
 # RomM's game list in banana-sync: 200 a page and its progress, each game kept small, against a large made-up library
 kiwami/tests/romm-list.sh
 
+# Home server > Show sync times: banana-sync's phases, its times file and the report's times
+kiwami/tests/sync-times.sh
+
+# Show sync times in banana-ui's Settings, headless, when banana-ui is built: the line under Sync now's bar and the row
+if [ -x ui/banana-ui ]; then kiwami/tests/sync-times-ui.sh; else echo "sync-times-ui: skipped, no ui/banana-ui (make ui)"; fi
+
 # Tailscale in banana-ui's Settings, headless, when banana-ui is built (CI builds it before)
 if [ -x ui/banana-ui ]; then kiwami/tests/tailscale-ui.sh; else echo "tailscale-ui: skipped, no ui/banana-ui (make ui)"; fi
 

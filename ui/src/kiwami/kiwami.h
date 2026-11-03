@@ -20,9 +20,13 @@
 //   and progress per system (ra-stats.cpp), fetched when the page opens or on Y, kept on the card for offline. Games on
 //   this card (kiwami.ra.games): the library's games the emulators recorded achievements for (ra-games.cpp), A on one
 //   its achievements, locked and unlocked (ra-game.cpp), the game identified by hashing it as RetroArch does.
+//   Network > Home server > Show sync times (kiwami_sync_times in settings.conf, after Sync now): while a sync runs and
+//   Sync now is selected, a line under its bar with the phase, its time, its time left and the sync's time
+//   (sync-times.cpp, from banana-sync's sync.times: synctimes.h), Settings waking each second for it.
 #include "../settings.h"
 #include <functional>
 #include "grid.h"
+#include "synctimes.h"
 #include "tsstatus.h"
 
 namespace banana
@@ -51,6 +55,7 @@ namespace banana
 		int wake(double t, bool shown) const;		// ms until update() has something to do, -1 nothing
 		std::string entryHelp() const;				// the keyboard's help, typing for the fork's pages
 		Result entered(std::string& text);			// the keyboard's Done, for the fork's pages
+		void syncTimes(float x, float y, float w);	// syncBar(): the line under Sync now's bar
 
 	private:
 		Settings& st;
@@ -59,6 +64,18 @@ namespace banana
 		int row0 = 0;								// the groups' first row shown, kept as the selection moves
 		int modeAt = -1;							// Mode's value as both its rows last had it
 		bool syncMode();							// a change to one of Mode's two rows shown in the other
+
+		// Show sync times' part of the hooks (sync-times.cpp): the line under Sync now's bar, worked out from the status
+		// and banana-sync's sync.times, and the wakes that keep its clocks ticking
+		bool timesOn() const;						// the Show sync times row is On
+		bool timesShown() const;					// on, the list on Sync now, a sync running: where syncBar() draws
+		std::string timesRun() const;				// KIWAMI_SYNC_RUN, else /run/banana
+		bool timesUpdate(double t);
+		int timesWake(double t) const;
+		std::string timesSeen;						// the status line sync.times was last read for
+		kiwami::synctimes::Times times;
+		bool timesValid = false;					// the file's pid is sync.pid's
+		std::string timesText, timesShape;			// the line, and its shape last logged
 
 		// Tailscale's part of the hooks (kiwami.cpp: the row's value, asked in the background)
 		void tsOpened();

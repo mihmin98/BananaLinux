@@ -806,6 +806,7 @@ namespace banana
 		add(HS, "phone", "Server", "", "", "hs_server", {}, {}, Item::PAGE);
 		add(HS, "phone", "Sync now", "Copies the server's games (with their covers and names) to the card and syncs the saves both ways. It carries on in the background; the handheld doesn't sleep while games download. Files of your own are never replaced or deleted: only the ones a sync put there.",
 			"", "hs_sync", {}, {}, Item::PAGE);
+		Kiwami::rows(*this, HS);	// kiwami: Show sync times, after Sync now
 		add(HS, "phone", "Games", "Download: the server's games for the systems below come to the card (and leave it when they leave the server). Saves only: the games stay as they are and only the saves sync.",
 			menu, "homesync_roms", { "Download", "Saves only" }, { "on", "off" });
 		if (access("/run/banana/sd2/slot", F_OK) == 0)	// a second card slot: the RG DS Plus
@@ -6452,6 +6453,7 @@ namespace banana
 		if (b > 0) be->fill(X(x + 2), X(y + 2), X((w - 4) * std::min(a, b) / b), X(10), p.accent);
 		text(fit(what.empty() ? "Starting" : what, true, 17, w), true, 17, x, y + 26, p.ink);
 		text(fit(item, false, 16, w), false, 16, x, y + 52, p.muted);
+		if (kw) kw->syncTimes(x, y + 78, w);	// kiwami: the sync's times under the bar (Home server > Show sync times)
 	}
 
 	// ---- the game panel -----------------------------------------------------------------------------------------

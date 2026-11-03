@@ -11,7 +11,7 @@
 #   kiwami/tests/sync-times.sh --compare <other banana-sync>
 # --compare (local, the final check against the build before the feature) also runs the other build's two syncs with
 # the setting off, on a card of its own: their status lines, and their sync.log apart from its first line (the time),
-# the peak memory and the free space, have to be this build's.
+# the peak memory, the free space and the card's folder, have to be this build's.
 set -e
 OTHER=
 if [ "$1" = --compare ]; then
@@ -154,7 +154,8 @@ if [ -n "$OTHER" ]; then
     bs "$C" "$T/c2.out" sync --saves-only && echo 0 > "$T/c2.rc" || echo $? > "$T/c2.rc"
     cp "$C/banana/logs/sync.log" "$T/c2.log"
     BIN=$T/banana-sync
-    norm() { sed '1d; s/^memory: peak [0-9]* kB$/memory: peak <n> kB/; s/, [0-9.]* GB free/, <n> GB free/' "$1"; }
+    # (each card's own folder, as the report names the saves it wrote, taken out too)
+    norm() { sed "1d; s/^memory: peak [0-9]* kB\$/memory: peak <n> kB/; s/, [0-9.]* GB free/, <n> GB free/; s|$T/card-[bc]/|<card>/|g" "$1"; }
     for r in 1 2; do
         cmp -s "$T/b$r.rc" "$T/c$r.rc" || err "off: sync $r ended $(cat "$T/b$r.rc"), the other build's $(cat "$T/c$r.rc")"
         grep '^status: ' "$T/b$r.out.err" > "$T/b$r.st"; grep '^status: ' "$T/c$r.out.err" > "$T/c$r.st"
@@ -162,7 +163,7 @@ if [ -n "$OTHER" ]; then
         norm "$T/b$r.log" > "$T/b$r.norm"; norm "$T/c$r.log" > "$T/c$r.norm"
         cmp -s "$T/b$r.norm" "$T/c$r.norm" || { diff "$T/c$r.norm" "$T/b$r.norm" | head -n 10 >&2; err "off: sync $r's sync.log isn't the other build's"; }
     done
-    echo "sync-times: off, the same statuses ($(cat "$T/b1.st" "$T/b2.st" | wc -l)) and reports as the other banana-sync"
+    [ -n "$failed" ] || echo "sync-times: off, the same statuses ($(cat "$T/b1.st" "$T/b2.st" | wc -l)) and reports as the other banana-sync"
 fi
 
 # files gone from the server: a Removing phase, between the card checked and the gamelists (and a Games phase before

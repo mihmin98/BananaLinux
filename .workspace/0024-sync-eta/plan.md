@@ -425,7 +425,32 @@ Each step is one commit, and leaves the tree building and `make test` passing.
   (checked: nothing to change).
 - The manual tests below all passed.
 - Every acceptance criterion is met: each is listed by at least one automated or manual test, and those passed.
-- **Commit**: `Sync times: the final check done`
+- **Commit**: `Sync times: compared with kiwami's banana-sync, and the renders` (the automated part), then
+  `Sync times: the final check done` (the manual tests' outcomes); see *Deviations*.
+
+Automated part of the final check (2026-11-03, on the branch at `2ac73a5`, step 2):
+
+- `make test`, `make -C ui -B banana-ui` (the full build, with ALSA), `make -B -C system/bananad CFLAGS="-O2 -Werror"`
+  and `kiwami/tests/ci.sh .buildroot` pass. `synctimes-units`: 81 checks; `sync-times`, `sync-times-ui`,
+  `romm-list` (games 67 MB, dry run 68 MB, saves 68 MB peak), `tailscale-ui`, `ra-ui`, `7z-ui`, `cores-ui` all pass.
+- **Off is `kiwami`'s** (A1): `kiwami/tests/sync-times.sh --compare` against `banana-sync` built from `b817b05`
+  (`git archive` into `/tmp`): the two syncs with the setting off write the same 331 status lines, end the same way,
+  and write the same `sync.log`s apart from the time, the peak memory, the free space and the card's folder.
+- The hooks: `git diff --stat main...HEAD` and `git grep -l 'kiwami:'` (`docs/FORK.md`) name the same 11 files. This
+  feature adds 12 `kiwami:` lines: `ui/src/sync.cpp`'s 9, `ui/src/settings.cpp`'s 2, and `ui/Makefile`'s line, which
+  replaces #22's (the one line removed).
+- The renders: `ui/tests/run.sh` here and in `b817b05`'s tree (`git archive` into `/tmp`), run side by side: of 1017
+  shots, 141 differ byte for byte, 103 in pixels. Every pixel difference is one of:
+  - a shot that also differs between two runs of the baseline itself (65 shots; 86 differ there in all): the clock,
+    and shots taken mid-animation;
+  - Files' server pages and This card (38 shots), which show the test server's folder (the repository's path vs
+    `/tmp`) and that disk's free space.
+
+  None is on the Home server page, which `run.sh` never opens; the line and the row are checked by
+  `sync-times-ui.sh`. The baseline's own run also fails `fileops-test` in `/tmp` (as `main`'s does there), a test with
+  no renders that passes in the repository.
+- `kiwami/DEPENDENCIES.md` unchanged (no dependency added). `docs/FORK.md` has steps 1's and 2's notes.
+  `docs/ARCHITECTURE.md` and `CLAUDE.md` don't describe the sync's status: nothing to change.
 
 ## Automated tests
 
@@ -468,6 +493,17 @@ Where the implementation turned out different from this plan, why, and what chan
   every sync against the stand-in exits 1 with its `done` status, so the test doesn't require exit 0: the phase lists
   end in `done`, and `--compare` checks that both builds end the same way.
 
+- **2026-11-03, final check: the renders' baseline is `kiwami` before this feature (`b817b05`), not `main`.** The
+  fork's earlier features already show in `make test`'s renders (150 shots differ from `main`'s), as in #22. The copies
+  were made with `git archive` into `/tmp` (read-only git), not a worktree. The clock can't be pinned in the headless
+  renders, so the differences were told apart by a second run of the baseline (above) instead of an exact match.
+- **2026-11-03, final check: `sync-times.sh --compare` fixed.** Its `sync.log` comparison failed on the card's own
+  folder, which the report names for each save it writes (`card-b` and `card-c`): the two builds' reports were
+  otherwise the same. `norm()` now takes the folder out too, and the "same statuses" line is printed only when
+  nothing failed. In the final check's commit, `kiwami/tests/sync-times.sh` added to its files.
+- **2026-11-03, final check: in two commits**, as #22's: its automated part first, so the image for the manual tests
+  is built from a clean tree, then the manual tests' outcomes and the final check marked done.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -476,4 +512,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. banana-sync keeps each phase's time, with the silent steps as phases | done | Sync times: banana-sync keeps each phase's time, with the silent steps as phases |
 | 2. The times under Sync now's bar, and the Show sync times row | done | Sync times: the times under Sync now's bar, and the Show sync times row |
-| 3. Final check | todo | |
+| 3. Final check | automated part done; manual tests M1-M5 to run | Sync times: compared with kiwami's banana-sync, and the renders |

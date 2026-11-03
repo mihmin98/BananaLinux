@@ -1,17 +1,18 @@
 #!/bin/sh
-# banana-sync's RomM listing on a large library: RomM's games asked for 50 at a time, without provider metadata, each
-# kept to the fields Romm::manifest() reads (ui/src/kiwami/syncmem.h), so Choose games (banana-sync games), Sync now
-# and a saves-only sync stay under 64 MB where upstream's held every page's whole tree. Against romm-big.py's 400
+# banana-sync's RomM listing on a large library: RomM's games asked for 200 at a time, without provider metadata,
+# each kept to the fields Romm::manifest() reads (ui/src/kiwami/syncmem.h), so Choose games (banana-sync games), Sync
+# now and a saves-only sync stay under 100 MB where upstream's held every page's whole tree. Against romm-big.py's 400
 # games on each of six systems (and 3ds, which Banana has no system for), about 25 KB of JSON a game with RomM's
 # provider blocks: the peak of each run (the child's ru_maxrss), the requests made, the games listed with RomM's edge
-# cases, the dry run's files, the saves downloaded by name, and the peak memory each sync's report ends with. Also
+# cases, the dry run's files and its progress while the list is read (Listing games), the saves downloaded by name,
+# and the peak memory each sync's report ends with. Also
 # slim()'s unit tests (syncmem-units.cpp), and the guard: every key Romm::manifest() reads is kept by syncmem.h, so a
 # field upstream starts reading isn't dropped. Needs g++ and python3. Run by kiwami/tests/ci.sh, or by hand:
 #   kiwami/tests/romm-list.sh
 #   kiwami/tests/romm-list.sh --compare <other banana-sync>
 # --compare (local, the final check against main's build) also runs the other build on the same library: its games
-# list and dry run have to be the same as this one's, and its peak at least 4 times the bound (the library reproduces
-# upstream's problem). Then each build syncs a library of 30 games a system for real, and a saves-only sync after,
+# list and dry run have to be the same as this one's, and its peak at least 256 MB (the library reproduces upstream's
+# problem). Then each build syncs a library of 30 games a system for real, and a saves-only sync after,
 # onto a card of its own: the two cards' roms/ and saves/, and romsync.json's state, have to be the same.
 set -e
 OTHER=
@@ -69,7 +70,7 @@ with open(sys.argv[1], "w") as o:
 print(resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss)
 sys.exit(rc)' "$out" "$BIN" --root "$C" --run "$C/run" --status "$C/run/sync.status" "$@")
 }
-BOUND=65536
+BOUND=102400 MB=100	# (kB, and in MB for the messages)
 
 # Choose games' list: every game of the six systems but the edge cases manifest() skips (1 missing, 6 out of the
 # folder, 7 several files on a cartridge system, 9 another platform's), psx's game 7 as a disc set
@@ -81,28 +82,36 @@ grep -q '^gba	gba/1942 (USA).gba	1942	' "$T/games.out" || err "games: no 1942 (a
 grep -q '^psx	psx/.discs/Game 0007 (USA)/Game 0007 (USA).cue	Game 0007	' "$T/games.out" || err "games: psx's game 7 not a disc set"
 grep -q '	Tab Game 0005	' "$T/games.out" || err "games: game 5's tab not a space"
 ! grep -q 'Game 0001	\|Escape\|Game 0009	' "$T/games.out" || err "games: a game manifest() skips is listed"
-[ "$GAMES" -lt $BOUND ] || err "games peaked at $((GAMES / 1024)) MB, over the 64 MB bound"
+[ "$GAMES" -lt $BOUND ] || err "games peaked at $((GAMES / 1024)) MB, over the $MB MB bound"
 grep '^GET /api/roms?' "$T/requests.log" > "$T/roms.log" || true
-[ "$(wc -l < "$T/roms.log")" = 48 ] || err "$(wc -l < "$T/roms.log") /api/roms requests, not 48 (8 for each of six platforms)"
+[ "$(wc -l < "$T/roms.log")" = 12 ] || err "$(wc -l < "$T/roms.log") /api/roms requests, not 12 (2 for each of six platforms)"
 ! grep -q 'platform_ids=7&' "$T/roms.log" || err "3ds, which Banana has no system for, was asked for"
 while read -r line; do
-    case "$line" in *'&limit=50&'*) ;; *) err "an /api/roms request without limit=50: $line"; break;; esac
+    case "$line" in *'&limit=200&'*) ;; *) err "an /api/roms request without limit=200: $line"; break;; esac
 done < "$T/roms.log"
 while read -r line; do
     case "$line" in *'&with_provider_metadata=false'*) ;; *) err "an /api/roms request without with_provider_metadata=false: $line"; break;; esac
 done < "$T/roms.log"
+# (and no status written: Choose games' run must not show in Sync now's row)
+[ ! -e "$C/run/sync.status" ] || err "games wrote a status: $(cat "$C/run/sync.status")"
 [ -z "$failed" ] || exit 1
 
 # Sync now, as a dry run: a "+" line for each file to download, the disc set's .m3u among them, none for a game skipped
-bs "$T/dry.out" sync --dry-run || fail "the dry run failed: $(tail -n 3 "$T/dry.out")"
+bs "$T/dry.out" -v sync --dry-run 2> "$T/dry.err" || fail "the dry run failed: $(tail -n 3 "$T/dry.out")"
 DRY=$KB
+# its progress while the list is read (-v: each status on stderr), a status a page: games read of the six systems'
+# rom_count, the system and how far into it
+grep '^status: running [0-9]* [0-9]* Listing games|' "$T/dry.err" > "$T/listing" || true
+[ "$(wc -l < "$T/listing")" = 12 ] || err "the dry run: $(wc -l < "$T/listing") Listing games statuses, not 12"
+[ "$(head -n 1 "$T/listing")" = 'status: running 200 2400 Listing games|nds 200 / 400' ] || err "the dry run's first listing status: $(head -n 1 "$T/listing")"
+[ "$(tail -n 1 "$T/listing")" = 'status: running 2400 2400 Listing games|psx 400 / 400' ] || err "the dry run's last listing status: $(tail -n 1 "$T/listing")"
 TODO=$(sed -n 's/^roms: \([0-9]*\) to download.*/\1/p' "$T/dry.out")
 [ -n "$TODO" ] && [ "$(grep -c '^  + ' "$T/dry.out")" = "$TODO" ] ||
     err "the dry run: $(grep -c '^  + ' "$T/dry.out") files listed, $TODO to download"
 grep -qx '  + psx/Game 0007 (USA).m3u' "$T/dry.out" || err "the dry run: no psx/Game 0007 (USA).m3u"
 grep -qx '  + gba/1942 (USA).gba' "$T/dry.out" || err "the dry run: no gba/1942 (USA).gba"
 ! grep -q '^  + .*\(Escape (USA)\|Game 0001 (\)' "$T/dry.out" || err "the dry run: a skipped game's file to download"
-[ "$DRY" -lt $BOUND ] || err "the dry run peaked at $((DRY / 1024)) MB, over the 64 MB bound"
+[ "$DRY" -lt $BOUND ] || err "the dry run peaked at $((DRY / 1024)) MB, over the $MB MB bound"
 # (its report on stdout only, as a dry run writes no sync.log: the peak memory right after the done: line)
 grep -A1 '^done: ' "$T/dry.out" | tail -n 1 | grep -qx 'memory: peak [0-9]* kB' ||
     err "the dry run: no memory: peak line after done: ($(grep -A1 '^done: ' "$T/dry.out" | tail -n 1))"
@@ -112,22 +121,22 @@ bs "$T/saves.out" sync --saves-only || fail "the saves-only sync failed: $(tail 
 SAVES=$KB
 [ "$(cat "$C/saves/Game 0010 (USA).srm" 2>/dev/null)" = "gba save 10" ] || err "the saves-only sync: no saves/Game 0010 (USA).srm"
 [ "$(cat "$C/saves/nds/Game 0010 (USA).sav" 2>/dev/null)" = "nds save 10" ] || err "the saves-only sync: no saves/nds/Game 0010 (USA).sav"
-[ "$SAVES" -lt $BOUND ] || err "the saves-only sync peaked at $((SAVES / 1024)) MB, over the 64 MB bound"
+[ "$SAVES" -lt $BOUND ] || err "the saves-only sync peaked at $((SAVES / 1024)) MB, over the $MB MB bound"
 # its report on the card ends with done: and then the peak memory, under the bound
 LOG=$C/banana/logs/sync.log
 tail -n 2 "$LOG" 2>/dev/null | head -n 1 | grep -q '^done: ' || err "sync.log: the line before the last isn't done: ($(tail -n 2 "$LOG" 2>/dev/null | head -n 1))"
 LOGKB=$(tail -n 1 "$LOG" 2>/dev/null | sed -n 's/^memory: peak \([0-9]*\) kB$/\1/p')
 [ -n "$LOGKB" ] || err "sync.log: the last line isn't memory: peak <n> kB ($(tail -n 1 "$LOG" 2>/dev/null))"
-[ -z "$LOGKB" ] || [ "$LOGKB" -lt $BOUND ] || err "sync.log: the saves-only sync's own peak $LOGKB kB, over the 64 MB bound"
+[ -z "$LOGKB" ] || [ "$LOGKB" -lt $BOUND ] || err "sync.log: the saves-only sync's own peak $LOGKB kB, over the $MB MB bound"
 [ -z "$failed" ] || exit 1
 
 if [ -n "$OTHER" ]; then
-    # the other build on the same library: the same games and the same files to download, at 4 times the bound or more
+    # the other build on the same library: the same games and the same files to download, at 256 MB or more
     BIN=$OTHER
     bs "$T/other-games.out" games || fail "the other banana-sync's games failed: $(head -n 3 "$T/other-games.out")"
     OGAMES=$KB
     cmp -s "$T/games.out" "$T/other-games.out" || { diff "$T/other-games.out" "$T/games.out" | head -n 10 >&2; err "games: not the other build's list"; }
-    [ "$OGAMES" -ge $((BOUND * 4)) ] || err "the other banana-sync peaked at $((OGAMES / 1024)) MB: the library doesn't reproduce upstream's problem"
+    [ "$OGAMES" -ge 262144 ] || err "the other banana-sync peaked at $((OGAMES / 1024)) MB: the library doesn't reproduce upstream's problem"
     bs "$T/other-dry.out" sync --dry-run || fail "the other banana-sync's dry run failed: $(tail -n 3 "$T/other-dry.out")"
     files() { grep '^  [+-] ' "$1"; sed -n 's/^\(roms: .*\), [0-9.]* GB free/\1/p' "$1"; }
     files "$T/dry.out" > "$T/dry.files"; files "$T/other-dry.out" > "$T/other-dry.files"
@@ -158,4 +167,4 @@ if [ -n "$OTHER" ]; then
     echo "romm-list: the other banana-sync peaked at $((OGAMES / 1024)) MB listing the games; its games, dry run, cards, state and saves the same ($(find "$T/card-this/roms" -type f | wc -l) files, sync $(cat "$T/this-sync.rc"), saves $(cat "$T/this-saves.rc"))"
 fi
 
-echo "romm-list: games $((GAMES / 1024)) MB, dry run $((DRY / 1024)) MB, saves $((SAVES / 1024)) MB peak; 48 requests of 50; $KEYS keys of manifest() kept; sync.log's peak $LOGKB kB"
+echo "romm-list: games $((GAMES / 1024)) MB, dry run $((DRY / 1024)) MB, saves $((SAVES / 1024)) MB peak; 12 requests of 200, 12 listing statuses; $KEYS keys of manifest() kept; sync.log's peak $LOGKB kB"

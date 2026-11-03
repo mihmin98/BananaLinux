@@ -8,7 +8,8 @@ With a large RomM library, **Sync now**, **Choose games**, a saves-only sync and
 after Wi-Fi joins) no longer freeze the handheld. `banana-sync` asks RomM for 50 games a page instead of 500, adds
 `with_provider_metadata=false` (ignored by RomM 5.4.1, honoured by later releases), and keeps from each game only the
 fields `Romm::manifest()` reads. Each page's text and full tree are freed before the next request. At the end of each
-sync, the report (`banana/logs/sync.log`) says the sync's peak memory. The games, covers, `gamelist.xml` and state
+sync, the report (`banana/logs/sync.log`) says the sync's peak memory. While the list is read, Sync now's bar shows
+how far it got (step 3, added after the first device test: *Deviations*), and the page is 200 games, not 50. The games, covers, `gamelist.xml` and state
 written to the card stay as upstream's; only the requests and the memory change. There is no setting (investigation,
 question 3).
 
@@ -39,12 +40,12 @@ network, or over sleep, behaves as before.
 
 - **A1**: Given a RomM library of 2400 games on six of Banana's systems, each game's entry about 24 KB of JSON
   (RetroAchievements with 40 achievements, IGDB and ScreenScraper blocks, screenshots), when Choose games' list is
-  read (`banana-sync games`), then the process peaks under **64 MB** resident. Upstream's build peaks several times
-  over that bound (checked in the final check).
+  read (`banana-sync games`), then the process peaks under **100 MB** resident (64 MB until step 3's 200 games a
+  page, *Deviations*). Upstream's build peaks at 256 MB or more (checked in the final check).
 - **A2**: Given the same library, when Sync now runs (`banana-sync sync --dry-run`) and when a saves-only sync runs
-  (`banana-sync sync --saves-only`), then each peaks under 64 MB.
-- **A3**: When the games are listed, then every `/api/roms` request asks for `limit=50` with
-  `with_provider_metadata=false`, every page is read (8 requests for a platform of 400 games), and no platform Banana
+  (`banana-sync sync --saves-only`), then each peaks under 100 MB.
+- **A3**: When the games are listed, then every `/api/roms` request asks for `limit=200` (50 until step 3) with
+  `with_provider_metadata=false`, every page is read (2 requests for a platform of 400 games), and no platform Banana
   has no system for (`3ds`) is asked for.
 - **A4**: Given games with the edge cases RomM can send (a game missing from RomM's disk, a path that climbs out of
   the folder, a multi-file game on a cartridge system, a PS1 disc set with a `.txt` beside it, a null summary, no
@@ -67,6 +68,11 @@ network, or over sleep, behaves as before.
 - **A9**: On the RG DS Plus, paired with the user's RomM (1000+ games a system, RetroAchievements on): Sync now,
   Choose games, a saves-only sync on leaving a game and the automatic sync after Wi-Fi joins at boot all finish
   without freezing the handheld, and the menu stays usable while they run.
+- **A11**: Given a sync (Sync now, saves-only, automatic), when RomM's list is read, then after each page the status
+  Settings draws is `running <games read> <sum of the synced platforms' rom_count> Listing games|<system> <n> /
+  <system's total>`: Sync now's bar fills and "Listing games" shows in place of "Starting". Without `rom_count` the
+  total is 0 (an empty bar, the text still counting). `banana-sync games` (Choose games) writes no status, so it never
+  shows in Sync now's row. (Added with step 3.)
 - **A10**: Nothing outside banana-sync changes: banana-ui's renders (`make test`'s PNGs) match `main`'s, and the
   rootfs gains no file.
 
@@ -275,7 +281,40 @@ one commit.
   - The commands of step 1 pass again (`make test` covers `sync.sh`'s report checks).
 - **Commit**: `RomM sync memory: the sync's peak memory at the end of its report`
 
-### 3. Final check
+### 3. Progress while the list is read, and 200 games a page
+
+Added after the first device test (*Deviations*, 2026-11-03): the handheld no longer froze, but Sync now showed
+"Starting" with an empty bar for over 2 minutes while 120+ pages of 50 were read, and the user stopped it.
+
+- **Files**:
+  - `ui/src/kiwami/syncmem.h` (changed)
+  - `ui/src/sync.cpp` (hook: 2 new `kiwami:` lines; the 3 page-size lines' comments no longer name 50)
+  - `kiwami/tests/syncmem-units.cpp` (changed)
+  - `kiwami/tests/romm-list.sh` (changed)
+  - `kiwami/tests/ci.sh` (changed: its comment, 200 a page)
+  - `docs/FORK.md` (changed: the note, 200 a page and the progress)
+  - `.workspace/0022-romm-sync-memory/plan.md` (changed: Deviations, criteria, this step, Progress)
+- **Change**:
+  - **`syncmem.h`**: `PAGE` becomes 200. A `struct Listing`: built from `/api/platforms`' reply and the platforms
+    kept (`std::map<long long, std::string>`), it sums their `rom_count` (0 when there is none). Its
+    `page(folder, items, n, total)` adds the page's items to the games read and returns the status line
+    `running <read> <expected> Listing games|<folder> <n> / <total>` (`<folder> <n>` when `total` is unknown).
+  - **`ui/src/sync.cpp`**: in `Romm::list()`, after the platforms are kept,
+    `banana::kiwami::syncmem::Listing listing(*j, platforms);` and, after each page's `total`,
+    `if (statusLine.compare(0, 8, "running ") == 0) status(listing.page(...));`. Only a sync has set a `running`
+    status before listing (`doSync`), so `banana-sync games` writes none. The page-size lines' comments say
+    `syncmem::PAGE` instead of 50.
+- **Tests**:
+  - `syncmem-units.cpp`: `Listing` over platforms with and without `rom_count`, a platform not kept left out of the
+    sum, the status lines of successive pages, an unknown total.
+  - `romm-list.sh`: the bound becomes 100 MB, the requests `limit=200` (12 in all, 2 a platform); the dry run, run
+    with `-v`, writes 12 `Listing games` statuses, the first `running 200 2400 Listing games|nds 200 / 400` and the
+    last `running 2400 2400 Listing games|psx 400 / 400`; `games` writes no status (no `sync.status` on the card).
+    `--compare`'s check that the other build reproduces upstream's problem becomes a fixed 256 MB.
+  - `make test` (upstream's `sync.sh`), `kiwami/tests/ci.sh .buildroot`, `banana-sync` with `-Werror`.
+- **Commit**: `RomM sync memory: Sync now's progress while RomM's list is read, 200 games a page`
+
+### 4. Final check
 
 - `make test`, `make -C ui`, `make -C ui banana-sync CXXFLAGS="-O2 -Werror"` (fails only if upstream's
   `sync.cpp` already warns; if so, compare its warnings with `main`'s and check none is on a `kiwami:` line),
@@ -283,8 +322,8 @@ one commit.
 - **The comparison with `main`'s build** (local, A1, A4). It adds a `--compare <other banana-sync>` mode to
   `kiwami/tests/romm-list.sh`, written in this step:
   - On the 400-a-system library, `games` from both are identical. The dry runs' `+ ` and `- ` lines are identical,
-    and so are their `roms:` lines once the free-space figure is cut. The other build must peak at 4 times the bound
-    or more, or the script fails with `romm-list: the other banana-sync peaked at <n> MB: the library doesn't
+    and so are their `roms:` lines once the free-space figure is cut. The other build must peak at 256 MB or more
+    (4 times the bound before step 3), or the script fails with `romm-list: the other banana-sync peaked at <n> MB: the library doesn't
     reproduce upstream's problem`.
   - On a second stand-in with 30 games a system and the same edge cases, a real `sync` and then a `sync
     --saves-only` with each build, each onto its own card. Then `diff -r` of the two cards' `roms/` and `saves/`,
@@ -299,7 +338,7 @@ one commit.
   ```
   Both peaks go in the plan's notes.
 - **The hooks**: `git diff --stat main...HEAD` and `git grep -n 'kiwami:'` (the commands in `docs/FORK.md`) agree,
-  and this feature adds only `ui/src/sync.cpp`'s 6 lines and `ui/Makefile`'s 1 line.
+  and this feature adds only `ui/src/sync.cpp`'s 8 lines (6 before step 3) and `ui/Makefile`'s 1 line.
 - **With the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s** (A10: banana-ui isn't
   touched). The image's rootfs gains no file.
 - `kiwami/DEPENDENCIES.md`: unchanged, because the feature adds no dependency.
@@ -324,11 +363,12 @@ one commit.
 |---|---|---|---|
 | Unit tests of `slim()` | `kiwami/tests/syncmem-units.cpp` (run by `romm-list.sh`) | every key `manifest()` reads answers the same through the copy, edge cases included; only the kept members are there; the page's heavy nodes are freed | A4 |
 | Unit tests of `peakFrom()`/`peak()` | `kiwami/tests/syncmem-units.cpp` | `VmHWM` read; `unknown` without it | A6 |
+| Unit tests of `Listing` | `kiwami/tests/syncmem-units.cpp` | the total from `rom_count`, the status line of each page | A11 |
 | The guard | `kiwami/tests/romm-list.sh` (CI, via `ci.sh`) | every key `Romm::manifest()` reads is kept by `syncmem.h` | A8 |
-| Choose games on a large library | `kiwami/tests/romm-list.sh` + `romm-big.py` | under 64 MB; 48 requests, all `limit=50` + `with_provider_metadata=false`, no `3ds`; 2377 games with the edge cases right | A1, A3, A4 |
-| Sync now (dry run) and saves-only | `kiwami/tests/romm-list.sh` | under 64 MB each; the saves downloaded by name; the `memory: peak` line on stdout and last in `sync.log` | A2, A5, A6 |
+| Choose games on a large library | `kiwami/tests/romm-list.sh` + `romm-big.py` | under 100 MB; 12 requests, all `limit=200` + `with_provider_metadata=false`, no `3ds`; 2377 games with the edge cases right; no status written | A1, A3, A4, A11 |
+| Sync now (dry run) and saves-only | `kiwami/tests/romm-list.sh` | under 100 MB each; the saves downloaded by name; the `memory: peak` line on stdout and last in `sync.log`; the `Listing games` statuses | A2, A5, A6, A11 |
 | Upstream's sync tests | `ui/tests/sync.sh` (`make test`) | pairing, syncs, gamelists, covers, PS1 discs, saves, conflicts, second card, https, all unchanged, against the fixed build | A7, A4 |
-| Comparison with `main`'s build | `kiwami/tests/romm-list.sh --compare` (local, final check) | identical `games`, dry-run lists, cards, `state` and saves; `main`'s build peaks 4 times the bound or more | A1, A4 |
+| Comparison with `main`'s build | `kiwami/tests/romm-list.sh --compare` (local, final check) | identical `games`, dry-run lists, cards, `state` and saves; `main`'s build peaks at 256 MB or more | A1, A4 |
 | Renders | `make test` vs `main`'s (final check) | banana-ui unchanged | A10 |
 
 ## Manual tests
@@ -343,12 +383,17 @@ put it back for M4.
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | Update to this branch's image. Over SSH, `free -m`. Settings > Network > Home server > **Sync now**, with the user's RomM; move around the menu while it runs. When it ends, `free -m` again. Run Sync now a second time (nothing new). | Both syncs end with a result in Settings; the menu answers throughout; nothing freezes. `sync.log` ends with `done:` and then `memory: peak <n> kB`, with `<n>` under 100000 (about 50000 expected for 6000 games). | `/data/banana/logs/sync.log` and `sync.log.1` (both syncs); the two `free -m` outputs | A2, A6, A9 | not run |
+| M1 | rgds-plus | Update to this branch's image. Over SSH, `free -m`. Settings > Network > Home server > **Sync now**, with the user's RomM; move around the menu while it runs. When it ends, `free -m` again. Run Sync now a second time (nothing new). | Both syncs end with a result in Settings; the menu answers throughout; nothing freezes. While the list is read, the bar fills with "Listing games" and `<system> <n> / <total>` under it. `sync.log` ends with `done:` and then `memory: peak <n> kB`, with `<n>` under 100000 (about 50000 expected for 6000 games). | `/data/banana/logs/sync.log` and `sync.log.1` (both syncs); the two `free -m` outputs | A2, A6, A9 | not run |
 | M2 | rgds-plus | Over SSH, start `while p=$(pidof banana-sync); do grep VmHWM /proc/$p/status; sleep 1; done; echo done` and leave it waiting (start it a second time if it ends before the list is opened). Open Settings > Network > Home server > **Choose games**. Scroll through two systems' lists. | The list appears with every system's games (1000+ each); no freeze. The loop's last `VmHWM` is under 100000 kB. | the SSH loop's output (copied from the terminal) | A1, A3, A9 | not run |
 | M3 | rgds-plus | Set Auto sync to **Leaving a game**. Start a game whose save is on RomM (or make a new save), then quit it. | Back in the menu without a freeze; the save is uploaded or downloaded as upstream would. `sync.log` shows the saves lines, `done:` and `memory: peak`. | `/data/banana/logs/sync.log` | A2, A5, A6, A9 | not run |
 | M4 | rgds-plus | Set Auto sync to **And on Wi-Fi**. Reboot, and use the menu for 2 minutes after Wi-Fi connects (the sync starts 25 s after). | The menu stays usable; a new `sync.log`, timed after the boot, ends with `done:` and `memory: peak`. | `/data/banana/logs/sync.log` | A6, A9 | not run |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- **M1, first attempt (2026-11-03, RG DS Plus, image 0.5.2.2 built from `5e702c1`, the user's RomM 5.4.1):** the
+  handheld didn't freeze. Sync now stayed on "Starting" with an empty bar for about 2 minutes and the user stopped
+  it; there was no `sync.log`, which is written from the report's first line, after the listing. Not recorded as an
+  outcome: it led to step 3 (*Deviations*), and M1 runs again on an image with it.
 
 Automated parts of the final check (2026-11-03, on the branch at `d43fe21` (step 2) with this step's changes):
 
@@ -389,6 +434,15 @@ Where the implementation turned out different from this plan, why, and what chan
   `RomM sync memory: compared with upstream's banana-sync, and a note for merges`, so the image for the manual tests
   is built from a clean tree. The manual tests' outcomes and the final check marked done follow in a second commit,
   `RomM sync memory: the final check done`.
+- **2026-11-03, after the first device test: a new step 3, progress while the list is read and 200 games a page.**
+  On the RG DS Plus with the user's RomM 5.4.1 (1000+ games a system), the image from `5e702c1` no longer froze, but
+  Sync now stayed on "Starting" with an empty bar and no `sync.log` for over 2 minutes, while the list was read 50
+  games a page (120+ requests), and the user stopped it. Upstream shows nothing while listing either. Decided with the
+  user: Sync now's bar shows the listing's progress (A11, from `banana-sync` alone; Choose games left as upstream's),
+  and the page becomes 200 games to cut the requests by 4. At 200 the test library peaks at 67 MB, over the 64 MB
+  bound: the bound becomes 100 MB (A1, A2), and `--compare`'s check of `main`'s build a fixed 256 MB (it peaks at
+  403 MB). The final check becomes step 4; its automated parts run again after step 3, and the manual tests run on
+  an image with step 3.
 - **2026-11-03, final check: `--compare` reports every difference before it stops**, so the cards are compared even
   when the other build's peak is low (how the check of a build that drops `summary` was made).
 
@@ -400,4 +454,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. 50 games a page, each kept small, with a test of a large library | done | RomM sync memory: 50 games a page, each kept to the fields banana-sync reads |
 | 2. The sync's peak memory in its report | done | RomM sync memory: the sync's peak memory at the end of its report |
-| 3. Final check | in progress: automated parts done; manual tests M1-M4 to run | RomM sync memory: compared with upstream's banana-sync, and a note for merges |
+| 3. Progress while the list is read, and 200 games a page | done | RomM sync memory: Sync now's progress while RomM's list is read, 200 games a page |
+| 4. Final check | in progress: automated parts done (to run again after step 3); manual tests M1-M4 to run | RomM sync memory: compared with upstream's banana-sync, and a note for merges |

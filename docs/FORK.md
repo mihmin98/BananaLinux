@@ -200,8 +200,9 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    to upstream's own placing (a tile after the tileless sections, out of reach), which `ra-ui.sh` and
    `tailscale-ui.sh` catch. Upstream's own tests reach Network's rows from both ends (two Downs to Bluetooth, Up to
    File sharing, two Ups to Home server), which is why Tailscale sits between Bluetooth and Home server. And RomM's
-   game list in banana-sync: `ui/src/sync.cpp`'s `Romm::list()` asks for 50 games a page and keeps each as
-   `syncmem::slim()`'s copy (`ui/src/kiwami/syncmem.h`), and `doSync` ends its report with the peak memory. A field
+   game list in banana-sync: `ui/src/sync.cpp`'s `Romm::list()` asks for 200 games a page, keeps each as
+   `syncmem::slim()`'s copy (`ui/src/kiwami/syncmem.h`) and, in a sync, says after each page how far it got in the
+   status Settings draws as Sync now's bar ("Listing games"), and `doSync` ends its report with the peak memory. A field
    upstream starts reading in `Romm::manifest()` has to be kept by `slim()`, and `kiwami/tests/romm-list.sh` stops on
    one it drops. If upstream fixes the listing's memory its own way, the merge takes upstream's and drops the fork's
    lines and header.

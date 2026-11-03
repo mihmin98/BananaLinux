@@ -37,7 +37,7 @@ ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.
 PYTHONPYCACHEPREFIX="$T" python3 -m py_compile kiwami/tests/ra-server.py
 rm -rf "$T"
 
-# RomM's game list in banana-sync: 50 a page, each game kept small, against a large made-up library
+# RomM's game list in banana-sync: 200 a page and its progress, each game kept small, against a large made-up library
 kiwami/tests/romm-list.sh
 
 # Tailscale in banana-ui's Settings, headless, when banana-ui is built (CI builds it before)

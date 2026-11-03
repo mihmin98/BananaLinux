@@ -7,16 +7,18 @@
 // the handheld's RAM. Header-only: banana-sync is built from sync.cpp and json.cpp alone.
 // A key manifest() starts reading has to be added to the lists below, or slim() drops it and the card's games and
 // gamelists change; kiwami/tests/romm-list.sh stops on one that isn't there.
+// Also Sync now's progress while the list is read (Listing), and the peak memory a sync's report ends with (peak()).
 #include "../json.h"
 #include <cctype>
 #include <fstream>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <string>
 
 namespace banana::kiwami::syncmem
 {
-	constexpr int PAGE = 50;	// RomM's games asked for this many at a time (upstream: 500)
+	constexpr int PAGE = 200;	// RomM's games asked for this many at a time (upstream: 500)
 	// the members of a game Romm::manifest() reads as scalars, of each of its files[], and of its metadatum
 	inline const char* const GAME_KEYS[] = { "id", "platform_id", "fs_name", "name", "fs_size_bytes",
 		"has_multiple_files", "missing_from_fs", "summary", "path_cover_large" };
@@ -91,6 +93,30 @@ namespace banana::kiwami::syncmem
 		}
 		return out;
 	}
+
+	// Sync now's progress while RomM's list is read: Settings draws a status "running <a> <b> <what>|<item>" as a bar
+	// filled a of b, with what as its title and item under it. b is the sum of the synced platforms' rom_count (0, an
+	// empty bar with the text still counting, when the server gives none), a the games read so far
+	struct Listing
+	{
+		long long expected = 0, read = 0;
+		Listing(const JVal& platforms, const std::map<long long, std::string>& kept)
+		{
+			if (!platforms.isArr()) return;
+			for (auto& p : platforms.arr)
+			{
+				long long n = (long long)p->num("rom_count");
+				if (kept.count((long long)p->num("id")) && n > 0) expected += n;
+			}
+		}
+		// after a page of a platform's (its items, n of the platform's games read so far, of total; -1 unknown)
+		std::string page(const std::string& folder, long long items, long long n, long long total)
+		{
+			read += items;
+			return "running " + std::to_string(read) + " " + std::to_string(expected) + " Listing games|" + folder + " " + std::to_string(n) +
+				(total >= 0 ? " / " + std::to_string(total) : "");
+		}
+	};
 
 	// the process's peak resident size, for the end of a sync's report (sync.log): the number on the VmHWM line of a
 	// /proc/<pid>/status text as "<n> kB", or "unknown" when there is no such line or no number on it

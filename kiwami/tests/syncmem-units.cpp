@@ -1,6 +1,7 @@
 // banana-sync's RomM listing held small (ui/src/kiwami/syncmem.h), checked on its own: slim()'s copy of a game answers
 // every read Romm::manifest() makes exactly as the game RomM sent does, edge cases included, holds nothing else, and
-// lets the rest of the page go; and the peak memory a sync's report ends with. Built and run by kiwami/tests/romm-list.sh with the host's g++:
+// lets the rest of the page go; Sync now's progress while the list is read; and the peak memory a sync's report ends
+// with. Built and run by kiwami/tests/romm-list.sh with the host's g++:
 //   g++ -std=c++17 -Wall -Werror -I ui/src kiwami/tests/syncmem-units.cpp ui/src/json.cpp -o syncmem-units
 //   ./syncmem-units
 #include "kiwami/syncmem.h"
@@ -195,6 +196,27 @@ static void testFreed()
 	EQ(kept->get("metadatum")->get("genres")->arr[0]->s, "Action");
 }
 
+// Sync now's progress while the list is read: the total from the kept platforms' rom_count, a status line a page
+static void testListing()
+{
+	JPtr pl = parse(R"([{"id": 1, "slug": "nds", "rom_count": 400}, {"id": 2, "slug": "gba", "rom_count": 1200},
+		{"id": 7, "slug": "3ds", "rom_count": 900}, {"id": 3, "slug": "gbc"}, {"id": 4, "slug": "snes", "rom_count": null}])");
+	if (!pl) return;
+	std::map<long long, std::string> kept = { { 1, "nds" }, { 2, "gba" }, { 3, "gbc" }, { 4, "snes" } };	// (not 3ds)
+	syncmem::Listing l(*pl, kept);
+	CHECK(l.expected == 1600);
+	EQ(l.page("nds", 200, 200, 400), "running 200 1600 Listing games|nds 200 / 400");
+	EQ(l.page("nds", 200, 400, 400), "running 400 1600 Listing games|nds 400 / 400");
+	EQ(l.page("gba", 200, 200, 1200), "running 600 1600 Listing games|gba 200 / 1200");
+	EQ(l.page("gbc", 37, 37, -1), "running 637 1600 Listing games|gbc 37");
+	// no rom_count anywhere (another server): a total of 0, the text still counting
+	JPtr none = parse(R"([{"id": 1, "slug": "nds"}, {"id": 2, "slug": "gba", "rom_count": "many"}])");
+	if (none) { syncmem::Listing n(*none, kept); CHECK(n.expected == 0); EQ(n.page("nds", 50, 50, 120), "running 50 0 Listing games|nds 50 / 120"); }
+	// a reply that isn't a list
+	JPtr obj = parse(R"({"detail": "nope"})");
+	if (obj) { syncmem::Listing o(*obj, kept); CHECK(o.expected == 0); }
+}
+
 // the peak memory line: VmHWM's number from /proc/<pid>/status, "unknown" without one
 static void testPeak()
 {
@@ -213,6 +235,7 @@ int main()
 {
 	testSlim();
 	testFreed();
+	testListing();
 	testPeak();
 	if (failed) { fprintf(stderr, "syncmem-units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("syncmem-units: %d checks passed\n", checks);

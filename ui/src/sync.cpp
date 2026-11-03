@@ -899,12 +899,13 @@ namespace
 				if (folder.empty() || skip.count(folder)) continue;
 				platforms[(long long)p->num("id")] = folder;
 			}
+			banana::kiwami::syncmem::Listing listing(*j, platforms);	// kiwami: Sync now's progress while the list is read
 			for (auto& pf : platforms)
 			{
-				for (long long off = 0;; off += banana::kiwami::syncmem::PAGE)	// kiwami: 50 a page, upstream 500
+				for (long long off = 0;; off += banana::kiwami::syncmem::PAGE)	// kiwami: syncmem::PAGE a page, upstream 500
 				{
 					std::string q = "/api/roms?platform_ids=" + std::to_string(pf.first) + "&platform_id=" + std::to_string(pf.first) +
-						"&limit=" + std::to_string(banana::kiwami::syncmem::PAGE) + "&offset=" + std::to_string(off) + "&order_by=name&with_char_index=false&with_filter_values=false&with_rom_id_index=false&with_provider_metadata=false";	// kiwami: 50 a page, and no provider metadata (RomM after 5.4.1)
+						"&limit=" + std::to_string(banana::kiwami::syncmem::PAGE) + "&offset=" + std::to_string(off) + "&order_by=name&with_char_index=false&with_filter_values=false&with_rom_id_index=false&with_provider_metadata=false";	// kiwami: syncmem::PAGE a page, and no provider metadata (RomM after 5.4.1)
 					Resp rr = call("GET", q);
 					if (rr.code != 200) { err = "roms: " + rr.error(); return false; }
 					JPtr page = rr.json();
@@ -917,7 +918,8 @@ namespace
 						roms.push_back({ (long long)it->num("id"), pf.second, it->str("fs_name_no_ext", stemOf(it->str("fs_name"))), it->str("fs_name") });
 					}
 					long long total = page->isArr() ? (long long)items->arr.size() : (long long)page->num("total", -1);
-					if (page->isArr() || items->arr.size() < banana::kiwami::syncmem::PAGE || (total >= 0 && off + banana::kiwami::syncmem::PAGE >= total)) break;	// kiwami: 50 a page
+					if (statusLine.compare(0, 8, "running ") == 0) status(listing.page(pf.second, (long long)items->arr.size(), off + (long long)items->arr.size(), page->isArr() ? -1 : total));	// kiwami: Sync now's progress (a sync's status only: Choose games has none)
+					if (page->isArr() || items->arr.size() < banana::kiwami::syncmem::PAGE || (total >= 0 && off + banana::kiwami::syncmem::PAGE >= total)) break;	// kiwami: syncmem::PAGE a page
 				}
 			}
 			listed = true;

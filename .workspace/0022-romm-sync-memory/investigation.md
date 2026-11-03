@@ -219,3 +219,11 @@ No setting, no package, no dependency (`kiwami/DEPENDENCIES.md` unchanged), noth
 5. The device test before and after, or after only? *Answered*: after only.
 6. Peak memory: an SSH loop, or a line in `sync.log`? *Answered*: a line in `sync.log`.
 7. Extras: compare with `main`'s output, drop duplicate ids? *Answered*: compare with `main`'s output only.
+8. (Planning) Each game kept as a compact struct with `manifest()` rewritten to read it, or as a pruned copy of its
+   JSON tree (only the fields `manifest()` reads) so that `manifest()` stays upstream's? *Answered*: the pruned tree,
+   in a fork header (`ui/src/kiwami/syncmem.h`): about 6 marked lines in `ui/src/sync.cpp` instead of about 45, the
+   output the same by construction, at about 5 KB a game instead of 1-2 KB.
+9. (Planning) The pruning's unit tests in `kiwami/tests/units.cpp` or in a file of their own? *Answered*: their own
+   (`kiwami/tests/syncmem-units.cpp`); `k/0008-romm` rewrites much of `units.cpp`.
+10. (Planning) A `kiwami:` prerequisite line in `ui/Makefile` so banana-sync is rebuilt when only the header changes?
+    *Answered*: yes.

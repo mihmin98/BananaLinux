@@ -473,13 +473,20 @@ hand.
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | Paired with your RomM, Show sync times On, Games to sync with a few new games (or a system just switched to Sync). Sync now, and leave Settings on the Sync now row to the end. Photograph the line in each phase. | The clock ticks every second with no key pressed, and the bar moves. Each phase shows its name and time: Starting, Listing games, Checking the card, Games, Gamelists, Reading saves, Saves. The time left appears about 3 s into each counted phase and settles rather than jumping. The Games estimate is close to the real time taken. | `/data/banana/logs/sync.log` (the `times:` lines); `/data/banana/logs/banana-ui.log` (`grep 'sync times:'`); the photos | A3, A6, A7, A9, A12 | not run |
-| M2 | rgds-plus | During a long sync (M1's), press B to the menu, wait a minute timed on a phone, then go back to Settings > Network > Home server > Sync now. Then set Auto sync to And on Wi-Fi, switch Wi-Fi off and on, and open Sync now while the automatic sync runs. | Back on Sync now, the sync's time has grown by the minute away, and the phase's time is right for its phase. The automatic sync shows its line too. | `sync.log` of each sync; `banana-ui.log` | A10 | not run |
-| M3 | rgds-plus | During a Games download or the Saves phase, note the line's times, sleep with the power button for a minute (timed), and wake. | Both clocks carry on from where they were, without the minute asleep. The estimate stays reasonable after the resume. The sync finishes. | `sync.log` (the phase's duration has no extra minute); `banana-ui.log` | A11 | not run |
-| M4 | rgds-plus | Show sync times Off, Sync now, Settings left on Sync now. | No line under the bar. The bar moves only on a key press, as upstream's does. `sync.log` has no `times:` line. | `sync.log`; `banana-ui.log` (no `sync times:`) | A1 | not run |
-| M5 | rgds-plus | Show sync times On. Sync now, Stop (A again) partway through, then Sync now again at once. | Between the two, no line with the stopped sync's times. The new sync's line starts at `Starting · 0:00`. | `sync.log` of the second sync; `banana-ui.log` | A8 | not run |
+| M1 | rgds-plus | Paired with your RomM, Show sync times On, Games to sync with a few new games (or a system just switched to Sync). Sync now, and leave Settings on the Sync now row to the end. Photograph the line in each phase. | The clock ticks every second with no key pressed, and the bar moves. Each phase shows its name and time: Starting, Listing games, Checking the card, Games, Gamelists, Reading saves, Saves. The time left appears about 3 s into each counted phase and settles rather than jumping. The Games estimate is close to the real time taken. | `/data/banana/logs/sync.log` (the `times:` lines); `/data/banana/logs/banana-ui.log` (`grep 'sync times:'`); the photos | A3, A6, A7, A9, A12 | passed (2026-11-03, the user\'s observation, no logs) |
+| M2 | rgds-plus | During a long sync (M1's), press B to the menu, wait a minute timed on a phone, then go back to Settings > Network > Home server > Sync now. Then set Auto sync to And on Wi-Fi, switch Wi-Fi off and on, and open Sync now while the automatic sync runs. | Back on Sync now, the sync's time has grown by the minute away, and the phase's time is right for its phase. The automatic sync shows its line too. | `sync.log` of each sync; `banana-ui.log` | A10 | passed (2026-11-03, the user\'s observation, no logs) |
+| M3 | rgds-plus | During a Games download or the Saves phase, note the line's times, sleep with the power button for a minute (timed), and wake. | Both clocks carry on from where they were, without the minute asleep. The estimate stays reasonable after the resume. The sync finishes. | `sync.log` (the phase's duration has no extra minute); `banana-ui.log` | A11 | passed (2026-11-03, the user\'s observation, no logs) |
+| M4 | rgds-plus | Show sync times Off, Sync now, Settings left on Sync now. | No line under the bar. The bar moves only on a key press, as upstream's does. `sync.log` has no `times:` line. | `sync.log`; `banana-ui.log` (no `sync times:`) | A1 | passed (2026-11-03, the user\'s observation, no logs) |
+| M5 | rgds-plus | Show sync times On. Sync now, Stop (A again) partway through, then Sync now again at once. | Between the two, no line with the stopped sync's times. The new sync's line starts at `Starting · 0:00`. | `sync.log` of the second sync; `banana-ui.log` | A8 | passed (2026-11-03, the user\'s observation, no logs) |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- **2026-11-03, image 0.5.2.2 built from `994bab5`** (`banana-ui-rebuild` over the existing `output/rgds-plus`, then
+  the image; the installed `banana-sync` and `banana-ui` checked for the feature's strings). The user installed it on
+  the RG DS Plus, ran the tests and reported that they worked, without collecting the logs: M1-M5 are recorded as
+  passed on that observation. No `sync.log` or `banana-ui.log` was analysed, so the device's `times:` lines, the
+  estimate's accuracy on the user's library (M1), the clocks across a sleep (M3) and the stopped sync (M5) rest on the
+  user's report and the headless tests.
 
 ## Deviations
 
@@ -503,6 +510,9 @@ Where the implementation turned out different from this plan, why, and what chan
   nothing failed. In the final check's commit, `kiwami/tests/sync-times.sh` added to its files.
 - **2026-11-03, final check: in two commits**, as #22's: its automated part first, so the image for the manual tests
   is built from a clean tree, then the manual tests' outcomes and the final check marked done.
+- **2026-11-03, final check: the manual tests passed on the user's observation, without logs.** The plan asked for
+  each test's logs to be analysed; the user ran them on the image from `994bab5`, saw them work and chose not to
+  collect the logs (as #22's were). The final check is marked done on that report (*Notes from the runs*).
 
 ## Progress
 
@@ -512,4 +522,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. banana-sync keeps each phase's time, with the silent steps as phases | done | Sync times: banana-sync keeps each phase's time, with the silent steps as phases |
 | 2. The times under Sync now's bar, and the Show sync times row | done | Sync times: the times under Sync now's bar, and the Show sync times row |
-| 3. Final check | automated part done; manual tests M1-M5 to run | Sync times: compared with kiwami's banana-sync, and the renders |
+| 3. Final check | done (manual tests passed on the user's observation, no logs; *Deviations*) | Sync times: compared with kiwami's banana-sync, and the renders; Sync times: the final check done |

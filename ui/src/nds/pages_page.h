@@ -14,7 +14,10 @@ namespace banana::nds
 	public:
 		// assets: the rnds assets folder (fonts/); light: the theme's palette (pal(light), the theme already applied)
 		PagesPage(Overlay& ov, const std::string& assets, bool light)
-			: pages(&ov.backend(), 1, ov.width(), ov.height(), assets, light) {}
+			: pages(&ov.backend(), 1, ov.width(), ov.height(), assets, light)
+		{
+			pages.setDecoderThread(true);	// (the paint loop never waits on a picture's decode)
+		}
 
 		// new data from the readers and the logic (any thread's copy: the pointers are shared, the data not changed after)
 		void setData(const PageData& d) { pages.setData(d); dirty = true; }
@@ -54,6 +57,8 @@ namespace banana::nds
 			if (a == Pages::Action::CLOSE) closing = true;
 		}
 		bool wantsClose() override { bool c = closing; closing = false; return c; }
+		// the pages not shown yet drawn off-screen, one a call, so the first opening and each first tab are ready
+		bool warm() override { return pages.warmNext(); }
 		int badge() const override { return pages.unseen(); }
 		// the notices seen since the last call, for the logic to keep as seen
 		std::vector<std::string> takeSeen() { return pages.takeSeen(); }

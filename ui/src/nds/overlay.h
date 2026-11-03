@@ -78,7 +78,9 @@ namespace banana::nds
 		// what changed since the last frame sent: false when no slot was free (BananaDS copying the last one): call
 		// send() again shortly, the picture is kept
 		bool end();
+		void compose();		// end()'s first half: the screen composed, what changed marked to send
 		bool send();
+		bovl_rect dirtyRect() const { return dirty; }
 		bool pending() const { return dirtyPending || seqPending; }
 		const uint32_t* pixels() const { return be->pixels(1); }	// (tests)
 
@@ -112,6 +114,8 @@ namespace banana::nds
 		virtual bool wantsClose() { return false; }		// a page's own close (a wider Back to game button)
 		virtual int badge() const { return 0; }
 		virtual bool iconOn() const { return true; }
+		// a piece of work for a quiet moment (no touch for a while, nothing to draw): true when one was done
+		virtual bool warm() { return false; }
 	};
 
 	// the theme's folder (the menu's --assets: the Pixelify fonts in <dir>/fonts) for the icon's badge and the test page
@@ -121,7 +125,7 @@ namespace banana::nds
 	std::unique_ptr<OverlayPage> makeTestPage(Overlay& ov);
 
 	// the companion's loop while a DS game runs (instead of a plain waitpid): touches to the page, the page drawn and
-	// sent while open (at most 30 times a second, 60 while a finger moves), the icon's badge. Returns when the game
+	// sent while open (at most 60 times a second), the icon's badge. Returns when the game
 	// ends, status as waitpid's. idle: called each turn (the memory reads' pump: CompLink), may be empty
 	void runWhileGame(Overlay& ov, OverlayPage& page, pid_t pid, int& status, const std::function<void(double)>& idle = {});
 }

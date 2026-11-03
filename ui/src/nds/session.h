@@ -9,9 +9,12 @@
 //   ... each tick: if (s.tick(now, time(nullptr))) { d.live = s.live(); d.advice = s.advice(); d.journey = s.journey();
 //                  d.seenNotices = s.seenList(); pages->setData(d); }   and  s.markSeen(pages->takeSeen());
 #include "nds/logic.h"
+#include <condition_variable>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace banana::nds
@@ -43,6 +46,10 @@ namespace banana::nds
 		// the advice go by it (the game's own season is not read)
 		void setSeason(int season);
 		const RamReader& reader() const { return rr; }
+		// what the player's ROM tells the RAM reader (rom.h ramHints: the battle overlay's bytes)
+		void setHints(const RamHints& h) { rr.setHints(h); }
+		// (tests) where the RAM reader's finds for this game + ROM are kept (RamReader::anchors)
+		std::string anchorFile() const;
 		// (tests) the file this playthrough's state is kept in ("" until the trainer is known)
 		const std::string& stateFile() const { return file; }
 	private:
@@ -62,10 +69,46 @@ namespace banana::nds
 		int challengeWanted = -1;	// setChallenge's (the Settings row), applied again over the card's when it is read
 		int64_t lastWild = -1000;
 		int seasonPick = -1;
-		bool redo = false;					// (a new season pick: Live and the advice again at the next tick)
+		bool redo = false;
+		bool searchChecked = false, wasScanning = false;	// (the RAM reader's test flag looked at; a search running)					// (a new season pick: Live and the advice again at the next tick)
 		std::shared_ptr<const Live> cur;	// rr's Live with the picked season	// the play time (s) of the last reading in a wild battle (a catch registers around its end)
 		void track(const Live& now, time_t wall);
 		void load();
 		void save();
+	};
+
+	// A Session on a thread of its own, so the companion's paint loop never waits for it: the RAM's replies parsed and
+	// the advice worked out took ~6 ms of every 250 ms poll on the RG DS and up to 17 ms on the Plus, on the thread that
+	// takes the touches and draws (a stalled picture in every fourth of a drag). The paint loop takes what changed
+	// (take) and hands over what the pages saw (markSeen, setSeason).
+	class SessionThread
+	{
+	public:
+		struct Snapshot
+		{
+			std::shared_ptr<const Live> live;
+			std::shared_ptr<const Advice> advice;
+			std::shared_ptr<const Journey> journey;
+			std::vector<std::string> seen;
+		};
+		// s: set up (send/receive/challenge) before; the thread's from now on (send/receive are called on it). The
+		// Session ticks every periodMs
+		explicit SessionThread(std::unique_ptr<Session> s, int periodMs = 10);
+		~SessionThread();	// stops, then the Session goes (saving what it holds) on the caller's thread
+		// what changed since the last take: false when nothing did
+		bool take(Snapshot& out);
+		void markSeen(const std::vector<std::string>& ids);
+		void setSeason(int season);
+	private:
+		std::unique_ptr<Session> ss;
+		std::mutex m;
+		std::condition_variable cv;
+		bool stop = false, fresh = false;
+		Snapshot snap;
+		std::vector<std::string> seenIn;
+		int season = -1;
+		bool seasonIn = false;
+		std::thread th;
+		void run(int periodMs);
 	};
 }

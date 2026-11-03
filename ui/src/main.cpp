@@ -26,6 +26,7 @@
 #include "nds/pages_page.h"
 #include "nds/session.h"
 #include "nds/rom.h"
+#include "nds/romfile.h"
 #include "nds/guide.h"
 #include "recorder.h"
 #include "settings_defaults.h"
@@ -2669,15 +2670,18 @@ int main(int argc, char** argv)
 		std::unique_ptr<nds::OverlayPage> ndsPage;
 		nds::PagesPage* ndsPages = nullptr;
 		std::future<nds::PageData> ndsLoad;	// (the ROM's data read in the background while the game starts)
+		auto ndsStop = std::make_shared<std::atomic<bool>>(false);	// (the game ended: ndsLoad stops waiting for an unpacked zip)
+		auto ndsHints = std::make_shared<nds::RamHints>();			// (ndsLoad's too: what the ROM tells the RAM reader)
+		uint8_t ndsHdr[0x200] = {};
 		const std::string ndsMode = !panel && sd.id == "nds" && disp.isOpen() ? getConfValue(o.data + "/settings.conf", "nds_companion", "off") : "off";
 		if (ndsMode == "test" || ndsMode == "on")
 		{
 			nds::Game g;
 			if (ndsMode == "on")
 			{
-				uint8_t hdr[0x200] = {};
-				std::ifstream(rom, std::ios::binary).read((char*)hdr, sizeof hdr);
-				g = nds::detectGame(hdr, sizeof hdr);
+				// (a zipped game: the header of the DS game inside it - the library lists .zip for the DS)
+				if (!nds::romHeader(rom, ndsHdr)) memset(ndsHdr, 0, sizeof ndsHdr);
+				g = nds::detectGame(ndsHdr, sizeof ndsHdr);
 			}
 			nds::setAssets(o.assets);
 			if ((ndsMode == "test" || g.id != nds::GameId::NONE) && ndsOverlay.create(disp.width(), disp.height()))
@@ -2694,12 +2698,20 @@ int main(int argc, char** argv)
 					// the ROM's names, sprites, places and trainers (decoded once, then from the card's cache) and our
 					// guide for the game; the game's memory (the party, battles) comes through CompLink (nds/ram)
 					const std::string cache = o.data + "/cache/nds-companion";
-					ndsLoad = std::async(std::launch::async, [rom, cache]
+					ndsLoad = std::async(std::launch::async, [rom, cache, hdr = std::vector<uint8_t>(ndsHdr, ndsHdr + sizeof ndsHdr), stop = ndsStop, hints = ndsHints]
 					{
 						nds::PageData d;
 						std::string err;
 						nds::RomLoadInfo info;
-						auto r = nds::loadRom(rom, cache, &err, &info);
+						// a zipped game: the ROM reader reads the copy run-bananads unpacks it to, once that is whole (up to 2
+						// minutes: a big zip on a slow card; given up when the game ends - run-bananads failed, a full card)
+						std::string path = rom;
+						if (nds::romZipped(rom) && (path = nds::waitUnzipped(rom, "/data/bananads/unzipped", hdr.data(), *stop, 120000)).empty())
+						{
+							logf("nds companion: the unpacked game didn't appear in /data/bananads/unzipped");
+							return d;
+						}
+						auto r = nds::loadRom(path, cache, &err, &info);
 						d.rom = r;
 						if (r)
 						{
@@ -2711,6 +2723,9 @@ int main(int argc, char** argv)
 							if (!nds::loadGuide(r->game, *gd, &why, &res)) { logf("nds companion: no guide: %s", why.c_str()); *gd = nds::GuideData(); }
 							d.guide = gd;
 							logf("nds companion: %s read in %.0f ms%s", r->game.title.c_str(), info.ms, info.fromCache ? " (from the cache)" : "");
+							// (the battle overlay's bytes: "a battle is on" in any revision, nds/ram.h)
+							*hints = nds::ramHints(*r);
+							logf("nds companion: %s rev %d, battle code at %08x", r->game.code.c_str(), r->game.revision, hints->battleSig.addr);
 						}
 						else logf("nds companion: the game's data didn't read: %s", err.c_str());
 						return d;
@@ -2784,8 +2799,10 @@ int main(int argc, char** argv)
 				// the ROM's data and the guide once read (ndsLoad), then the game's memory: the Session polls it over
 				// CompLink (BananaDS's export), works out the advice again when the game changed, and keeps the journey
 				// log and the notices seen on the card per game + trainer (nds/session)
+				// (the Session runs on a thread of its own, nds::SessionThread: the paint loop only takes what changed; CompLink
+				// is the Session's alone while the game runs)
 				nds::PageData ndsBase;
-				std::unique_ptr<nds::Session> ndsSession;
+				std::unique_ptr<nds::SessionThread> ndsSession;
 				nds::runWhileGame(ndsOverlay, *ndsPage, pid, status, [&](double)
 				{
 					if (!ndsPages) return;
@@ -2795,25 +2812,29 @@ int main(int argc, char** argv)
 						ndsPages->setData(ndsBase);
 						if (ndsBase.rom && ndsBase.guide)
 						{
-							ndsSession = std::make_unique<nds::Session>(ndsBase.rom, ndsBase.guide, o.data + "/cache/nds-companion");
-							ndsSession->send = [&](const std::string& l) { return compLink.send(l); };
-							ndsSession->receive = [&] { return compLink.receive(); };
-							ndsSession->setChallenge(getConfValue(o.data + "/settings.conf", "nds_challenge", "off") == "on");
+							auto ss = std::make_unique<nds::Session>(ndsBase.rom, ndsBase.guide, o.data + "/cache/nds-companion");
+							ss->send = [&](const std::string& l) { return compLink.send(l); };
+							ss->receive = [&] { return compLink.receive(); };
+							ss->setChallenge(getConfValue(o.data + "/settings.conf", "nds_challenge", "off") == "on");
+							ss->setHints(*ndsHints);
+							ndsSession = std::make_unique<nds::SessionThread>(std::move(ss));
 						}
 					}
 					if (!ndsSession) return;
 					ndsSession->markSeen(ndsPages->takeSeen());
 					ndsSession->setSeason(ndsPages->raw().seasonPick());	// (Gen V: the season picked on Here)
-					if (ndsSession->tick(nowMs(), time(nullptr)))
+					nds::SessionThread::Snapshot sn;
+					if (ndsSession->take(sn))
 					{
 						nds::PageData d = ndsBase;
-						d.live = ndsSession->live();
-						d.advice = ndsSession->advice();
-						d.journey = ndsSession->journey();
-						d.seenNotices = ndsSession->seenList();
+						d.live = sn.live;
+						d.advice = sn.advice;
+						d.journey = sn.journey;
+						d.seenNotices = sn.seen;
 						ndsPages->setData(d);
 					}
 				});
+				ndsSession.reset();	// (stopped before CompLink closes)
 				logf("nds companion: %llu pictures sent (%.0f KB)", (unsigned long long)ndsOverlay.framesSent, ndsOverlay.bytesSent / 1024.0);
 			}
 			else while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
@@ -2822,6 +2843,7 @@ int main(int argc, char** argv)
 		nas::pauseRunner(fetchPaths, false);
 		if (ndsPage)
 		{
+			*ndsStop = true;
 			if (ndsLoad.valid()) ndsLoad.wait();	// (a game quit while its data was still being read)
 			ndsPage.reset();
 			ndsOverlay.close();

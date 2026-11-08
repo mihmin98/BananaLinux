@@ -28,6 +28,7 @@
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstdarg>
+#include <cstdlib>
 #include <ctime>
 #include <dirent.h>
 #include <dlfcn.h>
@@ -590,6 +591,7 @@ namespace
 	{
 		Conf& c;
 		std::set<std::string> skip;	// system folders this handheld skips (settings: homesync.<system> = off)
+		const std::set<std::string>* chosen = nullptr;	// games chosen for syncing (null: every game)
 		explicit Backend(Conf& conf) : c(conf) {}
 		virtual ~Backend() {}
 		virtual std::vector<std::string> auth() const { return { "Authorization: Bearer " + c.token }; }
@@ -682,8 +684,19 @@ namespace
 	bool gameRunning()
 	{
 		int pid = 0;
-		std::ifstream(RUN + "/game.pid") >> pid;
-		return pid > 0 && kill(pid, 0) == 0;
+		unsigned long long start = 0;
+		std::ifstream(RUN + "/game.pid") >> pid >> start;
+		if (pid <= 0 || kill(pid, 0) != 0) return false;
+		if (!start) return true;	// (a pid file from before the start time was kept)
+		std::ifstream f("/proc/" + std::to_string(pid) + "/stat");
+		std::string ln;
+		if (!std::getline(f, ln)) return false;
+		size_t q = ln.rfind(')');
+		if (q == std::string::npos) return false;
+		std::istringstream in(ln.substr(q + 1));
+		std::string v;
+		for (int i = 0; i < 20 && in >> v; i++) if (i == 19) return strtoull(v.c_str(), nullptr, 10) == start;
+		return false;
 	}
 	// downloaded to <dst>.part, checked, renamed. The part file is left for a retry when the connection broke
 	bool fetchTo(const std::string& url, const std::vector<std::string>& headers, const std::string& dst, long long size,
@@ -878,8 +891,10 @@ namespace
 		{ "nds", "nds" }, { "gba", "gba" }, { "gbc", "gbc" }, { "gb", "gb" }, { "nes", "nes" }, { "famicom", "nes" },
 		{ "snes", "snes" }, { "sfam", "snes" }, { "genesis", "megadrive" }, { "genesis-slash-megadrive", "megadrive" },
 		{ "megadrive", "megadrive" }, { "psx", "psx" }, { "ps", "psx" }, { "n64", "n64" },
+		{ "c64", "c64" }, { "commodore-64", "c64" }, { "commodore64", "c64" },
+		{ "zxs", "zxspectrum" }, { "zx-spectrum", "zxspectrum" }, { "zxspectrum", "zxspectrum" },
 	};
-	const std::set<std::string> BANANA_FOLDERS = { "nds", "gba", "gbc", "gb", "nes", "snes", "megadrive", "psx", "n64" };
+	const std::set<std::string> BANANA_FOLDERS = { "nds", "gba", "gbc", "gb", "nes", "snes", "megadrive", "c64", "zxspectrum", "psx", "n64" };
 	struct RommRom { long long id; std::string folder, stem, fsName; };
 	struct Romm : Backend
 	{
@@ -1083,6 +1098,7 @@ namespace
 				{
 					auto ri = romById.find((long long)s->num("rom_id"));
 					if (ri == romById.end() || s->flag("missing_from_fs")) continue;
+					if (chosen && !chosen->count(ri->second.folder + "/" + ri->second.fsName)) continue;	// (not chosen: not pulled)
 					if (!s->str("slot").empty()) continue;	// (another client's versioned slots: left to it)
 					std::string name = s->str("file_name");
 					if (!safeRel(name) || name.find('/') != std::string::npos || stemOf(name) != ri->second.stem) continue;
@@ -1696,11 +1712,12 @@ namespace
 		bool states = get("homesync_states", "off") == "on";
 		std::set<std::string> skip;
 		for (auto& kv : set) if (kv.first.compare(0, 9, "homesync.") == 0 && kv.second == "off") skip.insert(kv.first.substr(9));
-		auto b = backendFor(c);
-		b->skip = skip;
 		bool pick = get("homesync_games", "all") == "chosen";
 		std::set<std::string> chosen;
 		if (pick) { chosen = readChoice(); c.etag.clear(); }	// (the list in full: the choice may have changed since)
+		auto b = backendFor(c);
+		b->skip = skip;
+		b->chosen = pick ? &chosen : nullptr;
 		Awake awake;
 		if (roms) awake.take();
 		status("running 0 0 |" + (c.serverName.empty() ? c.server : c.serverName));

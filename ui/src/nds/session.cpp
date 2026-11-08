@@ -36,6 +36,12 @@ namespace banana::nds
 
 	bool Session::tick(double now, time_t wall)
 	{
+		if (fed)	// (fed by another reader: only a new season pick to work out again)
+		{
+			if (!redo) return false;
+			redo = false;
+			return apply(fed, now, wall);
+		}
 		if (!rom || !rr.supported() || !send || !receive) return false;
 		bool changed = false;
 		if (!searchChecked)
@@ -86,7 +92,19 @@ namespace banana::nds
 		}
 		if (redo && rr.live()->valid) { changed = true; redo = false; }
 		if (!changed) return false;
-		std::shared_ptr<const Live> l = rr.live();
+		return apply(rr.live(), now, wall);
+	}
+
+	bool Session::feed(std::shared_ptr<const Live> l, double now, time_t wall)
+	{
+		if (!rom || !l) return false;
+		fed = l;
+		redo = false;
+		return apply(l, now, wall);
+	}
+
+	bool Session::apply(std::shared_ptr<const Live> l, double now, time_t wall)
+	{
 		if (seasonPick >= 0 && l->season != seasonPick)
 		{
 			auto c = std::make_shared<Live>(*l);
@@ -94,7 +112,8 @@ namespace banana::nds
 			l = c;
 		}
 		cur = l;
-		if (file.empty() && l->valid)
+		// (the playthrough named by its trainer: not before the trainer id is read)
+		if (file.empty() && l->valid && l->trainerKnown)
 		{
 			char b[96];
 			snprintf(b, sizeof b, "/%s-%05u-%05u.tsv", rom->game.code.c_str(), l->tid, l->sid);
@@ -103,7 +122,8 @@ namespace banana::nds
 			// the Settings row wins over what the card kept for this playthrough (load() read the card's value)
 			if (challengeWanted >= 0 && jr->challenge != (challengeWanted == 1)) { jr->challenge = challengeWanted == 1; dirty = true; }
 		}
-		track(*l, wall);
+		if (l->trainerKnown) track(*l, wall);
+		else prev = cur;	// (nothing compared against a reading with no trainer: the next is a baseline)
 		adv = std::make_shared<const Advice>(computeAdvice(*rom, *l, guide.get(), st));
 		if (dirty && now - savedAt > 5000) { save(); savedAt = now; }
 		return true;
@@ -149,7 +169,9 @@ namespace banana::nds
 	void Session::track(const Live& l, time_t wall)
 	{
 		std::shared_ptr<const Live> was = prev;
-		prev = rr.live();
+		// (this reading as apply() took it: cur. Not rr.live(), the RAM reader's - the same for the DS, but empty for a
+		// fed Session (the GBA host's), so the GBA games' journey and challenge mode never saw a change)
+		prev = cur;
 		if (!was || !was->valid || !l.valid || was->tid != l.tid || was->sid != l.sid) return;
 		// (the catch's Pokédex entry can come a little after the battle's end: the nickname question, the Pokédex page)
 		if (wildBattle(*was) || wildBattle(l)) lastWild = l.playSeconds;
@@ -179,7 +201,7 @@ namespace banana::nds
 				if (!newEntryKind(*was, l, s, recentWild, k)) continue;
 				add(k, s, (k == LogKind::CATCH ? "Caught " : "Received ") + name(*rom, s));
 				if (jr->challenge && k == LogKind::CATCH)
-					for (auto& r : jr->routes) if (r.zone == l.zone && r.species == s && r.outcome == RouteRecord::OPEN) r.outcome = RouteRecord::CAUGHT;
+					for (auto& r : jr->routes) if (sameArea(rom.get(), r.zone, l.zone) && r.species == s && r.outcome == RouteRecord::OPEN) r.outcome = RouteRecord::CAUGHT;
 			}
 		for (auto& m : l.party)
 			for (auto& o : was->party)
@@ -201,12 +223,12 @@ namespace banana::nds
 		if (jr->challenge && wild && !wasWild && l.battle.foes[0].present && l.zone)
 		{
 			bool have = false;
-			for (auto& r : jr->routes) have |= r.zone == l.zone;
+			for (auto& r : jr->routes) have |= sameArea(rom.get(), r.zone, l.zone);
 			if (!have) { jr->routes.push_back({ l.zone, l.battle.foes[0].mon.species, RouteRecord::OPEN }); dirty = true; }
 		}
 		if (jr->challenge && wasWild && !wild)
 			for (auto& r : jr->routes)
-				if (r.zone == was->zone && r.outcome == RouteRecord::OPEN && !bit(l.dexCaught, r.species - 1)) { r.outcome = RouteRecord::MISSED; dirty = true; }
+				if (sameArea(rom.get(), r.zone, was->zone) && r.outcome == RouteRecord::OPEN && !bit(l.dexCaught, r.species - 1)) { r.outcome = RouteRecord::MISSED; dirty = true; }
 	}
 
 	// ---- the card file: tab-separated lines ---------------------------------------------------------------------
@@ -302,6 +324,13 @@ namespace banana::nds
 		seasonIn = true;
 	}
 
+	void SessionThread::feed(std::shared_ptr<const Live> l)
+	{
+		std::lock_guard<std::mutex> g(m);
+		feedIn = std::move(l);
+		cv.notify_one();
+	}
+
 	void SessionThread::run(int periodMs)
 	{
 		std::unique_lock<std::mutex> g(m);
@@ -314,12 +343,16 @@ namespace banana::nds
 			const bool newSeason = seasonIn;
 			const int sp = season;
 			seasonIn = false;
+			std::shared_ptr<const Live> fl;
+			fl.swap(feedIn);
 			g.unlock();
 			ss->markSeen(seen);
 			if (newSeason) ss->setSeason(sp);
 			timespec ts;
 			clock_gettime(CLOCK_MONOTONIC, &ts);
-			const bool changed = ss->tick(ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6, time(nullptr));
+			const double nowMs = ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6;
+			bool changed = ss->tick(nowMs, time(nullptr));
+			if (fl) changed = ss->feed(fl, nowMs, time(nullptr)) || changed;
 			Snapshot n;
 			if (changed) n = Snapshot{ ss->live(), ss->advice(), ss->journey(), ss->seenList() };
 			g.lock();

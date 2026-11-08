@@ -19,6 +19,7 @@
 #include "colors.h"
 #include "pokemon.h"
 #include "gamecomp.h"
+#include "lang.h"
 #include <map>
 #include <memory>
 #include <mutex>
@@ -27,9 +28,13 @@
 #include <string>
 #include <vector>
 
+namespace banana::nds { class Pages; }
+namespace banana::gba { class Host; }
+
 namespace banana
 {
 	struct SPal;	// (settings_draw.h: the palette)
+	class VirtualKeyboard;	// (vkbd.h: the panel's keyboard, on /dev/uinput)
 	class Settings
 	{
 	public:
@@ -100,6 +105,9 @@ namespace banana
 		// RetroArch (save, load, its menu, fast forward, quit), in the in-game menu's look.
 		enum GameAction { G_NONE, G_SAVE, G_LOAD, G_MENU, G_FFWD, G_QUIT, G_LOADSLOT };
 		void gameOpen(const std::string& title, const std::string& system, int screen, bool touch);
+		// the panel's on-screen keyboard (a computer's game: C64, ZX Spectrum): the virtual keyboard the emulator
+		// reads as a USB one (vkbd.h), made before the game starts. null: no Keys tile on the panel
+		void gameKeyboard(VirtualKeyboard* k) { vkbd = k; }
 		// the game's file (before gameOpen): its save states' names (RetroArch's: <name>.state, .state1 ... in
 		// /data/states, thumbnails <state>.png) for the panel's States view (a tap on the achievements box)
 		void gameRom(const std::string& rom, const std::string& stateDir = "/data/states");
@@ -111,6 +119,13 @@ namespace banana
 		bool gameWake() { bool w = wake; wake = false; return w; }
 		void gameRender();
 		GameAction gameTouch(float x, float y, bool down);	// device px on the panel's screen
+		bool gameKeysOpen() const { return gKeysOpen; }	// (tests: the panel's keyboard page is up)
+		void gameTouchMove(float x, float y);				// a press moving (the GBA companion's pages scroll by drag)
+		// the GBA Pokémon companion in the DS companion's pages (gba/host.h), when the host runs one for this game:
+		// shown in place of the Party, Battle, Dex and Guide views once its data is read (Map, Bag and Game stay
+		// today's). Set before gameOpen, null after gameClose
+		gba::Host* gbaHost = nullptr;
+		void gbaRelease();	// gbaHost is going: its pages let go of it (before it does)
 		bool gameProgress(int& unlocked, int& total);			// the game's achievements, once the server said
 		// the Pokémon companion (pokemon.h), when the host runs one for this game: the party, the battle and the
 		// achievements as tabs in the panel's middle box (set before gameOpen, null after gameClose)
@@ -509,6 +524,16 @@ namespace banana
 		// langAsk the picked choice's index on the Language row (-1: not asking), langYes the button on
 		int langAsk = -1;
 		bool langYes = false;
+		// the language list (2026-11-04, owner: "a list instead of left or right"): the Language row and the setup's
+		// language slide open it; UP/DOWN pick, A takes it (Settings: then asked first, as before; the setup: the slide's
+		// pick), B leaves it. langPick: the row picked, -1 closed
+		int langPick = -1, langTop = 0;
+		bool langPickSetup = false;
+		std::vector<lang::Info> langList;
+		void openLangPick(bool setup);
+		Result pressLangPick(Key k);
+		void renderLangPick();
+		void loadCjkFont();
 		bool rawText = false;	// text() draws the string as it is (not through the menu's language): the other language's
 		bool cjkLoaded = false;
 		Result pressLangAsk(Key k);
@@ -642,6 +667,15 @@ namespace banana
 		void gameStatesScan();
 		void gameStatesFrame(const SPal& p);
 		bool gTouch = true;
+		// the panel's on-screen keyboard (a computer's game: the C64's LOAD"*",8,1 with a finger on the bottom screen).
+		// vkbd is the emulator's own keyboard (vkbd.h), made before the game started and gone after it; the Keys tile
+		// opens the pages, a tap types the key into the game
+		VirtualKeyboard* vkbd = nullptr;
+		bool gKeysOpen = false;
+		int gKeyPage = 0, gKeyShift = 0;
+		std::string gKeyTyped;
+		void gameKeysFrame(const SPal& p);
+		void gameKeyTap(int code, bool shift, const char* label);
 		double gFlashUntil = 0;
 		int gSeen = -1;						// the watch's generation last drawn
 		int awardsSeen = 0; bool wake = false;	// (gameWake)
@@ -653,7 +687,11 @@ namespace banana
 		// seen; where the tabs were drawn (for touch); the party icons as textures, by species (+1000 the egg)
 		// Map, Bag, Dex and Guide read the save's own data (pokemon.h: Snapshot ext); the bag's pocket and page, the
 		// Pokédex's page and the entry open; the guide's look-ups (a trainer's team: a ROM search) kept by goal
-		enum { PK_PARTY, PK_BATTLE, PK_GAME, PK_MON, PK_MAP, PK_BAG, PK_DEX, PK_DEXMON, PK_GUIDE };
+		enum { PK_PARTY, PK_BATTLE, PK_GAME, PK_MON, PK_MAP, PK_BAG, PK_DEX, PK_DEXMON, PK_GUIDE, PK_NDS };
+		// PK_NDS: gbaHost's pages (their own tabs; their Back to game goes to PK_GAME, whose tab bar comes back to them)
+		std::unique_ptr<nds::Pages> gbaPages;
+		bool gbaOn() const;					// gbaHost's pages can show (its data read)
+		void gbaShow(int view);				// a tab of today's bar: its page in gbaHost's pages, or today's view
 		enum { PK_TABS = 7 };
 		int pkView = PK_PARTY, pkMon = 0, pkMonPage = 0;	// (the summary's right column: 0 the moves, 1 the stats)
 		bool pkBattle = false;
@@ -728,6 +766,8 @@ namespace banana
 		// the top panel's header and help text (Settings' rows and a game's page): where they go, in 640x480 CSS px
 		static constexpr float HEAD_ICON_Y = 42, HEAD_SECTION_Y = 46, HEAD_LABEL_Y = 70, HEAD_VALUE_Y = 110;
 		static constexpr float HELP_X = 50, HELP_W = 540, HELP_TOP = 152, HELP_BOTTOM = 438;
+		static constexpr float LANG_Y = 80, LANG_H = 52, LANG_PITCH = 58;	// the language list's rows (bottom panel)
+		static constexpr int LANG_VIS = 5;
 		static constexpr float HINT_TOP = 300;	// a choice's hint, under the row's sentence
 		bool helpFit(const std::string& t, float top, float bottom, float& size, int& lines) const;
 		void helpText(const std::string& t, float top, float bottom, const rnds::Color& c);

@@ -22,6 +22,9 @@ make -s -C "$HERE" tests/complink-test >/dev/null && TMPDIR="$OUT" "$HERE/tests/
 # the DS Pokémon companion's ROM reader: containers and text on data made from the documented layouts (the player's
 # own ROMs: tests/nds-rom-test <roms dir> [cache dir], on a PC that has them)
 make -s -C "$HERE" tests/nds-rom-test >/dev/null && "$HERE/tests/nds-rom-test" 2> "$OUT/nds-rom-test.log" || { echo "FAIL the DS companion's ROM reader: $(grep FAIL "$OUT/nds-rom-test.log" | head -3)"; fail=1; }
+# the DS Pokémon companion's region maps: the marker and the cache on made-up data (with NDS_ROMS=<the player's own ROMs>
+# set, every game's town map too; tests/nds-townmap-test <roms dir> <out dir> writes them with the spots outlined)
+make -s -C "$HERE" tests/nds-townmap-test >/dev/null && "$HERE/tests/nds-townmap-test" 2> "$OUT/nds-townmap-test.log" || { echo "FAIL the DS companion's region maps: $(grep FAIL "$OUT/nds-townmap-test.log" | head -3)"; fail=1; }
 # the DS Pokémon companion's guide: the validator on the shipped data, then the loader on a made-up file and on the data
 GD="$HERE/../system/rootfs/usr/share/banana/companions/nds-pokemon"
 python3 -I "$HERE/../tools/companions/nds-validate.py" -q > "$OUT/nds-validate.log" 2>&1 || { echo "FAIL the DS Pokémon guide data: $(grep -m3 error "$OUT/nds-validate.log")"; fail=1; }
@@ -31,10 +34,20 @@ make -s -C "$HERE" tests/guide-test >/dev/null && "$HERE/tests/guide-test" "$HER
 make -s -C "$HERE" tests/nds-pages-test >/dev/null && "$HERE/tests/nds-pages-test" "$OUT" "$HERE/assets/rnds" "$HERE/../system/rootfs/usr/share/banana/themes" 2> "$OUT/nds-pages-test.log" || { echo "FAIL the DS companion's pages: $(grep FAIL "$OUT/nds-pages-test.log" | head -3)"; fail=1; }
 # the DS Pokémon companion's RAM reader (synthetic RAM in every game's layout)
 make -s -C "$HERE" tests/nds-ram-test >/dev/null && "$HERE/tests/nds-ram-test" 2> "$OUT/nds-ram-test.log" || { echo "FAIL the DS companion's RAM reader: $(grep FAIL "$OUT/nds-ram-test.log" | head -3)"; fail=1; }
+# the GBA Pokémon games' ROM data for the DS companion's pages (src/gba/gen3rom.*): header checks, and on the player's own
+# ROMs when GBA_ROMS names a folder of them (tests/gba-rom-test <roms dir> [png dir] on a PC that has them)
+make -s -C "$HERE" tests/gba-rom-test >/dev/null && "$HERE/tests/gba-rom-test" 2> "$OUT/gba-rom-test.log" || { echo "FAIL the GBA companion's ROM reader: $(grep FAIL "$OUT/gba-rom-test.log" | head -3)"; fail=1; }
+# the pokeemerald-expansion ROM hacks (src/gba/expansion.*): the smol decoder, and the owner's four hacks when GBA_HACKS
+# (default ~/gba-companion/hacks) has them
+make -s -C "$HERE" tests/gba-exp-test >/dev/null && "$HERE/tests/gba-exp-test" 2> "$OUT/gba-exp-test.log" || { echo "FAIL the GBA companion's expansion hacks: $(grep FAIL "$OUT/gba-exp-test.log" | head -3)"; fail=1; }
 make -s -C "$HERE" tests/nds-romfile-test >/dev/null && "$HERE/tests/nds-romfile-test" 2> "$OUT/nds-romfile-test.log" || { echo "FAIL the DS companion's zipped games: $(grep FAIL "$OUT/nds-romfile-test.log" | head -3)"; fail=1; }
 make -s -C "$HERE" tests/nds-logic-test >/dev/null && "$HERE/tests/nds-logic-test" 2> "$OUT/nds-logic-test.log" || { echo "FAIL the DS companion's advice: $(grep FAIL "$OUT/nds-logic-test.log" | head -3)"; fail=1; }
+make -s -C "$HERE" tests/soft-base-test >/dev/null && "$HERE/tests/soft-base-test" 2> "$OUT/soft-base-test.log" || { echo "FAIL the software backend's background copy: $(grep FAIL "$OUT/soft-base-test.log" | head -3)"; fail=1; }
+make -s -C "$HERE" tests/gba-live-test >/dev/null && "$HERE/tests/gba-live-test" 2> "$OUT/gba-live-test.log" || { echo "FAIL the GBA companion's state: $(grep FAIL "$OUT/gba-live-test.log" | head -3)"; fail=1; }
 # the left stick as a d-pad: its deadzone and hysteresis
 make -s -C "$HERE" tests/input-test >/dev/null && "$HERE/tests/input-test" 2> "$OUT/input-test.log" || { echo "FAIL the stick: $(grep FAIL "$OUT/input-test.log" | head -3)"; fail=1; }
+# the menu's WAV reader: a theme's broken sample rate is refused, not divided by
+make -s -C "$HERE" tests/wav-test >/dev/null && "$HERE/tests/wav-test" "$OUT" 2> "$OUT/wav-test.log" || { echo "FAIL the menu's WAV reader: $(grep FAIL "$OUT/wav-test.log" | head -3)"; fail=1; }
 # every icon the theme's systems.cfg names is there (Poketool's tile pointed at the old Bank & Trade logo)
 awk '!/^#/ && NF >= 3 && $2 != "-" { print $2 }' "$HERE/assets/rnds/systems.cfg" | while read -r ic; do
     [ -f "$HERE/assets/rnds/icons/$ic" ] || { echo "FAIL systems.cfg: no icons/$ic"; exit 1; }
@@ -410,6 +423,18 @@ for size in 640x480 1024x768; do
     kcheck "pokefeed .*poke-party.txt: asked 3, party 4, battle 0"
     kcheck "pokefeed .*poke-battle.txt: asked 6, party 4, battle 1, foes 1"
     kcheck "gamepanel .*Peel Quest.nds: companion none"
+    # the game panel's on-screen keyboard (a computer's game: C64, ZX Spectrum): the Keys tile opens it, a key types,
+    # Done brings the tiles back (BANANA_TEST_VKBD: the tile without a /dev/uinput device)
+    KK=$OUT/$size-keys.log
+    BANANA_TEST_VKBD=1 "$HERE/banana-ui" --headless "$OUT/$size-" --size $size --assets "$HERE/assets/rnds" \
+        --systems "$HERE/../system/rootfs/etc/banana/systems.conf" --roms "$FX/roms" --data "$FX/data" \
+        --script "home 0; gamepanel 1 /nonexistent.gba; gshot keys-tile; gtouch 576 360; gshot keys-page; gtouch 43 92; gshot keys-typed; gtouch 590 350; gshot keys-back" 2> "$KK" ||
+        { echo "FAIL $size: banana-ui (panel keyboard) exited $?"; fail=1; }
+    for s in keys-tile keys-page keys-typed keys-back; do
+        [ -s "$OUT/$size-$s-bot.png" ] || { echo "FAIL $size: no $s picture"; fail=1; }
+    done
+    grep -q "gtouch 576 360: action 0 keys 1" "$KK" || { echo "FAIL $size: the Keys tile didn't open the keyboard"; fail=1; }
+    grep -q "gtouch 590 350: action 0 keys 0" "$KK" || { echo "FAIL $size: Done didn't close the keyboard"; fail=1; }
     LX=$OUT/fixture-light; rm -rf "$LX"; cp -r "$FX/data" "$LX"; printf 'theme = light\nlanguage = zh-cn\n' >> "$LX/settings.conf"
     "$HERE/banana-ui" --headless "$OUT/$size-zh-" --size $size --assets "$HERE/assets/rnds" --systems "$HERE/../system/rootfs/etc/banana/systems.conf" \
         --roms "$FX/roms" --data "$LX" --script "$pkscript" 2> "$OUT/$size-pokemon-zh.log" || { echo "FAIL $size: banana-ui (Pokémon companion, light, zh-cn) exited $?"; fail=1; }

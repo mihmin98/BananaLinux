@@ -4,11 +4,14 @@
 #include "recorder.h"
 #include "lang.h"
 #include "settings_defaults.h"
-#include "settings_draw.h"
 #include "theme.h"
+#include "vkbd.h"
 #include "kiwami/kiwami.h"	// kiwami: the fork's rows and pages
 #include "json.h"
+#include "gba/host.h"
+#include "nds/pages.h"
 #include <fcntl.h>
+#include <linux/input.h>
 #include <sys/file.h>
 #include <algorithm>
 #include <dlfcn.h>
@@ -381,6 +384,8 @@ namespace banana
 		{ "snes", "Super Nintendo", { { "snes9x", "Snes9x" }, { "bananasnes", "BananaSNES" }, { "snes9x2010", "Snes9x 2010" }, { "snes9x2005_plus", "Snes9x 2005 Plus" },
 			{ "snes9x2005", "Snes9x 2005" }, { "snes9x2002", "Snes9x 2002" }, { "bsnes", "bsnes" }, { "bsnes_mercury_performance", "bsnes-mercury" }, { "mesen-s", "Mesen-S" } } },
 		{ "megadrive", "Mega Drive", { { "picodrive", "PicoDrive" }, { "genesis_plus_gx", "Genesis Plus GX" }, { "clownmdemu", "clownmdemu" }, { "blastem", "BlastEm" } } },
+		{ "c64", "Commodore 64", { { "vice_x64sc", "VICE x64sc" }, { "vice_x64", "VICE x64" } } },
+		{ "zxspectrum", "ZX Spectrum", { { "fuse", "Fuse" } } },
 		{ "psx", "PlayStation", { { "pcsx_rearmed", "PCSX ReARMed" }, { "swanstation", "SwanStation" }, { "mednafen_psx", "Beetle PSX" } } },
 		{ "n64", "Nintendo 64", { { "mupen64plus_next", "Mupen64Plus-Next" }, { "parallel_n64", "ParaLLEl N64" } } },
 	};
@@ -586,7 +591,7 @@ namespace banana
 		add(O, "picture", "Picture & sound", "How RetroArch's games look and sound: a shader, a screen border, VSync and the audio latency.", "", "ra_picture", {}, {}, Item::PAGE);
 		{
 			const char* SS = "Second screen";
-			add(SS, "gamepad", "Second screen", "While a game plays on one screen, the other shows its RetroAchievements and tiles to save, load, open RetroArch's menu, fast forward and quit (by touch when they are on the bottom screen). Off: the other screen stays dark.",
+			add(SS, "gamepad", "Second screen", "While a game plays on one screen, the other shows its RetroAchievements and tiles to save, load, open RetroArch's menu, fast forward and quit (by touch when they are on the bottom screen). Off: the other screen stays dark. A Commodore 64 or ZX Spectrum game's tiles also have Keys: the panel becomes a touch keyboard (a virtual USB keyboard the emulator reads), which needs the panel on the bottom screen — put the game on the top.",
 				menu, "retroarch_panel", { "Game panel", "Off" }, { "panel", "off" });
 			add(SS, "picture", "Game panel when idle", "With a game on the top screen, what the game panel on the bottom one does when nothing has touched it or pressed a button for a while: stays on, dims, or turns off. A touch or any button lights it again.",
 				menu, "bottom_idle_mode", { "Dims", "Turns off", "Stays on" }, { "dim", "off", "on" });
@@ -594,6 +599,12 @@ namespace banana
 				menu, "bottom_idle_seconds", { "After 10 s", "After 30 s", "After 1 minute" }, { "10", "30", "60" });
 			add(SS, "gamepad", "Pokémon companion", "Pokémon Ruby, Sapphire, Emerald, FireRed and LeafGreen (the English releases) on the second screen: the party with levels, HP and moves, and in a battle the foe, its types and how each move does against it. Read from the game as it plays; other games keep the panel as it is. Needs Second screen on. Inspired by PokeDaisy by Lidor Itzhari.",
 				menu, "pokemon_companion", { "Off", "On" }, { "off", "on" });
+			// (gba/host.h: the DS companion's pages for the GBA games, main.cpp reads it at each game's start)
+			add(SS, "gamepad", "Detailed Pokémon pages", "On: the Pokémon companion shows the same pages as the DS one: battle, party, team score, what to catch here, a guide, the map, the Pokédex and a journey log. In Ruby, Sapphire, Emerald, FireRed and LeafGreen and the ROM hacks Glazed, Gaia, Heart & Soul, Lazarus, Seaglass and SoulGold. Off: the simpler party and battle views. Needs the Pokémon companion on.",
+				menu, "gba_companion_pages", { "On", "Off" }, { "on", "off" });
+			// (the DS companion's challenge mode for the GBA games: gba/host.h's Session, read at each game's start)
+			add(SS, "gamepad", "Challenge mode", "For a Nuzlocke-style run: the companion keeps your first encounter in each area and the Pokémon you lost, as the DS one does (Here and Log pages). Needs Detailed Pokémon pages on.",
+				menu, "gba_challenge", { "Off", "On" }, { "off", "on" });
 			add(SS, "gamepad", "Game companion", "Other Game Boy Advance games on the second screen: seven pages about the game as it plays (status, a closer look, the fight, the map, the bag, collectibles, progress), read from the game where it can be and notes where not. Pokémon games keep the Pokémon companion. Needs Second screen on. Inspired by PokeDaisy by Lidor Itzhari.",
 				menu, "game_companion", { "Off", "On" }, { "off", "on" });
 		}
@@ -798,7 +809,7 @@ namespace banana
 			}
 		}
 		const char* PW = "Power";
-		add(PW, "moon", "Sleep", "The handheld sleeps, as with a press of the power button; a game running is paused. Press the power button to wake it.", "", "sleep", { "" }, { "" }, Item::ACTION);
+		add(PW, "moon", "Sleep", "The handheld sleeps, as with a press of the power button; a game running is paused. Press the power button to wake it. Press A twice.", "", "sleep", { "" }, { "" }, Item::ACTION);
 		add(PW, "gear", "Restart", "Restarts the handheld. Press A twice.", "", "reboot", { "" }, { "" }, Item::ACTION);
 		add(PW, "gear", "Shut down", "Turns the handheld off. Press A twice. (Or hold the power button.)", "", "poweroff", { "" }, { "" }, Item::ACTION);
 		// the Home server page (Network > Home server)
@@ -828,7 +839,7 @@ namespace banana
 		{
 			const char* HSS = "Home server systems";
 			struct { const char* id; const char* name; } sy[] = { { "nds", "Nintendo DS" }, { "gba", "Game Boy Advance" }, { "gbc", "Game Boy Color" }, { "gb", "Game Boy" },
-				{ "nes", "NES" }, { "snes", "Super Nintendo" }, { "megadrive", "Mega Drive" }, { "psx", "PlayStation" }, { "n64", "Nintendo 64" } };
+				{ "nes", "NES" }, { "snes", "Super Nintendo" }, { "megadrive", "Mega Drive" }, { "c64", "Commodore 64" }, { "zxspectrum", "ZX Spectrum" }, { "psx", "PlayStation" }, { "n64", "Nintendo 64" } };
 			for (auto& s : sy) add(HSS, "phone", s.name, "Sync: its games and saves sync with the home server. Skip: they stay as they are on this handheld.", menu, (std::string("homesync.") + s.id).c_str(), { "Sync", "Skip" }, { "on", "off" });
 		}
 		addShelfRows();
@@ -1083,6 +1094,7 @@ namespace banana
 	void Settings::save(const Item& it)
 	{
 		const std::string& v = it.values[it.at];
+		if (it.key == "ra_shader") unlink("/data/banana/.ra-shader");	// (apply this choice even if it matches the marker)
 		if (it.key == "ds_language")
 		{
 			if (access("/data/drastic/config/drastic.cfg", F_OK) != 0)
@@ -1178,7 +1190,7 @@ namespace banana
 				{ "hotkeys_sd", "SuperDrastic hotkeys" },
 				{ "hotkeys_bds", "BananaDS hotkeys" },
 					{ "ra_second", "Second screen", "retroarch_panel" },
-				{ "ra_picture", "Picture & sound", "ra_shader" },
+				{ "ra_picture", "Picture & sound" },	// (a submenu: its shader's "Off" is not the page's state)
 				{ "ra_cores", "Emulators" },
 				{ "net_bt", "Bluetooth", "bluetooth" },
 				{ "net_share", "File sharing", "share" },
@@ -1257,6 +1269,8 @@ namespace banana
 			}
 			if (it.key == "sleep")
 			{
+				// (two presses, like Restart and Shut down: a touch on the empty part of the row must not sleep it)
+				if (armed != sel) { armed = sel; return MOVED; }
 				// bananad's sleep (the power button's): asked for with a file and SIGHUP, the settings closed first
 				armed = -1;
 				const char* req = getenv("BANANA_SLEEP_REQUEST");	// (the test's stand-in for /run/banana/sleep-now)
@@ -1324,18 +1338,10 @@ namespace banana
 		int at = it.at + dir;
 		if (it.key == "language" && n > 1)
 		{
-			// not switched yet: asked first, in both languages (a language picked by mistake can't be read to undo it)
-			langAsk = ((at % n) + n) % n;
-			langYes = false;
+			// a list of the languages (renderLangPick), not one step left or right; the one taken is asked first, in both
+			// languages (a language picked by mistake can't be read to undo it)
 			armed = -1;
-			if (!cjkLoaded && !lang::active())
-			{
-				// the CJK pixel font, which the menu reads only for a language that needs it (main.cpp: with another
-				// language than English it is read already, and setFallbackFont must not replace it: its old font's
-				// destructor waits on the lock setFallbackFont holds): the question shows the picked language's words
-				cjkLoaded = true;
-				if (auto f = rnds::Font::load(assets + "/fonts/fusion-pixel-12px-proportional-zh_hans.ttf")) rnds::setFallbackFont(f, 12, s);
-			}
+			openLangPick(false);
 			return MOVED;
 		}
 		if (it.kind == Item::VOLUME) volPending = false;	// (the level asked for wins over the script's late answer)
@@ -1431,6 +1437,7 @@ namespace banana
 	Settings::Result Settings::press(Key k)
 	{
 		if (hotAsk) return pressHotAsk(k);
+		if (langPick >= 0) return pressLangPick(k);
 		if (page == NETWORKS) return pressNetworks(k);
 		if (page == BLUETOOTH) return pressBluetooth(k);
 		if (page == KEYBOARD) return pressKeyboard(k);
@@ -1608,6 +1615,19 @@ namespace banana
 			int t = askTouch(cx, cy, hotYes);
 			return t < 0 ? NONE : t == 0 ? MOVED : pressHotAsk(Key::A);
 		}
+		if (langPick >= 0)
+		{
+			// the chips (B Back, A OK), and a row: one tap takes it
+			if (downY >= 418 && downY <= 466) return pressLangPick(downX < 320 ? Key::B : Key::A);
+			const int r = langTop + (int)((downY - LANG_Y) / LANG_PITCH);
+			if (downY >= LANG_Y && r >= langTop && r < langTop + LANG_VIS && r < (int)langList.size() &&
+				downY - LANG_Y - (r - langTop) * LANG_PITCH <= LANG_H)
+			{
+				langPick = r;
+				return pressLangPick(Key::A);
+			}
+			return NONE;
+		}
 		if (page == NETWORKS) return touchNetworks(cx, cy);
 		if (page == BLUETOOTH) return touchBluetooth(cx, cy);
 		if (page == KEYBOARD) return touchKeyboard(cx, cy);
@@ -1638,7 +1658,8 @@ namespace banana
 				float ry = SETUP_Y + r * SETUP_PITCH;
 				if (downY < ry || downY > ry + SETUP_H) continue;
 				wpick = r;
-				if (ch[r].act == SA_TZ || ch[r].act == SA_LANG) return pressSetup(downX < 320 ? Key::LEFT : Key::RIGHT);
+				if (ch[r].act == SA_LANG) return pressSetup(Key::A);	// (the list)
+				if (ch[r].act == SA_TZ) return pressSetup(downX < 320 ? Key::LEFT : Key::RIGHT);
 				return pressSetup(Key::A);
 			}
 			return NONE;
@@ -2313,6 +2334,7 @@ namespace banana
 	{
 		marqueeFrame();
 		if (hotAsk) { renderHotAsk(); return; }
+		if (langPick >= 0) { renderLangPick(); return; }
 		if (page == NETWORKS) { renderNetworks(); return; }
 		if (page == BLUETOOTH) { renderBluetooth(); return; }
 		if (page == KEYBOARD) { renderKeyboard(); return; }
@@ -2432,7 +2454,8 @@ namespace banana
 			else if (it.kind == Item::PAGE && kw && kw->owns(it.key)) v = kw->value(it.key);	// kiwami:
 			// the name on the left and the value on the right, each in its own box: a long one (a translation) ends in
 			// "..." or, on the picked row, scrolls; the value gets up to 260 px, the name the rest
-			const bool arrows = !v.empty() && !(it.kind == Item::ACTION || it.kind == Item::PAGE || it.kind == Item::INFO);
+			// (no arrows on Language: A opens its list, nothing steps left or right)
+			const bool arrows = !v.empty() && !(it.kind == Item::ACTION || it.kind == Item::PAGE || it.kind == Item::INFO) && it.key != "language";
 			const float vmax = 260, vright = arrows ? 566 : 586;
 			float vw = v.empty() ? 0 : std::min(vmax, text(v, true, 19, 0, 0, p.ink, false, 0, true));
 			float vleft = vright - vw - (arrows ? 2 + std::round(13 / 2.0f + 1) + 10 : 0);
@@ -4425,7 +4448,7 @@ namespace banana
 		auto size = [](long long b) { char t[32]; if (b >= (1LL << 30)) snprintf(t, sizeof t, "%.1f GB", b / 1073741824.0); else snprintf(t, sizeof t, "%lld MB", (b + 524288) >> 20); return std::string(t); };
 		auto sysName = [](const std::string& f) -> std::string {
 			static const std::map<std::string, std::string> N = { { "nds", "Nintendo DS" }, { "gba", "Game Boy Advance" }, { "gbc", "Game Boy Color" }, { "gb", "Game Boy" },
-				{ "nes", "NES" }, { "snes", "Super Nintendo" }, { "megadrive", "Mega Drive" }, { "psx", "PlayStation" }, { "n64", "Nintendo 64" } };
+				{ "nes", "NES" }, { "snes", "Super Nintendo" }, { "megadrive", "Mega Drive" }, { "c64", "Commodore 64" }, { "zxspectrum", "ZX Spectrum" }, { "psx", "PlayStation" }, { "n64", "Nintendo 64" } };
 			auto it = N.find(f); return it == N.end() ? f : it->second; };
 		long long chosenBytes = 0; int chosenN = 0;
 		for (auto& g : pickGames) if (g.on) { chosenBytes += g.bytes; chosenN++; }
@@ -4667,6 +4690,131 @@ namespace banana
 		float bw = faceWidth("B", "Back");
 		face("B", "Back", 18, bw);
 		if (thSel != cur) { float aw = faceWidth("A", "Use"); face("A", "Use", 622 - aw, aw); }
+		be->endScreen();
+	}
+
+	// ---- the language list ---------------------------------------------------------------------------------------
+	void Settings::loadCjkFont()
+	{
+		if (cjkLoaded || lang::active()) return;
+		// the CJK pixel font, which the menu reads only for a language that needs it (main.cpp: with another language
+		// than English it is read already, and setFallbackFont must not replace it: its old font's destructor waits on
+		// the lock setFallbackFont holds): the list and the question show each language's own words
+		cjkLoaded = true;
+		if (auto f = rnds::Font::load(assets + "/fonts/fusion-pixel-12px-proportional-zh_hans.ttf")) rnds::setFallbackFont(f, 12, s);
+	}
+
+	void Settings::openLangPick(bool setup)
+	{
+		const Item* it = nullptr;
+		for (auto& x : items) if (x.key == "language") it = &x;
+		if (!it || it->values.empty()) return;
+		// the Item's own order (lang::available's: English, then by code) with each file's translators
+		langList.clear();
+		const auto all = lang::available(assets + "/../lang");
+		for (const auto& code : it->values)
+		{
+			lang::Info in{ code, code, code, "" };
+			for (const auto& a : all) if (a.code == code) in = a;
+			langList.push_back(in);
+		}
+		const int cur = setup ? langAt : it->at;
+		langPick = std::max(0, std::min((int)langList.size() - 1, cur));
+		langTop = std::max(0, std::min(langPick - LANG_VIS / 2, (int)langList.size() - LANG_VIS));
+		langPickSetup = setup;
+		loadCjkFont();
+	}
+
+	Settings::Result Settings::pressLangPick(Key k)
+	{
+		Item* it = nullptr;
+		for (auto& x : items) if (x.key == "language") it = &x;
+		const int n = (int)langList.size();
+		if (!it || n == 0) { langPick = -1; return MOVED; }
+		switch (k)
+		{
+		case Key::UP: case Key::DOWN: case Key::L: case Key::R:
+		{
+			// (no wrap: the ends stay put, as a list's do)
+			int step = k == Key::UP ? -1 : k == Key::DOWN ? 1 : k == Key::L ? -LANG_VIS : LANG_VIS;
+			int to = std::max(0, std::min(n - 1, langPick + step));
+			if (to == langPick) return NONE;
+			langPick = to;
+			if (langPick < langTop) langTop = langPick;
+			if (langPick >= langTop + LANG_VIS) langTop = langPick - LANG_VIS + 1;
+			return MOVED;
+		}
+		case Key::A:
+		{
+			const int took = langPick;
+			langPick = -1;
+			if (langPickSetup) { langAt = took; return MOVED; }	// (the setup's slide: saved with its Next)
+			if (took == it->at) return MOVED;
+			langAsk = took;		// asked first (renderLangAsk), in both languages
+			langYes = false;
+			return MOVED;
+		}
+		case Key::B: case Key::LEFT: langPick = -1; return MOVED;
+		case Key::START:
+			langPick = -1;
+			if (langPickSetup) return MOVED;
+			mOpen = false;
+			return CLOSED;
+		default: return NONE;
+		}
+	}
+
+	// the top panel: the picked language in its own words, in English, and who translated it; the bottom: the list
+	void Settings::renderLangPick()
+	{
+		SPal p = pal(light);
+		const Item* it = nullptr;
+		for (auto& x : items) if (x.key == "language") it = &x;
+		if (!it || langPick >= (int)langList.size()) { langPick = -1; return; }
+		const int cur = langPickSetup ? langAt : it->at;
+		const lang::Info& L = langList[langPick];
+		auto raw = [&](const std::string& t, bool medium, float size, float x, float top, const Color& c, bool measure = false)
+		{
+			rawText = true;
+			float w = text(t, medium, size, x, top, c, false, 0, measure);
+			rawText = false;
+			return w;
+		};
+
+		be->beginScreen(0);
+		box("screen", false, 0, 0, 640, 480);
+		box("hero", false, 18, 20, 604, 436);
+		icon("gear", 50, 56, 3);
+		text("Language", true, 17, 170, 62, p.muted, true, 1.4f);
+		raw(fit(L.name, true, 30, 420), true, 30, 170, 88, p.ink);
+		if (L.nameEn != L.name) raw(L.nameEn, true, 22, 170, 130, p.accent);
+		if (!L.by.empty()) raw(lang::tr("translated by") + " " + L.by, false, 20, 50, 210, p.ink);
+		wrapped("The language of the menu and the settings. Lines not yet translated stay in English.", 20, 50, 250, 540, 4, p.muted);
+		be->endScreen();
+
+		be->beginScreen(1);
+		box("screen", false, 0, 0, 640, 480);
+		for (int r = 0; r < LANG_VIS && langTop + r < (int)langList.size(); r++)
+		{
+			const int v = langTop + r;
+			const float y = LANG_Y + r * LANG_PITCH;
+			const bool on = v == langPick;
+			box(on ? "pick" : "slot", on, 18, y, 604, LANG_H);
+			const Color c = on ? p.onPick : v == cur ? p.accent : p.ink;
+			const lang::Info& x = langList[v];
+			const float ew = x.nameEn == x.name ? 0 : std::min(260.f, raw(x.nameEn, false, 18, 0, 0, c, true));
+			raw(fit(x.name, true, 22, 540 - ew), true, 22, 38, y + 14, c);
+			if (ew > 0) raw(x.nameEn, false, 18, 602 - ew, y + 17, on ? p.onPick : p.muted);
+		}
+		box("bubble", false, 18, 14, 604, 54);
+		text("Language", true, 22, 38, 28, p.ink);
+		std::string count = std::to_string(langPick + 1) + " / " + std::to_string(langList.size());
+		float cw = text(count, true, 17, 0, 0, p.muted, false, 0, true);
+		text(count, true, 17, 602 - cw, 31, p.muted);
+		float bw = faceWidth("B", "Back");
+		face("B", "Back", 18, bw);
+		float aw = faceWidth("A", "OK");
+		face("A", "OK", 622 - aw, aw);
 		be->endScreen();
 	}
 
@@ -5931,7 +6079,7 @@ namespace banana
 			return MOVED;
 		case SA_FINISH: setupDone(); return wizardBoot ? CLOSED : CHANGED;
 		case SA_LANG:
-			if (lg) langAt = (langAt + 1) % (int)lg->values.size();
+			if (lg) openLangPick(true);
 			return MOVED;
 		case SA_TZ:
 			if (tz) { tz->at = (tz->at + 1) % (int)tz->values.size(); save(*tz); }
@@ -5990,8 +6138,8 @@ namespace banana
 			}
 			if (n && ch[wpick].act == SA_LANG && lg)
 			{
-				int m = (int)lg->values.size();
-				langAt = (langAt + d + m) % m;
+				(void)d;
+				openLangPick(true);	// (the list, as A does)
 				return MOVED;
 			}
 			return NONE;
@@ -6184,7 +6332,7 @@ namespace banana
 			float ry = SETUP_Y + r * SETUP_PITCH;
 			box(on ? "pick" : "slot", on, 18, ry, 604, SETUP_H);
 			Color c = ch[r].act == SA_WAIT ? (on ? p.onPick : p.muted) : on ? p.onPick : p.ink;
-			bool valueRow = ch[r].act == SA_TZ || ch[r].act == SA_LANG;
+			bool valueRow = ch[r].act == SA_TZ;	// (the arrows: the language opens a list instead)
 			float lw = text(ch[r].label, true, 20, 40, ry + 17, c);
 			if (ch[r].value.empty()) continue;
 			float room = 560 - lw - 30 - (valueRow ? 44 : 0);
@@ -6533,9 +6681,12 @@ namespace banana
 			std::string tmp = path + ".part";
 			FILE* f = fopen(tmp.c_str(), "wb");
 			if (!f) return false;
-			fwrite(body.data(), 1, body.size(), f);
-			fclose(f);
-			return rename(tmp.c_str(), path.c_str()) == 0;
+			bool wrote = fwrite(body.data(), 1, body.size(), f) == body.size();
+			wrote &= fflush(f) == 0;
+			wrote &= fsync(fileno(f)) == 0;
+			wrote &= fclose(f) == 0;
+			if (!wrote || rename(tmp.c_str(), path.c_str()) != 0) { unlink(tmp.c_str()); return false; }
+			return true;
 		}
 		const char* const BADGES = "/data/banana/cache/ra-badges";
 		const char* const IC_SAVE[12] = { "##########..", "#..#####.##.", "#..#####..##", "#..#####...#", "#..........#", "#..........#",
@@ -6548,9 +6699,48 @@ namespace banana
 			"#####.#####.", "####..####..", "###...###...", "##....##....", "#.....#.....", "............" };
 		const char* const IC_EXIT[12] = { "######......", "#....#......", "#....#...#..", "#....#...##.", "#....#######", "#....#######",
 			"#....#...##.", "#....#...#..", "#....#......", "#....#......", "######......", "............" };
+		const char* const IC_KEY[12] = { "............", "...######...", "..#......#..", ".##########.", ".#........#.",
+			".#.#....#.#.", ".#........#.", ".##########.", "............", "............", "............", "............" };
 		struct GTile { const char* label; const char* keys; const char* const* icon; };
-		const GTile GTILES[5] = { { "Save", "F + R", IC_SAVE }, { "Load", "F + L", IC_LOAD }, { "Menu", "F + X", IC_LIST },
-			{ "Fast", "F + R2", IC_FFWD }, { "Quit", "F + START", IC_EXIT } };
+		const GTile GTILES[6] = { { "Save", "F + R", IC_SAVE }, { "Load", "F + L", IC_LOAD }, { "Menu", "F + X", IC_LIST },
+			{ "Fast", "F + R2", IC_FFWD }, { "Quit", "F + START", IC_EXIT }, { "Keys", "Tap", IC_KEY } };
+
+		// ---- the panel's keyboard (gameKeysFrame, gameTouch): a computer's keys with a finger -------------------
+		// 640x480 design coordinates (X() scales them): 10 columns, 4 rows, then a bar of pages and the keys a game
+		// uses; the whole panel, while the game runs on the other screen
+		const float VK_X = 12, VK_Y = 64, VK_CW = 61.6f, VK_CH = 56, VK_RGAP = 6, VK_BAR_Y = 328, VK_BAR_H = 44;
+		struct VKey { const char* label; int code; bool shift; };	// code -1: the shift toggle; no label: an empty cell
+		const VKey VK_ABC[40] = {
+			{ "1", KEY_1 }, { "2", KEY_2 }, { "3", KEY_3 }, { "4", KEY_4 }, { "5", KEY_5 },
+			{ "6", KEY_6 }, { "7", KEY_7 }, { "8", KEY_8 }, { "9", KEY_9 }, { "0", KEY_0 },
+			{ "Q", KEY_Q }, { "W", KEY_W }, { "E", KEY_E }, { "R", KEY_R }, { "T", KEY_T },
+			{ "Y", KEY_Y }, { "U", KEY_U }, { "I", KEY_I }, { "O", KEY_O }, { "P", KEY_P },
+			{ "A", KEY_A }, { "S", KEY_S }, { "D", KEY_D }, { "F", KEY_F }, { "G", KEY_G },
+			{ "H", KEY_H }, { "J", KEY_J }, { "K", KEY_K }, { "L", KEY_L }, { ";", KEY_SEMICOLON },
+			{ "Z", KEY_Z }, { "X", KEY_X }, { "C", KEY_C }, { "V", KEY_V }, { "B", KEY_B },
+			{ "N", KEY_N }, { "M", KEY_M }, { ",", KEY_COMMA }, { ".", KEY_DOT }, { "/", KEY_SLASH },
+		};
+		const VKey VK_SYM[40] = {
+			{ "!", KEY_1, true }, { "\"", KEY_APOSTROPHE, true }, { "#", KEY_3, true }, { "$", KEY_4, true }, { "%", KEY_5, true },
+			{ "&", KEY_7, true }, { "'", KEY_APOSTROPHE }, { "(", KEY_9, true }, { ")", KEY_0, true }, { "*", KEY_8, true },
+			{ "+", KEY_EQUAL, true }, { ",", KEY_COMMA }, { "-", KEY_MINUS }, { ".", KEY_DOT }, { "/", KEY_SLASH },
+			{ ":", KEY_SEMICOLON, true }, { ";", KEY_SEMICOLON }, { "<", KEY_COMMA, true }, { "=", KEY_EQUAL }, { ">", KEY_DOT, true },
+			{ "?", KEY_SLASH, true }, { "@", KEY_2, true }, { "[", KEY_LEFTBRACE }, { "\\", KEY_BACKSLASH }, { "]", KEY_RIGHTBRACE },
+			{ "^", KEY_6, true }, { "_", KEY_MINUS, true }, { "`", KEY_GRAVE }, { "{", KEY_LEFTBRACE, true }, { "}", KEY_RIGHTBRACE, true },
+			{ "|", KEY_BACKSLASH, true }, { "~", KEY_GRAVE, true },
+			{ nullptr }, { nullptr }, { nullptr }, { nullptr }, { nullptr }, { nullptr }, { nullptr }, { nullptr },
+		};
+		const VKey VK_KEYS[40] = {
+			{ "F1", KEY_F1 }, { "F2", KEY_F2 }, { "F3", KEY_F3 }, { "F4", KEY_F4 }, { "F5", KEY_F5 },
+			{ "F6", KEY_F6 }, { "F7", KEY_F7 }, { "F8", KEY_F8 }, { "F9", KEY_F9 }, { "F10", KEY_F10 },
+			{ "F11", KEY_F11 }, { "F12", KEY_F12 }, { "RUN", KEY_ESC }, { "CLR", KEY_HOME }, { "RET", KEY_ENTER },
+			{ "SPACE", KEY_SPACE }, { "DEL", KEY_BACKSPACE }, { "ESC", KEY_ESC }, { "TAB", KEY_TAB }, { "CAPS", KEY_CAPSLOCK },
+			{ "LEFT", KEY_LEFT }, { "RIGHT", KEY_RIGHT }, { "UP", KEY_UP }, { "DOWN", KEY_DOWN }, { "HOME", KEY_HOME },
+			{ "END", KEY_END }, { "INS", KEY_INSERT }, { "CTRL", KEY_LEFTCTRL }, { "SHIFT", -1 }, { nullptr },
+			{ nullptr }, { nullptr }, { nullptr }, { nullptr }, { nullptr }, { nullptr }, { nullptr }, { nullptr }, { nullptr }, { nullptr },
+		};
+		const VKey* const VK_PAGES[3] = { VK_ABC, VK_SYM, VK_KEYS };
+		const char* const VK_PAGE_NAMES[3] = { "abc", "sym", "keys" };
 	}
 
 	struct Settings::RaWatch
@@ -6719,6 +6909,7 @@ namespace banana
 	{
 		gTitle = title; gSystem = system; gScreen = screen; gTouch = touch;
 		gFlash = gDown = -1; gSeen = -1; awardsSeen = 0; wake = false;
+		gKeysOpen = false; gKeyPage = 0; gKeyShift = 0; gKeyTyped.clear();
 		pkView = PK_PARTY; pkMon = pkMonPage = 0; pkBattle = false; pkPocket = pkBagPage = pkDexPage = pkDexNat = 0; pkGoalKey.clear(); pkGoalTeam.clear(); pkWildPage = 0; pkWildKey = -1;
 		gcView = gcomp::P_STATUS; gcScreen = 0; gcScreens = 1; gcList = gcRow = -1; gcBattle = false; gcHits.clear();
 		if (gameComp) gameComp->want(gcView);
@@ -6847,6 +7038,39 @@ namespace banana
 		gBadges.clear();
 		pkIcons.clear();
 		pkTables.reset();
+		gbaRelease();
+	}
+
+	void Settings::gbaRelease()
+	{
+		gbaPages.reset();
+		gbaHost = nullptr;
+		if (pkView == PK_NDS) pkView = PK_PARTY;
+	}
+
+	bool Settings::gbaOn() const { return gbaHost && gbaHost->ready() && companion && companion->active(); }
+
+	void Settings::gbaShow(int view)
+	{
+		static const nds::Page PAGE[] = { nds::Page::PARTY, nds::Page::BATTLE };
+		const bool mine = view == PK_PARTY || view == PK_BATTLE || view == PK_MON || view == PK_DEX || view == PK_DEXMON || view == PK_GUIDE;
+		if (!gbaOn() || !mine) { pkView = view; return; }
+		if (!gbaPages)
+		{
+			gbaPages = std::make_unique<nds::Pages>(be, gScreen, (int)std::lround(640 * s), (int)std::lround(480 * s), assets, light);
+			gbaPages->setDecoderThread(true);	// (the panel never waits on a picture's decode)
+			nds::PageData d;
+			if (gbaHost->takeData(d)) gbaPages->setData(d);
+		}
+		pkView = PK_NDS;
+		companion->wantExt(true);	// (the pages need the save's data from the start: the place, the bag, the Pokédex)
+		gbaPages->show(view == PK_DEX || view == PK_DEXMON ? nds::Page::DEX : view == PK_GUIDE ? nds::Page::GUIDE :
+			view == PK_BATTLE ? PAGE[1] : PAGE[0]);
+	}
+
+	void Settings::gameTouchMove(float x, float y)
+	{
+		if (pkView == PK_NDS && gbaPages) gbaPages->touchMove((int)x, (int)y, now);
 	}
 
 	bool Settings::gameUpdate(double t)
@@ -6871,13 +7095,38 @@ namespace banana
 			if (raw->gen != gSeen) changed = true;
 			if (raw->awards != awardsSeen) { awardsSeen = raw->awards; wake = true; }
 		}
+		if (gbaHost)
+		{
+			// the GBA companion in the DS companion's pages: its data once read, then the Session's newest
+			const bool was = gbaOn();
+			if (gbaHost->tick(t))
+			{
+				nds::PageData d;
+				if (gbaPages && gbaHost->takeData(d)) gbaPages->setData(d);
+				changed = true;
+			}
+			if (!was && gbaOn() && pkView != PK_GAME && pkView != PK_MAP && pkView != PK_BAG) gbaShow(pkView);	// (its pages take over)
+			if (gbaPages)
+			{
+				gbaHost->markSeen(gbaPages->takeSeen());
+				if (gbaPages->update(t)) changed = true;
+			}
+		}
 		if (companion && companion->takeChanged())
 		{
 			changed = true;
 			// a battle starting shows the battle, its end the party (unless another tab was picked meanwhile)
 			bool b = companion->snapshot().inBattle;
-			if (b && !pkBattle && pkView != PK_GAME) pkView = PK_BATTLE;
-			if (!b && pkBattle && pkView == PK_BATTLE) pkView = PK_PARTY;
+			if (pkView == PK_NDS && gbaPages)
+			{
+				if (b && !pkBattle) gbaPages->show(nds::Page::BATTLE);
+				if (!b && pkBattle && gbaPages->page() == nds::Page::BATTLE) gbaPages->show(nds::Page::PARTY);
+			}
+			else
+			{
+				if (b && !pkBattle && pkView != PK_GAME) gbaShow(PK_BATTLE);
+				if (!b && pkBattle && pkView == PK_BATTLE) pkView = PK_PARTY;
+			}
 			pkBattle = b;
 		}
 		if (gameComp && gameComp->takeChanged())
@@ -6914,6 +7163,47 @@ namespace banana
 	{
 		float lx = x / s, ly = y / s;
 		int hit = -1;
+		// the on-screen keyboard (the Keys tile): a key types on the press, the bar's pages and Done on the release
+		if (gKeysOpen)
+		{
+			if (down)
+			{
+				if (ly >= VK_BAR_Y && ly < VK_BAR_Y + VK_BAR_H)
+				{
+					const int i = (int)((lx - 12) / 77);
+					if (lx >= 12 && i >= 0 && i < 8 && lx < 12 + i * 77 + 73)
+						switch (i)
+						{
+						case 0: case 1: case 2: gKeyPage = i; break;
+						case 3: gKeyShift ^= 1; break;
+						case 4: gameKeyTap(KEY_SPACE, false, nullptr); break;
+						case 5: gameKeyTap(KEY_ENTER, false, nullptr); break;
+						case 6: gameKeyTap(KEY_BACKSPACE, false, nullptr); break;
+						case 7: gKeysOpen = false; break;
+						}
+					return G_NONE;
+				}
+				if (ly >= VK_Y && ly < VK_Y + 4 * (VK_CH + VK_RGAP))
+				{
+					const int c = (int)((lx - VK_X) / VK_CW), r = (int)((ly - VK_Y) / (VK_CH + VK_RGAP));
+					const float ry = ly - VK_Y - r * (VK_CH + VK_RGAP);
+					if (c >= 0 && c < 10 && r >= 0 && r < 4 && ry < VK_CH)
+					{
+						const VKey& k = VK_PAGES[gKeyPage < 0 || gKeyPage > 2 ? 0 : gKeyPage][r * 10 + c];
+						if (k.label) gameKeyTap(k.code, k.shift, k.label);
+					}
+				}
+			}
+			return G_NONE;
+		}
+		if (pkView == PK_NDS && gbaPages && companion && companion->active())
+		{
+			// the GBA companion's pages: theirs, all of the panel; their Back to game shows the tiles (and today's tab bar,
+			// which comes back to them)
+			const nds::Pages::Action a = down ? gbaPages->touchDown((int)x, (int)y, now) : gbaPages->touchUp((int)x, (int)y, now);
+			if (a == nds::Pages::Action::CLOSE) pkView = PK_GAME;
+			return G_NONE;
+		}
 		bool gamePage = !((gameComp && gameComp->active() && gcView != GC_GAME) || (companion && companion->active() && pkView != PK_GAME));
 		// the achievements box: a tap opens the save states there; a slot tapped twice loads it, a tap above closes it
 		if (gamePage && !gStateBase.empty() && !down && lx >= 18 && lx < 622)
@@ -6931,10 +7221,12 @@ namespace banana
 				return G_LOADSLOT;
 			}
 		}
-		for (int i = 0; i < 5; i++)
+		const int ntiles = vkbd && gTouch ? 6 : 5;
+		const float tstep = ntiles == 6 ? 102 : 122, tw = ntiles == 6 ? 96 : 114;
+		for (int i = 0; i < ntiles; i++)
 		{
-			float tx = 18 + i * 122;
-			if (lx >= tx && lx < tx + 114 && ly >= 300 && ly < 420) hit = i;
+			float tx = 18 + i * tstep;
+			if (lx >= tx && lx < tx + tw && ly >= 300 && ly < 420) hit = i;
 		}
 		// the game companion: the tab bar, a page's screens (the pager), a list's row opened or closed; the Game tab is
 		// the panel's own (its tiles, below)
@@ -6973,8 +7265,8 @@ namespace banana
 			{
 				if (!down)
 					for (int i = 0; i < PK_TABS; i++)
-						if (pkTabW[i] > 0 && lx >= pkTabX[i] && lx < pkTabX[i] + pkTabW[i]) pkView = TAB_VIEW[i];
-				companion->wantExt(pkView == PK_MAP || pkView == PK_BAG || pkView == PK_DEX || pkView == PK_DEXMON || pkView == PK_GUIDE);
+						if (pkTabW[i] > 0 && lx >= pkTabX[i] && lx < pkTabX[i] + pkTabW[i]) gbaShow(TAB_VIEW[i]);
+				companion->wantExt(pkView == PK_NDS || pkView == PK_MAP || pkView == PK_BAG || pkView == PK_DEX || pkView == PK_DEXMON || pkView == PK_GUIDE);
 				gDown = gFlash = -1;
 				return G_NONE;
 			}
@@ -7020,7 +7312,7 @@ namespace banana
 					if (tb && v == tb->mapsecNone) v = -1;
 					pkMapPick = v < 0 || v == 0xff || v == pkMapPick ? -1 : v;
 				}
-				companion->wantExt(pkView == PK_MAP || pkView == PK_BAG || pkView == PK_DEX || pkView == PK_DEXMON || pkView == PK_GUIDE);
+				companion->wantExt(pkView == PK_NDS || pkView == PK_MAP || pkView == PK_BAG || pkView == PK_DEX || pkView == PK_DEXMON || pkView == PK_GUIDE);
 				return G_NONE;
 			}
 		}
@@ -7029,8 +7321,61 @@ namespace banana
 		gDown = -1;
 		gFlashUntil = now + 220;
 		if (hit < 0 || hit != was) { gFlash = -1; return G_NONE; }
-		static const GameAction acts[5] = { G_SAVE, G_LOAD, G_MENU, G_FFWD, G_QUIT };
+		static const GameAction acts[6] = { G_SAVE, G_LOAD, G_MENU, G_FFWD, G_QUIT, G_NONE };
+		if (hit == 5)	// the panel's keyboard
+		{
+			gKeysOpen = true; gKeyPage = 0; gKeyTyped.clear();
+			fprintf(stderr, "game panel: keyboard open (%s)\n", vkbd && vkbd->ready() ? "the virtual keyboard is there" : "no virtual keyboard");
+			return G_NONE;
+		}
 		return acts[hit];
+	}
+
+	void Settings::gameKeyTap(int code, bool shift, const char* label)
+	{
+		if (code == -1) { gKeyShift ^= 1; return; }	// the shift toggle (sticky: shift then the letters)
+		if (getenv("BANANA_LOG_KEYS")) fprintf(stderr, "game panel: key %d%s\n", code, shift ? " (shift)" : "");
+		if (vkbd && vkbd->ready()) vkbd->tap(code, shift || (gKeyShift != 0 && gKeyPage == 0));
+		// what the key typed, in the line at the panel's top (the game's own screen shows it as it arrives)
+		if (code == KEY_BACKSPACE) { if (!gKeyTyped.empty()) gKeyTyped.pop_back(); }
+		else if (code == KEY_ENTER) gKeyTyped.clear();
+		else if (label && label[0] && !label[1] && label[0] > ' ' && label[0] < 127)
+		{
+			gKeyTyped += label;
+			if (gKeyTyped.size() > 46) gKeyTyped.erase(0, gKeyTyped.size() - 46);
+		}
+	}
+
+	void Settings::gameKeysFrame(const SPal& p)
+	{
+		const VKey* pg = VK_PAGES[gKeyPage < 0 || gKeyPage > 2 ? 0 : gKeyPage];
+		text("Keyboard", true, 24, 16, 6, p.ink);
+		const std::string typed = gKeyTyped.empty() ? "Tap a key: the game hears it on the other screen" : gKeyTyped;
+		text(fit(typed, false, 18, 440), false, 18, 170, 12, gKeyTyped.empty() ? p.muted : p.accent);
+		for (int r = 0; r < 4; r++)
+			for (int c = 0; c < 10; c++)
+			{
+				const VKey& k = pg[r * 10 + c];
+				if (!k.label) continue;
+				const float x = VK_X + c * VK_CW, y = VK_Y + r * (VK_CH + VK_RGAP), w = VK_CW - 4;
+				const bool shiftOn = k.code == -1 && gKeyShift;
+				box(shiftOn ? "pick" : "slot", shiftOn, x, y, w, VK_CH);
+				const Color& fg = shiftOn ? p.onPick : p.ink;
+				const float tw = text(k.label, true, 20, 0, 0, fg, false, 0, true);
+				text(k.label, true, 20, x + (w - tw) / 2, y + VK_CH / 2 - 11, fg);
+			}
+		// the bar: the pages, shift, and the keys typed the most
+		const char* bar[8] = { VK_PAGE_NAMES[0], VK_PAGE_NAMES[1], VK_PAGE_NAMES[2], "SHIFT", "SPACE", "RET", "DEL", "DONE" };
+		for (int i = 0; i < 8; i++)
+		{
+			const float x = 12 + i * 77, w = 73;
+			const bool on = (i < 3 && gKeyPage == i) || (i == 3 && gKeyShift);
+			box(on ? "pick" : "slot", on, x, VK_BAR_Y, w, VK_BAR_H);
+			const Color& fg = on ? p.onPick : p.ink;
+			const float tw = text(bar[i], true, 18, 0, 0, fg, false, 0, true);
+			text(bar[i], true, 18, x + (w - tw) / 2, VK_BAR_Y + 13, fg);
+		}
+		text("The game keeps running on the other screen. Done brings the tiles back.", false, 15, 12, 384, p.muted);
 	}
 
 	void Settings::gameRender()
@@ -7072,7 +7417,14 @@ namespace banana
 		}
 		be->beginScreen(gScreen);
 		box("screen", false, 0, 0, 640, 480);
+		if (gKeysOpen) { gameKeysFrame(p); be->endScreen(); return; }	// (the panel is the keyboard while it is open)
 		bool pk = companion && companion->active();
+		if (pk && pkView == PK_NDS && gbaPages)
+		{
+			gbaPages->draw();
+			be->endScreen();
+			return;
+		}
 		if (pk && pkView != PK_GAME)
 		{
 			pokeRender(p);
@@ -7187,24 +7539,26 @@ namespace banana
 		}
 		}
 		// ---- the tiles: RetroArch's commands by touch, and their buttons
-		for (int i = 0; i < 5; i++)
+		const int ntiles = vkbd && gTouch ? 6 : 5;
+		const float tstep = ntiles == 6 ? 102 : 122, tw = ntiles == 6 ? 96 : 114;
+		for (int i = 0; i < ntiles; i++)
 		{
-			float x = 18 + i * 122, y = 300;
+			float x = 18 + i * tstep, y = 300;
 			bool on = gFlash == i;
-			box(on ? "pick" : "slot", on, x, y, 114, 120);
+			box(on ? "pick" : "slot", on, x, y, tw, 120);
 			Color fg = on ? p.onPick : (i == 4 ? Color::hex(0xff8a96) : p.ink);
 			int k = std::max(1, (int)std::lround(3 * s));
-			float ix = std::round(X(x + 57) - 6 * k), iy = std::round(X(y + 16));
+			float ix = std::round(X(x + tw / 2) - 6 * k), iy = std::round(X(y + 16));
 			for (int r = 0; r < 12; r++)
 				for (int c = 0; c < 12; c++)
 					if (GTILES[i].icon[r][c] == '#') be->fill(ix + c * k, iy + r * k, (float)k, (float)k, fg);
 			// (the document's own translation for this panel: its "Fast" is fast-forward, the settings' is speed)
 			std::string lb = lang::tr("Second screen (RetroArch games)", GTILES[i].label);
 			float lw = text(lb, true, 19, 0, 0, fg, false, 0, true);
-			text(lb, true, 19, x + 57 - lw / 2, y + 60, fg);
+			text(lb, true, 19, x + tw / 2 - lw / 2, y + 60, fg);
 			std::string kk = GTILES[i].keys;
 			float kw = text(kk, false, 14, 0, 0, p.muted, false, 0, true);
-			text(kk, false, 14, x + 57 - kw / 2, y + 90, on ? p.onPickAccent : p.muted);
+			text(kk, false, 14, x + tw / 2 - kw / 2, y + 90, on ? p.onPickAccent : p.muted);
 		}
 		if (pk) { pokeTabs(p); be->endScreen(); return; }	// (the companion's tab bar where the hint was)
 		if (gc) { gcTabs(p); be->endScreen(); return; }
@@ -7396,7 +7750,7 @@ namespace banana
 		if (pkView == PK_BATTLE && !sn.inBattle) pkView = PK_PARTY;
 		if (pkView == PK_MON && pkMon >= (int)sn.party.size()) pkView = PK_PARTY;
 		// the save's data is read only while a page that shows it is open
-		companion->wantExt(pkView == PK_MAP || pkView == PK_BAG || pkView == PK_DEX || pkView == PK_DEXMON || pkView == PK_GUIDE);
+		companion->wantExt(pkView == PK_NDS || pkView == PK_MAP || pkView == PK_BAG || pkView == PK_DEX || pkView == PK_DEXMON || pkView == PK_GUIDE);
 		if (!sn.seen)
 		{
 			box("bubble", false, 18, 14, 604, 398);

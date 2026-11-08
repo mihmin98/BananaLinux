@@ -4,7 +4,6 @@
 #   run-bananafront <core> <rom>       e.g. run-bananafront gambatte /data/roms/gb/game.gb
 # RetroArch stays installed: Settings > Other systems > the system's frontend (frontend.<system>) picks it back.
 BF=${BANANAFRONT_BIN:-/usr/bin/bananafront}    # (tests: another build)
-[ -x $BF ] || { echo "BananaFront isn't installed" >&2; exit 1; }
 CORE=/usr/lib/libretro/$1_libretro.so
 case $1 in /*) CORE=$1 ;; esac          # (tests: a core by its path)
 ROM=$2
@@ -24,6 +23,8 @@ fi
 CFG=/data/retroarch/retroarch.cfg
 ra_cfg() { sed -n "/^$1 = \"\(.*\)\"/{s//\1/;h};\${x;p}" $CFG 2>/dev/null; }
 mkdir -p /data/saves /data/states /data/screenshots
+# the saves in the one folder the Home server syncs (saves-flat: a card's core folders migrated once per boot)
+[ -x /usr/libexec/banana/saves-flat ] && /usr/libexec/banana/saves-flat
 set -- --system "${BANANA_SYSTEM:-}" --config /data/retroarch/config "$CORE" "$ROM"
 # the Game Boy Advance's one save folder for every GBA core (run-retroarch's /data/saves/gba): the same files, and a
 # game with no save there yet gets the newest one from a core's folder, as there
@@ -43,6 +44,11 @@ if [ "$BANANA_SYSTEM" = gba ]; then
             echo "run-bananafront: the GBA save from $best, now $G/$n.srm (every GBA core)" >&2
     fi
     set -- --save-dir $G "$@"
+else
+    # every other system's saves flat in /data/saves, as RetroArch keeps them now (sort_savefiles_enable false) and
+    # the Home server syncs them: BananaFront's own default is a folder per core (/data/saves/<core>), which
+    # saves-flat has just emptied
+    set -- --save-dir /data/saves "$@"
 fi
 # Settings > Other systems > Audio latency (RetroArch's setting, the same buffer)
 lat=$(setting ra_audio_latency)

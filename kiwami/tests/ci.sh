@@ -41,6 +41,14 @@ rm -rf "$T"
 # excused, each planted difference reported
 python3 -I kiwami/tests/image-compare.py --self-test
 
+# the audit of the libraries packages link against what they declare (kiwami/tests/deps-audit.py), on a made-up output
+# built with the host's cc: an undeclared library reported, a declared, virtual or allowed one not, lists read right
+if command -v cc >/dev/null && command -v readelf >/dev/null; then
+    python3 -I kiwami/tests/deps-audit.py --self-test
+else
+    echo "deps-audit: skipped, no cc or readelf"
+fi
+
 # RomM's game list in banana-sync: 200 a page and its progress, each game kept small, against a large made-up library
 kiwami/tests/romm-list.sh
 

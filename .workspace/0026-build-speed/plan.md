@@ -255,12 +255,16 @@ tests*.
       libraries (`readelf -d`).
     - Each library's provider is the package whose file list holds a path with that name (the toolchain's are
       `toolchain-external-bootlin`).
+    - Without per-package directories, a file in two lists is the other package's when that one's install ended
+      inside this one's window, from its configure step to the end of its install (`build/build-time.log`). Buildroot
+      takes a package's list over that window, and ldacbt's holds what 33 packages installed in it (*Deviations*).
     - A provider outside the package's dependency closure (recursive, through virtual packages: `libegl` →
       `mesa3d-panfrost`) is reported as `<package>: <library> from <provider>, not among its dependencies`.
     - Allowed, with the reason printed: `drastic` (a prebuilt binary: nothing is linked at build time).
     - A library no package provides is reported apart.
     - Target files attributed to more than one package are listed apart, with a count. In an incremental output that
-      list is long, and the audit says to use a fresh output. In a fresh one, it is the files whose merge order
+      list is long, and the audit says to use a fresh output: it knows one by a package installed more than once
+      (`build-time.log`) or the list of a package no longer built. In a fresh one, it is the files whose merge order
       changes under per-package directories (the investigation's oversight 5).
     - Exit 1 when a package is reported.
   - `--self-test`, with the host's `cc` and `readelf`, in `mktemp -d`:
@@ -268,7 +272,11 @@ tests*.
     - `bar` without `foo` among its dependencies: reported;
     - with `foo`, or through a virtual package that depends on `foo`: not reported;
     - `bar` allowed: not reported;
-    - a file in two packages' lists: listed apart.
+    - a file in two packages' lists: listed apart;
+    - a package of Buildroot's own: not audited; a library no package provides: listed apart, not reported;
+    - a package installed twice, or the list of one no longer built: not a fresh output;
+    - one package at a time, a list holding what others installed in its window: theirs; with per-package
+      directories, or installed before the window: its own, reported and listed apart.
   - `kiwami/tests/ci.sh`: `python3 -I kiwami/tests/deps-audit.py --self-test`, when `cc` and `readelf` are there.
 - **Tests**: the self-test, `kiwami/tests/ci.sh .buildroot`, `make test`. Before the commit, M2: the audit on M1's
   second build, still in `output/cmp/rgds-plus` (a fresh output), reports `libretro-mupen64plus-next` (`libEGL.so.1`, `libGLESv2.so.2`) and whatever
@@ -471,7 +479,7 @@ each), and `output/cmp-ccache` (1-2 GB) during the cold runs.
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
 | M1 | rgds-plus (build machine) | Step 1, before its commit. Today's way, warm (before step 3, plain `make` is today's way): `time make OUT=$PWD/output/cmp rgds-plus`; `kiwami/tests/image-compare.sh --save output/cmp/rgds-plus output/cmp-saved/base`; `rm -rf output/cmp/rgds-plus`; `time make OUT=$PWD/output/cmp rgds-plus` again. Then `kiwami/tests/image-compare.sh output/cmp-saved/base output/cmp/rgds-plus` and `kiwami/tests/image-compare.sh output/cmp-saved/base output/rgds-plus`. The second build stays for M2. | Both build. The first comparison exits 0 with only the known noise; the second fails, listing Poketool (`usr/share/banana/apps/bank/`), `PortMaster.zip` and `usr/libexec/kiwami/romm*` (and warns that the paths differ in length). The second build's time is today's warm time. | both `time` outputs, both `build-time.log`, both reports | A2 (its baseline), A3 (today's), A11 | passed |
-| M2 | rgds-plus (build machine) | Step 2, before its commit. `python3 -I kiwami/tests/deps-audit.py output/cmp/rgds-plus` (M1's second build) | Reports `libretro-mupen64plus-next`: `libEGL.so.1`, `libGLESv2.so.2` from `mesa3d-panfrost`; `drastic` allowed; the overlap list short (a fresh output). Any other report goes into step 3. | the report | A9 | not run |
+| M2 | rgds-plus (build machine) | Step 2, before its commit. `python3 -I kiwami/tests/deps-audit.py output/cmp/rgds-plus` (M1's second build) | Reports `libretro-mupen64plus-next`: `libEGL.so.1`, `libGLESv2.so.2` from `mesa3d-panfrost`; `drastic` allowed; the overlap list short (a fresh output). Any other report goes into step 3. | the report | A9 | passed |
 | M3 | rgds-plus (build machine) | Step 3, before its commit. `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus` (the first parallel build: per-package paths, so cold for ccache). A package that fails for a missing dependency: its fix goes in `kiwami/external.mk`'s block, then `make OUT=$PWD/output/cmp rgds-plus` again. Then `python3 -I kiwami/tests/deps-audit.py output/cmp/rgds-plus`, `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`, and `make rgds-plus` on today's `output/rgds-plus`. The build stays for M4. | `build.sh`'s line says per-package directories and `--output-sync=target`; the build completes; the audit reports nothing; the comparison exits 0 (build paths list Python's configuration and libstdc++'s gdb helper); `make rgds-plus` stops with `make clean-rgds-plus` | `time`, `build-time.log`, the terminal around any failure, the audit, the report, the stop's message | A1, A2, A6, A9 | not run |
 | M4 | rgds-plus (build machine) | Step 4, before its commit. `kiwami/tests/ui-objects.sh output/cmp/rgds-plus` (M3's build). Then `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus`; `ls output/cmp/rgds-plus/build/banana-ui-local/src/kiwami/obj`; `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`. | identity on the target toolchain; the build completes with banana-ui's objects; the comparison exits 0 | `ui-objects.sh`'s output, `time`, `build-time.log` (banana-ui's build step), the report | A1, A2, A7 | not run |
 | M5 | rgds-plus (build machine) | Final check. Warm, the new way (the cache warm from M4's build of the same commit): `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus`; `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`; `image-compare.sh --save output/cmp/rgds-plus output/cmp-saved/new`. | completes faster than M1's second build; the comparison exits 0 | `time`, `build-time.log`, the report | A2, A3 | not run |
@@ -510,6 +518,20 @@ Notes from the runs (what the logs showed, what was fixed):
   - The second build stays in `output/cmp/rgds-plus` for M2. `base` is saved in `output/cmp-saved/base`. The reports
     are in `output/m1-compare.txt` and `output/m1-compare-incremental.txt`, the step times in
     `output/m1-build-time-{1,2}.log`.
+- **M2** (2026-11-09; M1's second build in `output/cmp/rgds-plus`, 0.5.3 from `6831924f`; run by Claude): exits 1, in
+  5 s, over 35 packages and 43 ELF files.
+  - **Reported**: `libretro-mupen64plus-next`, `libEGL.so.1` and `libGLESv2.so.2` from `mesa3d-panfrost`
+    (`usr/lib/libretro/mupen64plus_next_libretro.so`). Nothing else, so step 3's block needs no other fix yet.
+  - **Allowed**: `drastic`, with `libSDL2-2.0.so.0` (sdl2), `libasound.so.2` (alsa-lib) and `libz.so.1` (libzlib).
+  - **No library without a provider.**
+  - **Files installed by more than one package**: 78, all in `usr/share/alsa/`. They are alsa-lib's, copied over
+    again from staging by alsa-utils' install (`alsa-utils.mk:80`). Merged by name under per-package directories,
+    alsa-utils still comes last, as in the build order.
+  - **ldacbt's list** held 1566 files of 33 packages installed in its window, now counted as theirs (*Deviations*).
+    Read as it was, the audit reported ldacbt for 18 libraries and listed 1644 files.
+  - **On today's incremental `output/rgds-plus`** it warns that the output isn't fresh: 7 packages installed more than
+    once, and the lists of `kiwami-romm`, `portmaster` and `rocknixds-bank`, no longer built.
+  - The report is in `output/m2-audit.txt`.
 
 ## Deviations
 
@@ -543,6 +565,19 @@ Where the implementation turned out different from this plan, why, and what chan
   field of a `070701` header. They apply where dates do (ELF files, the kernel, U-Boot). Each has self-test cases,
   one excused and one a difference: 34 checks in all. The length hint also names a path Buildroot blanked to X's (an
   RPATH).
+- **2026-11-09, step 2: a file in two lists is counted as the package's that installed it in the other's window.**
+  Agreed with you before going on.
+  - **Why.** Buildroot takes a package's file list from its configure step to the end of its install (`pkg_size_before`
+    and `pkg_size_after`, `.buildroot/package/pkg-generic.mk:258,382`). ldacbt configures early: upstream's
+    order-only prerequisite (`buildroot/external.mk:61`) makes its staging install before bluez-alsa's configure. Its
+    target install comes later, in the package order. Built one package at a time, 33 packages install in between,
+    and their 1566 files land in ldacbt's list. Read as it was, the audit reported ldacbt for 18 libraries on M1's
+    fresh build, and listed 1644 files as installed by two packages.
+  - **The rule.** Without per-package directories, a file in two lists is the other package's when that one's install
+    ended inside this one's window (`build/build-time.log`). Under per-package directories the rule is off: each
+    package's list is of its own `per-package/<pkg>/target/`, so a file in two lists is one both installed.
+  - **Also.** The audit says when an output isn't fresh: a package installed more than once, or the list of a package
+    no longer built. Self-test cases for both, and for the window rule each way: 13 checks in all.
 
 ## Progress
 
@@ -551,7 +586,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. The image comparison | done | Build speed: a comparison of two builds' images and update packages |
-| 2. The dependency audit | todo | |
+| 2. The dependency audit | done | Build speed: an audit of the libraries packages link against what they declare |
 | 3. Packages built in parallel, in per-package directories | todo | |
 | 4. banana-ui compiled one file per call | todo | |
 | 5. Final check | todo | |

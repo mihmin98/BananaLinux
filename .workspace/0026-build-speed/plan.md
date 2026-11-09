@@ -488,11 +488,11 @@ each), and `output/cmp-ccache` (1-2 GB) during the cold runs.
 | M2 | rgds-plus (build machine) | Step 2, before its commit. `python3 -I kiwami/tests/deps-audit.py output/cmp/rgds-plus` (M1's second build) | Reports `libretro-mupen64plus-next`: `libEGL.so.1`, `libGLESv2.so.2` from `mesa3d-panfrost`; `drastic` allowed; the overlap list short (a fresh output). Any other report goes into step 3. | the report | A9 | passed |
 | M3 | rgds-plus (build machine) | Step 3, before its commit. `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus` (the first parallel build: per-package paths, so cold for ccache). A package that fails for a missing dependency: its fix goes in `kiwami/external.mk`'s block, then `make OUT=$PWD/output/cmp rgds-plus` again. Then `python3 -I kiwami/tests/deps-audit.py output/cmp/rgds-plus`, `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`, and `make rgds-plus` on today's `output/rgds-plus`. The build stays for M4. | `build.sh`'s line says per-package directories and `--output-sync=target`; the build completes; the audit reports nothing; the comparison exits 0 (build paths list Python's configuration and libstdc++'s gdb helper); `make rgds-plus` stops with `make clean-rgds-plus` | `time`, `build-time.log`, the terminal around any failure, the audit, the report, the stop's message | A1, A2, A6, A9 | passed |
 | M4 | rgds-plus (build machine) | Step 4, before its commit. `kiwami/tests/ui-objects.sh output/cmp/rgds-plus` (M3's build). Then `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus`; `ls output/cmp/rgds-plus/build/banana-ui-local/src/kiwami/obj`; `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`. | identity on the target toolchain; the build completes with banana-ui's objects; the comparison exits 0 | `ui-objects.sh`'s output, `time`, `build-time.log` (banana-ui's build step), the report | A1, A2, A7 | passed |
-| M5 | rgds-plus (build machine) | Final check. Warm, the new way (the cache warm from M4's build of the same commit): `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus`; `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`; `image-compare.sh --save output/cmp/rgds-plus output/cmp-saved/new`. | completes faster than M1's second build; the comparison exits 0 | `time`, `build-time.log`, the report | A2, A3 | not run |
-| M6 | rgds-plus (build machine) | Final check. Cold, today's way: `ccache -s` (with `BR_CACHE_DIR=$HOME/.buildroot-ccache`, the output's `host/bin/ccache`); `rm -rf output/cmp/rgds-plus output/cmp-ccache && time env BR2_CCACHE_DIR=$PWD/output/cmp-ccache make KIWAMI_SERIAL=1 OUT=$PWD/output/cmp rgds-plus` (about an hour); `grep BR2_PER_PACKAGE output/cmp/rgds-plus/.config`; `ls output/cmp/rgds-plus/per-package output/cmp/rgds-plus/build/banana-ui-local/src/kiwami/obj`; `image-compare.sh output/cmp-saved/new output/cmp/rgds-plus`; `ccache -s` again. | `build.sh` says as upstream; no per-package directories, no objects; banana-ui's build step about 95 s in `build-time.log`; the comparison exits 0; `~/.buildroot-ccache`'s totals unchanged by it | `time`, `build-time.log`, the report, both `ccache -s` | A4, A5, A2 | not run |
-| M7 | rgds-plus (build machine) | Final check. Cold, the new way: `rm -rf output/cmp/rgds-plus output/cmp-ccache && time env BR2_CCACHE_DIR=$PWD/output/cmp-ccache make OUT=$PWD/output/cmp rgds-plus`; `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`. Then `rm -rf output/cmp output/cmp-ccache`. | completes faster than M6; the comparison exits 0 | `time`, `build-time.log`, the report | A4, A2 | not run |
-| M8 | rgds, universal (build machine) | Final check. The other boards, the new way: `make clean-rgds && make rgds`, then `make universal`. | both build (`rgds`'s old output stops first with `make clean-rgds` if `make rgds` is run before the clean) | `time` of each, the terminal on a failure | A10 | not run |
-| M9 | rgds-plus (the handheld) | Final check. The saved `new` update package (`output/cmp-saved/new/banana-rgds-plus-<version>.update.tar`) in `banana/updates/` on the card, applied from Settings > System > Update (or its `.img.gz` flashed to a spare card); start; open a game and quit. | boots to the menu on both panels; the game starts and returns | `/data/banana/logs/banana-ui.log` and `bananad.log` if anything's off | A12 | not run |
+| M5 | rgds-plus (build machine) | Final check. Warm, the new way (the cache warm from M4's build of the same commit): `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus`; `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`; `image-compare.sh --save output/cmp/rgds-plus output/cmp-saved/new`. | completes faster than M1's second build; the comparison exits 0 | `time`, `build-time.log`, the report | A2, A3 | passed |
+| M6 | rgds-plus (build machine) | Final check. Cold, today's way: `ccache -s` (with `BR_CACHE_DIR=$HOME/.buildroot-ccache`, the output's `host/bin/ccache`); `rm -rf output/cmp/rgds-plus output/cmp-ccache && time env BR2_CCACHE_DIR=$PWD/output/cmp-ccache make KIWAMI_SERIAL=1 OUT=$PWD/output/cmp rgds-plus` (about an hour); `grep BR2_PER_PACKAGE output/cmp/rgds-plus/.config`; `ls output/cmp/rgds-plus/per-package`; banana-ui's build in the build's log (since M6, *Deviations*); `image-compare.sh output/cmp-saved/new output/cmp/rgds-plus`; `ccache -s` again. | `build.sh` says as upstream; no per-package directories; banana-ui compiled in one call (no `-c -o src/kiwami/obj` in the log); banana-ui's build step about 95 s in `build-time.log`; the comparison exits 0; `~/.buildroot-ccache`'s totals unchanged by it | `time`, `build-time.log`, the report, both `ccache -s` | A4, A5, A2 | passed |
+| M7 | rgds-plus (build machine) | Final check. Cold, the new way: `rm -rf output/cmp/rgds-plus output/cmp-ccache && time env BR2_CCACHE_DIR=$PWD/output/cmp-ccache make OUT=$PWD/output/cmp rgds-plus`; `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`. Then `rm -rf output/cmp output/cmp-ccache`. | completes faster than M6; the comparison exits 0 | `time`, `build-time.log`, the report | A4, A2 | passed |
+| M8 | rgds, universal (build machine) | Final check. The other boards, the new way: `make clean-rgds && make rgds`, then `make universal`. | both build (`rgds`'s old output stops first with `make clean-rgds` if `make rgds` is run before the clean) | `time` of each, the terminal on a failure | A10 | passed |
+| M9 | rgds-plus (the handheld) | Final check. The saved `new` update package (`output/cmp-saved/new/banana-rgds-plus-<version>.update.tar`) in `banana/updates/` on the card, applied from Settings > System > Update (or its `.img.gz` flashed to a spare card); start; open a game and quit. | boots to the menu on both panels; the game starts and returns | `/data/banana/logs/banana-ui.log` and `bananad.log` if anything's off | A12 | passed |
 
 Notes from the runs (what the logs showed, what was fixed):
 
@@ -572,6 +572,56 @@ Notes from the runs (what the logs showed, what was fixed):
     configuration, libstdc++'s gdb helper), and banana-ui in no class, byte-identical.
   - The logs are `output/m4-build.txt`, `output/m4-time.txt`, `output/m4-build-time.log` and `output/m4-compare.txt`.
     The build stays in `output/cmp/rgds-plus`; M5 replaces it.
+- **M5-M8** (2026-11-09; 0.5.3, from `Build speed: banana-ui compiled one file per call` (step 4's commit); `make -j16`, run by
+  Claude one after another, `/tmp/kiwami-final/builds.sh`; the logs in `output/m5-*` to `output/m8-*` and
+  `output/final-builds.txt`):
+
+  | Build | Mode | Cache | Wall time | banana-ui's build step | Comparison |
+  |---|---|---|---|---|---|
+  | M1's second | today's way | warm | 957 s (16.0 min) | 108 s | the baseline |
+  | M5 | the new way | warm | 363 s (6.0 min) | 24 s | with `base`: exit 0 |
+  | M6 | `KIWAMI_SERIAL=1` | cold, `output/cmp-ccache` | 1697 s (28.3 min) | 116 s | with `new`: exit 0 |
+  | M7 | the new way | cold, `output/cmp-ccache` | 798 s (13.3 min) | 58 s | with `base`: exit 0 |
+  | M8 `rgds` | the new way | `~/.buildroot-ccache` | 423 s (7.1 min) | | |
+  | M8 `universal` | the new way | `~/.buildroot-ccache` | 445 s (7.4 min) | | |
+
+  - **A3**: warm, the new way takes 363 s against today's 957 s, 2.6 times faster. **A4**: cold, 798 s against 1697
+    s, 2.1 times faster.
+  - **The comparisons** (M5 and M7 with `base`, M6 with `new`) each exit 0 with `same contents`: the known noise,
+    the same 31 relinked files under build paths, and banana-ui in no class (byte-identical).
+  - **M6 built today's way**: `build.sh` said `as upstream (KIWAMI_SERIAL=1)`, its `.config` has `#
+    BR2_PER_PACKAGE_DIRECTORIES is not set` and there was no `per-package/`. Its log shows no object compiled and
+    banana-ui linked in one `aarch64-linux-g++ ... -o banana-ui src/main.cpp ...`. Its build folder held
+    `src/kiwami/obj/`, the host's, copied with `ui/` (*Deviations*).
+  - **`~/.buildroot-ccache`**: `ccache -s` the same before M6, after it and after M7 (1.5 GB, 258992 cacheable
+    calls).
+  - **M5's build** is saved in `output/cmp-saved/new`, for M9.
+  - **M8**: `make clean-rgds` emptied today's `output/rgds`. `rgds` and then `universal` (a fresh output) built the
+    new way, each with its image and update package (0.5.3).
+- **M9** (2026-11-09; M5's build, `output/cmp-saved/new`, 0.5.3 from step 4's commit; on the RG DS Plus, by you):
+  booted to the menu on both panels, and a game started and returned to the menu. Nothing was off, so no logs were
+  needed.
+- **The final check** (2026-11-09, by Claude):
+  - `make test` (plain make, no `-j`), `make -C ui` (17.7 s, from objects in parallel),
+    `make -C system/bananad CFLAGS="-O2 -Werror"` and `kiwami/tests/ci.sh .buildroot` pass, with the fork's tests:
+    `image-compare.py --self-test` (54 checks), `deps-audit.py --self-test` (13), `build-mode.sh` (18) and
+    `ui-objects.sh`. `make test` and `ci.sh` ran on step 4's tree, which the final check's commit doesn't change.
+  - **The hooks**: `docs/FORK.md`'s two commands agree over `main...HEAD` (12 upstream files, each with its
+    `kiwami:` lines). Since the branch base `2215bd1c` the feature changed one upstream file, `Makefile`, on its
+    board rule's hook: four `kiwami:` lines there.
+  - **The renders**: `banana-ui` built in `../banana-base` (`2215bd1c`, one call) and on this branch (from objects)
+    are byte-identical, unstripped and stripped, so the renders are the same by construction. Both trees' `run.sh`
+    passed, run at once. Of 1565 PNGs, 91 differ only in their files' bytes. The 39 that differ in pixels show what
+    changes from run to run: the clock, the tree's own path (`banana-base` against `BananaLinux`), Bshare's random
+    PIN, the save states' times, and the selection and the DS overlay's marker caught at another moment of their
+    animations.
+  - `kiwami/DEPENDENCIES.md` names per-package directories in Buildroot's row; no new external dependency.
+    `docs/FORK.md`, `CLAUDE.md` and the merge skill hold as steps 1, 3 and 4 left them.
+  - **Every acceptance criterion is met**: A1 (M3, M5, `build-mode.sh`, `ci.sh`), A2 (M3-M7), A3 (M5 against M1),
+    A4 (M6, M7), A5 (M6, `build-mode.sh`, `ci.sh`), A6 (M3's stop, `build-mode.sh`), A7 (`ui-objects.sh`, M4), A8
+    (`ui-objects.sh`, `make test`, the renders), A9 (M2, M3), A10 (`ci.sh`, M8), A11 (M1, the self-test), A12 (M9).
+  - `output/cmp`, `output/cmp-saved`, `output/cmp-ccache` and the `../banana-base` worktree are left for you to
+    delete.
 
 ## Deviations
 
@@ -657,6 +707,13 @@ Where the implementation turned out different from this plan, why, and what chan
     - 20 self-test cases on a synthetic ELF, 54 checks in all. The rule is about 650 lines, more than the 300
       estimated.
 
+- **2026-11-09, final check: A5's check of banana-ui's one call is its build log, not a missing `obj/`.** Agreed
+  with you. Buildroot's local site method copies all of `ui/` into `build/banana-ui-local/`, the host's
+  `ui/src/kiwami/obj/` from a `make ui` too, and `KIWAMI_SERIAL=1` leaves it unused. So M6's build folder held the
+  folder while banana-ui was built in one call. M6's check is the log: no `-c -o src/kiwami/obj` compile, and one link
+  from the sources. (In an output with per-package directories the copied objects are compiled again for the target,
+  `make -B`, as `kiwami.mk` says of its C objects.)
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -667,4 +724,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 2. The dependency audit | done | Build speed: an audit of the libraries packages link against what they declare |
 | 3. Packages built in parallel, in per-package directories | done | Build speed: packages built in parallel, in per-package directories |
 | 4. banana-ui compiled one file per call | done | Build speed: banana-ui compiled one file per call |
-| 5. Final check | todo | |
+| 5. Final check | done | Build speed: the final check done |

@@ -1,5 +1,38 @@
 include $(sort $(wildcard $(BR2_EXTERNAL_KIWAMI_PATH)/package/*/*.mk))
 
+# Under per-package directories (kiwami.fragment) a package builds against only what it depends on: what packages use
+# without declaring it, which one package at a time they find because it happens to be built first. Those that link
+# it kiwami/tests/deps-audit.py finds; those that only look for it (an optional feature) kiwami/tests/image-compare.sh
+# finds, against a build made with KIWAMI_SERIAL=1. Buildroot reads this file after their .mk has been evaluated, so
+# the += no longer orders the build: each is also an order-only prerequisite of the package's configure step, as
+# upstream's buildroot/external.mk does for bluez-alsa's ldacbt. (The += still reaches the step's copy of its
+# dependencies, which reads <PKG>_FINAL_DEPENDENCIES when it runs.) Without per-package directories (KIWAMI_SERIAL=1)
+# they build exactly as upstream's.
+ifeq ($(BR2_PER_PACKAGE_DIRECTORIES),y)
+# upstream's mupen64plus-next links libEGL and libGLESv2 (FORCE_GLES3=1)
+ifeq ($(BR2_PACKAGE_LIBRETRO_MUPEN64PLUS_NEXT),y)
+LIBRETRO_MUPEN64PLUS_NEXT_DEPENDENCIES += libegl libgles
+$(LIBRETRO_MUPEN64PLUS_NEXT_TARGET_CONFIGURE): | libegl libgles
+endif
+# Buildroot's sqlite: its configure finds zlib, and sqlite3 and libsqlite3 link it
+ifeq ($(BR2_PACKAGE_SQLITE)$(BR2_PACKAGE_ZLIB),yy)
+SQLITE_DEPENDENCIES += zlib
+$(SQLITE_TARGET_CONFIGURE): | zlib
+endif
+# Buildroot's openal: its cmake finds D-Bus, for RTKit's real-time priority (D-Bus loaded with dlopen)
+ifeq ($(BR2_PACKAGE_OPENAL)$(BR2_PACKAGE_DBUS),yy)
+OPENAL_DEPENDENCIES += dbus
+$(OPENAL_TARGET_CONFIGURE): | dbus
+endif
+endif
+
+# banana-ui's own sources are compiled one file per call (ui/src/kiwami/kiwami.mk); in an output without per-package
+# directories its build gets KIWAMI_SERIAL=1, so the image's banana-ui is built as upstream builds it, in one call.
+# (Buildroot clears the command line's variables, so the output's mode decides, not the command line.)
+ifneq ($(BR2_PER_PACKAGE_DIRECTORIES),y)
+$(BANANA_UI_TARGET_BUILD): private export KIWAMI_SERIAL = 1
+endif
+
 # RetroArch's master (local.mk pins it): the fork's patches instead of upstream's, which are for v1.22.2 (only for
 # its patch step: private, so packages built before it keep theirs), the fork's hash file (both tarballs and
 # COPYING), its credentials file unsealed (ra-keychain folds it back into retroarch.cfg), and its own commit in

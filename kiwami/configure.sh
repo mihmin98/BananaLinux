@@ -6,11 +6,18 @@
 # upstream's own entries stay as its defconfig sets them. Other options come from configs/kiwami.fragment and replace
 # upstream's value. Buildroot then resolves the dependencies, and an option of the fork's that didn't survive that
 # fails here, as upstream's CI fails for its defconfigs.
+# KIWAMI_SERIAL=1 in the environment (make's command line puts it there) configures the output without per-package
+# directories, so it builds as upstream's (kiwami/build.sh then keeps it that way).
 set -e
 K=$(cd "$(dirname "$0")" && pwd)
 BR=$1 O=$2
 C=$O/.config
 [ -f "$C" ] || { echo "configure.sh: no $C (run the board's defconfig first)" >&2; exit 1; }
+# (a bad value takes the defconfig's .config with it, or the next make would take that for configured)
+case ${KIWAMI_SERIAL-} in
+''|1) ;;
+*) rm -f "$C"; echo "configure.sh: KIWAMI_SERIAL is 1 or unset, not '$KIWAMI_SERIAL'" >&2; exit 1 ;;
+esac
 
 drop() { sed -i "/^$1=/d; /^# $1 is not set\$/d" "$C"; }
 list() { sed -n "s/^$1=\"\(.*\)\"\$/\1/p" "$C"; }
@@ -27,6 +34,10 @@ BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES $(BR2_EXTERNAL_KIWAMI_PATH)/linux.fragmen
 echo "$LISTS" | while read -r o e; do append "$o" "$e"; done
 
 OPTS=$(grep -E '^BR2_|^# BR2_.* is not set$' "$K/configs/kiwami.fragment" || true)
+if [ "${KIWAMI_SERIAL-}" = 1 ]; then
+    OPTS=$(echo "$OPTS" | grep -v '^BR2_PER_PACKAGE_DIRECTORIES=' || true)
+    echo "configure.sh: $O: without per-package directories (KIWAMI_SERIAL=1)"
+fi
 [ -z "$OPTS" ] || echo "$OPTS" | while IFS= read -r l; do
     o=${l#\# }; o=${o%%[= ]*}
     drop "$o"

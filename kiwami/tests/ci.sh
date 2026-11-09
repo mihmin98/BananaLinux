@@ -37,6 +37,30 @@ ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.
 PYTHONPYCACHEPREFIX="$T" python3 -m py_compile kiwami/tests/ra-server.py
 rm -rf "$T"
 
+# banana-ui compiled one file per call (ui/src/kiwami/kiwami.mk) is byte for byte upstream's one g++ call, with the
+# host's g++, and a change rebuilds what it should; when banana-ui's libraries are there, as make ui needs (the
+# compilers' warnings, upstream's code's, shown only on a failure)
+if pkg-config --exists freetype2 libdrm zlib; then
+    T=$(mktemp -d)
+    kiwami/tests/ui-objects.sh > "$T/log" 2>&1 || { tail -n 40 "$T/log" >&2; exit 1; }
+    grep '^ui-objects' "$T/log"
+    rm -rf "$T"
+else
+    echo "ui-objects: skipped, no freetype2, libdrm or zlib (pkg-config)"
+fi
+
+# the comparison of two builds' images (kiwami/tests/image-compare.sh), its rules on made-up data: each kind of noise
+# excused, each planted difference reported
+python3 -I kiwami/tests/image-compare.py --self-test
+
+# the audit of the libraries packages link against what they declare (kiwami/tests/deps-audit.py), on a made-up output
+# built with the host's cc: an undeclared library reported, a declared, virtual or allowed one not, lists read right
+if command -v cc >/dev/null && command -v readelf >/dev/null; then
+    python3 -I kiwami/tests/deps-audit.py --self-test
+else
+    echo "deps-audit: skipped, no cc or readelf"
+fi
+
 # RomM's game list in banana-sync: 200 a page and its progress, each game kept small, against a large made-up library
 kiwami/tests/romm-list.sh
 
@@ -135,13 +159,27 @@ cp system/rootfs/usr/libexec/banana/update "$U"; sed -i 's/^case \$1 in$/case "$
 rm -rf "$T"
 echo "post-build: over-the-air updates off checked"
 
-# every board configures with the fork's tree and options over upstream's, keeping all of the fork's options
+# the top Makefile's board build (kiwami/build.sh) in each mode, against made-up outputs
+kiwami/tests/build-mode.sh
+
+# every board configures with the fork's tree and options over upstream's, keeping all of the fork's options, its
+# packages built in parallel among them; and with KIWAMI_SERIAL=1, without per-package directories, as upstream's
 for b in rgds rgds_plus universal; do
     O=${TMPDIR:-/tmp}/kiwami-config-$b
     make -s -C "$BR" BR2_EXTERNAL="$PWD/buildroot:$PWD/kiwami" O="$O" banana_${b}_defconfig
-    kiwami/configure.sh "$BR" "$O"
+    KIWAMI_SERIAL= kiwami/configure.sh "$BR" "$O"
+    grep -qx 'BR2_PER_PACKAGE_DIRECTORIES=y' "$O/.config" || { echo "$b: no per-package directories" >&2; exit 1; }
     echo "$b: configured"
 done
+O=${TMPDIR:-/tmp}/kiwami-config-rgds_plus-serial
+make -s -C "$BR" BR2_EXTERNAL="$PWD/buildroot:$PWD/kiwami" O="$O" banana_rgds_plus_defconfig
+KIWAMI_SERIAL=1 kiwami/configure.sh "$BR" "$O"
+! grep -q '^BR2_PER_PACKAGE_DIRECTORIES=y' "$O/.config" || { echo "rgds_plus: per-package directories with KIWAMI_SERIAL=1" >&2; exit 1; }
+echo "rgds_plus: configured with KIWAMI_SERIAL=1, without per-package directories"
+# (a bad value stops, taking the defconfig's .config with it)
+! KIWAMI_SERIAL=yes kiwami/configure.sh "$BR" "$O" 2>/dev/null || { echo "configure.sh: KIWAMI_SERIAL=yes accepted" >&2; exit 1; }
+[ ! -e "$O/.config" ] || { echo "configure.sh: KIWAMI_SERIAL=yes left $O/.config" >&2; exit 1; }
+rm -rf "$O"
 
 # RetroArch's master as each board resolves it with the fork's options (the pin, the fork's hash file, patches and
 # options), and upstream's v1.22.2 with the option off; first the guard, on copies of upstream's RetroArch (each move

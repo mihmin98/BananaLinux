@@ -29,7 +29,7 @@ $(OUT)/$(1)/.config: $(BUILDROOT_DIR)/Makefile buildroot/configs/banana_$(subst 
 $(OUT)/$(1)/.config: kiwami/configure.sh kiwami/configs/kiwami.fragment	# kiwami: configured again when they change
 
 $(1): $(OUT)/$(1)/.config
-	$(MAKE) -C $(OUT)/$(1)
+	+kiwami/build.sh $(OUT)/$(1) $(MAKE)	# kiwami: in parallel, per-package directories (KIWAMI_SERIAL=1: as upstream)
 
 %-$(1): $(OUT)/$(1)/.config
 	$(MAKE) -C $(OUT)/$(1) $$*

@@ -13,12 +13,16 @@
 #                the source's mtime in a .pyc's header (Buildroot's .pyc files are timestamp-based), the mtimes in the
 #                kernel's built-in initramfs (cpio)
 #   build paths  the output's path (<anything>/<board>/ then build/, host/, per-package/<pkg>/, ...) in text files and
-#                .pyc files (normalised; in a .pyc also the positions a longer path moves), at equal length elsewhere
+#                .pyc files (normalised; in a .pyc also the positions a longer path moves), at equal length elsewhere;
+#                and an AArch64 ELF file linked around a path of another length (libtool's RPATH to the staging, which
+#                Buildroot blanks to X's, or an include path in .rodata, longer under per-package directories): its
+#                sections moved after it, and every address of theirs it holds moved with them (relinked())
 #   bookkeeping  Buildroot's .files-list*, .stamp_* and .applied_patches_list copied into the image: their contents
 #   derived      U-Boot's loader header and FIT hashes, GNU build IDs (the kernel's), the squashfs's size: of contents
 #                compared on their own
 # A run of differing bytes is excused only inside a span a rule's pattern matches at the same place in both files, or
 # a span the structure names (a FIT's timestamp, a hash). Exit 0: the same contents; 1: different; 2: no comparison.
+import bisect
 import gzip
 import hashlib
 import marshal
@@ -268,11 +272,670 @@ def compare_file(rep, where, a, b, dates=None):
         what = f"differs at {bad:#x}"
     else:
         what = f"sizes {len(a)} and {len(b)}, first difference at {first_diff(a, b):#x}"
+    if a[:4] == b[:4] == b"\x7fELF":
+        try:
+            resized = relinked(a, b, rules)
+            rep.excuse("build paths", f"{where} (linked around a build path of another length: {', '.join(resized)})")
+            return
+        except Relink as e:
+            what += f"; not the same file linked around a longer path: {e}"
     if rep.paths_differ and (PATH_B.search(a) or PATH_B.search(b)):
         what += "; it holds a build path, and the two builds' paths differ in length"
     elif rep.paths_differ and (BLANKED.search(a) or BLANKED.search(b)):
         what += "; it holds a path blanked to X's (an RPATH), and the two builds' paths differ in length"
     rep.differ(where, what)
+
+
+# --- ELF files linked again around a build path of another length
+#
+# A path the linker writes into a file (libtool's -rpath to the staging's usr/lib, which Buildroot then blanks to X's;
+# an include path in an assert's message) is longer under per-package directories (per-package/<pkg>/ more) or in a
+# longer output path. The section holding it grows, the sections after it move by a few bytes, and every address the
+# file holds of what moved changes with them: calls and branches, adrp's page and the offset its add, ldr or str
+# adds, symbols, relocations, .dynamic, GOT and pointer words, .eh_frame's. A pair is accepted when each section is
+# the same but those addresses, each of them the address the old file's points to, moved with its section. Anything
+# else stays a difference.
+
+SHT_PROGBITS, SHT_SYMTAB, SHT_STRTAB, SHT_RELA, SHT_HASH, SHT_DYNAMIC, SHT_NOTE, SHT_NOBITS = 1, 2, 3, 4, 5, 6, 7, 8
+SHT_DYNSYM, SHT_GNU_HASH, SHT_VERDEF, SHT_VERNEED, SHT_VERSYM = 11, 0x6ffffff6, 0x6ffffffd, 0x6ffffffe, 0x6fffffff
+SHF_ALLOC, SHF_EXECINSTR, SHF_TLS = 2, 4, 0x400
+EM_AARCH64 = 183
+R_RELATIVE, R_IRELATIVE = 1027, 1032                        # R_AARCH64_*: the addend is an address
+DT_ADDRESSES = {3, 4, 5, 6, 7, 12, 13, 17, 23, 25, 26, 32, 36, 0x6ffffef5, 0x6ffffff0, 0x6ffffffc, 0x6ffffffe}
+DT_STRINGS = {1, 14, 15, 29, 0x7ffffffd, 0x7fffffff}        # NEEDED, SONAME, RPATH, RUNPATH, AUXILIARY, FILTER
+DT_STRSZ = 10
+# what a path holder may differ in: an output's path (normalised), per-package/<pkg>/ before host/ or target/ (also in
+# a relative path), and in a string table a path blanked to X's (the longer one has its extra X's after a NUL)
+PPD_CUT = re.compile(rb"per-package/" + COMP.encode() + rb"/(?=(?:host|target|build|staging)/)")
+XRUNS = re.compile(rb"X{8,}(?:\x00X+(?=\x00))*")
+HOLDER_RX = re.compile(rb"(?P<out>" + NORM_B.pattern + rb")|(?P<ppd>" + PPD_CUT.pattern + rb")")
+HOLDER_STR_RX = re.compile(HOLDER_RX.pattern + rb"|(?P<x>" + XRUNS.pattern + rb")")
+HOLDER_REPL = {"out": b"<OUT>/", "ppd": b"", "x": b"X"}
+
+
+class Relink(Exception):
+    """Why two ELF files aren't the same file linked again."""
+
+
+class Sec:
+    def __init__(self, d, name, h):
+        (_, self.type, self.flags, self.addr, self.off, self.size, self.link, self.info, self.align,
+         self.entsize) = h
+        self.name = name
+        self.data = b"" if self.type == SHT_NOBITS else d[self.off:self.off + self.size]
+        self.edits = []                     # a path holder's (start, end, normalised length), set by relinked()
+
+
+class Elf:
+    def __init__(self, d):
+        if len(d) < 64 or d[:4] != b"\x7fELF" or d[4] != 2 or d[5] != 1:
+            raise Relink("not a 64-bit little-endian ELF file")
+        self.d = d
+        (self.type, self.machine, self.version, self.entry, self.phoff, self.shoff, self.flags, self.ehsize,
+         self.phentsize, self.phnum, self.shentsize, self.shnum, self.shstrndx) = struct.unpack_from("<HHIQQQIHHHHHH",
+                                                                                                    d, 16)
+        if self.machine != EM_AARCH64:
+            raise Relink(f"machine {self.machine}, not AArch64")
+        try:
+            self.ph = [struct.unpack_from("<IIQQQQQQ", d, self.phoff + i * self.phentsize) for i in range(self.phnum)]
+            sh = [struct.unpack_from("<IIQQQQIIQQ", d, self.shoff + i * self.shentsize) for i in range(self.shnum)]
+            names = sh[self.shstrndx][4]
+            self.secs = [Sec(d, d[names + h[0]:d.index(b"\0", names + h[0])].decode(errors="replace"), h) for h in sh]
+        except (struct.error, ValueError, IndexError):
+            raise Relink("its headers can't be read")
+
+
+def holder_edits(data, strtab):
+    """A path holder's spans that normalising replaces, as (start, end, normalised length), and the normalised data."""
+    edits, out, pos = [], [], 0
+    for m in (HOLDER_STR_RX if strtab else HOLDER_RX).finditer(data):
+        r = HOLDER_REPL[m.lastgroup]
+        edits.append((m.start(), m.end(), len(r)))
+        out += [data[pos:m.start()], r]
+        pos = m.end()
+    out.append(data[pos:])
+    return edits, b"".join(out)
+
+
+def holder_pair(da, db, strtab):
+    """A section in two versions that may differ in a build path: each one's edits ((start, end, normalised length))
+    when normalising makes them equal, else ([], []). Outside a string table, the string holding the path may also
+    have another number of NULs after it (strings aligned to 8: an assert's file name in .rodata)."""
+    if strtab:
+        ea, na = holder_edits(da, True)
+        eb, nb = holder_edits(db, True)
+        return (ea, eb) if (ea or eb) and na == nb else ([], [])
+    ta, tb = re.split(rb"(\x00+)", da), re.split(rb"(\x00+)", db)
+    if len(ta) != len(tb):
+        return [], []
+    ea, eb, pa, pb, changed = [], [], 0, 0, False
+    for k, (x, y) in enumerate(zip(ta, tb)):
+        if k % 2 == 0:
+            changed = x != y
+            if changed:
+                ex, nx = holder_edits(x, False)
+                ey, ny = holder_edits(y, False)
+                if nx != ny or not (ex or ey):
+                    return [], []
+                ea += [(pa + s, pa + e, n) for s, e, n in ex]
+                eb += [(pb + s, pb + e, n) for s, e, n in ey]
+        elif len(x) != len(y):
+            if not changed:
+                return [], []
+            ea.append((pa, pa + len(x), 1))
+            eb.append((pb, pb + len(y), 1))
+        pa, pb = pa + len(x), pb + len(y)
+    return ea, eb
+
+
+def to_norm(edits, o):
+    """An offset in a path holder in its normalised data; None inside a replaced span."""
+    shift = 0
+    for s, e, n in edits:
+        if o <= s:
+            break
+        if o < e:
+            return None
+        shift += (e - s) - n
+    return o - shift
+
+
+def from_norm(edits, p):
+    shift = 0
+    for s, e, n in edits:
+        ns = s - shift
+        if p <= ns:
+            break
+        if p < ns + n:
+            return None
+        shift += (e - s) - n
+    return p + shift
+
+
+class Moves:
+    """Where each of the old file's sections went in the new one."""
+
+    def __init__(self, ea, eb):
+        self.pairs = list(zip(ea.secs, eb.secs))
+        self.alloc = sorted(((sa, sb) for sa, sb in self.pairs if sa.flags & SHF_ALLOC and sa.size
+                             and not (sa.flags & SHF_TLS and sa.type == SHT_NOBITS)), key=lambda p: p[0].addr)
+
+    @staticmethod
+    def within(sa, sb, o):
+        """An offset in old section sa at its new place in sb (None inside a replaced span)."""
+        if not sa.edits and not sb.edits:
+            return o
+        p = to_norm(sa.edits, o)
+        return None if p is None else from_norm(sb.edits, p)
+
+    def addr(self, x, ends=True):
+        """An address of the old file's in the new one: inside a section, or (ends) at a section's end; else None."""
+        for sa, sb in self.alloc:
+            if sa.addr <= x < sa.addr + sa.size:
+                o = self.within(sa, sb, x - sa.addr)
+                return None if o is None else sb.addr + o
+        if ends:
+            for sa, sb in self.alloc:
+                if x == sa.addr + sa.size:
+                    return sb.addr + sb.size
+        return None
+
+    def around(self, x, attr, end=False):
+        """An address (attr "addr") or file offset ("off") for the program headers: in a section, at its end (first,
+        for a segment's end), or in a gap that the section before it (by its end) and the one after it (by its start)
+        moved across alike."""
+        spans = []
+        for sa, sb in self.pairs:
+            if not sa.flags & SHF_ALLOC or sa.flags & SHF_TLS and sa.type == SHT_NOBITS:
+                continue
+            na = sa.size if attr == "addr" or sa.type != SHT_NOBITS else 0
+            nb = sb.size if attr == "addr" or sb.type != SHT_NOBITS else 0
+            spans.append((getattr(sa, attr), na, getattr(sb, attr), nb, sa, sb))
+        if end:
+            for a, na, b, nb, sa, sb in spans:
+                if na and x == a + na:
+                    return b + nb
+        for a, na, b, nb, sa, sb in spans:
+            if a <= x < a + na:
+                o = self.within(sa, sb, x - a)
+                return None if o is None else b + o
+        for a, na, b, nb, sa, sb in spans:
+            if x == a + na:
+                return b + nb
+        before = [(a + na, b + nb) for a, na, b, nb, _, _ in spans if a + na < x]
+        after = [(a, b) for a, _, b, _, _, _ in spans if a > x]
+        deltas = set()
+        if before:
+            e, f = max(before)
+            deltas.add(f - e)
+        if after:
+            e, f = min(after)
+            deltas.add(f - e)
+        return x + deltas.pop() if len(deltas) == 1 else None
+
+
+def sext(v, bits):
+    return v - (1 << bits) if v >> (bits - 1) & 1 else v
+
+
+def pcrel(w, pc):
+    """A PC-relative instruction: (kind, its bits but the offset, its target), else None."""
+    if w & 0x7C000000 == 0x14000000:                                        # b, bl
+        return "b", w & 0xFC000000, pc + sext(w & 0x3FFFFFF, 26) * 4
+    if w & 0xFF000000 == 0x54000000 or w & 0x7E000000 == 0x34000000 or w & 0x3B000000 == 0x18000000:
+        return "b19", w & 0xFF00001F, pc + sext(w >> 5 & 0x7FFFF, 19) * 4    # b.cond, cbz, cbnz, ldr (literal)
+    if w & 0x7E000000 == 0x36000000:                                        # tbz, tbnz
+        return "b14", w & 0xFFF8001F, pc + sext(w >> 5 & 0x3FFF, 14) * 4
+    if w & 0x1F000000 == 0x10000000:                                        # adr, adrp
+        imm = sext((w >> 5 & 0x7FFFF) << 2 | w >> 29 & 3, 21)
+        if w & 0x80000000:
+            return "adrp", w & 0x9F00001F, (pc & ~0xFFF) + imm * 4096
+        return "adr", w & 0x9F00001F, pc + imm
+    return None
+
+
+def lo12(w):
+    """An add (immediate, unshifted) or a load or store at an unsigned offset: (its bits but the offset, base register,
+    offset, the general register it writes or None), else None."""
+    if w & 0x7FC00000 == 0x11000000:                                        # add, 32 or 64 bits, no shift
+        return w & 0xFFC003FF, w >> 5 & 31, w >> 10 & 0xFFF, w & 31
+    if w & 0x3B000000 == 0x39000000:                                        # ldr/str (unsigned offset)
+        size, simd, opc = w >> 30, w >> 26 & 1, w >> 22 & 3
+        scale = 4 if simd and opc & 2 else size
+        load = not simd and opc != 0
+        return w & 0xFFC003FF, w >> 5 & 31, (w >> 10 & 0xFFF) << scale, (w & 31) if load else None
+    return None
+
+
+def written(w):
+    """The general registers an instruction writes, as far as tracking an adrp's page needs to know."""
+    if w & 0xFC000000 == 0x94000000 or w & 0xFFFFFC1F == 0xD63F0000:         # bl, blr: x30, and what callees clobber
+        return set(range(19)) | {30}
+    if w & 0x1C000000 == 0x10000000 or w & 0x0E000000 == 0x0A000000:        # data processing
+        return {w & 31}
+    if w & 0x0E000000 == 0x0E000000:                                        # SIMD and FP (fmov, umov to a register)
+        return {w & 31}
+    if w & 0xFFF00000 == 0xD5300000:                                        # mrs
+        return {w & 31}
+    if w & 0x0A000000 == 0x08000000:                                        # loads and stores
+        regs = set()
+        if w & 0x3B200C00 in (0x38000400, 0x38000C00) or w & 0x3A800000 == 0x28800000 or w & 0x3B800000 == 0x29800000:
+            regs.add(w >> 5 & 31)                                           # written back
+        simd = w >> 26 & 1
+        if w & 0x3B000000 == 0x28000000 or w & 0x3B000000 == 0x29000000:    # pairs
+            if w >> 22 & 1 and not simd:
+                regs |= {w & 31, w >> 10 & 31}
+        elif w & 0x3F000000 == 0x08000000:                                  # exclusives
+            regs |= {w & 31, w >> 16 & 31}
+        elif w & 0x3B200C00 == 0x38200000:                                  # atomics
+            regs.add(w & 31)
+        elif not simd and w >> 22 & 3:
+            regs.add(w & 31)
+        return regs
+    return set()
+
+
+def check_code(mv, sa, sb, funcs):
+    """Code: each instruction the same, but a PC-relative one's offset and the offset an add, ldr or str adds to an
+    adrp's page, each pointing where the old one's target went. An offset's adrp is the last one to its register
+    before it, else one to its register in the same function (funcs: .eh_frame's ranges; the compiler moves an adrp
+    out of a loop, or lays it out after a use it branches back to). An adrp whose page moved is used by an offset
+    that moved with it."""
+    n = sa.size - sa.size % 4
+    wa_all = struct.unpack_from(f"<{n // 4}I", sa.data)
+    wb_all = struct.unpack_from(f"<{n // 4}I", sb.data)
+    starts = [f[0] for f in funcs]
+
+    def func(pc):
+        k = bisect.bisect_right(starts, pc) - 1
+        return k if k >= 0 and pc < funcs[k][1] else -1
+    adrps = {}                                                  # (function, register): {(old page, new page)}
+    for k, wa in enumerate(wa_all):
+        p = pcrel(wa, sa.addr + 4 * k)
+        if p and p[0] == "adrp":
+            q = pcrel(wb_all[k], sb.addr + 4 * k)
+            if not q or q[:2] != p[:2]:
+                raise Relink(f"{sa.name}+{4 * k:#x}: {wa:08x} and {wb_all[k]:08x}")
+            adrps.setdefault((func(sa.addr + 4 * k), wa & 31), set()).add((p[2], q[2]))
+    used = set()                                                # (function, register, (old page, new page))
+    pages = {}                                                  # register: (old page, new page), the last adrp's
+    for k, (wa, wb) in enumerate(zip(wa_all, wb_all)):
+        pa, pb = sa.addr + 4 * k, sb.addr + 4 * k
+        p = pcrel(wa, pa)
+        if p:
+            q = pcrel(wb, pb)
+            if not q or q[:2] != p[:2]:
+                raise Relink(f"{sa.name}+{4 * k:#x}: {wa:08x} and {wb:08x}")
+            if p[0] == "adrp":
+                pages[wa & 31] = (p[2], q[2])
+                continue
+            t = mv.addr(p[2])
+            if t is None and wa != wb or t is not None and t != q[2]:
+                raise Relink(f"{sa.name}+{4 * k:#x}: {wa:08x} and {wb:08x} don't point to the same place")
+            literal = wa & 0x3B000000 == 0x18000000
+            for r in ({wa & 31} if not wa >> 26 & 1 else set()) if literal else written(wa):
+                pages.pop(r, None)
+            continue
+        c = lo12(wa)
+        if c and wa != wb:
+            d = lo12(wb)
+            if not d or d[:2] != c[:2]:
+                raise Relink(f"{sa.name}+{4 * k:#x}: {wa:08x} and {wb:08x}")
+            g = func(pa)
+            cands = ([pages[c[1]]] if c[1] in pages else []) + sorted(adrps.get((g, c[1]), ()))
+            for page in cands:
+                if mv.addr(page[0] + c[2]) == page[1] + d[2]:
+                    used.add((g, c[1], page))
+                    break
+            else:
+                raise Relink(f"{sa.name}+{4 * k:#x}: {wa:08x} and {wb:08x}: no adrp to x{c[1]} makes them point to "
+                             "the same place")
+        elif wa != wb:
+            raise Relink(f"{sa.name}+{4 * k:#x}: {wa:08x} and {wb:08x}")
+        for r in written(wa):
+            pages.pop(r, None)
+    for (g, r), pairs in adrps.items():
+        for page in pairs:
+            if page[0] != page[1] and (g, r, page) not in used:
+                raise Relink(f"{sa.name}: an adrp to another page ({page[0]:#x}, {page[1]:#x}) that no offset moved "
+                             "with")
+    if sa.data[n:] != sb.data[n:]:
+        raise Relink(f"{sa.name}: its last bytes differ")
+
+
+def u(fmt, d, o):
+    return struct.unpack_from(fmt, d, o)[0]
+
+
+def check_strings(mv, ia, oa, ob, what):
+    """A string table offset (old section index ia) pointing at the same string in the new file."""
+    sa, sb = mv.pairs[ia]
+    if mv.within(sa, sb, oa) != ob:
+        raise Relink(f"{what}: string offsets {oa:#x} and {ob:#x}")
+
+
+def check_symbols(mv, sa, sb):
+    for o in range(0, sa.size, 24):
+        na, ia, oa, xa, va, za = struct.unpack_from("<IBBHQQ", sa.data, o)
+        nb, ib, ob, xb, vb, zb = struct.unpack_from("<IBBHQQ", sb.data, o)
+        if (ia, oa, xa, za) != (ib, ob, xb, zb):
+            raise Relink(f"{sa.name}: symbol {o // 24} differs")
+        check_strings(mv, sa.link, na, nb, f"{sa.name}: symbol {o // 24}'s name")
+        if xa in (0, 0xFFF1, 0xFFF2) or 0 < xa < len(mv.pairs) and mv.pairs[xa][0].flags & SHF_TLS:
+            if va != vb:
+                raise Relink(f"{sa.name}: symbol {o // 24}'s value")
+        elif xa < len(mv.pairs):
+            s, t = mv.pairs[xa]
+            w = None
+            if va == s.addr + s.size:
+                w = t.size
+            elif s.addr <= va < s.addr + s.size:
+                w = mv.within(s, t, va - s.addr)
+            if w is None or t.addr + w != vb:
+                raise Relink(f"{sa.name}: symbol {o // 24}'s value {va:#x} and {vb:#x}")
+        elif va != vb:
+            raise Relink(f"{sa.name}: symbol {o // 24}'s value")
+
+
+def check_relocations(mv, sa, sb):
+    for o in range(0, sa.size, 24):
+        ra, ia, aa = struct.unpack_from("<QQq", sa.data, o)
+        rb, ib, ab = struct.unpack_from("<QQq", sb.data, o)
+        if ia != ib or mv.addr(ra, ends=False) != rb:
+            raise Relink(f"{sa.name}: relocation {o // 24} at {ra:#x} and {rb:#x}")
+        if (ia & 0xFFFFFFFF) in (R_RELATIVE, R_IRELATIVE):
+            if mv.addr(aa) != ab:
+                raise Relink(f"{sa.name}: relocation {o // 24}'s address {aa:#x} and {ab:#x}")
+        elif aa != ab:
+            raise Relink(f"{sa.name}: relocation {o // 24}'s addend")
+
+
+def check_dynamic(mv, sa, sb):
+    strtab = sa.link
+    for o in range(0, sa.size, 16):
+        ta, va = struct.unpack_from("<qQ", sa.data, o)
+        tb, vb = struct.unpack_from("<qQ", sb.data, o)
+        if ta != tb:
+            raise Relink(f"{sa.name}: entry {o // 16}'s tag")
+        if ta in DT_ADDRESSES and va:
+            if mv.addr(va) != vb:
+                raise Relink(f"{sa.name}: entry {o // 16} (tag {ta:#x}) {va:#x} and {vb:#x}")
+        elif ta in DT_STRINGS:
+            check_strings(mv, strtab, va, vb, f"{sa.name}: entry {o // 16}")
+        elif ta == DT_STRSZ:
+            if (va, vb) != (mv.pairs[strtab][0].size, mv.pairs[strtab][1].size):
+                raise Relink(f"{sa.name}: DT_STRSZ isn't its string table's size")
+        elif va != vb:
+            raise Relink(f"{sa.name}: entry {o // 16} (tag {ta:#x})")
+
+
+def check_versions(mv, sa, sb):
+    """Version needs or definitions (sh_info of them): the same, but their names' string offsets."""
+    need = sa.type == SHT_VERNEED
+    size, cnt_at, name_at, aux_at, next_at = (16, 2, 4, 8, 12) if need else (20, 6, None, 12, 16)
+    asize, aname_at, anext_at = (16, 8, 12) if need else (8, 0, 4)
+
+    def same(xa, xb, at, what):
+        if (xa[:at] + xa[at + 4:] if at is not None else xa) != (xb[:at] + xb[at + 4:] if at is not None else xb):
+            raise Relink(f"{sa.name}: {what}")
+        if at is not None:
+            check_strings(mv, sa.link, u("<I", xa, at), u("<I", xb, at), f"{sa.name}: {what}'s name")
+    o = 0
+    for n in range(sa.info):
+        ha, hb = sa.data[o:o + size], sb.data[o:o + size]
+        same(ha, hb, name_at, f"entry {n}")
+        a = o + u("<I", ha, aux_at)
+        for k in range(u("<H", ha, cnt_at)):
+            xa, xb = sa.data[a:a + asize], sb.data[a:a + asize]
+            same(xa, xb, aname_at, f"entry {n}'s auxiliary {k}")
+            if not u("<I", xa, anext_at):
+                break
+            a += u("<I", xa, anext_at)
+        if not u("<I", ha, next_at):
+            break
+        o += u("<I", ha, next_at)
+
+
+def uleb(d, o):
+    v = shift = 0
+    while True:
+        b = d[o]
+        o += 1
+        v |= (b & 0x7F) << shift
+        shift += 7
+        if not b & 0x80:
+            return v, o
+
+
+PTR_SIZES = {0x00: 8, 0x02: 2, 0x03: 4, 0x04: 8, 0x0A: 2, 0x0B: 4, 0x0C: 8}
+PTR_FORMATS = {0x00: "<Q", 0x02: "<H", 0x03: "<I", 0x04: "<Q", 0x0A: "<h", 0x0B: "<i", 0x0C: "<q"}
+
+
+def eh_pointers(d):
+    """.eh_frame's encoded pointers, (offset, encoding) of each CIE's personality and each FDE's start and LSDA; and
+    the FDEs' starts alone (their code's length follows each)."""
+    ptrs, fdes, cies, o = [], [], {}, 0
+    while o + 4 <= len(d):
+        length = u("<I", d, o)
+        if length == 0:
+            break
+        if length == 0xFFFFFFFF:
+            raise Relink(".eh_frame: a 64-bit record")
+        end, cid = o + 4 + length, u("<I", d, o + 4)
+        p = o + 8
+        if cid == 0:
+            version = d[p]
+            aug_end = d.index(b"\0", p + 1)
+            aug = d[p + 1:aug_end].decode()
+            p = aug_end + 1
+            _, p = uleb(d, p)                                               # code alignment
+            _, p = uleb(d, p)                                               # data alignment (sleb: its bytes alike)
+            p = p + 1 if version == 1 else uleb(d, p)[1]                    # return address register
+            info = {"R": 0x00, "L": 0xFF}
+            if aug.startswith("z"):
+                _, p = uleb(d, p)
+                for c in aug[1:]:
+                    if c in "RL":
+                        info[c] = d[p]
+                        p += 1
+                    elif c == "P":
+                        enc = d[p]
+                        if enc & 0x0F not in PTR_SIZES:
+                            raise Relink(f".eh_frame: personality encoding {enc:#x}")
+                        ptrs.append((p + 1, enc))
+                        p += 1 + PTR_SIZES[enc & 0x0F]
+                    elif c not in "SB":
+                        raise Relink(f".eh_frame: augmentation {aug!r}")
+            elif aug:
+                raise Relink(f".eh_frame: augmentation {aug!r}")
+            info["z"] = aug.startswith("z")
+            cies[o] = info
+        else:
+            info = cies.get(o + 4 - cid)
+            if info is None:
+                raise Relink(".eh_frame: an FDE without its CIE")
+            enc = info["R"]
+            if enc & 0x0F not in PTR_SIZES:
+                raise Relink(f".eh_frame: FDE pointer encoding {enc:#x}")
+            ptrs.append((p, enc))
+            fdes.append((p, enc))
+            p += 2 * PTR_SIZES[enc & 0x0F]
+            if info["z"]:
+                _, p = uleb(d, p)
+                if info["L"] != 0xFF:
+                    ptrs.append((p, info["L"]))
+        o = end
+    return ptrs, fdes
+
+
+def functions(sec):
+    """The code ranges (start, end) .eh_frame's FDEs describe, sorted; [] without one that can be read."""
+    if sec is None:
+        return []
+    try:
+        _, fdes = eh_pointers(sec.data)
+    except (Relink, IndexError, struct.error, UnicodeDecodeError):
+        return []
+    out = []
+    for o, enc in fdes:
+        f = PTR_FORMATS[enc & 0x0F]
+        base = {0x00: 0, 0x10: sec.addr + o, 0x30: sec.addr}.get(enc & 0x70)
+        if base is None:
+            return []
+        start = base + u(f, sec.data, o)
+        out.append((start, start + u(f.upper() if f[1].islower() else f, sec.data, o + struct.calcsize(f))))
+    return sorted(out)
+
+
+def check_pointers(mv, sa, sb, ptrs):
+    """Encoded pointers (pcrel, datarel to the section, or absolute; indirect or not) at the same place in both: each
+    pointing where the old one's target went, and every other byte the same."""
+    a, b = bytearray(sa.data), bytearray(sb.data)
+    for o, enc in ptrs:
+        f = PTR_FORMATS.get(enc & 0x0F)
+        if f is None or enc & 0x70 not in (0x00, 0x10, 0x30):
+            raise Relink(f"{sa.name}+{o:#x}: pointer encoding {enc:#x}")
+        n = struct.calcsize(f)
+        va, vb = u(f, a, o), u(f, b, o)
+        base_a = {0x00: 0, 0x10: sa.addr + o, 0x30: sa.addr}[enc & 0x70]
+        base_b = {0x00: 0, 0x10: sb.addr + o, 0x30: sb.addr}[enc & 0x70]
+        if mv.addr(base_a + va) != base_b + vb:
+            raise Relink(f"{sa.name}+{o:#x}: pointers {va:#x} and {vb:#x} don't point to the same place")
+        a[o:o + n] = b[o:o + n] = bytes(n)
+    if a != b:
+        raise Relink(f"{sa.name}: differs at {first_diff(bytes(a), bytes(b)):#x}")
+
+
+def eh_frame_hdr_pointers(d):
+    """.eh_frame_hdr's: the pointer to .eh_frame, then its table of FDEs (start, FDE), as encoded."""
+    if d[0] != 1:
+        raise Relink(".eh_frame_hdr: version")
+    ptr_enc, count_enc, table_enc = d[1], d[2], d[3]
+    ptrs, o = [(4, ptr_enc)], 4 + PTR_SIZES.get(ptr_enc & 0x0F, 0)
+    f = PTR_FORMATS.get(count_enc & 0x0F)
+    if f is None or table_enc == 0xFF:
+        return ptrs
+    count, o = u(f, d, o), o + struct.calcsize(f)
+    n = PTR_SIZES.get(table_enc & 0x0F, 0)
+    for i in range(2 * count):
+        ptrs.append((o + i * n, table_enc))
+    return ptrs
+
+
+def check_words(mv, sa, sb, rules):
+    """Data: every differing byte in an aligned 8-byte word whose old value is an address that moved to its new
+    value (the GOT, pointers), or excused by the rules."""
+    a, b = sa.data, sb.data
+    for s, e in runs(a, b):
+        for w in range(s - s % 8, e, 8):
+            if w + 8 > len(a):
+                break
+            va, vb = u("<Q", a, w), u("<Q", b, w)
+            if va != vb and (not va or mv.addr(va) != vb):
+                break
+        else:
+            continue
+        if cover(a, b, s, e, rules, ()) is None:
+            raise Relink(f"{sa.name}: differs at {s:#x}")
+
+
+def relinked(a, b, rules):
+    """Two AArch64 ELF files as one linked again, its sections moved by a build path of another length: the resized
+    sections, else Relink with why not."""
+    ea, eb = Elf(a), Elf(b)
+    head = ("type", "machine", "version", "flags", "ehsize", "phentsize", "phnum", "shentsize", "shnum", "shstrndx",
+            "phoff")
+    if a[:16] != b[:16] or [getattr(ea, k) for k in head] != [getattr(eb, k) for k in head]:
+        raise Relink("the ELF headers differ")
+    resized = []
+    for sa, sb in zip(ea.secs, eb.secs):
+        if (sa.name, sa.type, sa.flags, sa.link, sa.info, sa.align, sa.entsize) != \
+                (sb.name, sb.type, sb.flags, sb.link, sb.info, sb.align, sb.entsize):
+            raise Relink(f"section {sa.name} and {sb.name} differ")
+        if sa.data != sb.data and (sa.type == SHT_STRTAB or sa.type == SHT_PROGBITS and not sa.flags & SHF_EXECINSTR):
+            ea_, eb_ = holder_pair(sa.data, sb.data, sa.type == SHT_STRTAB)
+            if ea_ or eb_:
+                sa.edits, sb.edits = ea_, eb_
+                if sa.size != sb.size:
+                    resized.append(f"{sa.name} {sb.size - sa.size:+}")
+                continue
+        if sa.size != sb.size:
+            raise Relink(f"{sa.name}: sizes {sa.size} and {sb.size}")
+    # the headers as a linker writes them: each allocated section on its alignment, inside a loaded segment at the
+    # segment's offset to address; the others at address 0, moved in the file as far as the section headers
+    for e in (ea, eb):
+        loads = [p for p in e.ph if p[0] == 1]
+        for s in e.secs:
+            if not s.flags & SHF_ALLOC or not s.size or s.flags & SHF_TLS and s.type == SHT_NOBITS:
+                continue
+            if s.align > 1 and s.addr % s.align or not any(
+                    p[3] <= s.addr and s.addr + s.size <= p[3] + p[6]
+                    and (s.type == SHT_NOBITS or s.addr - s.off == p[3] - p[2] and s.off + s.size <= p[2] + p[5])
+                    for p in loads):
+                raise Relink(f"{s.name} isn't where its segment puts it")
+    for sa, sb in zip(ea.secs, eb.secs):
+        if not sa.flags & SHF_ALLOC and (sa.addr != sb.addr or sa.type and sb.off - sa.off != eb.shoff - ea.shoff
+                                         or not sa.type and (sa.off, sa.size) != (sb.off, sb.size)):
+            raise Relink(f"section {sa.name or 0}'s header")
+    mv = Moves(ea, eb)
+    if (ea.entry or eb.entry) and mv.addr(ea.entry) != eb.entry:
+        raise Relink("the entry point")
+    for i, (pa, pb) in enumerate(zip(ea.ph, eb.ph)):
+        ta, fa, oa, va, xa, za, ma, la = pa
+        tb, fb, ob, vb, xb, zb, mb, lb = pb
+        if (ta, fa, la) != (tb, fb, lb):
+            raise Relink(f"program header {i}")
+        if (oa, va, xa, za, ma) == (ob, vb, xb, zb, mb):
+            continue
+        if (mv.around(oa, "off") != ob or mv.around(oa + za, "off", True) != ob + zb or mv.around(va, "addr") != vb
+                or mv.around(va + ma, "addr", True) != vb + mb or xb - vb != xa - va):
+            raise Relink(f"program header {i} (type {ta:#x}) doesn't cover the same sections")
+    funcs = functions(next((sa for sa, _ in mv.pairs if sa.name == ".eh_frame"), None))
+    for sa, sb in mv.pairs:
+        if sa.type == SHT_NOBITS or sa.data == sb.data and sa.addr == sb.addr or sa.edits or sb.edits:
+            continue
+        if sa.flags & SHF_EXECINSTR:
+            check_code(mv, sa, sb, funcs)
+        elif sa.type in (SHT_DYNSYM, SHT_SYMTAB):
+            check_symbols(mv, sa, sb)
+        elif sa.type == SHT_RELA:
+            check_relocations(mv, sa, sb)
+        elif sa.type == SHT_DYNAMIC:
+            check_dynamic(mv, sa, sb)
+        elif sa.type in (SHT_VERNEED, SHT_VERDEF):
+            check_versions(mv, sa, sb)
+        elif sa.name == ".eh_frame":
+            check_pointers(mv, sa, sb, eh_pointers(sa.data)[0])
+        elif sa.name == ".eh_frame_hdr":
+            check_pointers(mv, sa, sb, eh_frame_hdr_pointers(sa.data))
+        elif sa.data != sb.data:
+            if sa.flags & SHF_ALLOC and sa.type != SHT_NOTE:
+                check_words(mv, sa, sb, rules)
+            elif cover_all(sa.data, sb.data, rules) is None:
+                raise Relink(f"{sa.name}: differs at {first_diff(sa.data, sb.data):#x}")
+    # what no section holds: padding, the same zeros in both
+    for e in (ea, eb):
+        held = sorted([(0, e.ehsize), (e.phoff, e.phoff + e.phnum * e.phentsize),
+                       (e.shoff, e.shoff + e.shnum * e.shentsize)]
+                      + [(s.off, s.off + s.size) for s in e.secs if s.type != SHT_NOBITS])
+        pos = 0
+        for s, t in held:
+            if s > pos and e.d[pos:s].strip(b"\0"):
+                raise Relink(f"bytes outside the sections at {pos:#x}")
+            pos = max(pos, t)
+        if e.d[pos:].strip(b"\0"):
+            raise Relink(f"bytes after the sections at {pos:#x}")
+    if not resized:
+        raise Relink("no section holds a build path of another length")
+    return resized
+
+
+def cover_all(a, b, rules):
+    """Equal-length a and b with every differing run excused by the rules: the classes, else None."""
+    if len(a) != len(b):
+        return None
+    used, bad = excuse_runs(a, b, rules)
+    return None if bad is not None else used
 
 
 # --- U-Boot: the Rockchip loader header and the FIT
@@ -881,7 +1544,144 @@ def self_test():
     l3 = "".join(x + "\n" for x in l1.splitlines() if ".files-list" not in x)
     check("a bookkeeping file on one side only",
           lambda rep: compare_listing(rep, "root-a", parse_listing(l1), parse_listing(l3)), False)
+
+    # an ELF file linked again around a longer blanked RPATH: every section after .dynstr moves, and each address of
+    # what moved with it; anything else changed as well is a difference
+    old, _ = test_elf(0)
+    new, at = test_elf(19)
+    check("an ELF file linked around a longer path", files(old, new, "usr/bin/x"), True, ["build paths"])
+    check("an ELF file the same", files(old, test_elf(0)[0], "usr/bin/x"), True)
+    for name, sec, off, value in (
+            ("an instruction", ".text", 12, 0xAA0003E4),                     # mov x4, x0 instead of x3
+            ("a call's target", ".text", 0, None),
+            ("an adrp page's offset", ".text", 8, None),
+            ("an offset from an adrp after it", ".text", 24, None),
+            ("a branch's target", ".text", 20, None),
+            ("a string in .rodata", ".rodata", 5, 0x4A),
+            ("a pointer in .data", ".data", 0, None),
+            ("the GOT's lazy slot", ".got", 8, None),
+            ("a symbol's value", ".dynsym", 24 + 8, None),
+            ("a symbol's name", ".dynstr", 12, 0x70),
+            ("a relocation's address", ".rela.dyn", 16, None),
+            ("an FDE's start", ".eh_frame", 32, None),
+            (".eh_frame_hdr's table", ".eh_frame_hdr", 12, None),
+            (".dynamic's string table", ".dynamic", 16 + 8, None),
+            ("a section header's address", "sh:.plt", 16, None)):
+        bad = bytearray(new)
+        o = at[sec] + off
+        w = struct.unpack_from("<I", bad, o)[0]
+        if value is None:                       # an address 8 further; in code, an instruction further
+            value = w + (8 if sec != ".text" else 8 << 10 if lo12(w) else 1 << 5 if w >> 24 == 0x54 else 1)
+        if value > 0xFF:
+            struct.pack_into("<I", bad, o, value)
+        else:
+            bad[o] = value
+        check(f"an ELF file linked around a longer path, and {name} changed", files(old, bytes(bad), "usr/bin/x"),
+              False)
+    bad = bytearray(old)
+    struct.pack_into("<I", bad, at[".text"] + 12, 0xAA0003E4)
+    check("an ELF file laid out the same, an instruction changed", files(old, bytes(bad), "usr/bin/x"), False)
+    po, _ = test_elf(0, b"../../host/usr/include/python3.14/x.h")
+    pn, pat = test_elf(0, b"../../per-package/util-linux/host/usr/include/python3.14/x.h")
+    check("an ELF file with a longer include path in .rodata", files(po, pn, "usr/lib/x.so"), True, ["build paths"])
+    bad = bytearray(pn)
+    bad[pat[".rodata"] + 6] ^= 1
+    check("... and the path's other characters changed", files(po, bytes(bad), "usr/lib/x.so"), False)
     print(f"image-compare self-test: {len(checks)} checks passed")
+
+
+def test_elf(extra, path=b"hello"):
+    """A small AArch64 ELF file as the self-test's: its .dynstr holds a path blanked to 415 X's, and extra more after a
+    NUL (a longer path), so all after it moves; .rodata holds path, then "world". Returns it, and where its sections
+    (and, as "sh:<name>", their headers) are in the file."""
+    def ins_adrp(rd, pc, t):
+        imm = (t >> 12) - (pc >> 12)
+        return 0x90000000 | (imm & 3) << 29 | (imm >> 2 & 0x7FFFF) << 5 | rd
+
+    def ins_adr(rd, pc, t):
+        imm = t - pc
+        return 0x10000000 | (imm & 3) << 29 | (imm >> 2 & 0x7FFFF) << 5 | rd
+
+    def ins_b(op, pc, t):
+        return op | ((t - pc) >> 2 & 0x3FFFFFF)
+    dynstr = b"\0libc.so.6\0foo\0" + b"X" * 415 + (b"\0" + b"X" * (extra - 1) if extra else b"") + b"\0bar\0"
+    bar = len(dynstr) - 4
+    rodata = b"\0" * 4 + path + b"\0"
+    rodata += bytes(-len(rodata) % 8)
+    world = len(rodata)
+    rodata += b"world\0\0\0"
+    names = [".dynsym", ".dynstr", ".rela.dyn", ".plt", ".text", ".rodata", ".eh_frame_hdr", ".eh_frame", ".dynamic",
+             ".got", ".data", ".bss", ".shstrtab"]
+    sizes = [72, len(dynstr), 48, 16, 40, len(rodata), 20, 52, 144, 24, 8, 16, 0]
+    aligns = [8, 1, 8, 16, 16, 8, 4, 8, 8, 8, 8, 16, 1]
+    shstrtab = b"\0" + b"".join(n.encode() + b"\0" for n in names)
+    sizes[-1] = len(shstrtab)
+    addr, off, pos, rw = {}, {}, 0x200, None
+    for n, size, al in zip(names, sizes, aligns):
+        pos += -pos % al
+        if n == ".dynamic":
+            rw = pos
+        off[n] = pos
+        addr[n] = pos + (0x10000 if rw is not None and n != ".shstrtab" else 0)
+        if n != ".bss":
+            pos += size
+    off[".shstrtab"] = off[".bss"]
+    end = off[".shstrtab"] + len(shstrtab)
+    shoff = end + -end % 8
+    d = bytearray(shoff + 14 * 64)
+    A = addr
+    d[off[".dynstr"]:off[".dynstr"] + len(dynstr)] = dynstr
+    struct.pack_into("<IBBHQQ", d, off[".dynsym"] + 24, 11, 0x12, 0, 5, A[".text"], 40)
+    struct.pack_into("<IBBHQQ", d, off[".dynsym"] + 48, bar, 0x11, 0, 11, A[".data"], 8)
+    struct.pack_into("<QQq", d, off[".rela.dyn"], A[".data"], 1027, A[".rodata"] + 4)
+    struct.pack_into("<QQq", d, off[".rela.dyn"] + 24, A[".got"] + 16, 1 << 32 | 1025, 0)
+    got1 = A[".got"] + 8
+    plt = [ins_adrp(16, A[".plt"], got1), 0xF9400211 | (got1 & 0xFFF) >> 3 << 10,
+           0x91000210 | (got1 & 0xFFF) << 10, 0xD61F0220]
+    t = A[".text"]
+    text = [ins_b(0x94000000, t, A[".plt"]),                                 # bl to the PLT
+            ins_adrp(0, t + 4, A[".rodata"] + 4), 0x91000000 | (A[".rodata"] + 4 & 0xFFF) << 10,
+            0xAA0003E3,                                                     # mov x3, x0
+            ins_adr(1, t + 16, A[".rodata"] + world),
+            0x54000001 | ((t - (t + 20)) >> 2 & 0x7FFFF) << 5,              # b.ne to the start
+            0xF9400265 | (A[".data"] & 0xFFF) >> 3 << 10,                   # ldr x5, [x19, :lo12:data]
+            0xD65F03C0,                                                     # ret
+            ins_adrp(19, t + 32, A[".data"]), ins_b(0x14000000, t + 36, t + 24)]
+    struct.pack_into("<4I", d, off[".plt"], *plt)
+    struct.pack_into("<10I", d, off[".text"], *text)
+    d[off[".rodata"]:off[".rodata"] + len(rodata)] = rodata
+    eh, hdr = off[".eh_frame"], off[".eh_frame_hdr"]
+    struct.pack_into("<IIB3sBBBBB3s5x", d, eh, 20, 0, 1, b"zR\0", 4, 0x78, 30, 1, 0x1B, b"\x0c\x1f\x00")
+    struct.pack_into("<IIiIB", d, eh + 24, 20, 28, A[".text"] - (A[".eh_frame"] + 32), 40, 0)
+    struct.pack_into("<BBBBiIii", d, hdr, 1, 0x1B, 0x03, 0x3B, A[".eh_frame"] - (A[".eh_frame_hdr"] + 4), 1,
+                     A[".text"] - A[".eh_frame_hdr"], A[".eh_frame"] + 24 - A[".eh_frame_hdr"])
+    for k, (tag, v) in enumerate(((1, 1), (5, A[".dynstr"]), (6, A[".dynsym"]), (10, len(dynstr)), (11, 24),
+                                  (7, A[".rela.dyn"]), (8, 48), (9, 24), (0, 0))):
+        struct.pack_into("<qQ", d, off[".dynamic"] + 16 * k, tag, v)
+    struct.pack_into("<QQQ", d, off[".got"], A[".dynamic"], A[".plt"], 0)
+    struct.pack_into("<Q", d, off[".data"], A[".rodata"] + 4)
+    d[off[".shstrtab"]:end] = shstrtab
+    rx_end = off[".eh_frame"] + 52
+    struct.pack_into("<HHIQQQIHHHHHH", d, 16, 3, EM_AARCH64, 1, A[".text"], 64, shoff, 0, 64, 56, 3, 64, 14, 13)
+    d[:16] = b"\x7fELF\x02\x01\x01" + bytes(9)
+    struct.pack_into("<IIQQQQQQ", d, 64, 1, 5, 0, 0, 0, rx_end, rx_end, 0x10000)
+    rw_size = off[".data"] + 8 - rw
+    struct.pack_into("<IIQQQQQQ", d, 120, 1, 6, rw, A[".dynamic"], A[".dynamic"], rw_size,
+                     A[".bss"] + 16 - A[".dynamic"], 0x10000)
+    struct.pack_into("<IIQQQQQQ", d, 176, 2, 6, off[".dynamic"], A[".dynamic"], A[".dynamic"], 144, 144, 8)
+    types = [11, 3, 4, 1, 1, 1, 1, 1, 6, 1, 1, 8, 3]
+    flags = [2, 2, 2, 6, 6, 2, 2, 2, 3, 3, 3, 3, 0]
+    links = {".dynsym": 2, ".rela.dyn": 1, ".dynamic": 2}
+    infos = {".dynsym": 1}
+    entsizes = {".dynsym": 24, ".rela.dyn": 24, ".dynamic": 16, ".got": 8}
+    where = dict(off)
+    for k, n in enumerate(names):
+        o = shoff + 64 * (k + 1)
+        struct.pack_into("<IIQQQQIIQQ", d, o, shstrtab.index(n.encode() + b"\0"), types[k], flags[k],
+                         A[n] if flags[k] else 0, off[n], sizes[k], links.get(n, 0), infos.get(n, 0), aligns[k],
+                         entsizes.get(n, 0))
+        where["sh:" + n] = o
+    return bytes(d), where
 
 
 def main(argv):

@@ -69,7 +69,7 @@ around `RndsMenu`, a file in the overlay).
 
 ## How the build takes in the fork
 
-The top `Makefile` (three `kiwami:` lines) configures each board with `BR2_EXTERNAL=buildroot:kiwami`, so Buildroot
+The top `Makefile` (four `kiwami:` lines) configures each board with `BR2_EXTERNAL=buildroot:kiwami`, so Buildroot
 sees the fork's packages, and then runs `kiwami/configure.sh` over the `.config` upstream's defconfig made. That
 appends the fork's rootfs overlay, post-build script and kernel fragment to upstream's lists, merges
 `kiwami/configs/kiwami.fragment`, lets Buildroot resolve the dependencies and fails if an option of the fork's was
@@ -81,10 +81,46 @@ Buildroot reads after `.config` and before any package: that is where the fork p
 package (RetroArch's master). It still reads the output's own override file, Buildroot's default
 (`output/<board>/local.mk`, for a `<PKG>_OVERRIDE_SRCDIR` while working on a package), so that keeps working.
 
-`kiwami/tests/ci.sh <buildroot dir>` checks the fork's shell scripts and configures every board that way; CI runs it
-after upstream's checks (one `kiwami:` step in `.github/workflows/ci.yml`), and `kiwami/tests/ci.sh .buildroot` runs it
-locally. `make savedefconfig-<board>` would write the merged options into upstream's defconfig: don't use it on the
-fork's builds.
+**Packages in parallel.** The fragment turns on Buildroot's per-package directories (`BR2_PER_PACKAGE_DIRECTORIES`,
+experimental): each package builds in its own copy of what it depends on (`per-package/<package>/` in the output), so
+packages that don't depend on each other build at once. The board rule's fourth `kiwami:` line runs the build through
+`kiwami/build.sh`. It adds `-j$(nproc)` when make has no `-j` (a `make -j16` keeps its own), and `--output-sync=target`,
+so a step's lines come out together when it ends. A long step (the kernel's, Mesa's) can then look stalled, though
+the packages' own makes print as they go. A package now sees only what it declares. What packages use without
+declaring it, which they found one package at a time only because it happened to be built first, goes in
+`kiwami/external.mk`'s per-package block: upstream's mupen64plus-next links libEGL and libGLESv2, and Buildroot's
+sqlite finds zlib and its openal D-Bus. `kiwami/tests/deps-audit.py <output>` finds a library a package links on a
+fresh build. A library a package only looks for (an optional feature) shows only in a comparison with a build made
+with `KIWAMI_SERIAL=1` (below).
+
+`KIWAMI_SERIAL=1`, given when an output is configured (`make KIWAMI_SERIAL=1 <board>` on a fresh one), leaves the
+option out: that output then builds as upstream's, one package at a time with nothing added, which is the fallback
+when a merge breaks the parallel build. An output's mode is fixed when it's configured, since Buildroot can't switch
+an existing one: `build.sh` stops, saying what to run, when `KIWAMI_SERIAL` and the output's `.config` disagree, or
+when the output holds a build made the other way. An output configured with it is built with it every time: a change
+to the fragment or `configure.sh` configures it again, and without the switch `build.sh` then stops. Switching is a
+fresh output, and its first build misses ccache everywhere (the compilers' sysroot, part of each object's key, moves
+under `per-package/`), so it costs a cold build once.
+
+**Fresh builds.** An image for the handheld comes from a fresh output: `make clean-<board>`, then `make <board>`, as
+two commands (with a `-j`, `make clean-<board> <board>` would run both at once). An incremental build keeps the files
+of packages that have gone, because Buildroot never removes them from `target/`: an output built since before 0.5.3
+still put Poketool and PortMaster in its images after upstream dropped them.
+
+**Comparing two builds.** A change to how the image is built, rather than to what's in it, is checked by building it
+both ways and comparing: `kiwami/tests/image-compare.sh <old> <new>` reads two outputs, or folders saved from one with
+`--save <output> <folder>`. It fails on anything but the noise two builds of one commit already differ in (build
+dates, random IDs, times, build paths, Buildroot's bookkeeping), and lists what it excused. Both are built in the
+same output path (`make OUT=$PWD/output/cmp <board>`, one after the other), because some binaries embed it. A build
+with per-package directories is never byte for byte one made without: some 30 libtool-linked binaries and libraries
+are linked with the longer per-package staging path in their RPATH (Buildroot blanks it afterwards), so their
+sections move by a few bytes. The comparison checks each such file as the same file linked again: every address in it
+moved with its section, and nothing else differs.
+
+`kiwami/tests/ci.sh <buildroot dir>` checks the fork's shell scripts and configures every board that way (and
+`rgds_plus` with `KIWAMI_SERIAL=1`); CI runs it after upstream's checks (one `kiwami:` step in
+`.github/workflows/ci.yml`), and `kiwami/tests/ci.sh .buildroot` runs it locally. `make savedefconfig-<board>` would
+write the merged options into upstream's defconfig: don't use it on the fork's builds.
 
 ## Hooks in upstream's files
 
@@ -153,6 +189,11 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
 1. **Builds and tests**: `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, and
    `kiwami/tests/ci.sh .buildroot` (the fork's shell scripts, and every board configured with the fork's options). If
    upstream moved Buildroot, its Go or Linux, check `kiwami/DEPENDENCIES.md`'s second table against the fork's code.
+   When upstream adds a package or changes how one builds, a fresh `rgds-plus` build (`make clean-rgds-plus`, then
+   `make rgds-plus`) and `kiwami/tests/deps-audit.py output/rgds-plus`. A library it reports goes in
+   `kiwami/external.mk`'s per-package block, and `KIWAMI_SERIAL=1` builds images meanwhile. When upstream moves
+   Buildroot or adds packages, also the comparison (*Comparing two builds*) with a `KIWAMI_SERIAL=1` build of the same
+   commit: an optional library a package looks for only shows there.
 2. **The hooks are all there**: the `git grep` above lists the same hooks as before the merge. A hook whose line upstream
    removed is not a conflict, only a hook gone.
 3. **What the fork shadows**: files the fork replaces or patches at build time get no conflicts, so their upstream

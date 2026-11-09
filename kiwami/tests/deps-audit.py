@@ -5,8 +5,9 @@
 # time, it works only when the provider happens to come first. Run on an output's fresh build:
 #   deps-audit.py <output dir> [--info <show-info.json>]
 #   deps-audit.py --self-test     the audit on a made-up output, with the host's cc and readelf
-# The packages audited are those of buildroot/package/ and kiwami/package/ the output builds (Buildroot's own declare
-# theirs upstream). Their ELF files in target/, by build/packages-file-list.txt, give the libraries they link
+# Every target package the output builds is audited, Buildroot's own too (its sqlite linked libz without declaring
+# zlib), and each is named with its tree: Buildroot's, upstream's (buildroot/package/) or the fork's
+# (kiwami/package/). Their ELF files in target/, by build/packages-file-list.txt, give the libraries they link
 # (readelf -d's NEEDED); a library's provider is the package whose file list holds a file of that name. A provider
 # outside the package's dependencies (recursively, through virtual packages: libegl, then mesa3d-panfrost) is
 # reported, and the missing ones go in kiwami/external.mk. Buildroot's graph comes from make show-info, which holds
@@ -45,14 +46,17 @@ def log(msg):
 
 
 def audited(info):
-    """The target packages, not virtual, whose .mk is in a buildroot/package/ or kiwami/package/ folder."""
-    names = []
-    for name, p in info.items():
-        tree = os.path.normpath(p.get("package_dir") or "").split(os.sep)
-        if (p.get("type") == "target" and not p.get("virtual") and len(tree) >= 3 and tree[-2] == "package"
-                and tree[-3] in ("buildroot", "kiwami")):
-            names.append(name)
-    return sorted(names)
+    """The target packages, not virtual."""
+    return sorted(n for n, p in info.items() if p.get("type") == "target" and not p.get("virtual"))
+
+
+def tree(info, name):
+    """Whose package it is, by the folder of its .mk: upstream's buildroot/package/, the fork's kiwami/package/, or
+    Buildroot's own package/."""
+    d = os.path.normpath((info.get(name) or {}).get("package_dir") or "").split(os.sep)
+    if len(d) >= 3 and d[-2] == "package" and d[-3] in ("buildroot", "kiwami"):
+        return "upstream's" if d[-3] == "buildroot" else "the fork's"
+    return "Buildroot's"
 
 
 def closure(info, name):
@@ -147,15 +151,16 @@ def needed(readelf, path):
 def audit(info, files, owners, target, readelf, allowed=ALLOWED):
     """What each audited package links from outside its dependencies. Returns a dict: reports and allowed, each
     {package: {library: (providers, [files])}}; unprovided, {package: {library: [files]}}; overlaps, {path: packages};
-    the counts of packages and ELF files."""
+    each audited package's tree, and the counts of packages (per tree) and ELF files."""
     providers = {}
     for p, pkgs in owners.items():
         for pkg in pkgs:
             providers.setdefault(os.path.basename(p), set()).add(pkg)
-    res = {"reports": {}, "allowed": {}, "unprovided": {}, "packages": 0, "elf": 0,
+    res = {"reports": {}, "allowed": {}, "unprovided": {}, "packages": {}, "trees": {}, "elf": 0,
            "overlaps": {p: pkgs for p, pkgs in sorted(owners.items()) if len(pkgs) > 1}}
     for pkg in audited(info):
-        res["packages"] += 1
+        t = res["trees"][pkg] = tree(info, pkg)
+        res["packages"][t] = res["packages"].get(t, 0) + 1
         deps = closure(info, pkg)
         for p in files.get(pkg, []):
             f = os.path.join(target, p)
@@ -191,7 +196,8 @@ def where(paths):
 
 
 def write(res, why, moved, allowed=ALLOWED, out=sys.stdout):
-    print(f"{res['packages']} packages of buildroot/package/ and kiwami/package/, {res['elf']} ELF files", file=out)
+    counts = ", ".join(f"{n} {t}" for t, n in sorted(res["packages"].items()))
+    print(f"{sum(res['packages'].values())} packages ({counts}), {res['elf']} ELF files", file=out)
     if why:
         print("warning: not a fresh build, so the file lists are muddied: " + "; ".join(why)
               + ". Audit a fresh output (make clean-<board>, then make <board>)", file=out)
@@ -217,8 +223,8 @@ def write(res, why, moved, allowed=ALLOWED, out=sys.stdout):
         print("\nNOT DECLARED:", file=out)
         for pkg, libs in sorted(res["reports"].items()):
             for lib, (prov, paths) in sorted(libs.items()):
-                print(f"  {pkg}: {lib} from {' or '.join(prov)}, not among its dependencies ({where(paths)})",
-                      file=out)
+                print(f"  {pkg} ({res['trees'][pkg]}): {lib} from {' or '.join(prov)}, not among its dependencies "
+                      f"({where(paths)})", file=out)
     else:
         print("\nevery library linked is declared", file=out)
 
@@ -297,7 +303,8 @@ def self_test():
         check("bar allowed: not reported, listed as allowed", not res["reports"] and list(res["allowed"]) == ["bar"],
               res)
         res, _, _ = run([], pkgdir="package/bar")
-        check("a package of Buildroot's own: not audited", not res["reports"] and res["packages"] == 2, res)
+        check("a package of Buildroot's own: audited, and named so",
+              list(res["reports"]) == ["bar"] and res["packages"] == {"Buildroot's": 1, "the fork's": 2}, res)
         lines.remove("foo,./usr/lib/libfoo.so.1")
         res, _, _ = run([])
         check("a library no package provides: listed apart, not reported",

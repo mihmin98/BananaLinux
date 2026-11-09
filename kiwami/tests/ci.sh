@@ -147,13 +147,27 @@ cp system/rootfs/usr/libexec/banana/update "$U"; sed -i 's/^case \$1 in$/case "$
 rm -rf "$T"
 echo "post-build: over-the-air updates off checked"
 
-# every board configures with the fork's tree and options over upstream's, keeping all of the fork's options
+# the top Makefile's board build (kiwami/build.sh) in each mode, against made-up outputs
+kiwami/tests/build-mode.sh
+
+# every board configures with the fork's tree and options over upstream's, keeping all of the fork's options, its
+# packages built in parallel among them; and with KIWAMI_SERIAL=1, without per-package directories, as upstream's
 for b in rgds rgds_plus universal; do
     O=${TMPDIR:-/tmp}/kiwami-config-$b
     make -s -C "$BR" BR2_EXTERNAL="$PWD/buildroot:$PWD/kiwami" O="$O" banana_${b}_defconfig
-    kiwami/configure.sh "$BR" "$O"
+    KIWAMI_SERIAL= kiwami/configure.sh "$BR" "$O"
+    grep -qx 'BR2_PER_PACKAGE_DIRECTORIES=y' "$O/.config" || { echo "$b: no per-package directories" >&2; exit 1; }
     echo "$b: configured"
 done
+O=${TMPDIR:-/tmp}/kiwami-config-rgds_plus-serial
+make -s -C "$BR" BR2_EXTERNAL="$PWD/buildroot:$PWD/kiwami" O="$O" banana_rgds_plus_defconfig
+KIWAMI_SERIAL=1 kiwami/configure.sh "$BR" "$O"
+! grep -q '^BR2_PER_PACKAGE_DIRECTORIES=y' "$O/.config" || { echo "rgds_plus: per-package directories with KIWAMI_SERIAL=1" >&2; exit 1; }
+echo "rgds_plus: configured with KIWAMI_SERIAL=1, without per-package directories"
+# (a bad value stops, taking the defconfig's .config with it)
+! KIWAMI_SERIAL=yes kiwami/configure.sh "$BR" "$O" 2>/dev/null || { echo "configure.sh: KIWAMI_SERIAL=yes accepted" >&2; exit 1; }
+[ ! -e "$O/.config" ] || { echo "configure.sh: KIWAMI_SERIAL=yes left $O/.config" >&2; exit 1; }
+rm -rf "$O"
 
 # RetroArch's master as each board resolves it with the fork's options (the pin, the fork's hash file, patches and
 # options), and upstream's v1.22.2 with the option off; first the guard, on copies of upstream's RetroArch (each move

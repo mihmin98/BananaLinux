@@ -77,7 +77,8 @@ per-package directories only.
   - build dates (the kernel, U-Boot, BusyBox, RetroArch, VICE, libpython, OpenSSL, PCSX-ReARMed);
   - random IDs (GPT GUIDs and CRCs, the FAT's volume ID);
   - times (squashfs, FAT, tar, the `.pyc` files' source mtimes, the kernel's initramfs);
-  - build paths (Python's configuration, libstdc++'s gdb helper, `__FILE__` strings);
+  - build paths (Python's configuration, libstdc++'s gdb helper, `__FILE__` strings; ELF files linked around a longer
+    path, which per-package directories make: libtool's RPATH to the staging, an include path in `.rodata`);
   - Buildroot's bookkeeping files;
   - derived (U-Boot's hashes, the kernel's build ID, the squashfs's size).
 - **A3**: given a cache warmed by a build of the same commit, the wall time of a fresh `rgds-plus` build the new way is
@@ -103,11 +104,11 @@ per-package directories only.
   - `make -C ui clean` removes `ui/src/kiwami/obj/`;
   - `KIWAMI_SERIAL=1` builds the one call;
   - `make test` passes, and its renders are identical to the branch base's.
-- **A9**: given a fresh output, when `kiwami/tests/deps-audit.py` audits it, then it lists each package of
-  `buildroot/package/` and `kiwami/package/` that links a library from a package outside its dependencies. On today's
-  `rgds-plus` that is `libretro-mupen64plus-next` (`libEGL.so.1`, `libGLESv2.so.2`). With the fork's fix (A1's
-  output), nothing; `drastic` is allowed (prebuilt, it links nothing at build time). Files attributed to more than one
-  package are listed apart.
+- **A9**: given a fresh output, when `kiwami/tests/deps-audit.py` audits it, then it lists each target package (since
+  step 3 Buildroot's own too, each named with its tree) that links a library from a package outside its dependencies.
+  On today's `rgds-plus` that is upstream's `libretro-mupen64plus-next` (`libEGL.so.1`, `libGLESv2.so.2`), and
+  Buildroot's `sqlite` (`libz.so.1`). With the fork's fix (A1's output), nothing; `drastic` is allowed (prebuilt, it
+  links nothing at build time). Files attributed to more than one package are listed apart.
 - **A10**: `rgds` and `universal` configure with the fork's options (`kiwami/tests/ci.sh`) and build the new way.
 - **A11**: the comparison fails on a real difference. Compared with today's incremental `output/rgds-plus`, it reports
   the stale Poketool, PortMaster and `romm` files. In its self-test, every planted difference is reported and every
@@ -288,7 +289,8 @@ tests*.
 - **Files**: `kiwami/configs/kiwami.fragment` (changed), `kiwami/configure.sh` (changed), `kiwami/build.sh` (new),
   `Makefile` (hook), `kiwami/external.mk` (changed), `kiwami/tests/build-mode.sh` (new), `kiwami/tests/ci.sh`
   (changed), `docs/FORK.md` (changed), `.claude/skills/banana-merge-upstream/SKILL.md` (changed),
-  `kiwami/DEPENDENCIES.md` (changed), `CLAUDE.md` (changed).
+  `kiwami/DEPENDENCIES.md` (changed), `CLAUDE.md` (changed); since M3 (*Deviations*), `kiwami/tests/image-compare.py`
+  and `kiwami/tests/deps-audit.py` (changed).
 - **Change**:
   - `kiwami.fragment`: `BR2_PER_PACKAGE_DIRECTORIES=y`, under a comment. Each package builds in its own copy of what
     it depends on, so independent ones build at once. The top Makefile's board rule runs `kiwami/build.sh`, which adds
@@ -326,7 +328,11 @@ tests*.
     ```
     The `+=` reaches the per-package copy, which reads `_FINAL_DEPENDENCIES` when the step runs
     (`.buildroot/package/pkg-generic.mk:256,804`). The order-only prerequisite orders the build, as upstream does for
-    bluez-alsa's `ldacbt` (`buildroot/external.mk:55-61`). It also holds whatever M2 and M3 find.
+    bluez-alsa's `ldacbt` (`buildroot/external.mk:55-61`). It also holds whatever M2 and M3 find: M3 found Buildroot's
+    `sqlite` (`zlib`) and `openal` (`dbus`), each under its packages' options (*Deviations*).
+  - Since M3 (*Deviations*): `kiwami/tests/image-compare.py` accepts an AArch64 ELF file linked around a build path
+    of another length (`relinked()`), with its self-test's synthetic ELF; `kiwami/tests/deps-audit.py` audits every
+    target package and names its tree.
   - `kiwami/tests/build-mode.sh`: `build.sh` against made-up outputs (a `.config`, `build/x/.stamp_configured`,
     `per-package/`), with a stand-in make that prints its arguments:
     - `ppd` and no `MAKEFLAGS`: `-j<nproc> --output-sync=target -C <out>`;
@@ -457,8 +463,8 @@ tests*.
 
 | Test | Where | What it checks | Criteria |
 |---|---|---|---|
-| comparison self-test | `kiwami/tests/image-compare.py --self-test`, in `ci.sh` | each noise class excused (dates in four formats, FIT timestamp and digests, GPT GUIDs and CRCs, build paths in text, `.pyc` and equal-length binaries, bookkeeping, listing times) and each planted difference reported | A2, A11 |
-| audit self-test | `kiwami/tests/deps-audit.py --self-test`, in `ci.sh` | an undeclared library reported; declared, through a virtual package, or allowed: not; a file in two lists listed apart | A9 |
+| comparison self-test | `kiwami/tests/image-compare.py --self-test`, in `ci.sh` | each noise class excused (dates in four formats, FIT timestamp and digests, GPT GUIDs and CRCs, build paths in text, `.pyc` and equal-length binaries, an ELF file linked around a longer path in `.dynstr` or `.rodata`, bookkeeping, listing times) and each planted difference reported (in the relinked ELF: an instruction, a call's, a branch's and an adrp offset's target, data and GOT pointers, a symbol, a relocation, an FDE, `.eh_frame_hdr`, `.dynamic`, a section header) | A2, A11 |
+| audit self-test | `kiwami/tests/deps-audit.py --self-test`, in `ci.sh` | an undeclared library reported, Buildroot's packages too and named so; declared, through a virtual package, or allowed: not; a file in two lists listed apart | A9 |
 | build modes | `kiwami/tests/build-mode.sh`, in `ci.sh` | `build.sh`'s flags in each mode (`-j<nproc>` only without one, `--output-sync=target`, nothing serial) and its four stops with their messages; a bad `KIWAMI_SERIAL` | A1, A5, A6 |
 | configuration | `kiwami/tests/ci.sh`'s boards loop | every board keeps `BR2_PER_PACKAGE_DIRECTORIES=y` with the fork's options; `rgds_plus` with `KIWAMI_SERIAL=1` doesn't have it | A1, A5, A10 |
 | banana-ui identity | `kiwami/tests/ui-objects.sh`, in `ci.sh` | host: objects and one call byte-identical, unstripped and stripped; one `.cpp`, one header and the flags rebuild what they should; `-j` without one; `clean` removes the objects | A7, A8 |
@@ -480,7 +486,7 @@ each), and `output/cmp-ccache` (1-2 GB) during the cold runs.
 |---|---|---|---|---|---|---|
 | M1 | rgds-plus (build machine) | Step 1, before its commit. Today's way, warm (before step 3, plain `make` is today's way): `time make OUT=$PWD/output/cmp rgds-plus`; `kiwami/tests/image-compare.sh --save output/cmp/rgds-plus output/cmp-saved/base`; `rm -rf output/cmp/rgds-plus`; `time make OUT=$PWD/output/cmp rgds-plus` again. Then `kiwami/tests/image-compare.sh output/cmp-saved/base output/cmp/rgds-plus` and `kiwami/tests/image-compare.sh output/cmp-saved/base output/rgds-plus`. The second build stays for M2. | Both build. The first comparison exits 0 with only the known noise; the second fails, listing Poketool (`usr/share/banana/apps/bank/`), `PortMaster.zip` and `usr/libexec/kiwami/romm*` (and warns that the paths differ in length). The second build's time is today's warm time. | both `time` outputs, both `build-time.log`, both reports | A2 (its baseline), A3 (today's), A11 | passed |
 | M2 | rgds-plus (build machine) | Step 2, before its commit. `python3 -I kiwami/tests/deps-audit.py output/cmp/rgds-plus` (M1's second build) | Reports `libretro-mupen64plus-next`: `libEGL.so.1`, `libGLESv2.so.2` from `mesa3d-panfrost`; `drastic` allowed; the overlap list short (a fresh output). Any other report goes into step 3. | the report | A9 | passed |
-| M3 | rgds-plus (build machine) | Step 3, before its commit. `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus` (the first parallel build: per-package paths, so cold for ccache). A package that fails for a missing dependency: its fix goes in `kiwami/external.mk`'s block, then `make OUT=$PWD/output/cmp rgds-plus` again. Then `python3 -I kiwami/tests/deps-audit.py output/cmp/rgds-plus`, `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`, and `make rgds-plus` on today's `output/rgds-plus`. The build stays for M4. | `build.sh`'s line says per-package directories and `--output-sync=target`; the build completes; the audit reports nothing; the comparison exits 0 (build paths list Python's configuration and libstdc++'s gdb helper); `make rgds-plus` stops with `make clean-rgds-plus` | `time`, `build-time.log`, the terminal around any failure, the audit, the report, the stop's message | A1, A2, A6, A9 | not run |
+| M3 | rgds-plus (build machine) | Step 3, before its commit. `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus` (the first parallel build: per-package paths, so cold for ccache). A package that fails for a missing dependency: its fix goes in `kiwami/external.mk`'s block, then `make OUT=$PWD/output/cmp rgds-plus` again. Then `python3 -I kiwami/tests/deps-audit.py output/cmp/rgds-plus`, `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`, and `make rgds-plus` on today's `output/rgds-plus`. The build stays for M4. | `build.sh`'s line says per-package directories and `--output-sync=target`; the build completes; the audit reports nothing; the comparison exits 0 (build paths list Python's configuration and libstdc++'s gdb helper); `make rgds-plus` stops with `make clean-rgds-plus` | `time`, `build-time.log`, the terminal around any failure, the audit, the report, the stop's message | A1, A2, A6, A9 | passed |
 | M4 | rgds-plus (build machine) | Step 4, before its commit. `kiwami/tests/ui-objects.sh output/cmp/rgds-plus` (M3's build). Then `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus`; `ls output/cmp/rgds-plus/build/banana-ui-local/src/kiwami/obj`; `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`. | identity on the target toolchain; the build completes with banana-ui's objects; the comparison exits 0 | `ui-objects.sh`'s output, `time`, `build-time.log` (banana-ui's build step), the report | A1, A2, A7 | not run |
 | M5 | rgds-plus (build machine) | Final check. Warm, the new way (the cache warm from M4's build of the same commit): `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus`; `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`; `image-compare.sh --save output/cmp/rgds-plus output/cmp-saved/new`. | completes faster than M1's second build; the comparison exits 0 | `time`, `build-time.log`, the report | A2, A3 | not run |
 | M6 | rgds-plus (build machine) | Final check. Cold, today's way: `ccache -s` (with `BR_CACHE_DIR=$HOME/.buildroot-ccache`, the output's `host/bin/ccache`); `rm -rf output/cmp/rgds-plus output/cmp-ccache && time env BR2_CCACHE_DIR=$PWD/output/cmp-ccache make KIWAMI_SERIAL=1 OUT=$PWD/output/cmp rgds-plus` (about an hour); `grep BR2_PER_PACKAGE output/cmp/rgds-plus/.config`; `ls output/cmp/rgds-plus/per-package output/cmp/rgds-plus/build/banana-ui-local/src/kiwami/obj`; `image-compare.sh output/cmp-saved/new output/cmp/rgds-plus`; `ccache -s` again. | `build.sh` says as upstream; no per-package directories, no objects; banana-ui's build step about 95 s in `build-time.log`; the comparison exits 0; `~/.buildroot-ccache`'s totals unchanged by it | `time`, `build-time.log`, the report, both `ccache -s` | A4, A5, A2 | not run |
@@ -532,6 +538,27 @@ Notes from the runs (what the logs showed, what was fixed):
   - **On today's incremental `output/rgds-plus`** it warns that the output isn't fresh: 7 packages installed more than
     once, and the lists of `kiwami-romm`, `portmaster` and `rocknixds-bank`, no longer built.
   - The report is in `output/m2-audit.txt`.
+- **M3** (2026-11-09; 0.5.3, from `b61c8f04` (step 2) with step 3's files; `make -j16`, your alias, run by Claude):
+  - **The first build** completed with no failure, in 753 s (12.5 min), cold-ish for ccache: 11,645 hits and 16,912
+    misses (the per-package paths). `build.sh` said `per-package directories, make's -j16, output per step`.
+  - **Its audit** reported nothing (92 packages, 326 ELF files; the 78 alsa files apart). **Its comparison** with
+    `base` failed on 34 files:
+    - `sqlite3` and `libsqlite3` without zlib, and `libopenal` without D-Bus: undeclared optional dependencies of
+      Buildroot's packages;
+    - 30 libtool-linked files and `pylibmount.so` laid out around the longer per-package path.
+
+    Fixed and handled as *Deviations* says.
+  - **The second build**, fresh, with `sqlite`'s and `openal`'s dependencies: 380 s (6.3 min), warm. Against M1's
+    957 s today's way, a first look at A3, which M5 measures.
+  - **Its audit** reports nothing, and **its comparison** with `base` exits 0: only the known noise, the 31 relinked
+    files listed under build paths with their `.dynstr` or `.rodata` growth, beside Python's configuration and
+    libstdc++'s gdb helper.
+  - **`make rgds-plus` on today's `output/rgds-plus`** configured it again (the fragment changed) and stopped: `holds a
+    build made without per-package directories: make clean-rgds-plus, then make rgds-plus; or, to build it as it was,
+    rm .../output/rgds-plus/.config, then make KIWAMI_SERIAL=1 rgds-plus`. Its `.config` now has per-package
+    directories.
+  - The build stays in `output/cmp/rgds-plus` for M4. The logs are `output/m3-*` (the first build) and
+    `output/m3b-*` (the second), and `output/m3-stop.txt`.
 
 ## Deviations
 
@@ -578,6 +605,44 @@ Where the implementation turned out different from this plan, why, and what chan
     package's list is of its own `per-package/<pkg>/target/`, so a file in two lists is one both installed.
   - **Also.** The audit says when an output isn't fresh: a package installed more than once, or the list of a package
     no longer built. Self-test cases for both, and for the window rule each way: 13 checks in all.
+- **2026-11-09, step 3: what M3's comparison found, and three tools changed for it.** Agreed with you before going on.
+  - **Two optional dependencies of Buildroot's own packages.**
+    - One package at a time, `sqlite`'s configure finds zlib, and `sqlite3` and `libsqlite3` link it.
+    - `openal`'s cmake finds D-Bus and builds in RTKit's real-time priority (D-Bus loaded with dlopen).
+
+    Neither package declares them (`sqlite.mk`, `openal.mk`), so with per-package directories both came out without
+    them. The audit saw neither: it audited only upstream's and the fork's packages, and openal's D-Bus isn't linked.
+    Both are now in `kiwami/external.mk`'s block, each under its packages' options.
+  - **The audit covers every target package**, Buildroot's own too, each named with its tree. On a build made one
+    package at a time it would also report `sqlite`'s `libz.so.1`. A dependency a package only looks for still shows
+    only in the comparison, so `docs/FORK.md` and the merge skill add a comparison with a `KIWAMI_SERIAL=1` build when
+    upstream moves Buildroot or adds packages.
+  - **A build with per-package directories isn't byte for byte today's.**
+    - 30 libtool-linked binaries and libraries (bluez', bluez-alsa's, curl's, dbus', freetype's, mpg123's, SDL2_image's,
+      _mixer's and _ttf's, theora's, vorbis', ksmbd-tools') are linked with `-rpath <staging>/usr/lib`, and the
+      staging is longer by `per-package/<pkg>/`.
+    - Buildroot blanks the path to X's in the image, but `.dynstr` keeps its length, so the sections after it move by
+      16 to 64 bytes. Calls, branches, adrp pages and their offsets, symbols, relocations, `.dynamic`, GOT and pointer
+      words and `.eh_frame` all change with them.
+    - `pylibmount.so` does the same through an assert's relative include path in `.rodata`
+      (`../../per-package/util-linux/host/...`).
+
+    No change to the build avoids it, and two of today's builds made in output paths of different lengths differ the
+    same way.
+  - **The comparison checks such a file as the same file linked again** (`relinked()`). You chose this over a
+    structural check, dropping per-package directories, or padding the link path.
+    - The path holder is normalised: the X's, `per-package/<pkg>/`, an output's path, and a string's padding after it.
+    - Each section's move comes from the headers, and every difference must be an address that moved with its
+      section. That covers PC-relative instructions (branches, `adr`, and `adrp` with the `add`, `ldr` or `str` that
+      uses its page: the last `adrp` to that register, else one in the same function by `.eh_frame`'s ranges), symbols,
+      relocations, `.dynamic`, version records, GOT and pointer words, `.eh_frame` and `.eh_frame_hdr`'s encoded
+      pointers, and the headers' layout. Everything else is compared byte for byte, the date rules aside.
+    - The instructions are decoded in Python, not by the output's objdump as first proposed, so the self-test runs in
+      CI.
+    - On M3's 34 differing files it accepts the 31 shifted ones, and still reports `sqlite3`, `libsqlite3` and
+      `libopenal`. In seven of the real pairs, 300 random bit flips and the targeted changes were all reported.
+    - 20 self-test cases on a synthetic ELF, 54 checks in all. The rule is about 650 lines, more than the 300
+      estimated.
 
 ## Progress
 
@@ -587,6 +652,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. The image comparison | done | Build speed: a comparison of two builds' images and update packages |
 | 2. The dependency audit | done | Build speed: an audit of the libraries packages link against what they declare |
-| 3. Packages built in parallel, in per-package directories | todo | |
+| 3. Packages built in parallel, in per-package directories | done | Build speed: packages built in parallel, in per-package directories |
 | 4. banana-ui compiled one file per call | todo | |
 | 5. Final check | todo | |

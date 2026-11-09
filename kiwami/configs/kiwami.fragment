@@ -21,3 +21,8 @@ BR2_PACKAGE_OVERRIDE_FILE="$(BR2_EXTERNAL_KIWAMI_PATH)/local.mk"
 # Over-the-air updates off: upstream's releases would replace the fork (kiwami/rootfs/usr/libexec/kiwami/ota-off says
 # so on Settings > System > Update); the fork's update packages go on the card
 BR2_PACKAGE_KIWAMI_OTA_OFF=y
+
+# Packages built in parallel: each in its own copy of what it depends on (per-package/ in the output), so packages
+# that don't depend on each other build at once. The top Makefile's board rule runs kiwami/build.sh, which adds the
+# -j. KIWAMI_SERIAL=1, given when an output is configured, leaves this out, and the output builds as upstream's.
+BR2_PER_PACKAGE_DIRECTORIES=y

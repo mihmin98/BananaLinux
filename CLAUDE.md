@@ -111,6 +111,7 @@ make -C system/bananad CFLAGS="-O2 -Werror"          # bananad + banana-panel-tu
 sudo system/bananad/tests/sleep-test.sh              # bananad's sleep against a fake /sys in private namespaces
 
 make rgds | rgds-plus | universal                    # full SD image via Buildroot 2026.02.3 (cloned into .buildroot/; 1h+)
+                                                     # packages in parallel; KIWAMI_SERIAL=1 on a fresh output builds as upstream
 make <target>-rgds                                   # any Buildroot target per board, e.g. linux-menuconfig-rgds, banana-ui-rebuild-rgds
 tools/qemu-boot.sh output/rgds/images/banana-rgds.img.gz [--interactive]   # boot the whole image in QEMU
 kiwami/tests/image-compare.sh <old> <new>            # two builds' image and update package by contents, known noise excused (outputs or saved folders)

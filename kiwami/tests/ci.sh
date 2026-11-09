@@ -37,6 +37,10 @@ ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.
 PYTHONPYCACHEPREFIX="$T" python3 -m py_compile kiwami/tests/ra-server.py
 rm -rf "$T"
 
+# the comparison of two builds' images (kiwami/tests/image-compare.sh), its rules on made-up data: each kind of noise
+# excused, each planted difference reported
+python3 -I kiwami/tests/image-compare.py --self-test
+
 # RomM's game list in banana-sync: 200 a page and its progress, each game kept small, against a large made-up library
 kiwami/tests/romm-list.sh
 

@@ -74,11 +74,12 @@ per-package directories only.
 - **A2**: given a new-way build and a `KIWAMI_SERIAL=1` (today's way) build of the same commit, both built in
   `output/cmp/rgds-plus` (one of them saved with `--save` before the other replaced it), when `kiwami/tests/image-compare.sh` compares them, then it exits 0. Its report holds only the
   known noise, each class with the files it excused:
-  - build dates (the kernel, U-Boot, BusyBox, RetroArch, VICE);
+  - build dates (the kernel, U-Boot, BusyBox, RetroArch, VICE, libpython, OpenSSL, PCSX-ReARMed);
   - random IDs (GPT GUIDs and CRCs, the FAT's volume ID);
-  - times (squashfs, FAT, tar);
+  - times (squashfs, FAT, tar, the `.pyc` files' source mtimes, the kernel's initramfs);
   - build paths (Python's configuration, libstdc++'s gdb helper, `__FILE__` strings);
-  - Buildroot's bookkeeping files.
+  - Buildroot's bookkeeping files;
+  - derived (U-Boot's hashes, the kernel's build ID, the squashfs's size).
 - **A3**: given a cache warmed by a build of the same commit, the wall time of a fresh `rgds-plus` build the new way is
   lower than today's way. Both are recorded.
 - **A4**: given an empty throwaway ccache (`BR2_CCACHE_DIR`), the same holds for a cold build. Both are recorded, and
@@ -469,7 +470,7 @@ each), and `output/cmp-ccache` (1-2 GB) during the cold runs.
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus (build machine) | Step 1, before its commit. Today's way, warm (before step 3, plain `make` is today's way): `time make OUT=$PWD/output/cmp rgds-plus`; `kiwami/tests/image-compare.sh --save output/cmp/rgds-plus output/cmp-saved/base`; `rm -rf output/cmp/rgds-plus`; `time make OUT=$PWD/output/cmp rgds-plus` again. Then `kiwami/tests/image-compare.sh output/cmp-saved/base output/cmp/rgds-plus` and `kiwami/tests/image-compare.sh output/cmp-saved/base output/rgds-plus`. The second build stays for M2. | Both build. The first comparison exits 0 with only the known noise; the second fails, listing Poketool (`usr/share/banana/apps/bank/`), `PortMaster.zip` and `usr/libexec/kiwami/romm*` (and warns that the paths differ in length). The second build's time is today's warm time. | both `time` outputs, both `build-time.log`, both reports | A2 (its baseline), A3 (today's), A11 | not run |
+| M1 | rgds-plus (build machine) | Step 1, before its commit. Today's way, warm (before step 3, plain `make` is today's way): `time make OUT=$PWD/output/cmp rgds-plus`; `kiwami/tests/image-compare.sh --save output/cmp/rgds-plus output/cmp-saved/base`; `rm -rf output/cmp/rgds-plus`; `time make OUT=$PWD/output/cmp rgds-plus` again. Then `kiwami/tests/image-compare.sh output/cmp-saved/base output/cmp/rgds-plus` and `kiwami/tests/image-compare.sh output/cmp-saved/base output/rgds-plus`. The second build stays for M2. | Both build. The first comparison exits 0 with only the known noise; the second fails, listing Poketool (`usr/share/banana/apps/bank/`), `PortMaster.zip` and `usr/libexec/kiwami/romm*` (and warns that the paths differ in length). The second build's time is today's warm time. | both `time` outputs, both `build-time.log`, both reports | A2 (its baseline), A3 (today's), A11 | passed |
 | M2 | rgds-plus (build machine) | Step 2, before its commit. `python3 -I kiwami/tests/deps-audit.py output/cmp/rgds-plus` (M1's second build) | Reports `libretro-mupen64plus-next`: `libEGL.so.1`, `libGLESv2.so.2` from `mesa3d-panfrost`; `drastic` allowed; the overlap list short (a fresh output). Any other report goes into step 3. | the report | A9 | not run |
 | M3 | rgds-plus (build machine) | Step 3, before its commit. `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus` (the first parallel build: per-package paths, so cold for ccache). A package that fails for a missing dependency: its fix goes in `kiwami/external.mk`'s block, then `make OUT=$PWD/output/cmp rgds-plus` again. Then `python3 -I kiwami/tests/deps-audit.py output/cmp/rgds-plus`, `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`, and `make rgds-plus` on today's `output/rgds-plus`. The build stays for M4. | `build.sh`'s line says per-package directories and `--output-sync=target`; the build completes; the audit reports nothing; the comparison exits 0 (build paths list Python's configuration and libstdc++'s gdb helper); `make rgds-plus` stops with `make clean-rgds-plus` | `time`, `build-time.log`, the terminal around any failure, the audit, the report, the stop's message | A1, A2, A6, A9 | not run |
 | M4 | rgds-plus (build machine) | Step 4, before its commit. `kiwami/tests/ui-objects.sh output/cmp/rgds-plus` (M3's build). Then `rm -rf output/cmp/rgds-plus && time make OUT=$PWD/output/cmp rgds-plus`; `ls output/cmp/rgds-plus/build/banana-ui-local/src/kiwami/obj`; `image-compare.sh output/cmp-saved/base output/cmp/rgds-plus`. | identity on the target toolchain; the build completes with banana-ui's objects; the comparison exits 0 | `ui-objects.sh`'s output, `time`, `build-time.log` (banana-ui's build step), the report | A1, A2, A7 | not run |
@@ -481,9 +482,67 @@ each), and `output/cmp-ccache` (1-2 GB) during the cold runs.
 
 Notes from the runs (what the logs showed, what was fixed):
 
+- **M1** (2026-11-09; 0.5.3, from `6831924f` and step 1's files, which don't reach the image; `make -j16`, your
+  alias, run by Claude):
+  - **Builds**: both completed, the first in 1141 s, the second in 957 s. 957 s (16.0 min) is today's warm time
+    for A3. The first build re-filled the cache's entries for the new output path.
+  - **The baseline comparison** first failed on three files, all noise the masks lacked:
+    - `libcrypto.so.3`: OpenSSL's `built on: Mon Nov  9 10:41:15 2026 UTC`, asctime's format;
+    - `pcsx_rearmed_libretro.so`: `build time: Nov  9 2026 12:53:54\n`, `__DATE__` and `__TIME__` in one string;
+    - the kernel (`a/Image` and the update's `Image`): its GNU build ID note (20 bytes at 0x10e2f24), and the mtimes in
+      its built-in initramfs's cpio headers (`070701...`, 0x11cf3df on).
+
+    With those four masks (*Deviations*), it exits 0 with only the noise A2 lists: build dates in U-Boot, the kernel,
+    BusyBox, libcrypto, libpython, PCSX and VICE; 575 `.pyc` source times and 3317 file times; the shaders'
+    bookkeeping files. RetroArch's `__DATE__` is the same, because both builds ran the same day. No build paths:
+    both builds were made in one path.
+  - **Against today's incremental `output/rgds-plus`** it exits 1 (A11) and warns that the paths differ in length.
+    It lists, only in the incremental output:
+    - Poketool's `usr/share/banana/apps/bank/` (2797 entries under it);
+    - `usr/share/banana/portmaster/PortMaster.zip`;
+    - `usr/libexec/kiwami/romm` and `romm-game`.
+
+    It also lists the differences an incremental output gathers: older packages, the shaders' modes, `bananads` and
+    `sqlite3` with the hint, and 80 libraries whose RPATH Buildroot blanked to X's of the path's length (a hint added
+    for them). One of these is a real difference: Python's `HAVE_BLUETOOTH_BLUETOOTH_H` is 0 there, because Python
+    was built before bluez in that output. Buildroot declares that dependency (`bluez5_utils-headers`,
+    `python3.mk:266`), so per-package directories keep it.
+  - The second build stays in `output/cmp/rgds-plus` for M2. `base` is saved in `output/cmp-saved/base`. The reports
+    are in `output/m1-compare.txt` and `output/m1-compare-incremental.txt`, the step times in
+    `output/m1-build-time-{1,2}.log`.
+
 ## Deviations
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
+
+- **2026-11-09, step 1: the comparison's rules, refined while writing it against today's outputs.** Agreed with you
+  before going on.
+  - **The squashfs listing's sizes aren't compared on their own.** A build path's length changes a text file's size
+    (Python's configuration holds `per-package/python3/host/` under per-package directories). The content rules decide,
+    and they accept a length change only from build paths.
+  - **`unsquashfs -s`'s `Filesystem size` line is ignored**, like its time line, and listed under a sixth class,
+    *derived*. It changes whenever an excused file compresses to another size, and the files are compared one by one.
+    *Derived* also holds U-Boot's loader header and FIT hashes (the plan's "digests"): all are of contents compared on
+    their own.
+  - **A `.pyc`'s code objects are compared field by field, not re-marshalled.** marshal's output depends on how objects
+    are shared, and normalising changes that. Line and column positions are left out when a build path changed: a
+    longer path moves the columns after it, and pprint wraps `_sysconfigdata`'s long values differently. When no path
+    changed, positions that differ are a difference (the source moved).
+  - **The investigation was wrong about `.pyc` files.** Buildroot's are timestamp-based (flags 0), and the header holds
+    the source's mtime, which differs between builds: 575 files between `output/rgds` and `output/rgds-plus`. Those
+    mtimes are excused under *times*, on one counted line. A header that differs otherwise (the source's size or hash)
+    is a difference unless a build path changed the code too. Self-test cases were added for both, and for U-Boot's date
+    format, `__TIME__`, a date outside an ELF file (a difference) and the loader header: 27 checks in all.
+- **2026-11-09, step 1: four masks M1's baseline pair showed missing** (the plan's provision for them). Two of today's
+  builds also differ in:
+  - OpenSSL's asctime date and PCSX's `__DATE__ __TIME__` string, both now build dates;
+  - the kernel's GNU build ID (`--build-id`, a hash of what it links), now derived;
+  - its built-in initramfs's cpio mtimes, now times.
+
+  The build ID and cpio masks cover only their own bytes: the 20-byte SHA-1 after a `GNU` note header, and the mtime
+  field of a `070701` header. They apply where dates do (ELF files, the kernel, U-Boot). Each has self-test cases,
+  one excused and one a difference: 34 checks in all. The length hint also names a path Buildroot blanked to X's (an
+  RPATH).
 
 ## Progress
 
@@ -491,7 +550,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. The image comparison | todo | |
+| 1. The image comparison | done | Build speed: a comparison of two builds' images and update packages |
 | 2. The dependency audit | todo | |
 | 3. Packages built in parallel, in per-package directories | todo | |
 | 4. banana-ui compiled one file per call | todo | |

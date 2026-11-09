@@ -5,6 +5,7 @@
 # Each file is compiled to <file>.kiwami.o with the C++ compiler's driver as C: Buildroot passes only CXX to banana-ui's
 # build (buildroot/package/banana-ui/banana-ui.mk), and builds with make -B, so objects left by a host build in its
 # copy are built again for the target, never linked. The objects go into SRC and are linked by the Makefile's own rule.
+# Below them, banana-ui's own C++ sources are compiled here too, one file per call (KIWAMI_SERIAL=1: as upstream).
 #   make kiwami-c      the objects alone (kiwami/tests/ci.sh links its unit test with them)
 KIWAMI_TP = src/kiwami/third_party
 KIWAMI_C = $(addprefix $(KIWAMI_TP)/rcheevos/src/,rc_compat.c rc_util.c rhash/cdreader.c rhash/hash.c rhash/hash_disc.c \
@@ -27,8 +28,39 @@ KIWAMI_CFLAGS = $(filter-out -std=% -W%,$(CXXFLAGS)) -std=gnu11 -w -I$(KIWAMI_TP
 
 SRC += $(KIWAMI_O)
 
+# banana-ui's own sources compiled one file per call, into src/kiwami/obj/ (each keeps its path: src/json.cpp and
+# src/kiwami/json.cpp share a name), in parallel and each one kept by ccache; the Makefile's own rule then links the
+# objects in SRC's order, the vendored libraries' among them where they were, and makes the binary its one g++ call
+# makes, byte for byte (kiwami/tests/ui-objects.sh checks it). Each is compiled with that rule's command, -c and the
+# header dependencies (-MMD -MP) added; g++ compiles a .c in it as C++, as the one call does. UI_FLAGS is defined
+# after this file, so only recipes use it. An object is compiled again when its source, a header it includes or the
+# command changes (src/kiwami/obj/flags, rewritten only then). Without a -j, make is given one job per CPU.
+# KIWAMI_SERIAL=1 leaves it all out: the one call, as upstream builds it (in the image, an output configured with it).
+KIWAMI_OBJ = src/kiwami/obj
+ifneq ($(KIWAMI_SERIAL),1)
+KIWAMI_UI_SRC := $(filter %.cpp %.c,$(SRC))
+SRC := $(foreach s,$(SRC),$(if $(filter %.cpp %.c,$(s)),$(KIWAMI_OBJ)/$(s).o,$(s)))
+KIWAMI_UI_CC = $(CXX) $(CXXFLAGS) $(UI_FLAGS) $(LDFLAGS)
+
+$(KIWAMI_OBJ)/%.cpp.o: %.cpp $(KIWAMI_OBJ)/flags
+	@mkdir -p $(@D)
+	$(KIWAMI_UI_CC) -MMD -MP -c -o $@ $<
+$(KIWAMI_OBJ)/%.c.o: %.c $(KIWAMI_OBJ)/flags
+	@mkdir -p $(@D)
+	$(KIWAMI_UI_CC) -MMD -MP -c -o $@ $<
+$(KIWAMI_OBJ)/flags: FORCE
+	@mkdir -p $(@D); echo '$(subst ','\'',$(KIWAMI_UI_CC))' | cmp -s - $@ || echo '$(subst ','\'',$(KIWAMI_UI_CC))' > $@
+-include $(KIWAMI_UI_SRC:%=$(KIWAMI_OBJ)/%.d)
+
+ifeq ($(filter -j% --jobserver%,$(MAKEFLAGS)),)
+MAKEFLAGS += -j$(shell nproc)
+endif
+endif
+
 kiwami-c: $(KIWAMI_O)
 kiwami-clean:
 	rm -f $(KIWAMI_O)
+	rm -rf $(KIWAMI_OBJ)
 clean: kiwami-clean
-.PHONY: kiwami-c kiwami-clean
+FORCE:
+.PHONY: kiwami-c kiwami-clean FORCE

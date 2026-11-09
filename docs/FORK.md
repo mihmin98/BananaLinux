@@ -54,7 +54,7 @@ The rule: a new file of the fork's own wherever the build allows one; an upstrea
 | Files in the image | `kiwami/rootfs/`, a second rootfs overlay (copied after upstream's, so it can also replace an upstream file) |
 | Additions to upstream's files in the image (`systems.conf`, the theme's `systems.cfg`) | `kiwami/post-build.sh`, appending or inserting into the copy in `$TARGET_DIR`, rather than a whole replacement in the overlay |
 | Boot and network services | hook folders that run every file in them: `/etc/banana/sleep.d/` (around a suspend), `/usr/share/udhcpc/default.script.d/` (on an address from DHCP) |
-| banana-ui | `ui/src/kiwami/` (inside `ui/`: the package builds only that folder): its own theme behind `banana::Menu`, its own settings rows, its own handlers for the host's events. C libraries it vendors go unchanged in `ui/src/kiwami/third_party/<library>/`, each with the `SHA256SUMS` of its pinned version's files (checked by `kiwami/tests/ci.sh`) and a `VENDORED` note, and are built by `ui/src/kiwami/kiwami.mk` (the `ui/Makefile`'s third `kiwami:` line) |
+| banana-ui | `ui/src/kiwami/` (inside `ui/`: the package builds only that folder): its own theme behind `banana::Menu`, its own settings rows, its own handlers for the host's events. C libraries it vendors go unchanged in `ui/src/kiwami/third_party/<library>/`, each with the `SHA256SUMS` of its pinned version's files (checked by `kiwami/tests/ci.sh`) and a `VENDORED` note, and are built by `ui/src/kiwami/kiwami.mk` (the `ui/Makefile`'s third `kiwami:` line), which also compiles banana-ui's own sources one file per call (*How the build takes in the fork*) |
 | Tests of the fork's features | `kiwami/tests/` (a one-line `kiwami:` hook if `make test` has to run them) |
 | A feature's investigation and plan | `.workspace/<NNNN>-<name>/` |
 | The skills of the feature workflow and of taking in upstream | `.claude/skills/banana-*/` |
@@ -101,6 +101,16 @@ when the output holds a build made the other way. An output configured with it i
 to the fragment or `configure.sh` configures it again, and without the switch `build.sh` then stops. Switching is a
 fresh output, and its first build misses ccache everywhere (the compilers' sysroot, part of each object's key, moves
 under `per-package/`), so it costs a cold build once.
+
+**banana-ui from objects.** Upstream's rule builds banana-ui in one `g++` call, all of its sources at once on one
+core. `ui/src/kiwami/kiwami.mk` turns its `SRC` into objects in `ui/src/kiwami/obj/` instead, each compiled with the
+rule's own command, `-c` and the header dependencies added, in parallel (make is given `-j$(nproc)` when it has no
+`-j`), and kept by ccache one by one. Upstream's rule then links them in its order. The binary is byte for byte the
+one call's, unstripped and stripped: `kiwami/tests/ui-objects.sh` checks it with the host's `g++` in `ci.sh`, and
+with an output's target toolchain when given one (`kiwami/tests/ui-objects.sh output/rgds-plus`). On the host, a
+change compiles again only the objects it touches. `KIWAMI_SERIAL=1` builds the one call (`make KIWAMI_SERIAL=1 ui`).
+In an image, banana-ui follows the output's mode: `kiwami/external.mk` gives its build `KIWAMI_SERIAL=1` in an output
+configured without per-package directories.
 
 **Fresh builds.** An image for the handheld comes from a fresh output: `make clean-<board>`, then `make <board>`, as
 two commands (with a `-j`, `make clean-<board> <board>` would run both at once). An incremental build keeps the files
@@ -204,7 +214,7 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
        system/rootfs/usr/libexec/banana/run-retroarch system/rootfs/usr/libexec/banana/run-bananafront \
        system/rootfs/etc/banana/retroarch.cfg \
        system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
-       buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update
+       buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update ui/Makefile
    ```
    (the systems list, whose N64 `ext` line `kiwami/post-build.sh` adds `7z` to (upstream lists it on the other six
    cartridge systems; the build stops if N64's line is gone; a new cartridge system without it may want it too), the defconfigs the fork adds to, the share script
@@ -253,7 +263,11 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    `status()` in `ui/src/sync.cpp` hands each line it writes to `synctimes::seen()`, which starts a phase on each new
    title, and the steps that write no status of their own get a `tick()` line at the top of their loops (`want`,
    `gone`, the gamelists, RomM's and Romhost's saves listing). A title upstream rewords, or a new step that writes no
-   status, shows in `kiwami/tests/sync-times.sh`'s phase lists, which then need the new name.
+   status, shows in `kiwami/tests/sync-times.sh`'s phase lists, which then need the new name. And banana-ui's rule in
+   `ui/Makefile`: `kiwami.mk` compiles its `SRC` one file per call with the rule's command, so a change to that command
+   (a flag, a variable, how it reads `SRC`) is followed in `kiwami.mk`'s object rules. `kiwami/tests/ui-objects.sh`
+   (in `ci.sh`) fails when the two no longer make the same binary. A source upstream adds to `SRC` is compiled as an
+   object with no change; one added after `kiwami.mk`'s include line stays in the link's own call.
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

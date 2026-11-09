@@ -26,6 +26,13 @@ $(OPENAL_TARGET_CONFIGURE): | dbus
 endif
 endif
 
+# banana-ui's own sources are compiled one file per call (ui/src/kiwami/kiwami.mk); in an output without per-package
+# directories its build gets KIWAMI_SERIAL=1, so the image's banana-ui is built as upstream builds it, in one call.
+# (Buildroot clears the command line's variables, so the output's mode decides, not the command line.)
+ifneq ($(BR2_PER_PACKAGE_DIRECTORIES),y)
+$(BANANA_UI_TARGET_BUILD): private export KIWAMI_SERIAL = 1
+endif
+
 # RetroArch's master (local.mk pins it): the fork's patches instead of upstream's, which are for v1.22.2 (only for
 # its patch step: private, so packages built before it keep theirs), the fork's hash file (both tarballs and
 # COPYING), its credentials file unsealed (ra-keychain folds it back into retroarch.cfg), and its own commit in

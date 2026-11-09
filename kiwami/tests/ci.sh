@@ -37,6 +37,18 @@ ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.
 PYTHONPYCACHEPREFIX="$T" python3 -m py_compile kiwami/tests/ra-server.py
 rm -rf "$T"
 
+# banana-ui compiled one file per call (ui/src/kiwami/kiwami.mk) is byte for byte upstream's one g++ call, with the
+# host's g++, and a change rebuilds what it should; when banana-ui's libraries are there, as make ui needs (the
+# compilers' warnings, upstream's code's, shown only on a failure)
+if pkg-config --exists freetype2 libdrm zlib; then
+    T=$(mktemp -d)
+    kiwami/tests/ui-objects.sh > "$T/log" 2>&1 || { tail -n 40 "$T/log" >&2; exit 1; }
+    grep '^ui-objects' "$T/log"
+    rm -rf "$T"
+else
+    echo "ui-objects: skipped, no freetype2, libdrm or zlib (pkg-config)"
+fi
+
 # the comparison of two builds' images (kiwami/tests/image-compare.sh), its rules on made-up data: each kind of noise
 # excused, each planted difference reported
 python3 -I kiwami/tests/image-compare.py --self-test

@@ -26,6 +26,12 @@ $(OPENAL_TARGET_CONFIGURE): | dbus
 endif
 endif
 
+# Buildroot's host-zstd builds its zstd program with .lz4 support when the build machine has liblz4 (its Makefile
+# compiles a test against the host's lz4frame.h). lz4 1.11 removed the old contentChecksum_t that zstd 1.5.7's
+# programs/fileio.c still uses, so on a machine with lz4 1.11 every fresh build stopped in host-zstd. Nothing in the
+# build reads .lz4 with the host's zstd: without it, host-zstd is the same on every machine. In both build modes.
+HOST_ZSTD_OPTS += HAVE_LZ4=0
+
 # banana-ui's own sources are compiled one file per call (ui/src/kiwami/kiwami.mk); in an output without per-package
 # directories its build gets KIWAMI_SERIAL=1, so the image's banana-ui is built as upstream builds it, in one call.
 # (Buildroot clears the command line's variables, so the output's mode decides, not the command line.)

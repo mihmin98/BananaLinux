@@ -44,7 +44,7 @@ guard() {
     done
     echo "$keys" | wc -l
 }
-sed '/std::string cover = it->str("path_cover_large");/a std::string ext = it->str("fs_extension");' ui/src/sync.cpp > "$T/sync-more.cpp"
+sed '/std::string cover = .*it->str("path_cover_large");/a std::string ext = it->str("fs_extension");' ui/src/sync.cpp > "$T/sync-more.cpp"
 grep -q 'fs_extension' "$T/sync-more.cpp" || fail "the guard's self-test: no line to add a key after in ui/src/sync.cpp"
 [ "$(guard "$T/sync-more.cpp")" = 'Romm::manifest() reads "fs_extension", which syncmem.h drops' ] ||
     fail "the guard missed a key Romm::manifest() reads and syncmem.h drops"

@@ -3,6 +3,9 @@
 /ui/banana-ui
 /ui/banana-bshare
 /ui/banana-fetch
+# kiwami: upstream's scraper and Home server sync, which make -C ui builds, aren't in its list yet
+/ui/banana-scrape
+/ui/banana-sync
 /ui/tests/servers/share/
 /ui/tests/servers/tls/
 /ui/tests/out/

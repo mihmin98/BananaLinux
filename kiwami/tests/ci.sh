@@ -35,8 +35,9 @@ ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.
 "$T/units" kiwami/tests/tailscale kiwami/tests/ra
 # the Game Boy Pokémon companion's (ui/src/kiwami/gbpk/, GPL-3.0: kiwami/GB-POKEMON.md), its own binary: which game a
 # ROM is (the made-up ones in kiwami/tests/gbpk/made-up/, plain and in archives), its data files and the list of ROMs
-# its ROM tests expect (kiwami/tests/gbpk/roms.sha1), its text, its memory reader replayed over PokeDaisy's captures
-# (kiwami/tests/gbpk/fixtures/), and Gen I's and II's rules through upstream's logic and its hooks
+# its ROM tests expect (kiwami/tests/gbpk/roms.sha1), its text, its ROM reader on a made-up ROM, its memory reader
+# replayed over PokeDaisy's captures (kiwami/tests/gbpk/fixtures/), and Gen I's and II's rules through upstream's logic
+# and its hooks
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/gbpk-units" kiwami/tests/gbpk-units.cpp ui/src/kiwami/gbpk/*.cpp \
     ui/src/kiwami/json.cpp ui/src/kiwami/ra7z.cpp ui/src/zip.cpp ui/src/zipdir.cpp ui/src/nds/nitro.cpp ui/src/nds/model.cpp \
     ui/src/nds/logic.cpp ui/src/pokemon.cpp ui/src/pokemap.cpp $(find ui/src/kiwami/third_party/lzma -name '*.kiwami.o') -lz -lpthread
@@ -93,8 +94,8 @@ for f in sys.argv[1:]:
 print('gb-pokemon: %d data files checked' % (len(sys.argv) - 1))
 EOF
 
-# ... and the check of the player's ROMs for its ROM tests (kiwami/tests/gbpk-roms.sh; skipped without ~/gb-companion/
-# roms, as here), then on made-up folders: none is skipped; an empty one fails naming the six required files; a file
+# ... and the check of the player's ROMs, then the ROM reader on them (kiwami/tests/gbpk-roms.sh; skipped without
+# ~/gb-companion/roms, as here), then the check on made-up folders: none is skipped; an empty one fails naming the six required files; a file
 # with a listed name and other bytes is a wrong file, and six of them can't pass; and, with a made-up list, a file
 # found by its SHA-1 under its name or another, an optional one missing, an unlisted file named, the GBA folder's
 # files looked for without failing the check

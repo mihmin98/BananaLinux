@@ -253,14 +253,166 @@
       "sha1": "49b163f7e57702bc939d642a18f591de55d92dae"
     }
   ],
-  "rom": {},
+  "rom": {
+    "baseData": {
+      "addr": "0x5B0B",
+      "bank": 20,
+      "src": "pokedaisy pret (BaseData)"
+    },
+    "dexEntryFirst": {
+      "addr": "0x4000",
+      "bank": 104,
+      "src": "pret (BulbasaurPokedexEntry)"
+    },
+    "dexEntryPointers": {
+      "addr": "0x4360",
+      "bank": 17,
+      "src": "pokedaisy pret (PokedexDataPointerTable)"
+    },
+    "evosAttacksPointers": {
+      "addr": "0x67BD",
+      "bank": 16,
+      "src": "pret (EvosAttacksPointers)"
+    },
+    "fishGroups": {
+      "addr": "0x69F7",
+      "bank": 36,
+      "src": "pret (FishGroups)"
+    },
+    "grassProbs": {
+      "addr": "0x6727",
+      "bank": 10,
+      "src": "pret (GrassMonProbTable)"
+    },
+    "itemAttributes": {
+      "addr": "0x6866",
+      "bank": 1,
+      "src": "pret (ItemAttributes)"
+    },
+    "itemDescriptions": {
+      "addr": "0x4000",
+      "bank": 110,
+      "src": "pokedaisy pret (ItemDescriptions)"
+    },
+    "itemNames": {
+      "addr": "0x4000",
+      "bank": 108,
+      "src": "pret (ItemNames)"
+    },
+    "johtoGrass": {
+      "addr": "0x6B35",
+      "bank": 10,
+      "src": "pret (JohtoGrassWildMons)"
+    },
+    "johtoWater": {
+      "addr": "0x7669",
+      "bank": 10,
+      "src": "pret (JohtoWaterWildMons)"
+    },
+    "kantoGrass": {
+      "addr": "0x77C0",
+      "bank": 10,
+      "src": "pret (KantoGrassWildMons)"
+    },
+    "kantoWater": {
+      "addr": "0x7D43",
+      "bank": 10,
+      "src": "pret (KantoWaterWildMons)"
+    },
+    "landmarks": {
+      "addr": "0x6382",
+      "bank": 36,
+      "src": "pret (Landmarks)"
+    },
+    "mapGroups": {
+      "addr": "0x40ED",
+      "bank": 37,
+      "src": "pret (MapGroupPointers)"
+    },
+    "mapHeadersEnd": {
+      "addr": "0x4E11",
+      "bank": 37,
+      "src": "pret (NewBarkTown_MapAttributes)"
+    },
+    "moveDescriptions": {
+      "addr": "0x4000",
+      "bank": 109,
+      "src": "pokedaisy pret (MoveDescriptions)"
+    },
+    "moveEffectPriorities": {
+      "addr": "0x4597",
+      "bank": 15,
+      "src": "pret (MoveEffectPriorities)"
+    },
+    "moveNames": {
+      "addr": "0x5574",
+      "bank": 108,
+      "src": "pret (MoveNames)"
+    },
+    "moves": {
+      "addr": "0x5AFE",
+      "bank": 16,
+      "src": "pret (Moves)"
+    },
+    "pokemonNames": {
+      "addr": "0x4B74",
+      "bank": 108,
+      "src": "pret (PokemonNames)"
+    },
+    "rockMonMaps": {
+      "addr": "0x644D",
+      "bank": 46,
+      "src": "pret (RockMonMaps)"
+    },
+    "timeFishGroups": {
+      "addr": "0x6BDE",
+      "bank": 36,
+      "src": "pret (TimeFishGroups)"
+    },
+    "tmHmMoves": {
+      "addr": "0x5A66",
+      "bank": 4,
+      "src": "pokedaisy pret (TMHMMoves)"
+    },
+    "trainerClassNames": {
+      "addr": "0x4955",
+      "bank": 108,
+      "src": "pret (TrainerClassNames)"
+    },
+    "trainerGroups": {
+      "addr": "0x593E",
+      "bank": 14,
+      "src": "pret (TrainerGroups)"
+    },
+    "treeMonMaps": {
+      "addr": "0x63E6",
+      "bank": 46,
+      "src": "pret (TreeMonMaps)"
+    },
+    "treeMons": {
+      "addr": "0x6470",
+      "bank": 46,
+      "src": "pret (TreeMons)"
+    },
+    "waterProbs": {
+      "addr": "0x6735",
+      "bank": 10,
+      "src": "pret (WaterMonProbTable)"
+    }
+  },
   "schema": 1,
   "sizes": {
     "ballsMax": 12,
     "eventFlagBytes": 256,
+    "firstTm": 191,
     "itemsMax": 20,
     "keyItemsMax": 25,
-    "speciesCount": 251
+    "numLandmarks": 95,
+    "numMoves": 251,
+    "numPokemon": 251,
+    "numTrainerClasses": 66,
+    "speciesCount": 251,
+    "vitalThrow": 233
   },
   "title": "Silver"
 }

@@ -9,8 +9,10 @@
 # is compared with that game's ROM when both are there: the same size, and every byte that differs inside the patch's
 # ranges, or the check fails. Then the Game Boy Advance and DS games are looked for the same way in GBA_ROMS (default
 # ~/gba-companion/roms, .gba) and NDS_ROMS (default ~/nds-companion/roms, .nds), none of them failing it.
+# Then the companion's ROM reader reads each listed release there and checks what it read (gbpk-roms.cpp).
 # Run by kiwami/tests/ci.sh, or by hand:
-#   kiwami/tests/gbpk-roms.sh      (GBPK_ROMS_LIST: another list, and its .patches, for ci.sh's made-up folders)
+#   kiwami/tests/gbpk-roms.sh [<pokedaisy checkout>]   (GBPK_ROMS_LIST: another list, and its .patches, for ci.sh's
+#                                                      made-up folders)
 set -e
 cd "$(dirname "$0")/../.."
 LIST=${GBPK_ROMS_LIST:-$PWD/kiwami/tests/gbpk/roms.sha1}
@@ -120,3 +122,11 @@ if [ "$nok" != 0 ]; then
     echo "gbpk-roms: FAIL $nok required files missing or wrong, or hacks not their patch, in $GB (${LIST#"$PWD"/} lists them)" >&2
     exit 1
 fi
+
+# the ROM reader on them (gbpk-roms.cpp), with the host's g++ and the vendored LZMA SDK as ci.sh builds them; with a
+# PokeDaisy checkout as the argument, every species' gender ratio and growth rate against its tables too
+make -s -C ui kiwami-c
+${CXX:-g++} -std=c++17 -O2 -Wall -Werror -I ui/src -o "$T/gbpk-roms" kiwami/tests/gbpk-roms.cpp ui/src/kiwami/gbpk/*.cpp \
+    ui/src/kiwami/json.cpp ui/src/kiwami/ra7z.cpp ui/src/zip.cpp ui/src/zipdir.cpp ui/src/nds/nitro.cpp ui/src/nds/model.cpp \
+    ui/src/nds/logic.cpp ui/src/pokemon.cpp ui/src/pokemap.cpp $(find ui/src/kiwami/third_party/lzma -name '*.kiwami.o') -lz -lpthread
+"$T/gbpk-roms" kiwami/rootfs/usr/share/banana/companions/gb-pokemon "$LIST" "$GB" ${1:+"$1"}

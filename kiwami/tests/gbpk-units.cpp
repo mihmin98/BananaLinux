@@ -1,7 +1,8 @@
 // The Game Boy Pokémon companion's code that needs no screen (ui/src/kiwami/gbpk/), checked on its own: which game a
-// ROM is, its data files and the list of ROMs its ROM tests expect (kiwami/tests/gbpk/roms.sha1), its text, and its
-// memory reader replayed over PokeDaisy's RAM captures (kiwami/tests/gbpk/fixtures/). Built and run by
-// kiwami/tests/ci.sh with the host's g++ (the vendored C first, make -C ui kiwami-c, for the 7z reader):
+// ROM is, its data files and the list of ROMs its ROM tests expect (kiwami/tests/gbpk/roms.sha1), its text, its ROM
+// reader on a made-up ROM, and its memory reader replayed over PokeDaisy's RAM captures (kiwami/tests/gbpk/fixtures/).
+// Built and run by kiwami/tests/ci.sh with the host's g++ (the vendored C first, make -C ui kiwami-c, for the 7z
+// reader):
 //   g++ -std=c++17 -Wall -Werror -I ui/src kiwami/tests/gbpk-units.cpp ui/src/kiwami/gbpk/*.cpp ui/src/kiwami/json.cpp
 //       ui/src/kiwami/ra7z.cpp ui/src/zip.cpp ui/src/zipdir.cpp ui/src/nds/nitro.cpp ui/src/nds/model.cpp
 //       ui/src/nds/logic.cpp ui/src/pokemon.cpp ui/src/pokemap.cpp ui/src/kiwami/third_party/lzma/*.kiwami.o -lz -lpthread
@@ -13,9 +14,11 @@
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "kiwami/gbpk/games.h"
 #include "kiwami/gbpk/reader.h"
+#include "kiwami/gbpk/rom.h"
 #include "kiwami/gbpk/rules.h"
 #include "kiwami/gbpk/text.h"
 #include "nds/logic.h"
+#include "nds/rom.h"
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -169,6 +172,18 @@ static void testText()
 	EQ(nameCase("HI JUMP KICK"), "Hi Jump Kick");
 	EQ(nameCase("NIDORAN♀"), "Nidoran♀");
 	EQ(nameCase("PORYGON2"), "Porygon2");
+	// what stays as it is: HP, PP, PKMN, GS and a TM with its number
+	EQ(nameCase("HP UP"), "HP Up");
+	EQ(nameCase("PP MAX"), "PP Max");
+	EQ(nameCase("GS BALL"), "GS Ball");
+	EQ(nameCase("PKMN TRAINER"), "PKMN Trainer");
+	EQ(nameCase("TM01"), "TM01");
+	EQ(nameCase("S.S.TICKET"), "S.S.Ticket");
+	// a place's breakable spaces (<BSP> 0x1F) and a description's line breaks (<NEXT> 0x4E) are spaces
+	const uint8_t bsp[] = { 0x8D, 0x84, 0x96, 0x1F, 0x81, 0x80, 0x91, 0x8A, 0x1F, 0x93, 0x8E, 0x96, 0x8D, 0x50 };
+	EQ(nameCase(decode(2, bsp, sizeof bsp)), "New Bark Town");
+	const uint8_t next[] = { 0x80, 0x7F, 0x87, 0x88, 0x93, 0x4E, 0x8C, 0x8E, 0x95, 0x84, 0x50 };
+	EQ(decode(2, next, sizeof next), "A HIT MOVE");
 }
 
 // the list of ROMs the ROM tests expect (kiwami/tests/gbpk/roms.sha1, checked in the player's folders by gbpk-roms.sh)
@@ -264,6 +279,243 @@ static void testRomList()
 		}
 	}
 	CHECK(games == 3 && released == 5);
+}
+
+// ---- the ROM reader on a made-up ROM ----------------------------------------------------------------------------
+
+// a made-up Gen II ROM, 64 KB, laid out by a made-up data file (every table in bank 1, 4000-7FFF): two species, three
+// moves, three items, one map group of two maps with wild Pokémon in the first (grass, water, three rods, a tree and a
+// rock), one trainer class with two trainers. The layouts are pret's (rom2.cpp names each).
+struct MadeUpRom
+{
+	std::vector<uint8_t> b = std::vector<uint8_t>(0x10000, 0);
+	uint16_t next = 0x4000;
+	GameData d;
+	uint16_t put(const std::vector<int>& v)
+	{
+		uint16_t a = next;
+		for (int x : v) b[next++] = (uint8_t)x;
+		return a;
+	}
+	void key(const char* k, uint16_t a) { d.rom[k] = Addr{ 1, a }; }
+	// capitals, digits, spaces and . - as the games write them, '|' a line break (<NEXT>), '_' a breakable space
+	// (<BSP>), then the terminator
+	static std::vector<int> str(const char* t)
+	{
+		std::vector<int> v;
+		for (const char* c = t; *c; c++)
+			v.push_back(*c >= 'A' && *c <= 'Z' ? 0x80 + *c - 'A' : *c >= '0' && *c <= '9' ? 0xF6 + *c - '0' : *c == ' ' ? 0x7F :
+				*c == '.' ? 0xE8 : *c == '-' ? 0xE3 : *c == '|' ? 0x4E : *c == '_' ? 0x1F : 0x7F);
+		v.push_back(0x50);
+		return v;
+	}
+	static std::vector<int> words(const std::vector<int>& ws)
+	{
+		std::vector<int> v;
+		for (int w : ws) { v.push_back(w & 0xFF); v.push_back(w >> 8); }
+		return v;
+	}
+	static std::vector<int> cat(std::vector<int> a, const std::vector<int>& c) { a.insert(a.end(), c.begin(), c.end()); return a; }
+};
+
+static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool notBulbasaur = false)
+{
+	MadeUpRom m;
+	using R = MadeUpRom;
+	m.d.key = "crystal";
+	m.d.gen = 2;
+	m.d.game.id = CRYSTAL;
+	m.d.game.gen = GEN_II;
+	m.d.game.title = "Made-up";
+	m.d.sizes = { { "numPokemon", 2 }, { "numMoves", 3 }, { "numTrainerClasses", 1 }, { "numLandmarks", 2 }, { "firstTm", 4 },
+		{ "vitalThrow", 3 } };
+	// base data: species, HP .. Sp. Def, types (Grass 22, Poison 3), catch rate, base exp, items, gender, 3 bytes,
+	// picture size, 4 unused, growth, egg groups, TM/HM bits (TM01, and HM01: bit 50)
+	std::vector<int> b1(32, 0), b2(32, 0);
+	b1 = { 1, notBulbasaur ? 44 : 45, 49, 49, 45, 65, 65, 22, 3, 45, 64, 0, 0, 31, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0x01, 0, 0, 0, 0, 0, 0x04, 0 };
+	b2 = { 2, 60, 62, 63, 60, 80, 80, 22, 22, 45, 141, 0, 0, 31, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	m.key("baseData", m.put(R::cat(b1, b2)));
+	std::vector<int> n1 = R::str("BULBASAUR"), n2 = R::str("IVYSAUR");
+	n1.resize(10, 0x50);
+	n2.resize(10, 0x50);
+	m.key("pokemonNames", m.put(R::cat(n1, n2)));
+	// moves: animation (the id), effect, power, type, accuracy, PP, effect chance; Quick Fire (Fire, 20) with a priority
+	// effect, Vital Throw by its id
+	m.key("moves", m.put({ 1, 0, 40, 0, 255, 35, 0, 2, 0x67, 40, 20, 242, 30, 76, 3, 0x11, 70, 1, 255, 10, 0 }));
+	m.key("moveNames", m.put(R::cat(R::cat(R::str("POUND"), R::str("QUICK FIRE")), R::str("VITAL THROW"))));
+	const int md1 = m.put(R::str("A HIT|THAT POUNDS")), md2 = m.put(R::str("FIRST")), md3 = m.put(R::str("LAST"));
+	m.key("moveDescriptions", m.put(R::words({ md1, md2, md3 })));
+	m.key("moveEffectPriorities", m.put({ 0x67, 2, 0xFF }));
+	// items: names, attributes (price, held effect, parameter, property, pocket: Ball 3, Item 1; menus), descriptions
+	m.key("itemNames", m.put(R::cat(R::cat(R::str("MASTER BALL"), R::str("ULTRA BALL")), R::str("HP UP"))));
+	m.key("itemAttributes", m.put({ 0, 0, 0, 0, 6, 3, 0, 0xB0, 0x04, 0, 0, 6, 3, 0, 0x48, 0x26, 0, 0, 0, 1, 0 }));
+	const int id1 = m.put(R::str("THE BEST")), id2 = m.put(R::str("GOOD")), id3 = m.put(R::str("RAISES HP"));
+	m.key("itemDescriptions", m.put(R::words({ id1, id2, id3 })));
+	// evolutions then learnsets: Bulbasaur at 16 into 2, learns 1 at 1 and 2 at 7; 2 by its stats at 20 into 1
+	const int e1 = m.put({ 1, 16, 2, 0, 1, 1, 7, 2, 0 }), e2 = m.put({ 5, 20, 1, 1, 0, 1, 1, 0 });
+	m.key("evosAttacksPointers", m.put(R::words({ e1, e2 })));
+	// TM01 teaches move 1, HM01 move 2
+	std::vector<int> tm(58, 0);
+	tm[0] = 1;
+	tm[50] = 2;
+	m.key("tmHmMoves", m.put(tm));
+	// the Pokédex: category, height (2'04"), weight (15.0 lb), two pages; the entries' bank counted from bank 1
+	const int x1 = m.put(R::cat(R::cat(R::cat(R::str("SEED"), { 204, 0, 150, 0 }), R::str("A PAGE|ONE")), R::str("TWO")));
+	const int x2 = m.put(R::cat(R::cat(R::cat(R::str("SEED"), { 0x2C, 1, 0x1E, 1 }), R::str("P")), R::str("Q")));
+	m.key("dexEntryPointers", m.put(R::words({ x1, x2 })));
+	m.d.rom["dexEntryFirst"] = Addr{ 1, 0x4000 };
+	// landmarks: x, y, the name's pointer
+	const int l0 = m.put(R::str("SPECIAL")), l1 = m.put(R::str("NEW_BARK_TOWN"));
+	m.key("landmarks", m.put({ 8, 16, l0 & 0xFF, l0 >> 8, 100, 100, l1 & 0xFF, l1 >> 8 }));
+	// one map group, right after its pointer: map 1 at landmark 1 with fishing group 2, map 2 at landmark 0 with the
+	// Shore group and no water (no fishing); the headers end where the next table starts
+	const int mg = m.next;
+	m.key("mapGroups", m.put(R::words({ mg + 2 })));
+	m.put({ 0, 0, 2, 0, 0, 1, 0, 0, 2, 0, 0, 3, 0, 0, 0, 0, 0, 1 });
+	m.key("mapHeadersEnd", m.next);
+	// grass on map 1.1: map, three rates, morning's slots then day's and night's (level 3 + slot); morning's first is
+	// species 1, the rest 2
+	std::vector<int> g = { 1, 1, 10, 10, 10 };
+	for (int t = 0; t < 3; t++) for (int j = 0; j < 7; j++) { g.push_back(3 + j); g.push_back(t == 0 && j == 0 ? 1 : 2); }
+	g.push_back(0xFF);
+	m.key("johtoGrass", m.put(g));
+	m.key("kantoGrass", m.put({ 0xFF }));
+	m.key("grassProbs", m.put({ 30, 0, 60, 2, 80, 4, 90, 6, 95, 8, 99, 10, 100, 12 }));
+	m.key("waterProbs", m.put({ 60, 0, 90, 2, 100, 4 }));
+	m.key("johtoWater", m.put({ 1, 1, 5, 10, 2, 15, 2, 20, 1, 0xFF }));
+	m.key("kantoWater", m.put({ 0xFF }));
+	// fishing groups 1 (Shore) and 2: the old rod species 1 Lv 5 at or under 0x7F, else 2 Lv 10; the good rod by the
+	// time (TimeFishGroups' 0: 1 Lv 20 by day, 2 Lv 25 at night); the super rod 2 Lv 40
+	const int oldRod = m.put({ 0x7F, 1, 5, 0xFF, 2, 10 }), goodRod = m.put({ 0xFF, 0, 0 }), superRod = m.put({ 0xFF, 2, 40 });
+	m.key("fishGroups", m.put(R::cat({ 128 }, R::cat(R::words({ oldRod, oldRod, oldRod }), R::cat({ 128 }, R::words({ oldRod, goodRod, superRod }))))));
+	m.key("timeFishGroups", m.put({ 1, 20, 2, 25 }));
+	// Headbutt (set 1: the common trees' 1 and 2 Lv 10 at 50 % each, the rare trees' 2 Lv 12) and Rock Smash (set 2)
+	const int set1 = m.put({ 50, 1, 10, 50, 2, 10, 0xFF, 100, 2, 12, 0xFF }), set2 = m.put({ 90, 1, 15, 10, 2, 15, 0xFF });
+	m.key("treeMons", m.put(R::words({ set1, set1, set2 })));
+	m.key("treeMonMaps", m.put({ 1, 1, 1, 0xFF }));
+	m.key("rockMonMaps", m.put({ 1, 1, 2, 0xFF }));
+	// trainers: one class, its group right after its pointer: Falkner with items and moves, then Bob with neither
+	m.key("trainerClassNames", m.put(R::str("LEADER")));
+	const int tg = m.next;
+	m.key("trainerGroups", m.put(R::words({ tg + 2 })));
+	m.put(R::cat(R::cat(R::str("FALKNER"), { 3, 7, 1, 0, 1, 2, 0, 0, 9, 2, 2, 3, 0, 0, 0, 0xFF }), R::cat(R::str("BOB"), { 0, 8, 1, 0xFF })));
+	d = m.d;
+	return std::make_shared<std::vector<uint8_t>>(m.b);
+}
+
+static void testRomTables()
+{
+	GameData d;
+	std::string why;
+	auto rom = madeUpRom(d);
+	auto r = readRom(rom, d, &why);
+	CHECK(r);
+	EQ(why, "");
+	if (!r) return;
+	// species
+	CHECK(r->species.size() == 3);
+	const nds::Species& b = r->species[1];
+	EQ(b.name, "Bulbasaur");
+	EQ(r->species[2].name, "Ivysaur");
+	CHECK((b.base[0] == 45 && b.base[1] == 49 && b.base[2] == 49 && b.base[3] == 45 && b.base[4] == 65 && b.base[5] == 65));
+	CHECK(b.types[0] == nds::GRASS && b.types[1] == nds::POISON && b.catchRate == 45 && b.baseExp == 64 && b.genderRatio == 31 &&
+		b.growth == 3 && b.baseFriendship == 70);
+	CHECK((b.tms == std::vector<uint16_t>{ 1, 93 }));
+	EQ(b.category, "Seed");
+	CHECK(b.height == 7 && b.weight == 69);		// 28 in: 0.71 m; 15.0 lb: 75 - 4 - 2 (the game's reckoning)
+	EQ(b.dexText, "A PAGE ONE TWO");
+	CHECK(b.evolutions.size() == 1 && b.evolutions[0].method == nds::evo::LEVEL && b.evolutions[0].param == 16 && b.evolutions[0].into == 2);
+	EQ(b.evolutions.empty() ? "" : b.evolutions[0].how, "Level 16");
+	CHECK(b.learnset.size() == 2 && b.learnset[0].level == 1 && b.learnset[0].move == 1 && b.learnset[1].level == 7 && b.learnset[1].move == 2);
+	const nds::Species& v = r->species[2];
+	CHECK(v.evolutions.size() == 1 && v.evolutions[0].method == nds::evo::LEVEL_ATK_GT_DEF && v.evolutions[0].param == 20 && v.evolutions[0].into == 1);
+	EQ(v.evolutions.empty() ? "" : v.evolutions[0].how, "Level 20 with Attack higher than Defense");
+	CHECK(v.height == 9 && v.weight == 131 && v.types[0] == nds::GRASS && v.types[1] == nds::GRASS);
+	// moves: the category by the type, the priorities (Quick Fire's effect +1, Vital Throw -1), the percents
+	CHECK(r->moves.size() == 4);
+	EQ(r->moves[1].name, "Pound");
+	EQ(r->moves[1].description, "A HIT THAT POUNDS");
+	CHECK(r->moves[1].power == 40 && r->moves[1].pp == 35 && r->moves[1].accuracy == 100 && r->moves[1].type == nds::NORMAL &&
+		r->moves[1].cat == nds::MoveCategory::PHYSICAL && r->moves[1].priority == 0);
+	EQ(r->moves[2].name, "Quick Fire");
+	CHECK(r->moves[2].type == nds::FIRE && r->moves[2].cat == nds::MoveCategory::SPECIAL && (int8_t)r->moves[2].priority == 1 &&
+		r->moves[2].accuracy == 95 && r->moves[2].effectChance == 30);
+	CHECK(r->moves[3].type == nds::FIGHTING && (int8_t)r->moves[3].priority == -1 && r->moves[3].power == 70);
+	// items at their Gen IV ids (Master and Ultra Ball) or GEN2_ONLY + theirs (HP Up), the TMs and HMs as Gen IV's
+	EQ(r->items[1].name, "Master Ball");
+	EQ(r->items[1].description, "THE BEST");
+	CHECK(r->items[1].pocket == nds::POCKET_BALLS && r->items[2].price == 1200);
+	EQ(r->items[GEN2_ONLY + 3].name, "HP Up");
+	CHECK(r->items[GEN2_ONLY + 3].price == 9800 && r->items[GEN2_ONLY + 3].pocket == nds::POCKET_ITEMS);
+	EQ(r->items[328].name, "TM01");
+	EQ(r->items[420].name, "HM01");
+	CHECK(r->tmMoves.size() == 100 && r->tmMoves[0] == 1 && r->tmMoves[92] == 2);
+	// places
+	CHECK((r->locationNames == std::vector<std::string>{ "Special", "New Bark Town" }));
+	CHECK(r->zones.size() == 2 && r->zones.count(0x0101) && r->zones.count(0x0102));
+	const nds::Location& z = r->zones.at(0x0101);
+	EQ(z.name, "New Bark Town");
+	EQ(r->zones.at(0x0102).name, "Special");
+	CHECK(r->zones.at(0x0102).encounters.empty());
+	auto count = [&](nds::EncounterKind k) { int n = 0; for (const auto& e : z.encounters) n += e.kind == k; return n; };
+	auto find = [&](nds::EncounterKind k, int species, nds::TimeOfDay t, int cond = 0) -> const nds::Encounter* {
+		for (const auto& e : z.encounters) if (e.kind == k && e.species == species && e.time == t && e.condition == cond) return &e;
+		return nullptr;
+	};
+	CHECK(count(nds::EncounterKind::GRASS) == 21);
+	const nds::Encounter* e = find(nds::EncounterKind::GRASS, 1, nds::TimeOfDay::MORNING);
+	CHECK(e && e->minLevel == 3 && e->maxLevel == 3 && e->percent == 30);
+	CHECK(!find(nds::EncounterKind::GRASS, 1, nds::TimeOfDay::DAY));
+	int pct = 0;
+	for (const auto& x : z.encounters) if (x.kind == nds::EncounterKind::GRASS && x.time == nds::TimeOfDay::NIGHT) pct += x.percent;
+	CHECK(pct == 100);
+	// water: the slots' percents, levels + 0-4
+	CHECK(count(nds::EncounterKind::SURF) == 3);
+	e = find(nds::EncounterKind::SURF, 1, nds::TimeOfDay::ANY);
+	CHECK(e && e->minLevel == 20 && e->maxLevel == 24 && e->percent == 10);
+	// fishing: the old rod's two halves, the good rod by the time, the super rod
+	e = find(nds::EncounterKind::OLD_ROD, 1, nds::TimeOfDay::ANY);
+	CHECK(e && e->minLevel == 5 && e->percent == 50);
+	e = find(nds::EncounterKind::OLD_ROD, 2, nds::TimeOfDay::ANY);
+	CHECK(e && e->minLevel == 10 && e->percent == 50);
+	CHECK(find(nds::EncounterKind::GOOD_ROD, 1, nds::TimeOfDay::MORNING) && find(nds::EncounterKind::GOOD_ROD, 1, nds::TimeOfDay::DAY));
+	e = find(nds::EncounterKind::GOOD_ROD, 2, nds::TimeOfDay::NIGHT);
+	CHECK(e && e->minLevel == 25 && e->percent == 100 && count(nds::EncounterKind::GOOD_ROD) == 3);
+	e = find(nds::EncounterKind::SUPER_ROD, 2, nds::TimeOfDay::ANY);
+	CHECK(e && e->minLevel == 40);
+	// Headbutt's common and rare trees, Rock Smash
+	CHECK(count(nds::EncounterKind::HEADBUTT) == 3 && find(nds::EncounterKind::HEADBUTT, 1, nds::TimeOfDay::ANY, 0));
+	e = find(nds::EncounterKind::HEADBUTT, 2, nds::TimeOfDay::ANY, 1);
+	CHECK(e && e->minLevel == 12 && e->percent == 100);
+	e = find(nds::EncounterKind::ROCK_SMASH, 1, nds::TimeOfDay::ANY);
+	CHECK(e && e->percent == 90 && e->minLevel == 15 && count(nds::EncounterKind::ROCK_SMASH) == 2);
+	// trainers by class << 8 | number: Falkner's items and moves, Bob's moves from the learnset at his level
+	CHECK(r->trainers.size() == 2 && r->trainers.count(0x0101) && r->trainers.count(0x0102));
+	if (r->trainers.size() == 2)
+	{
+		const nds::Trainer& f = r->trainers.at(0x0101);
+		EQ(f.name, "Falkner");
+		EQ(f.cls, "Leader");
+		CHECK(f.team.size() == 2 && f.team[0].level == 7 && f.team[0].species == 1 && f.team[0].item == 0 && f.team[0].moves[0] == 1 &&
+			f.team[0].moves[1] == 2 && f.team[1].item == 2 && f.team[1].moves[0] == 3);
+		const nds::Trainer& bob = r->trainers.at(0x0102);
+		EQ(bob.name, "Bob");
+		CHECK(bob.team.size() == 1 && bob.team[0].level == 8 && bob.team[0].moves[0] == 1 && bob.team[0].moves[1] == 2 && bob.team[0].moves[2] == 0);
+	}
+	CHECK(!r->sprite(1));
+
+	// refusals: a first species that isn't Bulbasaur, a table the data file doesn't give, no ROM, Generation I
+	rom = madeUpRom(d, true);
+	CHECK(!readRom(rom, d, &why));
+	CHECK(why.find("Bulbasaur") != std::string::npos);
+	rom = madeUpRom(d);
+	d.rom.erase("trainerGroups");
+	CHECK(!readRom(rom, d, &why));
+	CHECK(why.find("rom.trainerGroups") != std::string::npos);
+	CHECK(!readRom(nullptr, d, &why));
+	rom = madeUpRom(d);
+	d.gen = 1;
+	CHECK(!readRom(rom, d, &why));
 }
 
 // ---- the memory reader, over PokeDaisy's captures ----------------------------------------------------------------
@@ -798,6 +1050,7 @@ int main(int argc, char** argv)
 	testRomFile();
 	testText();
 	testRomList();
+	testRomTables();
 	testCaptures();
 	testReaderRules();
 	testRules();

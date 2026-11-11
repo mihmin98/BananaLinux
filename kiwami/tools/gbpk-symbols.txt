@@ -76,3 +76,46 @@ crystal,gold,silver ram.otherTrainerID wOtherTrainerID
 
 # The event flags' count (a bit each at wEventFlags)
 crystal,gold,silver const.numEvents constants/event_flags.asm NUM_EVENTS
+
+# Gen II's ROM tables (ui/src/kiwami/gbpk/rom2.cpp reads them; their layouts are named there). PokeDaisy's Gen2Dex.kt
+# gives some of them too (GEN2_DEX_CRYSTAL, GEN2_DEX_GOLD_SILVER): pret's value must agree with it
+crystal,gold,silver rom.baseData BaseData
+crystal,gold,silver rom.pokemonNames PokemonNames
+crystal,gold,silver rom.moves Moves
+crystal,gold,silver rom.moveNames MoveNames
+crystal,gold,silver rom.moveDescriptions MoveDescriptions
+crystal,gold,silver rom.moveEffectPriorities MoveEffectPriorities
+crystal,gold,silver rom.itemNames ItemNames
+crystal,gold,silver rom.itemAttributes ItemAttributes
+crystal,gold,silver rom.itemDescriptions ItemDescriptions
+crystal,gold,silver rom.evosAttacksPointers EvosAttacksPointers
+crystal,gold,silver rom.tmHmMoves TMHMMoves
+crystal,gold,silver rom.dexEntryPointers PokedexDataPointerTable
+# (Crystal looks a Pokédex entry's bank up in a table, a bank for each 64 species; Gold and Silver count from the
+# first entry's bank)
+crystal rom.dexEntryBanks GetDexEntryPointer.PokedexEntryBanks
+gold,silver rom.dexEntryFirst BulbasaurPokedexEntry
+crystal,gold,silver rom.johtoGrass JohtoGrassWildMons
+crystal,gold,silver rom.johtoWater JohtoWaterWildMons
+crystal,gold,silver rom.kantoGrass KantoGrassWildMons
+crystal,gold,silver rom.kantoWater KantoWaterWildMons
+crystal,gold,silver rom.grassProbs GrassMonProbTable
+crystal,gold,silver rom.waterProbs WaterMonProbTable
+crystal,gold,silver rom.fishGroups FishGroups
+crystal,gold,silver rom.timeFishGroups TimeFishGroups
+crystal,gold,silver rom.treeMonMaps TreeMonMaps
+crystal,gold,silver rom.rockMonMaps RockMonMaps
+crystal,gold,silver rom.treeMons TreeMons
+crystal,gold,silver rom.trainerGroups TrainerGroups
+crystal,gold,silver rom.trainerClassNames TrainerClassNames
+crystal,gold,silver rom.landmarks Landmarks
+crystal,gold,silver rom.mapGroups MapGroupPointers
+# (the first map's attributes follow the last map group's headers: where that group ends)
+crystal,gold,silver rom.mapHeadersEnd NewBarkTown_MapAttributes
+
+# Gen II's counts and the one move its priority names
+crystal,gold,silver const.numPokemon constants/pokemon_constants.asm NUM_POKEMON
+crystal,gold,silver const.numMoves constants/move_constants.asm NUM_ATTACKS
+crystal,gold,silver const.vitalThrow constants/move_constants.asm VITAL_THROW
+crystal,gold,silver const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINER_CLASSES
+crystal,gold,silver const.numLandmarks constants/landmark_constants.asm NUM_LANDMARKS

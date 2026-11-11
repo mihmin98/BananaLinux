@@ -10,11 +10,12 @@
 
 namespace banana::kiwami::gbpk
 {
-	// max bytes at most, up to the terminator (0x50), as UTF-8; bytes with no character (the text's commands, the
-	// Japanese) are left out. gen: 1 or 2
+	// max bytes at most, up to the terminator (0x50), as UTF-8; the line breaks and breakable spaces as a space, bytes
+	// with no character (the text's other commands, the Japanese) left out. gen: 1 or 2
 	std::string decode(int gen, const uint8_t* p, size_t max);
 	// a name the games write in capitals as the pages write names: each word's first letter kept, the rest lower
 	// case ("CHIKORITA" to "Chikorita", "DOUBLE-EDGE" to "Double-Edge", "MR.MIME" to "Mr.Mime", "FARFETCH'D" to
-	// "Farfetch'd"): for species and move names
+	// "Farfetch'd"), with HP, PP, PKMN, GS, PC, TV and "TM01" kept ("HP UP" to "HP Up"): for the names of species,
+	// moves, items, places and trainers
 	std::string nameCase(const std::string& s);
 }

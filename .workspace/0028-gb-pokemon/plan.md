@@ -1091,6 +1091,29 @@ Where the implementation turned out different from this plan, why, and what chan
   patch is only that against the retail ROM; step 12 adds their SHA-1s to `red` and `blue`'s releases through a new
   `hack` line type in `gbpk-symbols.txt`, outside step 1's rule that a game's releases are PokeDaisy's and pret's
   set; step 13's ROM tests run on them as Red and Blue. A3 counts eleven files, A4, M7 and M8 name them.
+- **2026-11-11, step 6: what the ROM reader does beyond the plan** (agreed with the user).
+  - `text.cpp` changes here, not first in step 12: the line breaks (`<NEXT>`, `<LINE>`, `<PARA>`, `<CONT>`) and the
+    breakable spaces of place names (`<BSP>`, `<LF>`) decode as spaces, and `nameCase` keeps HP, PP, PKMN, GS, PC, TV
+    and a TM or HM with its number, as upstream's `gba::nameCase` does ("New Bark Town", "HP Up").
+  - `reader.cpp` and `items.inc` change: the Gen II item and type conversions move to `rom.h`/`rom.cpp`
+    (`gen2Item`, `gen2Type`), shared by the two readers.
+  - The moves' and items' descriptions are read too (upstream's pages show them).
+  - Fishing is listed only where there's water: the games give every map without water the first fishing group,
+    Shore (Pokémon Centers, towers, gates), so a Shore map fishes only when it has a water table. Crystal's maps
+    with wild Pokémon go from 387 to 117.
+  - From the games' code: water levels span the slot's + 0-4 (`ChooseWildEncounter`), the weight is converted as the
+    Heavy Ball reckons it (0.453 kg a pound), the priorities come from `MoveEffectPriorities` with Vital Throw's -1.
+  - The swarm tables aren't read (the user's choice): the normal tables only.
+  - pret-extract's evaluator can't read the files with the layouts' constants (they need `assert` lines and
+    constants from other files), so the fixed ones (record sizes, the evolution kinds, the trainers' party types,
+    the base priority) are constants in `rom2.cpp`, each naming its pret file; the counts that differ between games
+    (species, moves, trainer classes, landmarks, Vital Throw's id) come from pret's constants into `sizes`, with
+    PokeDaisy's `firstTm`. New `rom` keys: `mapHeadersEnd` (the first map's attributes, where the last map group
+    ends), `dexEntryBanks` (Crystal's table) and `dexEntryFirst` (Gold and Silver's first Pokédex bank, checked against
+    PokeDaisy's `dexEntryFirstBank`).
+  - `gbpk-roms.sh` takes the PokeDaisy checkout as its argument and passes it on, and `gbpk-roms` checks more than
+    planned: priorities, TM and HM moves, item names and prices, Chikorita's evolution and Pokédex entry, fishing at
+    New Bark Town and not on Route 29, every place with wild Pokémon named.
 
 ## Progress
 
@@ -1104,7 +1127,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 4. Gen I's and Gen II's rules, in the logic | done | `GB Pokémon companion: Gen I's type chart and both generations' damage, speed and catch rules` |
 | 5. The ROMs for the ROM tests: the list, the folder and its check | done | `GB Pokémon companion: the list of ROMs its ROM tests expect, by SHA-1, and the check of the folder` |
 | 5a. Fast Red and Fast Blue in the ROM list, and the check of their patch | done | `GB Pokémon companion: Fast Red and Fast Blue in the ROM list, checked to patch nothing it reads` |
-| 6. Gen II's ROM: the tables | todo | |
+| 6. Gen II's ROM: the tables | done | `GB Pokémon companion: Gold, Silver and Crystal's species, moves, items, encounters and trainers from the ROM` |
 | 7. Gen II's ROM: the sprites and the Pokégear's maps | todo | |
 | 8. The companion on the game panel, with its Settings rows | todo | |
 | 9. Gen-aware pages | todo | |

@@ -169,6 +169,52 @@ for Generations III to V. For Gen I and II, four hook lines in `ui/src/nds/logic
 `kiwami/tests/gbpk-units.cpp` checks each rule through upstream's own entry points (`effectiveness`, `damage`,
 `effectiveSpeed`, `catchChance`), with the expected values worked by hand from pret's code in its comments.
 
+## Reading the ROM
+
+What the pages show of the games themselves (names, base stats, moves, items, learnsets, evolutions, the Pokédex,
+wild Pokémon, trainers, place names) is read from the player's own ROM when the game starts, by
+`ui/src/kiwami/gbpk/rom.cpp` and, for Gold, Silver and Crystal, `rom2.cpp`, into upstream's `nds::RomData` in the DS
+companion's conventions, as upstream's `ui/src/gba/gen3rom.cpp` does for the GBA games. It takes under a millisecond
+on a PC. Where each table is comes from the data file's `rom` section; its layout is pret's, named where it is read.
+
+- **Each table is checked as it is read**: every base data record names its own species and the first is Bulbasaur's,
+  every move record its own move and the first is Pound's, the lists end where pret's do, the map groups' headers are
+  whole, and a pointer that leaves its bank stops the read. A ROM that fails gives no tables and says which.
+- **Species**: name, types, base stats (Gen II's Sp. Atk and Sp. Def their own), catch rate, base experience, gender
+  ratio, growth (the same ids as upstream's later games), base friendship (70, the games' `BASE_HAPPINESS`), the TMs
+  and HMs it learns (HM01-07 as 93-99), the evolutions (in upstream's `nds::evo` numbering with upstream's words:
+  level, stone, trade with or without an item, friendship any time, by day or at night, Attack against Defense), the
+  moves learned by level, and the Pokédex entry: category, height (feet and inches to 0.1 m) and weight (0.1 lb to
+  0.1 kg the way the game reckons it for the Heavy Ball, the pounds halved less a 16th and a 32nd of that: 0.453 a
+  pound where the true factor is 0.4536, so the pages show what the game works with), and both pages of text.
+- **Moves**: name, type, power, accuracy and effect chance (the games' 0-255 as a percent), PP, the description, the
+  category by the type (Normal to Steel physical, Fire to Dark special), and the priority from the game's own table
+  (`MoveEffectPriorities`: Protect, Detect and Endure +2, Quick Attack, Mach Punch and ExtremeSpeed +1, Roar,
+  Whirlwind, Counter and Mirror Coat -1) and Vital Throw's -1, kept as upstream does (signed, 0 the normal).
+- **Items** below TM01: name, price, pocket and description, at the Gen IV id `items.inc` gives or 1000 + the Gen II
+  id; the TMs and HMs as Gen IV numbers them (TM01 328, HM01 420), each teaching the move `TMHMMoves` names.
+- **Places**: each map of each group (`MapGroupPointers`; the last group ends where the first map's attributes start)
+  by map group << 8 | number, named by its landmark, with its wild Pokémon:
+  - grass by morning, day and night, each slot with its chance from the game's `GrassMonProbTable`;
+  - water, whose level the game raises by 0-4 at random (`ChooseWildEncounter`), so a slot spans five levels;
+  - the old, good and super rods by the map's fishing group, each entry's chance from the table's cumulative bytes as
+    the game rolls them, and the time-dependent ones as their day species by morning and day and their night species
+    at night. The games give every map with no water the first group (Shore), so a Shore map fishes only when it has
+    water to surf: Crystal's 388 maps have 117 with wild Pokémon, none of them a building, a tower or a gate;
+  - Headbutt's common and rare trees, and Rock Smash, from `TreeMonMaps` and `RockMonMaps`.
+  The swarms (Dunsparce, Yanma, Qwilfish, Remoraid), which replace a map's tables while a swarm is on, aren't listed.
+- **Trainers** by class << 8 | number, the key the battle's trainer has in memory: the class's name, the trainer's,
+  and the team with its items and moves where the party has them, else the four moves the game gives (the last four
+  learned by the Pokémon's level).
+
+Names are written as the pages write them ("CHIKORITA" to "Chikorita", "HP UP" to "HP Up", "NEW BARK TOWN" to "New
+Bark Town"); the descriptions and the Pokédex's text as the games write them, their line breaks as spaces. The
+sprites and the Pokégear's maps come with the next step.
+
+`kiwami/tests/gbpk-units.cpp` reads a made-up 64 KB ROM with every table and checks each field read back, and that a
+ROM whose first species isn't Bulbasaur or a data file without a table gives none. `kiwami/tests/gbpk-roms.sh` reads
+the player's own ROMs (*The ROMs for the tests*).
+
 ## The data files
 
 `/usr/share/banana/companions/gb-pokemon/<game>.ram.json` (`crystal`, `gold`, `silver`; Red, Blue and Yellow from
@@ -179,16 +225,24 @@ step 12), JSON with sorted keys:
   "header_title": "PM_CRYSTAL",
   "releases": [ { "sha1": "f2f52230...", "name": "USA, Europe (Rev 1)", "code": "BYTE" } ],
   "ram": { "partyCount": { "bank": 1, "addr": "0xDCD7", "src": "pokedaisy pret (wPartyCount)" } },
-  "sizes": { "itemsMax": 20, "ballsMax": 12, "keyItemsMax": 25, "speciesCount": 251, "eventFlagBytes": 256 },
-  "flags": [], "rom": {} }
+  "sizes": { "itemsMax": 20, "ballsMax": 12, "keyItemsMax": 25, "speciesCount": 251, "eventFlagBytes": 256,
+             "numPokemon": 251, "numMoves": 251, "firstTm": 191 },
+  "flags": [],
+  "rom": { "baseData": { "bank": 20, "addr": "0x5424", "src": "pokedaisy pret (BaseData)" } } }
 ```
 
 - `header_title` is the ROM header's title (0x134), the same for a game's releases; `code` is a release's game code
   (0x13F), which only the Game Boy Color games have (Crystal's Australian release has its own, `BYTU`).
 - A `ram` address's `bank` is 0 for C000-CFFF and HRAM, 1 for the D000 bank the cores map there, and from 2 up
   another WRAM bank, read at `0x10000 + (bank - 2) * 0x1000 + (addr - 0xD000)` through `READ_CORE_MEMORY`.
-- `sizes` are counts: the pockets' capacities, the species, the bytes of event flags (pret's `NUM_EVENTS` / 8).
-- `flags` (the flag banks the guides read) and `rom` (the ROM tables' offsets) are filled by later steps.
+- `sizes` are counts and ids: the pockets' capacities, the species, the bytes of event flags (pret's `NUM_EVENTS` /
+  8), the species, moves, trainer classes and landmarks (pret's constants), Vital Throw's move id, and TM01's item id
+  (PokeDaisy's `firstTm`).
+- `rom` is where each ROM table is: its bank and its address in the bank's window (bank 0 at 0000-3FFF, the others at
+  4000-7FFF), from pret's symbols, and where PokeDaisy's `Gen2Dex.kt` gives the same table, checked equal to its
+  value (`src` says which). Crystal looks a Pokédex entry's bank up in a table (`dexEntryBanks`); Gold and Silver
+  count it from the first entry's (`dexEntryFirst`, checked against PokeDaisy's `dexEntryFirstBank`).
+- `flags` (the flag banks the guides read) is filled by a later step.
 
 ## The ROMs for the tests
 
@@ -235,10 +289,10 @@ comparison of upstream's guides with PokeDaisy's tables; nothing reads them yet.
 revision of Ruby, Sapphire, FireRed and LeafGreen follows the order of pret's `roms.sha1` and is to be confirmed on the
 files themselves. PokeDaisy has no Diamond or Pearl; its non-English releases and the ROM hacks are left out.
 
-The folders are checked with:
+The folders are checked, and the ROM reader run on the releases there, with:
 
 ```sh
-kiwami/tests/gbpk-roms.sh          # GB_ROMS, GBA_ROMS, NDS_ROMS to look elsewhere
+kiwami/tests/gbpk-roms.sh [<pokedaisy checkout>]    # GB_ROMS, GBA_ROMS, NDS_ROMS to look elsewhere
 ```
 
 It prints a line for each listed file: `ok`, `ok (named <its name>)`, `missing`, or `wrong file: sha1 <...>` for a file
@@ -248,3 +302,11 @@ hack that differs outside its patch, fails it; the optional files missing and th
 never do. Without
 `GB_ROMS`' folder it says it's skipped and succeeds, as in CI, where `kiwami/tests/ci.sh` runs it (and checks it on
 made-up folders).
+
+Then it builds `kiwami/tests/gbpk-roms.cpp` and reads each release there through the companion's ROM reader, logging
+each file and how long the read took. For Gold, Silver and Crystal it checks that all 251 species and moves are
+named; Chikorita's base stats, types, evolution, first move, Pokédex category, height and weight; the priorities of
+Quick Attack, Vital Throw and Protect; TM01 and HM01's moves; item names and prices; Route 29's morning grass with
+Pidgey and Sentret; fishing at New Bark Town and none on Route 29; Falkner's Pidgey Lv 7 and Pidgeotto Lv 9; every
+place with wild Pokémon named. Given PokeDaisy's checkout, every species' gender ratio and growth rate is compared with
+its `Gen2SpeciesCrystal.kt`.

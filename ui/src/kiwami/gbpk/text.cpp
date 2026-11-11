@@ -23,11 +23,13 @@ namespace banana::kiwami::gbpk
 			"¥", "×", ".", "/", ",", "♀", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",				// 0xF0
 		};
 		// below 0x80, the few a name or a ROM's text holds: "#" (0x54) is POKé, the quotation marks, the dots, the
-		// space; the rest are the text's commands or Japanese
+		// space; the line and page breaks of a description or a Pokédex page (<NEXT>, <LINE>, <PARA>, <CONT>) and the
+		// breakable spaces of a place's name (<BSP>, <LF>) as a space; the rest are the text's commands or Japanese
 		const char* low(uint8_t b)
 		{
 			switch (b)
 			{
+			case 0x1F: case 0x22: case 0x4E: case 0x4F: case 0x51: case 0x55: return " ";
 			case 0x4A: return "PKMN";
 			case 0x54: return "POKé";
 			case 0x56: return "……";
@@ -51,13 +53,23 @@ namespace banana::kiwami::gbpk
 
 	std::string nameCase(const std::string& s)
 	{
-		std::string out = s;
-		bool start = true;
-		for (char& c : out)
+		// each word's first letter kept and the rest lower case; a word starts after a space, '-' or '.'. HP, PP, PKMN,
+		// GS, PC, TV and a TM or HM with its number stay as they are (upstream's gba::nameCase keeps the same)
+		static const char* const KEEP[] = { "HP", "PP", "PKMN", "GS", "PC", "TV" };
+		std::string o = s;
+		size_t i = 0;
+		while (i < o.size())
 		{
-			if (c >= 'A' && c <= 'Z' && !start) c = (char)(c - 'A' + 'a');
-			start = c == ' ' || c == '-' || c == '.';
+			size_t j = i;
+			while (j < o.size() && o[j] != ' ' && o[j] != '-' && o[j] != '.') j++;
+			const std::string w = o.substr(i, j - i);
+			bool keep = (w.size() > 2 && (w.compare(0, 2, "TM") == 0 || w.compare(0, 2, "HM") == 0) && w[2] >= '0' && w[2] <= '9');
+			for (const char* k : KEEP) keep = keep || w == k;
+			if (!keep)
+				for (size_t k = i + 1; k < j; k++)
+					if (o[k] >= 'A' && o[k] <= 'Z') o[k] = (char)(o[k] - 'A' + 'a');
+			i = j + 1;
 		}
-		return out;
+		return o;
 	}
 }

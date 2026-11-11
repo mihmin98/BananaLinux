@@ -5,6 +5,7 @@
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "reader.h"
+#include "rom.h"
 #include "text.h"
 #include "../../pokemon.h"
 #include <algorithm>
@@ -17,25 +18,9 @@ namespace banana::kiwami::gbpk
 		const int PARTY = 6, MON = 48, BOX_MON = 32, BATTLE_MON = 32, NAME = 11, TMS_HMS = 57;
 		const uint8_t EGG = 0xFD, END = 0xFF;
 
-		// Gen II's item ids to Gen IV's (items.inc); 1000 + the id for the rest
-		const struct { uint8_t gen2; uint16_t gen4; } ITEMS[] = {
-#include "items.inc"
-		};
-		uint16_t item(uint8_t id)
-		{
-			if (!id) return 0;
-			for (const auto& e : ITEMS) if (e.gen2 == id) return e.gen4;
-			return 1000 + id;
-		}
-		// Gen II's types (pret's constants/type_constants.asm: Normal .. Rock 0-5, Bug, Ghost, Steel 7-9, Fire .. Dark
-		// 20-27) in nds::Type's order
-		nds::Type type(uint8_t t)
-		{
-			if (t <= 5) return (nds::Type)t;
-			if (t >= 7 && t <= 9) return (nds::Type)(t - 1);
-			if (t >= 20 && t <= 27) return (nds::Type)(t - 20 + nds::FIRE);
-			return nds::NO_TYPE;
-		}
+		// Gen II's item ids and types in the pages' conventions (rom.h, shared with the ROM reader)
+		uint16_t item(uint8_t id) { return gen2Item(id); }
+		nds::Type type(uint8_t t) { return gen2Type(t); }
 		uint16_t be16(const uint8_t* p) { return (uint16_t)(p[0] << 8 | p[1]); }
 
 		// the memory a set's read reaches: reads in the same one are merged when they are close (the same WRAM bank,

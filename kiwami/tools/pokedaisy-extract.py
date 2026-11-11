@@ -9,9 +9,10 @@
 #   pokedaisy-extract.py --check                               without the checkout: the files against SOURCES' hashes
 #
 # A checkout at another commit than PIN is refused unless --any-commit is given. PokeDaisy's hand-written configs
-# (Gen2Config(...) with named arguments, wramx(bank, addr), .copy(...) of another config) are read by a small
-# evaluator: a field it can't read is listed under "unread:" and fails the run; the fields that are the games' own
-# tables (SKIP) are left out by name. A value both sources give must agree. Python 3, standard library only.
+# (Gen2Config(...) with named arguments, wramx(bank, addr), .copy(...) of another config; Gen2DexTables(...) with
+# bank to address pairs) are read by a small evaluator: a field it can't read is listed under "unread:" and fails the
+# run; the fields that are the games' own tables (SKIP, DEX_SKIP) are left out by name. A value both sources give must
+# agree. Python 3, standard library only.
 import importlib.util
 import json
 import os
@@ -23,6 +24,7 @@ from typing import NoReturn
 PIN = '135ac809a597230c1fe3ad6359ae0fe81e233583'      # 1.5.0.1
 DATA = 'app/src/main/kotlin/com/pokedaisy/app/companion/data'
 GEN2 = DATA + '/Gen2Reader.kt'
+GEN2_DEX = DATA + '/Gen2Dex.kt'
 CRYSTAL_GUIDE = DATA + '/GuideCrystalGen.kt'
 TITLES = 'app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt'
 
@@ -36,11 +38,12 @@ REPO, SOURCES, EXTRA = pe.REPO, pe.SOURCES, pe.OUT
 FOLDER = os.path.dirname(SOURCES)
 SECTION = 'pokedaisy'
 
-# The games: their key, generation, title, PokeDaisy's config and the title GameTitles.kt gives their releases
+# The games: their key, generation, title, PokeDaisy's config, its ROM tables' config (Gen2Dex.kt) and the title
+# GameTitles.kt gives their releases
 GAMES = [
-    ('crystal', 2, 'Crystal', 'GEN2_CRYSTAL', 'Pokémon Crystal'),
-    ('gold', 2, 'Gold', 'GEN2_GOLD', 'Pokémon Gold'),
-    ('silver', 2, 'Silver', 'GEN2_SILVER', 'Pokémon Silver'),
+    ('crystal', 2, 'Crystal', 'GEN2_CRYSTAL', 'GEN2_DEX_CRYSTAL', 'Pokémon Crystal'),
+    ('gold', 2, 'Gold', 'GEN2_GOLD', 'GEN2_DEX_GOLD_SILVER', 'Pokémon Gold'),
+    ('silver', 2, 'Silver', 'GEN2_SILVER', 'GEN2_DEX_GOLD_SILVER', 'Pokémon Silver'),
 ]
 
 # Gen2Config's fields that are the games' own tables, or PokeDaisy's features outside the companion: left out
@@ -53,6 +56,24 @@ SKIP = {
     'growthRates': 'a table of the game\'s, read from the ROM instead',
     'cursorTile': 'a tile id for PokeDaisy\'s battle buttons, not used',
 }
+
+# Gen2DexTables' fields: the ROM tables the data files' rom section takes (by its key), the numbers its sizes take,
+# and what is left out (the sprites' come with them, later; the rest are PokeDaisy's own or the games' tables)
+DEX_ROM = {'baseData': 'baseData', 'dexEntryPointers': 'dexEntryPointers', 'dexEntryBanks': 'dexEntryBanks',
+           'itemDescriptions': 'itemDescriptions', 'tmHmMoves': 'tmHmMoves', 'moveDescriptions': 'moveDescriptions'}
+DEX_SIZES = {'firstTm': 'firstTm'}
+DEX_SKIP = {
+    'picPointers': 'the sprites\' tables, read with them', 'unownPicPointers': 'the sprites\' tables, read with them',
+    'picsBanks': 'the sprites\' tables, read with them', 'palettes': 'the sprites\' tables, read with them',
+    'picBankFixes': 'the sprites\' tables, read with them',
+    'tmItems': 'a table of the game\'s (the TM items\' ids)',
+    'dexEntryFirstBank': 'checked against pret\'s rom.dexEntryFirst instead',
+    'textDict': 'a ROM hack\'s', 'packed': 'a ROM hack\'s', 'dexOrder': 'a ROM hack\'s', 'baseDataSize': 'a ROM hack\'s',
+    'picBankDirect': 'a ROM hack\'s', 'unown': 'the sprites\'', 'lastItem': 'firstTm - 1 in the retail games',
+    'dexEntryFar': 'a ROM hack\'s', 'polished': 'a ROM hack\'s',
+}
+# (Gold's and Silver's dexEntryBanks is PokeDaisy's placeholder: their entries' bank is counted from the first's)
+DEX_UNUSED = {('GEN2_DEX_GOLD_SILVER', 'dexEntryBanks')}
 
 # GuideCrystalGen.kt's RAM constants (WRAM bank 1), by the data file's key
 CRYSTAL_GUIDE_RAM = {'CR_EVENT_FLAGS': 'eventFlags', 'CR_TIME_OF_DAY': 'timeOfDay', 'CR_BADGES': 'johtoBadges',
@@ -229,6 +250,23 @@ def config_values(name, fields, configs):
     return ram, sizes, unread
 
 
+def read_dex(src, name):
+    """A Gen2DexTables config's fields: name -> (bank, address) for a pair, an int, or the text it couldn't read."""
+    s = strip_comments(src)
+    m = re.search(r'\bval\s+%s\s*=\s*Gen2DexTables\(' % name, s)
+    if not m:
+        fail('no %s = Gen2DexTables(...) in %s' % (name, GEN2_DEX))
+    out = {}
+    for a in split_args(s[m.end():closing(s, m.end() - 1)]):
+        am = re.fullmatch(r'(\w+)\s*=\s*(.+)', a, re.S)
+        if not am:
+            fail('%s: an argument it can\'t read: %s' % (name, a))
+        v = am.group(2).strip()
+        pm = re.fullmatch(r'(0x[0-9A-Fa-f]+|\d+)\s+to\s+(0x[0-9A-Fa-f]+|\d+)', v)
+        out[am.group(1)] = (int(pm.group(1), 0), int(pm.group(2), 0)) if pm else evaluate(v) if evaluate(v) is not None else v
+    return out
+
+
 def guide_consts(src):
     return {m.group(1): int(m.group(2), 0)
             for m in re.finditer(r'const val (\w+)\s*=\s*(0x[0-9A-Fa-f]+|\d+)\b', strip_comments(src))}
@@ -257,15 +295,27 @@ def build(checkout):
         return data.decode('utf-8')
 
     fields, configs = read_configs(read(GEN2))
+    dex_src = read(GEN2_DEX)
     guide = guide_consts(read(CRYSTAL_GUIDE))
     titles = retail_sha1s(read(TITLES))
     extra_text = open(os.path.join(REPO, EXTRA), encoding='utf-8').read()
     inputs[EXTRA] = pe.sha256(extra_text.encode('utf-8'))
     extra = json.loads(extra_text)
     files, unread = {}, []
-    for key, gen, title, cfg, pd_title in GAMES:
+    for key, gen, title, cfg, dex_cfg, pd_title in GAMES:
         ram, sizes, u = config_values(cfg, fields, configs)
         unread += u
+        rom, rom_src = {}, {}
+        dex = read_dex(dex_src, dex_cfg)
+        for k, v in dex.items():
+            if (dex_cfg, k) in DEX_UNUSED or k in DEX_SKIP:
+                continue
+            if k in DEX_ROM and isinstance(v, tuple):
+                rom[DEX_ROM[k]], rom_src[DEX_ROM[k]] = v, 'pokedaisy'
+            elif k in DEX_SIZES and isinstance(v, int) and not isinstance(v, bool):
+                sizes[DEX_SIZES[k]] = v
+            else:
+                unread.append('%s.%s = %s' % (dex_cfg, k, v))
         src = {k: 'pokedaisy' for k in ram}
         if key == 'crystal':
             for c, k in CRYSTAL_GUIDE_RAM.items():
@@ -291,6 +341,19 @@ def build(checkout):
                      (key, k, ram[k][0], ram[k][1], v['symbol'], pv[0], pv[1]))
             src[k] = 'pokedaisy pret (%s)' % v['symbol'] if k in ram else 'pret (%s)' % v['symbol']
             ram[k] = pv
+        for k, v in g.get('rom', {}).items():
+            pv = (v['bank'], int(v['addr'], 16))
+            if k in rom and rom[k] != pv:
+                fail('%s rom.%s: PokeDaisy says %02X:%04X, pret\'s %s %02X:%04X' %
+                     (key, k, rom[k][0], rom[k][1], v['symbol'], pv[0], pv[1]))
+            rom_src[k] = 'pokedaisy pret (%s)' % v['symbol'] if k in rom else 'pret (%s)' % v['symbol']
+            rom[k] = pv
+        if 'dexEntryFirst' in rom and dex.get('dexEntryFirstBank') != rom['dexEntryFirst'][0]:
+            fail('%s: PokeDaisy\'s dexEntryFirstBank %s isn\'t pret\'s first Pokédex entry\'s bank %02X' %
+                 (key, dex.get('dexEntryFirstBank'), rom['dexEntryFirst'][0]))
+        for k, v in g.get('const', {}).items():
+            if k != 'numEvents':
+                sizes[k] = v['value']
         if 'numEvents' in g.get('const', {}):
             n = g['const']['numEvents']['value']
             if n % 8:
@@ -308,8 +371,7 @@ def build(checkout):
             'header_title': g['header_title'], 'releases': releases,
             'ram': {k: {'bank': b, 'addr': pe.hexaddr(a), 'src': src[k]} for k, (b, a) in ram.items()},
             'sizes': sizes, 'flags': [],
-            'rom': {k: {'bank': v['bank'], 'addr': v['addr'], 'src': 'pret (%s)' % v['symbol']}
-                    for k, v in g.get('rom', {}).items()},
+            'rom': {k: {'bank': b, 'addr': pe.hexaddr(a), 'src': rom_src[k]} for k, (b, a) in rom.items()},
         }
         files['%s/%s.ram.json' % (FOLDER, key)] = pe.dump(doc).encode('utf-8')
     if unread:

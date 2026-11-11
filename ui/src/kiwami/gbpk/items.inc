@@ -2,7 +2,7 @@
 // logic.cpp's Item enum, the TMs from 328 and HMs from 420, the rods, the evolution stones and held items): by Gen II
 // id (pret's constants/item_constants.asm, the same in pokecrystal and pokegold), its Gen IV id (upstream's own
 // ui/src/gba/gen3items.inc, read from the games' ROMs, gives each). Any other item is 1000 + its Gen II id, as
-// upstream's Gen III-only items are kept apart. reader.cpp includes it.
+// upstream's Gen III-only items are kept apart. rom.cpp includes it (gen2Item, for the ROM and the memory readers).
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy

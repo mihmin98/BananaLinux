@@ -61,6 +61,30 @@ else
     echo "deps-audit: skipped, no cc or readelf"
 fi
 
+# the Game Boy Pokémon companion's data (kiwami/GB-POKEMON.md): the extraction scripts' committed outputs as SOURCES
+# records them (neither PokeDaisy nor pret needed), every value gbpk-symbols.txt asks for answered, and each data file
+# a gb-pokemon-ram file whose addresses are all WRAM or HRAM, beside PokeDaisy's LICENSE and NOTICE
+python3 -I kiwami/tools/pret-extract.py --check
+python3 -I kiwami/tools/pokedaisy-extract.py --check
+G=kiwami/rootfs/usr/share/banana/companions/gb-pokemon
+for f in LICENSE NOTICE SOURCES; do [ -s "$G/$f" ] || { echo "gb-pokemon: no $f in $G" >&2; exit 1; }; done
+grep -qF 'Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy' "$G/NOTICE" ||
+    { echo "gb-pokemon: $G/NOTICE hasn't PokeDaisy's attribution line" >&2; exit 1; }
+python3 -I - "$G"/*.ram.json <<'EOF'
+import json, sys
+for f in sys.argv[1:]:
+    d = json.load(open(f, encoding='utf-8'))
+    if d.get('kind') != 'gb-pokemon-ram' or d.get('schema') != 1:
+        sys.exit('gb-pokemon: %s isn\'t a gb-pokemon-ram file' % f)
+    if not d.get('releases') or any(len(r.get('sha1', '')) != 40 for r in d['releases']) or not d.get('ram'):
+        sys.exit('gb-pokemon: %s has no releases or no ram' % f)
+    for k, v in d['ram'].items():
+        a = int(v['addr'], 16)
+        if not (0xC000 <= a <= 0xDFFF or 0xFF80 <= a <= 0xFFFE) or not 0 <= v['bank'] <= 7:
+            sys.exit('gb-pokemon: %s: ram.%s at %d:%s is neither WRAM nor HRAM' % (f, k, v['bank'], v['addr']))
+print('gb-pokemon: %d data files checked' % (len(sys.argv) - 1))
+EOF
+
 # RomM's game list in banana-sync: 200 a page and its progress, each game kept small, against a large made-up library
 kiwami/tests/romm-list.sh
 
@@ -87,7 +111,7 @@ if [ -x ui/banana-ui ]; then kiwami/tests/ra-ui.sh; else echo "ra-ui: skipped, n
 T=$(mktemp -d)
 mkdir -p "$T/usr/libexec/banana" "$T/etc/banana"
 cp system/rootfs/usr/libexec/banana/share "$T/usr/libexec/banana/"
-cp system/rootfs/etc/banana/systems.conf "$T/etc/banana/"
+cp system/rootfs/etc/banana/systems.conf system/rootfs/etc/banana/credits.txt "$T/etc/banana/"
 sh kiwami/post-build.sh "$T" rgds
 SH=$T/usr/libexec/banana/share
 for v in '\*tailscaled\.state' '\*retroarch-keychain\.\*'; do
@@ -117,10 +141,24 @@ grep -q '\[n64\]' "$T/err" || { echo "post-build: the failure doesn't name [n64]
 [ ! -e "$C.tmp" ] || { echo "post-build: left its temporary behind" >&2; exit 1; }
 cp system/rootfs/etc/banana/systems.conf "$C"
 
+# ... and adds PokeDaisy's credit (its GPL-3.0 7(b) line, kiwami/GB-POKEMON.md) to the credits, as the last name of
+# upstream's [Thanks], once (the same after the second run above), and stops the build when there's no [Thanks]
+K=$T/etc/banana/credits.txt
+P='PokeDaisy / Lidor Itzhari = Game Boy Pokémon companion. Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy'
+[ "$(grep -cxF "$P" "$K")" = 1 ] || { echo "post-build: PokeDaisy's credit $(grep -cxF "$P" "$K") times in credits.txt" >&2; exit 1; }
+[ "$(awk '/^\[/ { in_t = ($0 == "[Thanks]") } in_t && NF && !/^[#[]/ { last = $0 } END { print last }' "$K")" = "$P" ] ||
+    { echo "post-build: PokeDaisy's credit isn't [Thanks]' last name" >&2; exit 1; }
+grep -vxF "$P" "$K" | cmp -s - system/rootfs/etc/banana/credits.txt || { echo "post-build: credits.txt changed beyond PokeDaisy's line" >&2; exit 1; }
+sed '/^\[Thanks\]$/d' system/rootfs/etc/banana/credits.txt > "$K"
+! sh kiwami/post-build.sh "$T" rgds 2>"$T/err" || { echo "post-build: no failure without [Thanks]" >&2; exit 1; }
+grep -q 'no \[Thanks\] section' "$T/err" || { echo "post-build: the failure doesn't name [Thanks]: $(cat "$T/err")" >&2; exit 1; }
+[ ! -e "$K.tmp" ] || { echo "post-build: left the credits' temporary behind" >&2; exit 1; }
+cp system/rootfs/etc/banana/credits.txt "$K"
+
 sed -i '/veto files/d' "$T/usr/libexec/banana/share"
 ! sh kiwami/post-build.sh "$T" rgds 2>/dev/null || { echo "post-build: no failure without the veto line" >&2; exit 1; }
 rm -rf "$T"
-echo "post-build: veto and 7z checked"
+echo "post-build: veto, 7z and PokeDaisy's credit checked"
 
 # ... and, with BR2_PACKAGE_KIWAMI_OTA_OFF in the board's .config, sends the update script's check, download and
 # beta-login to ota-off (once, the same on a second run, nothing without the option, a stop without upstream's case
@@ -129,7 +167,7 @@ T=$(mktemp -d)
 mkdir -p "$T/usr/libexec/banana" "$T/usr/libexec/kiwami" "$T/etc/banana" "$T/data/updates" "$T/run"
 cp system/rootfs/usr/libexec/banana/share system/rootfs/usr/libexec/banana/update "$T/usr/libexec/banana/"
 cp kiwami/rootfs/usr/libexec/kiwami/ota-off "$T/usr/libexec/kiwami/"
-cp system/rootfs/etc/banana/systems.conf "$T/etc/banana/"
+cp system/rootfs/etc/banana/systems.conf system/rootfs/etc/banana/credits.txt "$T/etc/banana/"
 U=$T/usr/libexec/banana/update
 echo '# BR2_PACKAGE_KIWAMI_OTA_OFF is not set' > "$T/off.config"
 echo 'BR2_PACKAGE_KIWAMI_OTA_OFF=y' > "$T/on.config"

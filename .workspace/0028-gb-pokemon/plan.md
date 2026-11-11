@@ -786,9 +786,13 @@ Common to the steps:
   - `ui/src/kiwami/gbpk/reader.cpp`, `items.inc`, `text.cpp` (changed)
   - `kiwami/tests/gbpk/fixtures/` (new: the 16 Gen I captures, `red*`, `blue*`, `yellow*`)
   - `kiwami/tests/gbpk-units.cpp` (changed)
+  - `kiwami/DEPENDENCIES.md` (changed: the rows for `pret/pokered` and `pret/pokeyellow`, first read here; *Deviations*,
+    2026-11-11)
 - **Change**:
   - The script reads `Gen1Reader.kt`'s configs (Red and Blue share one; Yellow's own) and writes the three files, with
-    the header titles `POKEMON RED`, `POKEMON BLUE`, `POKEMON YELLOW` and the releases' SHA-1s.
+    the header titles `POKEMON RED`, `POKEMON BLUE`, `POKEMON YELLOW` and the releases' SHA-1s. Their release lines,
+    `pokered`, `pokeblue` and `pokeyellow`, go in `gbpk-symbols.txt`, so the titles and SHA-1s come from pret's
+    Makefiles and `roms.sha1` as Gen II's do (step 1's deviation).
   - **A set for Gen I**: the party (count, species list, 6 x 44 bytes, nicknames, OT names), the player, the one bag
     list, the map and coordinates, `wIsInBattle`, `wBattleMon` and `wEnemyMon` with the enemy party in a trainer
     battle, the stat modifiers, the Pokédex, the badges, the play time, and in Yellow Pikachu's happiness.
@@ -973,13 +977,35 @@ Notes from the runs (what the logs showed, what was fixed):
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
 
+- **2026-11-11, step 1: the ROM header's facts come from pret, and the game code is per release.** pret's Makefiles
+  give `rgbfix` each release's header title (`-t`) and game code (`-i`), and Crystal's Australian release has its own
+  code, `BYTU`, not `BYTE`. So `pret-extract.py` reads both from the Makefile instead of the plan's values from memory
+  (which they confirm: `PM_CRYSTAL`, `POKEMON_GLD`/`AAUE`, `POKEMON_SLV`/`AAXE`), and the data file's `code` moves from
+  the top level into each release (`releases: [{sha1, name, code}]`); `header_title` stays per game. Gen I's releases
+  have no code. Agreed with the user.
+- **2026-11-11, step 1: the releases are lines of `gbpk-symbols.txt`.** `<game> release <repo> <build> <name>` names a
+  release, its SHA-1 is read from the repository's `roms.sha1` and must be the set PokeDaisy's `GameTitles.kt` gives
+  the game, and every symbol is looked up in each release's `.sym` (Crystal's three must agree, which they do). The
+  `.sym` files are read with `git show symbols:<file>`, so no branch is checked out. `SOURCES` has a section per
+  script, `[pokedaisy]` and `[pret]`, each written and checked by its own script. Agreed with the user.
+- **2026-11-11, step 1: more is cross-checked than planned.** `gbpk-symbols.txt` also lists pret's symbol for every
+  address PokeDaisy's `Gen2Config` gives, and every one agrees; Crystal's guide RAM in PokeDaisy's `GuideCrystalGen.kt`
+  (event flags, time of day, badges, trade flags) is read too. Each `ram` value records its source (`src`), and
+  `sizes.eventFlagBytes` is pret's `NUM_EVENTS` / 8 (256), checked against PokeDaisy's for Crystal.
+- **2026-11-11, step 1: `pret/pokered` and `pret/pokeyellow` get their `kiwami/DEPENDENCIES.md` rows in step 12**, where
+  they are first read and their commits first pinned in `SOURCES`, as `CLAUDE.md` asks (a dependency's row in the
+  commit that adds it). Step 1 adds PokeDaisy's, `pret/pokecrystal`'s and `pret/pokegold`'s.
+- **2026-11-11, step 1: `kiwami/tests/7z-ui.sh` changes too.** It runs `post-build.sh` on a stand-in target, which
+  now needs upstream's `credits.txt` there (the credit stops the build without a `[Thanks]`), so it copies it as
+  `ci.sh`'s two stand-ins do.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. PokeDaisy's data: the extraction script, Gen II's addresses, the licence and the credits | todo | |
+| 1. PokeDaisy's data: the extraction script, Gen II's addresses, the licence and the credits | done | `GB Pokémon companion: PokeDaisy's Gen II addresses, extracted by a script, with its licence and credit` |
 | 2. Telling the games apart, and their text | todo | |
 | 3. Gen II's memory: the reader, checked against PokeDaisy's captures | todo | |
 | 4. Gen I's and Gen II's rules, in the logic | todo | |

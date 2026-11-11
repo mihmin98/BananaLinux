@@ -38,6 +38,24 @@ awk -v want="n64" '
           exit bad }' "$C" > "$C.tmp" || { rm -f "$C.tmp"; exit 1; }
 mv "$C.tmp" "$C"
 
+# The Game Boy Pokémon companion's credit: PokeDaisy's GPL-3.0 section 7(b) term asks for its line where the work shows
+# credits (kiwami/GB-POKEMON.md), which is Settings > System > Credits. Added at the end of upstream's [Thanks]
+# section, once; a credits.txt with no [Thanks] stops the build rather than leaving the line out. Written through a
+# temporary, so a failed run leaves the file as it was.
+K=$T/etc/banana/credits.txt
+L='PokeDaisy / Lidor Itzhari = Game Boy Pokémon companion. Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy'
+grep -qx '\[Thanks\]' "$K" || { echo "kiwami/post-build.sh: no [Thanks] section in $K" >&2; exit 1; }
+if ! grep -qxF "$L" "$K"; then
+    # (the line goes after the section's last name, or after its heading when it has none)
+    awk -v line="$L" '
+        /^\[.*\]$/ { in_t = ($0 == "[Thanks]"); if (in_t) at = NR }
+        in_t && NF && !/^#/ && !/^\[/ { at = NR }
+        { buf[NR] = $0 }
+        END { for (i = 1; i <= NR; i++) { print buf[i]; if (i == at) print line } }' "$K" > "$K.tmp" ||
+        { rm -f "$K.tmp"; exit 1; }
+    mv "$K.tmp" "$K"
+fi
+
 # Over-the-air updates off (BR2_PACKAGE_KIWAMI_OTA_OFF): the update script's check, download and beta-login go to the
 # fork's ota-off, which says why, through a first case arm before upstream's own. Upstream's "case $1 in" line is
 # matched exactly: if it moves or changes shape, the build stops here rather than offering upstream's releases.

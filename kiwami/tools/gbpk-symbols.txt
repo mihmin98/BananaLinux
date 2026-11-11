@@ -1,0 +1,75 @@
+# What the Game Boy Pokémon companion takes from pret's disassemblies: kiwami/tools/pret-extract.py reads this list
+# and writes kiwami/tools/gbpk-extra.json. Only addresses, ROM offsets, ids and the ROM header's facts are taken;
+# none of pret's code or data tables (kiwami/GB-POKEMON.md, *Where the data comes from*).
+#
+# A line a value; '#' starts a comment. <games> is one game or several joined by commas (crystal,gold,silver).
+#
+#   <game> release <repo> <build> <name>    a retail release: its SHA-1 from <repo>'s roms.sha1 (<build>.gbc), its
+#                                           header's title and code from the Makefile's rgbfix flags for <build>.gbc,
+#                                           and its symbols from <build>.sym on the repo's symbols branch. <name> is
+#                                           No-Intro's region and revision. A game's releases must agree on every
+#                                           value below, or the run fails.
+#   <games> ram.<key> <symbol>              a WRAM or HRAM address (bank 0 is C000-CFFF and HRAM, 1 the D000 bank)
+#   <games> rom.<key> <symbol>              a ROM address (its bank and address in the bank's window)
+#   <games> const.<key> <file> <name>       a constant from the repo's <file> (rgbds' const macros evaluated)
+
+# The releases (PokeDaisy's GameTitles.kt must list the same SHA-1s for each game)
+crystal release pokecrystal pokecrystal USA
+crystal release pokecrystal pokecrystal11 USA, Europe (Rev 1)
+crystal release pokecrystal pokecrystal_au Australia
+gold release pokegold pokegold USA, Europe
+silver release pokegold pokesilver USA, Europe
+
+# Gen II's WRAM that PokeDaisy reads too (Gen2Reader.kt's Gen2Config): pret's value must agree with it
+crystal,gold,silver ram.partyCount wPartyCount
+crystal,gold,silver ram.partyMons wPartyMons
+crystal,gold,silver ram.numItems wNumItems
+crystal,gold,silver ram.numKeyItems wNumKeyItems
+crystal,gold,silver ram.numBalls wNumBalls
+crystal,gold,silver ram.tmsHms wTMsHMs
+crystal,gold,silver ram.money wMoney
+crystal,gold,silver ram.mapGroup wMapGroup
+crystal,gold,silver ram.backupMapGroup wBackupMapGroup
+crystal,gold,silver ram.battleMode wBattleMode
+crystal,gold,silver ram.battleMon wBattleMon
+crystal,gold,silver ram.enemyMon wEnemyMon
+crystal,gold,silver ram.otPartyCount wOTPartyCount
+crystal,gold,silver ram.otPartyMons wOTPartyMons
+crystal,gold,silver ram.curOTMon wCurOTMon
+crystal ram.playerGender wPlayerGender
+crystal,gold,silver ram.gameTime wGameTimeHours
+crystal,gold,silver ram.dexCaught wPokedexCaught
+crystal,gold,silver ram.dexSeen wPokedexSeen
+crystal,gold,silver ram.menu2D w2DMenuCursorInitY
+crystal,gold,silver ram.menuCursor wMenuCursorY
+crystal,gold,silver ram.moveMenuType wMoveSelectionMenuType
+crystal,gold,silver ram.tileMap wTilemap
+crystal,gold,silver ram.partyMenuAction wPartyMenuActionText
+crystal,gold,silver ram.curBattleMon wCurBattleMon
+# (PokeDaisy's GuideCrystalGen.kt has Crystal's)
+crystal,gold,silver ram.eventFlags wEventFlags
+crystal,gold,silver ram.timeOfDay wTimeOfDay
+crystal,gold,silver ram.johtoBadges wJohtoBadges
+crystal,gold,silver ram.tradeFlags wTradeFlags
+
+# Gen II's WRAM that PokeDaisy doesn't read
+crystal,gold,silver ram.kantoBadges wKantoBadges
+crystal,gold,silver ram.playerID wPlayerID
+crystal,gold,silver ram.playerName wPlayerName
+crystal,gold,silver ram.mapNumber wMapNumber
+crystal,gold,silver ram.yCoord wYCoord
+crystal,gold,silver ram.xCoord wXCoord
+crystal,gold,silver ram.partyMonOTs wPartyMonOTs
+crystal,gold,silver ram.partyMonNicknames wPartyMonNicknames
+crystal,gold,silver ram.playerStatLevels wPlayerStatLevels
+crystal,gold,silver ram.enemyStatLevels wEnemyStatLevels
+crystal,gold,silver ram.dayCareMan wDayCareMan
+crystal,gold,silver ram.breedMon1 wBreedMon1
+crystal,gold,silver ram.dayCareLady wDayCareLady
+crystal,gold,silver ram.breedMon2 wBreedMon2
+crystal,gold,silver ram.roamMon1 wRoamMon1
+crystal,gold,silver ram.roamMon2 wRoamMon2
+crystal,gold,silver ram.roamMon3 wRoamMon3
+
+# The event flags' count (a bit each at wEventFlags)
+crystal,gold,silver const.numEvents constants/event_flags.asm NUM_EVENTS

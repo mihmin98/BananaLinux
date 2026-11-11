@@ -1,0 +1,774 @@
+{
+  "games": {
+    "crystal": {
+      "const": {
+        "numEvents": {
+          "file": "constants/event_flags.asm",
+          "symbol": "NUM_EVENTS",
+          "value": 2048
+        }
+      },
+      "header_title": "PM_CRYSTAL",
+      "ram": {
+        "backupMapGroup": {
+          "addr": "0xDCAD",
+          "bank": 1,
+          "symbol": "wBackupMapGroup"
+        },
+        "battleMode": {
+          "addr": "0xD22D",
+          "bank": 1,
+          "symbol": "wBattleMode"
+        },
+        "battleMon": {
+          "addr": "0xC62C",
+          "bank": 0,
+          "symbol": "wBattleMon"
+        },
+        "breedMon1": {
+          "addr": "0xDF0C",
+          "bank": 1,
+          "symbol": "wBreedMon1"
+        },
+        "breedMon2": {
+          "addr": "0xDF45",
+          "bank": 1,
+          "symbol": "wBreedMon2"
+        },
+        "curBattleMon": {
+          "addr": "0xD0D4",
+          "bank": 1,
+          "symbol": "wCurBattleMon"
+        },
+        "curOTMon": {
+          "addr": "0xC663",
+          "bank": 0,
+          "symbol": "wCurOTMon"
+        },
+        "dayCareLady": {
+          "addr": "0xDF2C",
+          "bank": 1,
+          "symbol": "wDayCareLady"
+        },
+        "dayCareMan": {
+          "addr": "0xDEF5",
+          "bank": 1,
+          "symbol": "wDayCareMan"
+        },
+        "dexCaught": {
+          "addr": "0xDE99",
+          "bank": 1,
+          "symbol": "wPokedexCaught"
+        },
+        "dexSeen": {
+          "addr": "0xDEB9",
+          "bank": 1,
+          "symbol": "wPokedexSeen"
+        },
+        "enemyMon": {
+          "addr": "0xD206",
+          "bank": 1,
+          "symbol": "wEnemyMon"
+        },
+        "enemyStatLevels": {
+          "addr": "0xC6D4",
+          "bank": 0,
+          "symbol": "wEnemyStatLevels"
+        },
+        "eventFlags": {
+          "addr": "0xDA72",
+          "bank": 1,
+          "symbol": "wEventFlags"
+        },
+        "gameTime": {
+          "addr": "0xD4C4",
+          "bank": 1,
+          "symbol": "wGameTimeHours"
+        },
+        "johtoBadges": {
+          "addr": "0xD857",
+          "bank": 1,
+          "symbol": "wJohtoBadges"
+        },
+        "kantoBadges": {
+          "addr": "0xD858",
+          "bank": 1,
+          "symbol": "wKantoBadges"
+        },
+        "mapGroup": {
+          "addr": "0xDCB5",
+          "bank": 1,
+          "symbol": "wMapGroup"
+        },
+        "mapNumber": {
+          "addr": "0xDCB6",
+          "bank": 1,
+          "symbol": "wMapNumber"
+        },
+        "menu2D": {
+          "addr": "0xCFA1",
+          "bank": 0,
+          "symbol": "w2DMenuCursorInitY"
+        },
+        "menuCursor": {
+          "addr": "0xCFA9",
+          "bank": 0,
+          "symbol": "wMenuCursorY"
+        },
+        "money": {
+          "addr": "0xD84E",
+          "bank": 1,
+          "symbol": "wMoney"
+        },
+        "moveMenuType": {
+          "addr": "0xD235",
+          "bank": 1,
+          "symbol": "wMoveSelectionMenuType"
+        },
+        "numBalls": {
+          "addr": "0xD8D7",
+          "bank": 1,
+          "symbol": "wNumBalls"
+        },
+        "numItems": {
+          "addr": "0xD892",
+          "bank": 1,
+          "symbol": "wNumItems"
+        },
+        "numKeyItems": {
+          "addr": "0xD8BC",
+          "bank": 1,
+          "symbol": "wNumKeyItems"
+        },
+        "otPartyCount": {
+          "addr": "0xD280",
+          "bank": 1,
+          "symbol": "wOTPartyCount"
+        },
+        "otPartyMons": {
+          "addr": "0xD288",
+          "bank": 1,
+          "symbol": "wOTPartyMons"
+        },
+        "partyCount": {
+          "addr": "0xDCD7",
+          "bank": 1,
+          "symbol": "wPartyCount"
+        },
+        "partyMenuAction": {
+          "addr": "0xD141",
+          "bank": 1,
+          "symbol": "wPartyMenuActionText"
+        },
+        "partyMonNicknames": {
+          "addr": "0xDE41",
+          "bank": 1,
+          "symbol": "wPartyMonNicknames"
+        },
+        "partyMonOTs": {
+          "addr": "0xDDFF",
+          "bank": 1,
+          "symbol": "wPartyMonOTs"
+        },
+        "partyMons": {
+          "addr": "0xDCDF",
+          "bank": 1,
+          "symbol": "wPartyMons"
+        },
+        "playerGender": {
+          "addr": "0xD472",
+          "bank": 1,
+          "symbol": "wPlayerGender"
+        },
+        "playerID": {
+          "addr": "0xD47B",
+          "bank": 1,
+          "symbol": "wPlayerID"
+        },
+        "playerName": {
+          "addr": "0xD47D",
+          "bank": 1,
+          "symbol": "wPlayerName"
+        },
+        "playerStatLevels": {
+          "addr": "0xC6CC",
+          "bank": 0,
+          "symbol": "wPlayerStatLevels"
+        },
+        "roamMon1": {
+          "addr": "0xDFCF",
+          "bank": 1,
+          "symbol": "wRoamMon1"
+        },
+        "roamMon2": {
+          "addr": "0xDFD6",
+          "bank": 1,
+          "symbol": "wRoamMon2"
+        },
+        "roamMon3": {
+          "addr": "0xDFDD",
+          "bank": 1,
+          "symbol": "wRoamMon3"
+        },
+        "tileMap": {
+          "addr": "0xC4A0",
+          "bank": 0,
+          "symbol": "wTilemap"
+        },
+        "timeOfDay": {
+          "addr": "0xD269",
+          "bank": 1,
+          "symbol": "wTimeOfDay"
+        },
+        "tmsHms": {
+          "addr": "0xD859",
+          "bank": 1,
+          "symbol": "wTMsHMs"
+        },
+        "tradeFlags": {
+          "addr": "0xD960",
+          "bank": 1,
+          "symbol": "wTradeFlags"
+        },
+        "xCoord": {
+          "addr": "0xDCB8",
+          "bank": 1,
+          "symbol": "wXCoord"
+        },
+        "yCoord": {
+          "addr": "0xDCB7",
+          "bank": 1,
+          "symbol": "wYCoord"
+        }
+      },
+      "releases": [
+        {
+          "build": "pokecrystal",
+          "code": "BYTE",
+          "name": "USA",
+          "sha1": "f4cd194bdee0d04ca4eac29e09b8e4e9d818c133"
+        },
+        {
+          "build": "pokecrystal11",
+          "code": "BYTE",
+          "name": "USA, Europe (Rev 1)",
+          "sha1": "f2f52230b536214ef7c9924f483392993e226cfb"
+        },
+        {
+          "build": "pokecrystal_au",
+          "code": "BYTU",
+          "name": "Australia",
+          "sha1": "a0fc810f1d4e124434f7be2c989ab5b5892ddf36"
+        }
+      ],
+      "repo": "pokecrystal",
+      "rom": {}
+    },
+    "gold": {
+      "const": {
+        "numEvents": {
+          "file": "constants/event_flags.asm",
+          "symbol": "NUM_EVENTS",
+          "value": 2048
+        }
+      },
+      "header_title": "POKEMON_GLD",
+      "ram": {
+        "backupMapGroup": {
+          "addr": "0xD9F6",
+          "bank": 1,
+          "symbol": "wBackupMapGroup"
+        },
+        "battleMode": {
+          "addr": "0xD116",
+          "bank": 1,
+          "symbol": "wBattleMode"
+        },
+        "battleMon": {
+          "addr": "0xCB0C",
+          "bank": 0,
+          "symbol": "wBattleMon"
+        },
+        "breedMon1": {
+          "addr": "0xDC57",
+          "bank": 1,
+          "symbol": "wBreedMon1"
+        },
+        "breedMon2": {
+          "addr": "0xDC90",
+          "bank": 1,
+          "symbol": "wBreedMon2"
+        },
+        "curBattleMon": {
+          "addr": "0xCFC6",
+          "bank": 0,
+          "symbol": "wCurBattleMon"
+        },
+        "curOTMon": {
+          "addr": "0xCB41",
+          "bank": 0,
+          "symbol": "wCurOTMon"
+        },
+        "dayCareLady": {
+          "addr": "0xDC77",
+          "bank": 1,
+          "symbol": "wDayCareLady"
+        },
+        "dayCareMan": {
+          "addr": "0xDC40",
+          "bank": 1,
+          "symbol": "wDayCareMan"
+        },
+        "dexCaught": {
+          "addr": "0xDBE4",
+          "bank": 1,
+          "symbol": "wPokedexCaught"
+        },
+        "dexSeen": {
+          "addr": "0xDC04",
+          "bank": 1,
+          "symbol": "wPokedexSeen"
+        },
+        "enemyMon": {
+          "addr": "0xD0EF",
+          "bank": 1,
+          "symbol": "wEnemyMon"
+        },
+        "enemyStatLevels": {
+          "addr": "0xCBB2",
+          "bank": 0,
+          "symbol": "wEnemyStatLevels"
+        },
+        "eventFlags": {
+          "addr": "0xD7B7",
+          "bank": 1,
+          "symbol": "wEventFlags"
+        },
+        "gameTime": {
+          "addr": "0xD1EB",
+          "bank": 1,
+          "symbol": "wGameTimeHours"
+        },
+        "johtoBadges": {
+          "addr": "0xD57C",
+          "bank": 1,
+          "symbol": "wJohtoBadges"
+        },
+        "kantoBadges": {
+          "addr": "0xD57D",
+          "bank": 1,
+          "symbol": "wKantoBadges"
+        },
+        "mapGroup": {
+          "addr": "0xDA00",
+          "bank": 1,
+          "symbol": "wMapGroup"
+        },
+        "mapNumber": {
+          "addr": "0xDA01",
+          "bank": 1,
+          "symbol": "wMapNumber"
+        },
+        "menu2D": {
+          "addr": "0xCED8",
+          "bank": 0,
+          "symbol": "w2DMenuCursorInitY"
+        },
+        "menuCursor": {
+          "addr": "0xCEE0",
+          "bank": 0,
+          "symbol": "wMenuCursorY"
+        },
+        "money": {
+          "addr": "0xD573",
+          "bank": 1,
+          "symbol": "wMoney"
+        },
+        "moveMenuType": {
+          "addr": "0xD11F",
+          "bank": 1,
+          "symbol": "wMoveSelectionMenuType"
+        },
+        "numBalls": {
+          "addr": "0xD5FC",
+          "bank": 1,
+          "symbol": "wNumBalls"
+        },
+        "numItems": {
+          "addr": "0xD5B7",
+          "bank": 1,
+          "symbol": "wNumItems"
+        },
+        "numKeyItems": {
+          "addr": "0xD5E1",
+          "bank": 1,
+          "symbol": "wNumKeyItems"
+        },
+        "otPartyCount": {
+          "addr": "0xDD55",
+          "bank": 1,
+          "symbol": "wOTPartyCount"
+        },
+        "otPartyMons": {
+          "addr": "0xDD5D",
+          "bank": 1,
+          "symbol": "wOTPartyMons"
+        },
+        "partyCount": {
+          "addr": "0xDA22",
+          "bank": 1,
+          "symbol": "wPartyCount"
+        },
+        "partyMenuAction": {
+          "addr": "0xD03E",
+          "bank": 1,
+          "symbol": "wPartyMenuActionText"
+        },
+        "partyMonNicknames": {
+          "addr": "0xDB8C",
+          "bank": 1,
+          "symbol": "wPartyMonNicknames"
+        },
+        "partyMonOTs": {
+          "addr": "0xDB4A",
+          "bank": 1,
+          "symbol": "wPartyMonOTs"
+        },
+        "partyMons": {
+          "addr": "0xDA2A",
+          "bank": 1,
+          "symbol": "wPartyMons"
+        },
+        "playerID": {
+          "addr": "0xD1A1",
+          "bank": 1,
+          "symbol": "wPlayerID"
+        },
+        "playerName": {
+          "addr": "0xD1A3",
+          "bank": 1,
+          "symbol": "wPlayerName"
+        },
+        "playerStatLevels": {
+          "addr": "0xCBAA",
+          "bank": 0,
+          "symbol": "wPlayerStatLevels"
+        },
+        "roamMon1": {
+          "addr": "0xDD1A",
+          "bank": 1,
+          "symbol": "wRoamMon1"
+        },
+        "roamMon2": {
+          "addr": "0xDD21",
+          "bank": 1,
+          "symbol": "wRoamMon2"
+        },
+        "roamMon3": {
+          "addr": "0xDD28",
+          "bank": 1,
+          "symbol": "wRoamMon3"
+        },
+        "tileMap": {
+          "addr": "0xC3A0",
+          "bank": 0,
+          "symbol": "wTilemap"
+        },
+        "timeOfDay": {
+          "addr": "0xD157",
+          "bank": 1,
+          "symbol": "wTimeOfDay"
+        },
+        "tmsHms": {
+          "addr": "0xD57E",
+          "bank": 1,
+          "symbol": "wTMsHMs"
+        },
+        "tradeFlags": {
+          "addr": "0xD685",
+          "bank": 1,
+          "symbol": "wTradeFlags"
+        },
+        "xCoord": {
+          "addr": "0xDA03",
+          "bank": 1,
+          "symbol": "wXCoord"
+        },
+        "yCoord": {
+          "addr": "0xDA02",
+          "bank": 1,
+          "symbol": "wYCoord"
+        }
+      },
+      "releases": [
+        {
+          "build": "pokegold",
+          "code": "AAUE",
+          "name": "USA, Europe",
+          "sha1": "d8b8a3600a465308c9953dfa04f0081c05bdcb94"
+        }
+      ],
+      "repo": "pokegold",
+      "rom": {}
+    },
+    "silver": {
+      "const": {
+        "numEvents": {
+          "file": "constants/event_flags.asm",
+          "symbol": "NUM_EVENTS",
+          "value": 2048
+        }
+      },
+      "header_title": "POKEMON_SLV",
+      "ram": {
+        "backupMapGroup": {
+          "addr": "0xD9F6",
+          "bank": 1,
+          "symbol": "wBackupMapGroup"
+        },
+        "battleMode": {
+          "addr": "0xD116",
+          "bank": 1,
+          "symbol": "wBattleMode"
+        },
+        "battleMon": {
+          "addr": "0xCB0C",
+          "bank": 0,
+          "symbol": "wBattleMon"
+        },
+        "breedMon1": {
+          "addr": "0xDC57",
+          "bank": 1,
+          "symbol": "wBreedMon1"
+        },
+        "breedMon2": {
+          "addr": "0xDC90",
+          "bank": 1,
+          "symbol": "wBreedMon2"
+        },
+        "curBattleMon": {
+          "addr": "0xCFC6",
+          "bank": 0,
+          "symbol": "wCurBattleMon"
+        },
+        "curOTMon": {
+          "addr": "0xCB41",
+          "bank": 0,
+          "symbol": "wCurOTMon"
+        },
+        "dayCareLady": {
+          "addr": "0xDC77",
+          "bank": 1,
+          "symbol": "wDayCareLady"
+        },
+        "dayCareMan": {
+          "addr": "0xDC40",
+          "bank": 1,
+          "symbol": "wDayCareMan"
+        },
+        "dexCaught": {
+          "addr": "0xDBE4",
+          "bank": 1,
+          "symbol": "wPokedexCaught"
+        },
+        "dexSeen": {
+          "addr": "0xDC04",
+          "bank": 1,
+          "symbol": "wPokedexSeen"
+        },
+        "enemyMon": {
+          "addr": "0xD0EF",
+          "bank": 1,
+          "symbol": "wEnemyMon"
+        },
+        "enemyStatLevels": {
+          "addr": "0xCBB2",
+          "bank": 0,
+          "symbol": "wEnemyStatLevels"
+        },
+        "eventFlags": {
+          "addr": "0xD7B7",
+          "bank": 1,
+          "symbol": "wEventFlags"
+        },
+        "gameTime": {
+          "addr": "0xD1EB",
+          "bank": 1,
+          "symbol": "wGameTimeHours"
+        },
+        "johtoBadges": {
+          "addr": "0xD57C",
+          "bank": 1,
+          "symbol": "wJohtoBadges"
+        },
+        "kantoBadges": {
+          "addr": "0xD57D",
+          "bank": 1,
+          "symbol": "wKantoBadges"
+        },
+        "mapGroup": {
+          "addr": "0xDA00",
+          "bank": 1,
+          "symbol": "wMapGroup"
+        },
+        "mapNumber": {
+          "addr": "0xDA01",
+          "bank": 1,
+          "symbol": "wMapNumber"
+        },
+        "menu2D": {
+          "addr": "0xCED8",
+          "bank": 0,
+          "symbol": "w2DMenuCursorInitY"
+        },
+        "menuCursor": {
+          "addr": "0xCEE0",
+          "bank": 0,
+          "symbol": "wMenuCursorY"
+        },
+        "money": {
+          "addr": "0xD573",
+          "bank": 1,
+          "symbol": "wMoney"
+        },
+        "moveMenuType": {
+          "addr": "0xD11F",
+          "bank": 1,
+          "symbol": "wMoveSelectionMenuType"
+        },
+        "numBalls": {
+          "addr": "0xD5FC",
+          "bank": 1,
+          "symbol": "wNumBalls"
+        },
+        "numItems": {
+          "addr": "0xD5B7",
+          "bank": 1,
+          "symbol": "wNumItems"
+        },
+        "numKeyItems": {
+          "addr": "0xD5E1",
+          "bank": 1,
+          "symbol": "wNumKeyItems"
+        },
+        "otPartyCount": {
+          "addr": "0xDD55",
+          "bank": 1,
+          "symbol": "wOTPartyCount"
+        },
+        "otPartyMons": {
+          "addr": "0xDD5D",
+          "bank": 1,
+          "symbol": "wOTPartyMons"
+        },
+        "partyCount": {
+          "addr": "0xDA22",
+          "bank": 1,
+          "symbol": "wPartyCount"
+        },
+        "partyMenuAction": {
+          "addr": "0xD03E",
+          "bank": 1,
+          "symbol": "wPartyMenuActionText"
+        },
+        "partyMonNicknames": {
+          "addr": "0xDB8C",
+          "bank": 1,
+          "symbol": "wPartyMonNicknames"
+        },
+        "partyMonOTs": {
+          "addr": "0xDB4A",
+          "bank": 1,
+          "symbol": "wPartyMonOTs"
+        },
+        "partyMons": {
+          "addr": "0xDA2A",
+          "bank": 1,
+          "symbol": "wPartyMons"
+        },
+        "playerID": {
+          "addr": "0xD1A1",
+          "bank": 1,
+          "symbol": "wPlayerID"
+        },
+        "playerName": {
+          "addr": "0xD1A3",
+          "bank": 1,
+          "symbol": "wPlayerName"
+        },
+        "playerStatLevels": {
+          "addr": "0xCBAA",
+          "bank": 0,
+          "symbol": "wPlayerStatLevels"
+        },
+        "roamMon1": {
+          "addr": "0xDD1A",
+          "bank": 1,
+          "symbol": "wRoamMon1"
+        },
+        "roamMon2": {
+          "addr": "0xDD21",
+          "bank": 1,
+          "symbol": "wRoamMon2"
+        },
+        "roamMon3": {
+          "addr": "0xDD28",
+          "bank": 1,
+          "symbol": "wRoamMon3"
+        },
+        "tileMap": {
+          "addr": "0xC3A0",
+          "bank": 0,
+          "symbol": "wTilemap"
+        },
+        "timeOfDay": {
+          "addr": "0xD157",
+          "bank": 1,
+          "symbol": "wTimeOfDay"
+        },
+        "tmsHms": {
+          "addr": "0xD57E",
+          "bank": 1,
+          "symbol": "wTMsHMs"
+        },
+        "tradeFlags": {
+          "addr": "0xD685",
+          "bank": 1,
+          "symbol": "wTradeFlags"
+        },
+        "xCoord": {
+          "addr": "0xDA03",
+          "bank": 1,
+          "symbol": "wXCoord"
+        },
+        "yCoord": {
+          "addr": "0xDA02",
+          "bank": 1,
+          "symbol": "wYCoord"
+        }
+      },
+      "releases": [
+        {
+          "build": "pokesilver",
+          "code": "AAXE",
+          "name": "USA, Europe",
+          "sha1": "49b163f7e57702bc939d642a18f591de55d92dae"
+        }
+      ],
+      "repo": "pokegold",
+      "rom": {}
+    }
+  },
+  "kind": "gb-pokemon-pret",
+  "repos": {
+    "pokecrystal": {
+      "commit": "3c813b0b4d82b39bf62185aceffb76fd6026c70b",
+      "symbols": "3b13ca4fa74171364afd6bba61a6e8560212860b"
+    },
+    "pokegold": {
+      "commit": "f2cde36f49b994c143bfd18582182302fdc76492",
+      "symbols": "4b57c3aa3169d7a077f9044d4bbdd1caabc10cc7"
+    }
+  },
+  "schema": 1
+}

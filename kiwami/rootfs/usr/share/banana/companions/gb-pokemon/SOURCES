@@ -1,0 +1,34 @@
+# Where the files of the Game Boy Pokémon companion come from, written by the two scripts that make them:
+# kiwami/tools/pokedaisy-extract.py ([pokedaisy]) and kiwami/tools/pret-extract.py ([pret]). Each section names the
+# commits read, then a line a file: "in" for what was read, "out" for what was written, with its SHA-256. Paths are
+# the repository's, or the checkout's after its name. Each script's --check, without the checkouts, verifies the
+# "out" files and the repository's own "in" files against these hashes.
+
+[pokedaisy]
+commit pokedaisy 135ac809a597230c1fe3ad6359ae0fe81e233583
+in  ca7f1cb0d07be04110eeac37470b67d3a7d3aae5a8f4ac3061fcd3d04512c985  kiwami/tools/gbpk-extra.json
+in  e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  pokedaisy LICENSE
+in  02efcb677831c264613b4313be1c24e9e042f577636b20469fc3f984734c7085  pokedaisy app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt
+in  f33fd7f41938deb6c1b29556669f643495bb4c42fb554ed849280ba2f6229d92  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Reader.kt
+in  816154d8b641ee466f82736eea9c40d086708fdd2399052ec8502bb6d29dcbe6  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt
+out e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/LICENSE
+out c2b105a15ef413cde5e817f0c13d7733ccffa25e29fb54bb08c2d2ab30e5f025  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.ram.json
+out 90ce004a8c1c9e378e64337feee9b46a606331aaa1bb1b87f46ba1b65c845c7d  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/gold.ram.json
+out 7b4e739cdc5fcb96361534382aa1930786d611b58c8d872c9650ec29434fb40d  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/silver.ram.json
+
+[pret]
+commit pokecrystal 3c813b0b4d82b39bf62185aceffb76fd6026c70b symbols 3b13ca4fa74171364afd6bba61a6e8560212860b
+commit pokegold f2cde36f49b994c143bfd18582182302fdc76492 symbols 4b57c3aa3169d7a077f9044d4bbdd1caabc10cc7
+in  f2da302e02da44b349316aed74c40bdfa0e74c4331005e9e0db4f5b08759de9c  pokecrystal Makefile
+in  1042d8fa9bd22c499b4e1ecf44da4f1ded9077233abb3b89e0ed7c994273308d  pokecrystal constants/event_flags.asm
+in  85f8042b02a0bde356a6b62b374d28b4caae5547d43882a0e7979da31d0264e0  pokecrystal roms.sha1
+in  b87af0d8e67ba85d37f2af227a4dc065d5540421f4089986785ef4ed2f6dc1d4  pokecrystal symbols:pokecrystal.sym
+in  70648bb46af4aa7bcbbce30ed064337aab544af6115d3de6ab9892401328832b  pokecrystal symbols:pokecrystal11.sym
+in  1ceabdbd66db3f3f7c5976eb53295f7ea0139633189da3113f3bf9ce84e3cc26  pokecrystal symbols:pokecrystal_au.sym
+in  173fb698d41760d0bd908b461ef3ac32ca7d97e83595a164c2c45d067e5b3749  pokegold Makefile
+in  42d002bce24e847f61d6058a758168f9122fe0c301b5538d9c052e48d9246d31  pokegold constants/event_flags.asm
+in  d5741b6b16d8e7803ba37a394ae508620eff7982cebce4f6e27bc6c7f5bdd76b  pokegold roms.sha1
+in  06e1c0361fd9a4979ea6f2e86442fc119d7bf66fe0e922bd99ecdce00398af1b  pokegold symbols:pokegold.sym
+in  1aa458eaa3d36619da5d368942e3f10d9c06a49cf5e9717d14e40f475c480a61  pokegold symbols:pokesilver.sym
+in  8bf8fcce778501655a6ca0922816bb7cfd5883eb1c6b1dbafa08bf466e2dc4a6  kiwami/tools/gbpk-symbols.txt
+out ca7f1cb0d07be04110eeac37470b67d3a7d3aae5a8f4ac3061fcd3d04512c985  kiwami/tools/gbpk-extra.json

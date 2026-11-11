@@ -34,10 +34,11 @@ ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.
     $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -lz
 "$T/units" kiwami/tests/tailscale kiwami/tests/ra
 # the Game Boy Pokémon companion's (ui/src/kiwami/gbpk/, GPL-3.0: kiwami/GB-POKEMON.md), its own binary: which game a
-# ROM is (the made-up ones in kiwami/tests/gbpk/made-up/, plain and in archives), its data files and its text
+# ROM is (the made-up ones in kiwami/tests/gbpk/made-up/, plain and in archives), its data files, its text, and its
+# memory reader replayed over PokeDaisy's captures (kiwami/tests/gbpk/fixtures/)
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/gbpk-units" kiwami/tests/gbpk-units.cpp ui/src/kiwami/gbpk/*.cpp \
-    ui/src/kiwami/json.cpp ui/src/kiwami/ra7z.cpp ui/src/zip.cpp ui/src/zipdir.cpp ui/src/nds/nitro.cpp \
-    $(find ui/src/kiwami/third_party/lzma -name '*.kiwami.o') -lz
+    ui/src/kiwami/json.cpp ui/src/kiwami/ra7z.cpp ui/src/zip.cpp ui/src/zipdir.cpp ui/src/nds/nitro.cpp ui/src/nds/model.cpp \
+    ui/src/pokemon.cpp ui/src/pokemap.cpp $(find ui/src/kiwami/third_party/lzma -name '*.kiwami.o') -lz -lpthread
 "$T/gbpk-units" kiwami/rootfs/usr/share/banana/companions/gb-pokemon kiwami/tests/gbpk
 # the stand-in RetroAchievements server the UI tests run against (its bytecode in $T, not beside it)
 PYTHONPYCACHEPREFIX="$T" python3 -m py_compile kiwami/tests/ra-server.py

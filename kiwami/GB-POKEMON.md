@@ -97,6 +97,46 @@ The six games are values of upstream's `nds::Gen` and `nds::GameId` (`gbpk.h`: `
 character set, pret's `constants/charmap.asm` (`text.cpp`), the only reference this feature uses for the games' rules
 and layouts (Bulbapedia refuses automated access).
 
+## Reading the game's memory
+
+`ui/src/kiwami/gbpk/reader.cpp` asks the emulator for the game's WRAM as upstream's GBA companion does: a set of
+`READ_CORE_MEMORY` lines every 250 ms, the next only once the last was answered, asked again after 10 s without an
+answer, sent on RetroArch's stdin or through BananaFront's shared memory. The data file's addresses are read in one
+set, neighbours merged into one read: Gen II is 10 or 11 reads, about 1.3 KB. A set whose replies are all there makes
+a snapshot; an emulator that answers with no data (`-1 no memory map defined`) is reported, and nothing is shown.
+
+The snapshot becomes upstream's `nds::Live`, in the DS companion's conventions, so upstream's session, logic and pages
+take it:
+
+- species are national numbers already; an egg is the species list's EGG (0xFD);
+- items are their Gen IV numbers where upstream's logic knows them by number (`items.inc`: the balls, the Apricorn
+  balls, the type-boosting items, Light Ball, Thick Club, the rods, the stones, the trade items), checked against
+  pret's ids for Gold, Silver and Crystal; any other item is 1000 + its Gen II id. The Bug-Catching Contest's Park Ball
+  (x1.5) is Gen IV's Sport Ball. TM01-50 and HM01-07 are Gen IV's 328-377 and 420-426;
+- the DVs go in the IVs' places (HP's from the others' lowest bits, Special as both special stats), the stat
+  experience in `statExp` (a hook in `nds::Mon`: HP, Attack, Defense, Speed, Special), and the EVs stay 0;
+- the gender is the DVs' (pret's `GetGender`: female while Attack << 4 | Speed is at most the species' ratio), and
+  the shininess too (`CheckShininess`: Defense, Speed and Special 10, Attack's bit 1 set), through a `pid` made of the
+  DVs and the OT's id and an `otSecret` that make upstream's `Mon::shiny()` give the DVs' answer;
+- a battle (`wBattleMode` 1 wild, 2 trainer) has our battler from the battle's copy over the party member out, the
+  foe's from `wEnemyMon` (over the trainer's party member out), the battle's own types and stat levels (7 none), and
+  a trainer's whole party and class << 8 | number;
+- the place is the map's group << 8 | number, with the coordinates; the time of day, the badges (Johto's, then
+  Kanto's), the Pokédex, the bag's four pockets (none until every list is well formed, as PokeDaisy reads it), the
+  money, the play time, the day-care and the roamers.
+
+The snapshot counts as the game's only once the party has a count of 1-6 whose species list matches the structures:
+before a save is loaded WRAM holds leftovers.
+
+### The test captures
+
+`kiwami/tests/gbpk/fixtures/` holds PokeDaisy's RAM captures of Gold, Silver and Crystal (17 folders, unchanged from
+its `app/src/test/resources/fixtures/` at `135ac809`, with their `README.txt`s), under its GPL-3.0 (the folder's
+`LICENSE` and `NOTICE`). `kiwami/tests/gbpk-units.cpp` answers the reader's requests from them as the cores' memory
+maps would (C000-CFFF bank 0, D000-DFFF bank 1, banks 2-7 from 0x10000) and checks what each README says: CHRIS's
+CHIKORITA with a BERRY on Route 29 at (46, 11) in all three Crystals, the wild battles, Gold's party, bag, money and ID,
+the CHAMPION's six in `gold_trainer`.
+
 ## The data files
 
 `/usr/share/banana/companions/gb-pokemon/<game>.ram.json` (`crystal`, `gold`, `silver`; Red, Blue and Yellow from

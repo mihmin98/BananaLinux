@@ -70,6 +70,9 @@ crystal,gold,silver ram.breedMon2 wBreedMon2
 crystal,gold,silver ram.roamMon1 wRoamMon1
 crystal,gold,silver ram.roamMon2 wRoamMon2
 crystal,gold,silver ram.roamMon3 wRoamMon3
+crystal,gold,silver ram.stepsToEgg wStepsToEgg
+crystal,gold,silver ram.otherTrainerClass wOtherTrainerClass
+crystal,gold,silver ram.otherTrainerID wOtherTrainerID
 
 # The event flags' count (a bit each at wEventFlags)
 crystal,gold,silver const.numEvents constants/event_flags.asm NUM_EVENTS

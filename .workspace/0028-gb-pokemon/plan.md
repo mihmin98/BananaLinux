@@ -1015,6 +1015,19 @@ Where the implementation turned out different from this plan, why, and what chan
   archive without a game) and `confirm` (refused, then known once its SHA-1 is listed). `GameData` has the releases
   with their codes (step 1's deviation) and the confirmed one's index (`release`); `flags` is left to step 10, which
   defines the flag banks. `Addr::core()` gives the address `READ_CORE_MEMORY` takes (banks 2-7 from 0x10000).
+- **2026-11-11, step 3: three more symbols, and the step's other shapes.** The battle's trainer (`wOtherTrainerClass`,
+  `wOtherTrainerID`, for `Battle::trainerId` as class << 8 | number, the key step 6's trainers use) and the day-care's
+  `wStepsToEgg` were missing from step 1's list: `gbpk-symbols.txt` gets them, and both scripts were run again
+  (`gbpk-extra.json`, the three data files and `SOURCES` change in this step). `items.inc` maps a Gen II id to its Gen
+  IV id only: the bag's pocket is the list an item is in (items, balls, key items, the TM case), not a column of the
+  table; besides the plan's items it maps the evolution stones and trade items (King's Rock, Metal Coat, Dragon Scale,
+  Up-Grade) for step 6's evolutions, and the contest's Park Ball to Gen IV's Sport Ball (x1.5; Gen IV's Park Ball is a
+  sure catch). Each of its 42 lines was checked against pret's ids in both repositories, and the Gen IV ids are
+  upstream's own (`ui/src/gba/gen3items.inc`). The reader merges neighbouring reads (10 or 11 a set, about 1.3 KB);
+  the event flags aren't read yet (step 10 reads the banks the guides name). The replies are parsed by upstream's
+  `pkmn::parseReply`, so `gbpk-units` links `pokemon.cpp` and `pokemap.cpp`, and `model.cpp` for `Mon::shiny()`, which
+  the DV tests use already. Our battler is the party member out under the battle's copy (its name, OT and stat
+  experience kept), the foe the trainer's party member out under `wEnemyMon`.
 
 ## Progress
 
@@ -1024,7 +1037,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. PokeDaisy's data: the extraction script, Gen II's addresses, the licence and the credits | done | `GB Pokémon companion: PokeDaisy's Gen II addresses, extracted by a script, with its licence and credit` |
 | 2. Telling the games apart, and their text | done | `GB Pokémon companion: the six games told by header title and SHA-1, their data files and character set` |
-| 3. Gen II's memory: the reader, checked against PokeDaisy's captures | todo | |
+| 3. Gen II's memory: the reader, checked against PokeDaisy's captures | done | `GB Pokémon companion: Gold, Silver and Crystal's memory read into the pages' Live` |
 | 4. Gen I's and Gen II's rules, in the logic | todo | |
 | 5. The ROMs for the ROM tests: the list, the folder and its check | todo | |
 | 6. Gen II's ROM: the tables | todo | |

@@ -150,6 +150,16 @@
           "bank": 1,
           "symbol": "wOTPartyMons"
         },
+        "otherTrainerClass": {
+          "addr": "0xD22F",
+          "bank": 1,
+          "symbol": "wOtherTrainerClass"
+        },
+        "otherTrainerID": {
+          "addr": "0xD231",
+          "bank": 1,
+          "symbol": "wOtherTrainerID"
+        },
         "partyCount": {
           "addr": "0xDCD7",
           "bank": 1,
@@ -209,6 +219,11 @@
           "addr": "0xDFDD",
           "bank": 1,
           "symbol": "wRoamMon3"
+        },
+        "stepsToEgg": {
+          "addr": "0xDF2D",
+          "bank": 1,
+          "symbol": "wStepsToEgg"
         },
         "tileMap": {
           "addr": "0xC4A0",
@@ -414,6 +429,16 @@
           "bank": 1,
           "symbol": "wOTPartyMons"
         },
+        "otherTrainerClass": {
+          "addr": "0xD118",
+          "bank": 1,
+          "symbol": "wOtherTrainerClass"
+        },
+        "otherTrainerID": {
+          "addr": "0xD11B",
+          "bank": 1,
+          "symbol": "wOtherTrainerID"
+        },
         "partyCount": {
           "addr": "0xDA22",
           "bank": 1,
@@ -468,6 +493,11 @@
           "addr": "0xDD28",
           "bank": 1,
           "symbol": "wRoamMon3"
+        },
+        "stepsToEgg": {
+          "addr": "0xDC78",
+          "bank": 1,
+          "symbol": "wStepsToEgg"
         },
         "tileMap": {
           "addr": "0xC3A0",
@@ -661,6 +691,16 @@
           "bank": 1,
           "symbol": "wOTPartyMons"
         },
+        "otherTrainerClass": {
+          "addr": "0xD118",
+          "bank": 1,
+          "symbol": "wOtherTrainerClass"
+        },
+        "otherTrainerID": {
+          "addr": "0xD11B",
+          "bank": 1,
+          "symbol": "wOtherTrainerID"
+        },
         "partyCount": {
           "addr": "0xDA22",
           "bank": 1,
@@ -715,6 +755,11 @@
           "addr": "0xDD28",
           "bank": 1,
           "symbol": "wRoamMon3"
+        },
+        "stepsToEgg": {
+          "addr": "0xDC78",
+          "bank": 1,
+          "symbol": "wStepsToEgg"
         },
         "tileMap": {
           "addr": "0xC3A0",

@@ -145,6 +145,16 @@
       "bank": 1,
       "src": "pokedaisy pret (wOTPartyMons)"
     },
+    "otherTrainerClass": {
+      "addr": "0xD118",
+      "bank": 1,
+      "src": "pret (wOtherTrainerClass)"
+    },
+    "otherTrainerID": {
+      "addr": "0xD11B",
+      "bank": 1,
+      "src": "pret (wOtherTrainerID)"
+    },
     "partyCount": {
       "addr": "0xDA22",
       "bank": 1,
@@ -199,6 +209,11 @@
       "addr": "0xDD28",
       "bank": 1,
       "src": "pret (wRoamMon3)"
+    },
+    "stepsToEgg": {
+      "addr": "0xDC78",
+      "bank": 1,
+      "src": "pret (wStepsToEgg)"
     },
     "tileMap": {
       "addr": "0xC3A0",

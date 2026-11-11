@@ -4,14 +4,19 @@
 // the 7z reader):
 //   g++ -std=c++17 -Wall -Werror -I ui/src kiwami/tests/gbpk-units.cpp ui/src/kiwami/gbpk/*.cpp ui/src/kiwami/json.cpp
 //       ui/src/kiwami/ra7z.cpp ui/src/zip.cpp ui/src/zipdir.cpp ui/src/nds/nitro.cpp ui/src/nds/model.cpp
-//       ui/src/pokemon.cpp ui/src/pokemap.cpp ui/src/kiwami/third_party/lzma/*.kiwami.o -lz -lpthread -o gbpk-units
+//       ui/src/nds/logic.cpp ui/src/pokemon.cpp ui/src/pokemap.cpp ui/src/kiwami/third_party/lzma/*.kiwami.o -lz -lpthread
+//       -o gbpk-units
+// The rules' expected values are worked by hand, in the comments, from the games' own code in pret's disassemblies.
 //   ./gbpk-units kiwami/rootfs/usr/share/banana/companions/gb-pokemon kiwami/tests/gbpk
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in ui/src/kiwami/gbpk/. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "kiwami/gbpk/games.h"
 #include "kiwami/gbpk/reader.h"
+#include "kiwami/gbpk/rules.h"
 #include "kiwami/gbpk/text.h"
+#include "nds/logic.h"
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -256,7 +261,7 @@ struct FakeRom : nds::RomData
 	std::shared_ptr<const nds::Sprite> sprite(uint16_t, bool, uint8_t) const override { return nullptr; }
 };
 
-static const uint16_t BERRY = 1000 + 0xAD, POTION = 1000 + 0x12, POKE_BALL = 4, TACKLE = 33, GROWL = 45, LEER = 43;
+static const uint16_t BERRY = 1000 + 0xAD, POTION = 1000 + 0x12, TACKLE = 33, GROWL = 45, LEER = 43;	// (POKE_BALL: rules.h's, 4)
 
 // Crystal on ROUTE 29 (each release: the same save loaded): CHRIS with CHIKORITA holding a BERRY and a PIDGEY, the
 // lab's POTION, four POKé BALLs (the README pokes five in and one was thrown at the PIDGEY), at (46, 11)
@@ -510,6 +515,177 @@ static void testReaderRules()
 	}
 }
 
+// ---- Gen I's and Gen II's rules, through upstream's logic and its hooks ---------------------------------------------
+
+static nds::Fighter fighter(uint16_t species, uint8_t level, nds::Type t1, nds::Type t2, std::initializer_list<uint16_t> stats,
+	uint16_t item = 0, uint32_t status = 0)
+{
+	nds::Fighter f;
+	f.species = species; f.level = level; f.item = item; f.status = status;
+	f.types[0] = t1; f.types[1] = t2;
+	int i = 0;
+	for (uint16_t v : stats) f.stats[i++] = v;	// Attack, Defense, Speed, Sp. Atk, Sp. Def
+	f.hp = f.maxHp = 100;
+	return f;
+}
+static nds::MoveData move(nds::Type t, uint8_t power)
+{
+	nds::MoveData m;
+	m.type = t; m.power = power;
+	m.cat = t < nds::FIRE ? nds::MoveCategory::PHYSICAL : nds::MoveCategory::SPECIAL;
+	return m;
+}
+#define RANGE(r, l, h) do { checks++; if ((r).lo != (l) || (r).hi != (h)) { failed++; fprintf(stderr, "gbpk-units: FAIL %s:%d: %s is %d-%d, not %d-%d\n", __FILE__, __LINE__, #r, (r).lo, (r).hi, (l), (h)); } } while (0)
+#define NEAR(a, b) do { checks++; double a_ = (a), b_ = (b); if (std::fabs(a_ - b_) > 1e-6) { failed++; fprintf(stderr, "gbpk-units: FAIL %s:%d: %s is %.8f, not %.8f\n", __FILE__, __LINE__, #a, a_, b_); } } while (0)
+
+static void testRules()
+{
+	using namespace nds;
+	// the type chart through upstream's effectiveness(): Gen I's cells while its chart is in use, upstream's (Gen II's)
+	// otherwise (pokered and pokecrystal data/types/type_matchups.asm)
+	useRules(GEN_I);
+	CHECK(effectiveness(GHOST, PSYCHIC, NO_TYPE) == 0 && effectiveness(BUG, POISON, NO_TYPE) == 8);
+	CHECK(effectiveness(POISON, BUG, NO_TYPE) == 8 && effectiveness(ICE, FIRE, NO_TYPE) == 4);
+	CHECK(effectiveness(FIGHTING, STEEL, NO_TYPE) == 4 && effectiveness(DARK, PSYCHIC, NO_TYPE) == 4);
+	CHECK(effectiveness(WATER, FIRE, NO_TYPE) == 8 && effectiveness(NORMAL, GHOST, NO_TYPE) == 0);	// (the same in both)
+	CHECK(oldRules());
+	useRules(GEN_II);
+	CHECK(effectiveness(GHOST, PSYCHIC, NO_TYPE) == 8 && effectiveness(BUG, POISON, NO_TYPE) == 2);
+	CHECK(effectiveness(POISON, BUG, NO_TYPE) == 4 && effectiveness(ICE, FIRE, NO_TYPE) == 2);
+	CHECK(effectiveness(FIGHTING, STEEL, NO_TYPE) == 8);
+	CHECK(oldRules());
+	useRules(Gen::IV);	// (the host puts it back: upstream's games untouched)
+	CHECK(!oldRules() && effectiveness(GHOST, PSYCHIC, NO_TYPE) == 8);
+
+	// damage through upstream's damage(), Gen II (pokecrystal effect_commands.asm):
+	// Lv 5 TACKLE (35, Normal), Attack 11 against Defense 9, no STAB, neutral:
+	//   ((2*5/5 + 2) * 35 * 11 / 9) / 50 = (4*35*11 = 1540, / 9 = 171) / 50 = 3, + 2 = 5; random 5*217/255 = 4 .. 5
+	useRules(GEN_II);
+	Fighter chiko = fighter(152, 5, GRASS, NO_TYPE, { 11, 13, 10, 11, 13 });
+	Fighter sentret = fighter(161, 3, NORMAL, NO_TYPE, { 8, 9, 9, 7, 8 });
+	DamageRange r = damage(GEN_II, move(NORMAL, 35), chiko, sentret);
+	RANGE(r, 4, 5);
+	CHECK(!r.stab && r.quarters == 4);
+	// EMBER (40, Fire, special) at Lv 50, Sp. Atk 100 against Sp. Def 80, a Grass foe, STAB:
+	//   (22*40*100 = 88000, / 80 = 1100) / 50 = 22, + 2 = 24; STAB + 12 = 36; x2 = 72; random 72*217/255 = 61 .. 72
+	// with Charcoal: 22 * 110 / 100 = 24, + 2 = 26; STAB + 13 = 39; x2 = 78; random 78*217/255 = 66 .. 78
+	Fighter cynda = fighter(155, 50, FIRE, NO_TYPE, { 90, 80, 100, 100, 85 });
+	Fighter grass = fighter(152, 50, GRASS, NO_TYPE, { 80, 90, 80, 70, 80 });
+	r = damage(GEN_II, move(FIRE, 40), cynda, grass);
+	RANGE(r, 61, 72);
+	CHECK(r.stab && r.quarters == 8);
+	cynda.item = 249;
+	r = damage(GEN_II, move(FIRE, 40), cynda, grass);
+	RANGE(r, 66, 78);
+	// Gen II's Dragon Fang does nothing (Dragon Scale is Dragon's); the same Ember with a Fire badge (Volcano, Kanto's
+	// 7th: bit 14), + 1/8 before STAB: 24 + 3 = 27; + 13 = 40; x2 = 80; 80*217/255 = 68 .. 80
+	cynda.item = 0;
+	setBadges(1 << 14);
+	r = damage(GEN_II, move(FIRE, 40), cynda, grass);
+	RANGE(r, 68, 80);
+	setBadges(1 << 0);	// (Zephyr: Flying's, not Fire's)
+	r = damage(GEN_II, move(FIRE, 40), cynda, grass);
+	RANGE(r, 61, 72);
+	setBadges(0);
+	// burned: the battle's Attack already halved by the game, nothing more (a burned and an unburned with the same
+	// stats deal the same)
+	Fighter burned = cynda;
+	burned.status = 0x10;
+	DamageRange r1 = damage(GEN_II, move(NORMAL, 35), cynda, grass), r2 = damage(GEN_II, move(NORMAL, 35), burned, grass);
+	CHECK(r1.lo == r2.lo && r1.hi == r2.hi && r1.hi > 0);
+	// PIKACHU's Light Ball doubles its Sp. Atk: THUNDERSHOCK (40, Electric) at Lv 50, Sp. Atk 50 against a Water foe's
+	// Sp. Def 50: with it (22*40*100/50 = 1760) / 50 = 35, + 2 = 37; STAB + 18 = 55; x2 = 110; 110*217/255 = 93 .. 110;
+	// without (22*40*50/50 = 880) / 50 = 17, + 2 = 19; + 9 = 28; x2 = 56; 56*217/255 = 47 .. 56
+	Fighter pika = fighter(25, 50, ELECTRIC, NO_TYPE, { 55, 40, 90, 50, 50 }, LIGHT_BALL);
+	Fighter water = fighter(7, 50, WATER, NO_TYPE, { 50, 60, 40, 50, 50 });
+	r = damage(GEN_II, move(ELECTRIC, 40), pika, water);
+	RANGE(r, 93, 110);
+	pika.item = 0;
+	r = damage(GEN_II, move(ELECTRIC, 40), pika, water);
+	RANGE(r, 47, 56);
+	// both above 255: / 4 (Attack 300 -> 75, Defense 280 -> 70): (22*35*75 = 57750, / 70 = 825) / 50 = 16, + 2 = 18;
+	// 18*217/255 = 15 .. 18
+	Fighter big = fighter(76, 50, ROCK, GROUND, { 300, 300, 100, 100, 100 }), wall = fighter(208, 50, STEEL, GROUND, { 100, 280, 50, 60, 70 });
+	r = damage(GEN_II, move(NORMAL, 35), big, wall);
+	CHECK(r.quarters == 2);	// (Normal on Steel: / 2)
+	// (18 / 2 = 9; 9*217/255 = 7 .. 9)
+	RANGE(r, 7, 9);
+	// a status move, and a type that does nothing
+	CHECK(damage(GEN_II, MoveData{}, cynda, grass).hi == 0);
+	r = damage(GEN_II, move(NORMAL, 35), chiko, fighter(92, 5, GHOST, POISON, { 5, 5, 5, 5, 5 }));
+	CHECK(r.quarters == 0 && r.hi == 0);
+
+	// Gen I (pokered engine/battle/core.asm): one Special stat, the reader's Sp. Atk and Sp. Def both; PSYCHIC (90) at
+	// Lv 50, Special 135 against Special 90 (Attack 50 and Defense 200 not used), STAB, neutral:
+	//   (22*90*135 = 267300, / 90 = 2970) / 50 = 59, + 2 = 61; + 30 = 91; 91*217/255 = 77 .. 91
+	useRules(GEN_I);
+	Fighter kadabra = fighter(65, 50, PSYCHIC, NO_TYPE, { 50, 45, 120, 135, 135 });
+	Fighter normal = fighter(20, 50, NORMAL, NO_TYPE, { 80, 200, 90, 90, 90 });
+	r = damage(GEN_I, move(PSYCHIC, 90), kadabra, normal);
+	RANGE(r, 77, 91);
+	// no held items in Gen I: Charcoal's id changes nothing; Ghost on Psychic does nothing there
+	Fighter charm = fighter(4, 50, FIRE, NO_TYPE, { 60, 50, 70, 60, 60 }, 249);
+	Fighter charm0 = charm; charm0.item = 0;
+	r1 = damage(GEN_I, move(FIRE, 40), charm, normal); r2 = damage(GEN_I, move(FIRE, 40), charm0, normal);
+	CHECK(r1.lo == r2.lo && r1.hi == r2.hi);
+	r = damage(GEN_I, move(GHOST, 20), fighter(92, 30, GHOST, POISON, { 40, 40, 80, 100, 100 }), kadabra);
+	CHECK(r.quarters == 0 && r.hi == 0);
+	// Speed: the battle's own (paralysis already in it), whatever the stages say
+	Fighter slow = kadabra;
+	slow.status = 0x40; slow.stages[3] = 2;
+	CHECK(effectiveSpeed(GEN_I, slow) == 120 && effectiveSpeed(GEN_II, slow) == 120);
+
+	// catching, through upstream's catchChance()
+	FakeRom rom;
+	rom.species.resize(252);
+	rom.species[1].catchRate = 255;
+	rom.species[152].catchRate = 45;
+	rom.species[152].genderRatio = 31;
+	Mon wild;
+	wild.species = 1; wild.level = 5; wild.hp = wild.maxHp = 20;
+	CatchContext c;
+	// Gen I, catch rate 255 at full HP (20) with a Poké Ball: R1 in 0..255 never above the rate (256 of 256);
+	// W = (20*255 / 12 = 425) / (20/4 = 5) = 85; then R2 <= 85: 86/256 = 0.3359375
+	useRules(GEN_I);
+	NEAR(catchChance(GEN_I, rom, wild, POKE_BALL, c), 86.0 / 256);
+	// Gen I, rate 45 at full HP (30), asleep, with an Ultra Ball: R1 in 0..150; under 25 caught (25 of 151); 25..70 pass
+	// (46); W = (30*255/12 = 637) / (30/4 = 7) = 91: (25 + 46 * 92/256) / 151
+	wild.species = 152; wild.hp = wild.maxHp = 30; wild.status = 3;
+	NEAR(catchChance(GEN_I, rom, wild, ULTRA_BALL, c), (25 + 46 * 92.0 / 256) / 151);
+	CHECK(catchChance(GEN_I, rom, wild, MASTER_BALL, c) == 1);
+	// Gen II, rate 45 at 1 HP of 30, asleep, with an Ultra Ball: 45*2 = 90; 3*30 = 90, 2*1 = 2: 90*(90-2)/90 = 88;
+	// asleep + 10 = 98: 99/256
+	useRules(GEN_II);
+	wild.hp = 1;
+	NEAR(catchChance(GEN_II, rom, wild, ULTRA_BALL, c), 99.0 / 256);
+	CHECK(catchChance(GEN_II, rom, wild, MASTER_BALL, c) == 1);
+	// burned: nothing added (the game's bug); full HP, Poké Ball: 45*(90-60)/90 = 15: 16/256
+	wild.hp = 30; wild.status = 0x10;
+	NEAR(catchChance(GEN_II, rom, wild, POKE_BALL, c), 16.0 / 256);
+	// the Level Ball, Lv 20 against Lv 5 (5 < 20/2, not < 20/4): 45*2*2 = 180, no HP part: 181/256
+	wild.level = 5; c.ourLevel = 20;
+	NEAR(catchChance(GEN_II, rom, wild, LEVEL_BALL, c), 181.0 / 256);
+	// the Moon Ball never boosts (the game's bug): as a Poké Ball
+	NEAR(catchChance(GEN_II, rom, wild, MOON_BALL, c), 16.0 / 256);
+	// max HP above 341: 3*400 = 1200 / 4 = 300, low byte 44; 2*400 = 800 / 4 = 200; (44 - 200) & 0xFF = 100:
+	// 45*100/44 = 102 (the game's bug: a full-HP catch looks easier): 103/256
+	wild.status = 0; wild.hp = wild.maxHp = 400;
+	NEAR(catchChance(GEN_II, rom, wild, POKE_BALL, c), 103.0 / 256);
+	useRules(Gen::IV);
+
+	// Hidden Power (pokecrystal engine/battle/hidden_power.asm): DVs all 15: power (15*5 + 3) / 2 + 31 = 70, type
+	// (3 << 2 | 3) = 15, Dark; Attack 12, Defense 13, Speed 6, Special 2: power (12*5 + 2) / 2 + 31 = 62, type
+	// (0 << 2 | 1) = 1, Flying
+	const uint8_t all15[6] = { 15, 15, 15, 15, 15, 15 }, other[6] = { 0, 12, 13, 6, 2, 2 };
+	CHECK(hiddenPowerPower(all15) == 70 && hiddenPowerType(all15) == DARK);
+	CHECK(hiddenPowerPower(other) == 62 && hiddenPowerType(other) == FLYING);
+	// a stat (CalcMonStatC): HP base 45, DV 8, no stat experience, Lv 5: (106 * 5 / 100 = 5) + 5 + 10 = 20; Attack base
+	// 100, DV 15, 65535 stat experience (root 255), Lv 100: (230 + 63) * 100 / 100 + 5 = 298; 100 experience: root 10
+	CHECK(statFrom(45, 8, 0, 5, true) == 20);
+	CHECK(statFrom(100, 15, 65535, 100, false) == 298);
+	CHECK(statFrom(100, 15, 100, 100, false) == 237);
+}
+
 int main(int argc, char** argv)
 {
 	if (argc < 3)
@@ -527,6 +703,7 @@ int main(int argc, char** argv)
 	testText();
 	testCaptures();
 	testReaderRules();
+	testRules();
 	if (failed)
 	{
 		fprintf(stderr, "gbpk-units: %d of %d checks failed\n", failed, checks);

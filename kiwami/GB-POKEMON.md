@@ -137,6 +137,36 @@ maps would (C000-CFFF bank 0, D000-DFFF bank 1, banks 2-7 from 0x10000) and chec
 CHIKORITA with a BERRY on Route 29 at (46, 11) in all three Crystals, the wild battles, Gold's party, bag, money and ID,
 the CHAMPION's six in `gold_trainer`.
 
+## The battle rules
+
+Upstream's logic works out the Battle page's advice (each move's damage, who moves first, each ball's catch chance)
+for Generations III to V. For Gen I and II, four hook lines in `ui/src/nds/logic.cpp` and `model.cpp` hand it to
+`ui/src/kiwami/gbpk/rules.h`, which follows the games' own code in pret's disassemblies (named at each rule there):
+
+- **The type chart** is Gen II's in upstream's table already. Gen I's differs in five ways (pokered's
+  `data/types/type_matchups.asm` against pokecrystal's): no Steel or Dark (neutral both ways), Ghost does nothing to
+  Psychic, Bug and Poison are super effective on each other, Ice is neutral on Fire. The Team page's coverage still
+  counts 17 types in Gen I, so its score there tops out 2 below the others' (accepted in the plan).
+- **Damage**: physical or special by the move's type (Fire and after special; Gen I's one Special stat is both special
+  stats); the battle copy's Attack and Defense, which already hold the stat stages, the badges' stat boosts, burn's
+  halved Attack and paralysis's quartered Speed, so none of them is applied again; Gen II's Thick Club and Light Ball;
+  both stats / 4 above 255; `((2 * level / 5 + 2) * power * Attack / Defense) / 50`; Gen II's type items + 10 % (Dragon
+  Scale is Dragon's, Dragon Fang does nothing, the Pink and Polkadot Bows are Normal's); at most 997, + 2; Gen II's
+  badge type boost, + 1/8 for the player's moves of a badge's type (the badges come from the game through the host);
+  STAB + 1/2; the type matchups; the random factor 217-255 / 255. Not counted, as upstream doesn't for the DS games:
+  critical hits, Reflect and Light Screen, weather, Explosion's halved Defense.
+- **Speed**: the battle copy's, which holds the stages and paralysis already.
+- **Catching**, with the games' bugs: Gen I's two random numbers (worked out as the probability), and Gen II's rate
+  where only sleep and freeze add (10), the HP part is reckoned in bytes (a Pokémon above 341 HP looks easier to
+  catch than it is, as in the game), the Level Ball skips the HP part, the Moon Ball never boosts, the Love Ball wants
+  the same gender, the Fast Ball counts only Magnemite, Grimer and Tangela, and the Heavy Ball goes by the Pokédex
+  weight. Master Ball: certain.
+- **Hidden Power** (Gen II) from the DVs, and a stat from its base, DV, stat experience and level (`statFrom`), for the
+  guide built from the ROM.
+
+`kiwami/tests/gbpk-units.cpp` checks each rule through upstream's own entry points (`effectiveness`, `damage`,
+`effectiveSpeed`, `catchChance`), with the expected values worked by hand from pret's code in its comments.
+
 ## The data files
 
 `/usr/share/banana/companions/gb-pokemon/<game>.ram.json` (`crystal`, `gold`, `silver`; Red, Blue and Yellow from

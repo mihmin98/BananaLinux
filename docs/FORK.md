@@ -214,7 +214,8 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
        system/rootfs/usr/libexec/banana/run-retroarch system/rootfs/usr/libexec/banana/run-bananafront \
        system/rootfs/etc/banana/retroarch.cfg \
        system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
-       buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update ui/Makefile
+       buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update ui/Makefile \
+       ui/src/nds/model.h ui/src/nds/model.cpp ui/src/nds/logic.cpp
    ```
    (the systems list, whose N64 `ext` line `kiwami/post-build.sh` adds `7z` to (upstream lists it on the other six
    cartridge systems; the build stops if N64's line is gone; a new cartridge system without it may want it too), the defconfigs the fork adds to, the share script
@@ -267,7 +268,18 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    `ui/Makefile`: `kiwami.mk` compiles its `SRC` one file per call with the rule's command, so a change to that command
    (a flag, a variable, how it reads `SRC`) is followed in `kiwami.mk`'s object rules. `kiwami/tests/ui-objects.sh`
    (in `ci.sh`) fails when the two no longer make the same binary. A source upstream adds to `SRC` is compiled as an
-   object with no change; one added after `kiwami.mk`'s include line stays in the link's own call.
+   object with no change; one added after `kiwami.mk`'s include line stays in the link's own call. And the Game Boy
+   Pokémon companion's rules in upstream's DS companion (`kiwami/GB-POKEMON.md`): `model.cpp`'s first line of `one()`
+   gives Gen I's type chart cells while a Red, Blue or Yellow is read, and `logic.cpp`'s first lines of `damage()`,
+   `effectiveSpeed()` and `catchChance()` hand Gen I and II (`kiwami::gbpk::GEN_I`/`GEN_II`, values of upstream's
+   `nds::Gen`) to the fork's own formulas in `ui/src/kiwami/gbpk/rules.h` (`effectiveSpeed`'s `Gen` isn't named, so its
+   hook asks `oldRules()`, which the companion's host turns on and off with the game); `model.h`'s `statExp` line
+   carries Gen I/II's stat experience in `nds::Mon`. What they call stays header-only: upstream's test binaries
+   (`ui/Makefile`'s `tests/nds-*`, `gba-*`, `guide-test`) link `ui/src/nds/` without the fork's sources. A change
+   upstream makes to these functions' signatures, `Fighter`, `DamageRange`, `CatchContext` or `Mon` breaks the fork at
+   compile time; a rule upstream adds inside them (a held item, a ball) doesn't reach the Game Boy games, which take
+   the fork's alone; a new upstream `switch` on `Gen` with no default falls through for the fork's values.
+   `kiwami/tests/gbpk-units.cpp` checks the rules through upstream's entry points.
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

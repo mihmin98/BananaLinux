@@ -1028,6 +1028,25 @@ Where the implementation turned out different from this plan, why, and what chan
   `pkmn::parseReply`, so `gbpk-units` links `pokemon.cpp` and `pokemap.cpp`, and `model.cpp` for `Mon::shiny()`, which
   the DV tests use already. Our battler is the party member out under the battle's copy (its name, OT and stat
   experience kept), the foe the trainer's party member out under `wEnemyMon`.
+- **2026-11-11, step 4: the rules as pret's code has them, with what the plan missed.** Each rule was read from the
+  games' code (pokered and pokecrystal: `engine/battle/core.asm`, `effect_commands.asm`, `misc.asm`,
+  `hidden_power.asm`, `engine/items/item_effects.asm`, `engine/pokemon/move_mon.asm`, `data/types/`), and the tests'
+  values were worked from it. Gen I's chart differences are exactly the plan's (pret's two tables compared), and Gen
+  II's chart is upstream's own. Found in the code and added: Gen II's **badge type boosts** (+ 1/8 for the player's
+  moves of a badge's type, after the type item, before STAB), which need the player's badges: `rules.h` keeps them in
+  an atomic, `setBadges`, which step 8's host sets from each `Live` (upstream's logic calls `damage()` only with our
+  battler attacking); Gen II's **Dragon Scale** is Dragon's type item, Dragon Fang does nothing, the Pink and Polkadot
+  Bows are Normal's; the stats above 255 are divided by 4 (Gen I once, Gen II until both fit); the catch formulas keep
+  the games' bugs (Gen II: burn, poison and paralysis add nothing, the HP part in bytes over 341 HP, the Level Ball
+  skips the HP part, the Moon Ball never boosts, the Love Ball wants the same gender, the Fast Ball counts three
+  species). Not counted, as upstream's DS logic doesn't: critical hits, Reflect and Light Screen, weather (upstream
+  passes none), Explosion's halved Defense. The type matchups are applied in the defender's types' order, not the
+  games' table order, which can differ by 1 in a rare dual-type case. `useChart` is `useRules(nds::Gen)` (it sets the
+  chart, the rules and clears the badges): **step 8's host calls it when a game's data is read and with an upstream
+  `Gen` when the companion closes**, so a GBA or DS game after a Game Boy one gets upstream's rules. The Heavy Ball
+  reads `Species::weight` in 0.1 kg, as upstream keeps it: **step 6 fills the weight in 0.1 kg** (the Gen II
+  Pokédex's 0.1 lb converted). `docs/FORK.md` also gets `model.h`, `model.cpp` and `logic.cpp` in point 3's `git diff`
+  list now, rather than in step 17. `gbpk-units` links `logic.cpp`.
 
 ## Progress
 
@@ -1038,7 +1057,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 1. PokeDaisy's data: the extraction script, Gen II's addresses, the licence and the credits | done | `GB Pokémon companion: PokeDaisy's Gen II addresses, extracted by a script, with its licence and credit` |
 | 2. Telling the games apart, and their text | done | `GB Pokémon companion: the six games told by header title and SHA-1, their data files and character set` |
 | 3. Gen II's memory: the reader, checked against PokeDaisy's captures | done | `GB Pokémon companion: Gold, Silver and Crystal's memory read into the pages' Live` |
-| 4. Gen I's and Gen II's rules, in the logic | todo | |
+| 4. Gen I's and Gen II's rules, in the logic | done | `GB Pokémon companion: Gen I's type chart and both generations' damage, speed and catch rules` |
 | 5. The ROMs for the ROM tests: the list, the folder and its check | todo | |
 | 6. Gen II's ROM: the tables | todo | |
 | 7. Gen II's ROM: the sprites and the Pokégear's maps | todo | |

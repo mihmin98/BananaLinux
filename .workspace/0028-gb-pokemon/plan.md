@@ -176,6 +176,10 @@ Common to the steps:
   `gbpk.h`, `rules.h`, `guide-games.inc` or the pages' `.inc` files removes upstream's test binaries that include them
   (`rm -f ui/tests/nds-logic-test ui/tests/nds-pages-test ui/tests/gba-pages-test ui/tests/guide-test`) before
   `make test`, so they are built again.
+- **Replaced 2026-11-11 (*Deviations*): pret's source is the only reference.** Bulbapedia refuses automated
+  access, so the check below isn't made; each rule and layout follows pret's disassembly (the games' own code and
+  data), named in the code's comment, and the tests' hand-worked values are taken from that code. What follows is
+  the plan as it was written.
 - **The games' rules and layouts are checked against Bulbapedia before they are written** (the user's instruction,
   2026-11-11), since several in this plan are from memory. Each step that implements one reads the page first, names
   it in the code's comment and in `kiwami/GB-POKEMON.md`, and takes the unit tests' hand-worked values from the page's
@@ -998,6 +1002,19 @@ Where the implementation turned out different from this plan, why, and what chan
 - **2026-11-11, step 1: `kiwami/tests/7z-ui.sh` changes too.** It runs `post-build.sh` on a stand-in target, which
   now needs upstream's `credits.txt` there (the credit stops the build without a `[Thanks]`), so it copies it as
   `ci.sh`'s two stand-ins do.
+- **2026-11-11, from step 2: pret's source alone, no Bulbapedia.** Bulbapedia answers automated requests, its API
+  included, with 403, and getting past that (a browser's User-Agent) is circumventing its bot check, which wasn't
+  done. The user chose pret's source as the only reference for the whole feature: each rule and layout follows the
+  games' own code in pret's disassemblies, named in the code, and the rule steps' (4, 6, 13) hand-worked test values
+  come from that code. The plan already had pret win where the two disagreed. Step 2's character set is
+  `constants/charmap.asm`; its header titles came from pret in step 1.
+- **2026-11-11, step 2: made-up archives, and a few shapes.** `kiwami/tests/gbpk/made-up/` (new, not planned) holds a
+  made-up 32 KB ROM with Crystal's title, and a `.zip` and a solid `.7z` holding it, made by its
+  `make-fixtures.sh` with `bsdtar` as `kiwami/tests/ra/`'s are; `gbpk-units` reads them to check `readRomFile` (the
+  header alone, the game past a readme, the first `.gb`/`.gbc` in name order as RetroArch takes it, none in an
+  archive without a game) and `confirm` (refused, then known once its SHA-1 is listed). `GameData` has the releases
+  with their codes (step 1's deviation) and the confirmed one's index (`release`); `flags` is left to step 10, which
+  defines the flag banks. `Addr::core()` gives the address `READ_CORE_MEMORY` takes (banks 2-7 from 0x10000).
 
 ## Progress
 
@@ -1006,7 +1023,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. PokeDaisy's data: the extraction script, Gen II's addresses, the licence and the credits | done | `GB Pokémon companion: PokeDaisy's Gen II addresses, extracted by a script, with its licence and credit` |
-| 2. Telling the games apart, and their text | todo | |
+| 2. Telling the games apart, and their text | done | `GB Pokémon companion: the six games told by header title and SHA-1, their data files and character set` |
 | 3. Gen II's memory: the reader, checked against PokeDaisy's captures | todo | |
 | 4. Gen I's and Gen II's rules, in the logic | todo | |
 | 5. The ROMs for the ROM tests: the list, the folder and its check | todo | |

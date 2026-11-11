@@ -28,6 +28,11 @@ KIWAMI_CFLAGS = $(filter-out -std=% -W%,$(CXXFLAGS)) -std=gnu11 -w -I$(KIWAMI_TP
 
 SRC += $(KIWAMI_O)
 
+# the Game Boy Pokémon companion (GPL-3.0, PokeDaisy's: src/kiwami/gbpk/NOTICE), in its own folder, which the
+# Makefile's src/kiwami/*.cpp doesn't reach; its headers make the one call build again, as src/kiwami/'s do
+SRC += $(wildcard src/kiwami/gbpk/*.cpp)
+banana-ui: $(wildcard src/kiwami/gbpk/*.h src/kiwami/gbpk/*.inc)
+
 # banana-ui's own sources compiled one file per call, into src/kiwami/obj/ (each keeps its path: src/json.cpp and
 # src/kiwami/json.cpp share a name), in parallel and each one kept by ccache; the Makefile's own rule then links the
 # objects in SRC's order, the vendored libraries' among them where they were, and makes the binary its one g++ call

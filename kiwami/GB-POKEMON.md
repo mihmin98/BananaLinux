@@ -79,6 +79,24 @@ writes to a temporary folder and compares with what is committed; with `--check`
 them) it verifies the committed files against `SOURCES`' hashes, and `pret-extract.py` that every line of
 `gbpk-symbols.txt` has its value. A re-run is byte for byte the same.
 
+## Which game a ROM is
+
+`ui/src/kiwami/gbpk/games.cpp`, when a game starts from Game Boy or Game Boy Color with the system's row on (the game
+panel calls it from step 8 of the plan):
+
+1. The ROM's first 0x150 bytes are read: the file, or the first `.gb`/`.gbc` in a `.zip` or `.7z` in name order (as
+   RetroArch takes it; a `.7z` through the fork's LZMA SDK reader, `ra7z.cpp`, not `7zz`).
+2. Its header's title (0x134) is matched against each data file's `header_title`. Another title: no companion, nothing
+   else read. The title fills 16 bytes on the first cartridges and 11 when a game code follows; a shorter one ends
+   with a 0, so `PM_CRYSTALX` isn't Crystal.
+3. The whole file's SHA-1 must be one of the file's `releases`. Another SHA-1, a known title (a European Yellow, a ROM
+   hack, a bad dump): "Not supported", and nothing is read from the game's memory.
+
+The six games are values of upstream's `nds::Gen` and `nds::GameId` (`gbpk.h`: `GEN_I` 16, `GEN_II` 17, `RED` 100 to
+`CRYSTAL` 105), so upstream's model, session and pages take them unchanged. Names are decoded from the games' English
+character set, pret's `constants/charmap.asm` (`text.cpp`), the only reference this feature uses for the games' rules
+and layouts (Bulbapedia refuses automated access).
+
 ## The data files
 
 `/usr/share/banana/companions/gb-pokemon/<game>.ram.json` (`crystal`, `gold`, `silver`; Red, Blue and Yellow from

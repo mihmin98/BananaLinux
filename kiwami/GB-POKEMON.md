@@ -8,7 +8,9 @@ Advance and DS games (Battle, Party, Team, Here, Map, Guide, Dex, Log). It is th
 off by default. Its investigation and plan are in `.workspace/0028-gb-pokemon/`.
 
 The games are the English retail releases: Red, Blue and Yellow (USA, Europe), Gold and Silver (USA, Europe), Crystal
-(USA, USA and Europe rev 1, Australia). A release is told by the whole file's SHA-1.
+(USA, USA and Europe rev 1, Australia); and two ROM hacks read as the games they patch, Fast Red and Fast Blue (v1.0),
+whose patch moves nothing the companion reads (from Red, Blue and Yellow's data files on). A release is told by the
+whole file's SHA-1.
 
 ## PokeDaisy, and the licence
 
@@ -90,7 +92,7 @@ panel calls it from step 8 of the plan):
    else read. The title fills 16 bytes on the first cartridges and 11 when a game code follows; a shorter one ends
    with a 0, so `PM_CRYSTALX` isn't Crystal.
 3. The whole file's SHA-1 must be one of the file's `releases`. Another SHA-1, a known title (a European Yellow, a ROM
-   hack, a bad dump): "Not supported", and nothing is read from the game's memory.
+   hack other than Fast Red and Fast Blue, a bad dump): "Not supported", and nothing is read from the game's memory.
 
 The six games are values of upstream's `nds::Gen` and `nds::GameId` (`gbpk.h`: `GEN_I` 16, `GEN_II` 17, `RED` 100 to
 `CRYSTAL` 105), so upstream's model, session and pages take them unchanged. Names are decoded from the games' English
@@ -209,10 +211,21 @@ outside the repository so that no `git add` can pick one up:
 | `Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc` | `f2f52230b536214ef7c9924f483392993e226cfb` | required |
 | `Pokemon - Crystal Version (USA).gbc` | `f4cd194bdee0d04ca4eac29e09b8e4e9d818c133` | optional |
 | `Pokemon - Crystal Version (Australia).gbc` | `a0fc810f1d4e124434f7be2c989ab5b5892ddf36` | optional |
+| `Pokemon - Red Version (USA, Europe) (Fast Red) (v1.0) (80C).gb` | `e7bfd2c2245597da5016e682fca8f19665c6cfd0` | optional |
+| `Pokemon - Blue Version (USA, Europe) (Fast Blue) (v1.0) (80C).gb` | `5030c1114554207191f2e6ffb1f2920cf3d7c668` | optional |
 
 A file is found by its SHA-1, whatever it is called; a name other than the list's is only noted (older No-Intro sets
 write Yellow's `(GBC,SGB Enhanced)`). The two optional Crystals share every address with rev 1, so the ROM tests'
 Crystal checks run on each that is there.
+
+Fast Red and Fast Blue are a ROM hack, the same 72-byte patch on Red and on Blue: running with B held, and a faster
+bike. It changes `OverworldLoopLessDelay.moveAhead2` and `DoBikeSpeedup` (pret's `home/overworld.asm`), puts its
+routine in the zeros before the header (0x00D0-0x00F6), and keeps one flag in WRAM D711, a byte pret's `pokered` leaves
+unused; with the header's global checksum, that's all. No RAM address or ROM table the companion reads moves, so they
+are read as Red and Blue: their SHA-1s are releases of `red` and `blue`. `kiwami/tests/gbpk/roms.patches` lists each
+hack with its retail ROM's SHA-1 and the ranges its patch changes, and the check below compares the two files when both
+are there, failing if a byte differs outside those ranges. Another hack, or another version of these, is "Not
+supported" until it is checked the same way and added.
 
 The English releases of the other mainline games PokeDaisy supports are listed too, all optional, for a later
 comparison of upstream's guides with PokeDaisy's tables; nothing reads them yet. They go in `GBA_ROMS` (by default
@@ -230,6 +243,8 @@ kiwami/tests/gbpk-roms.sh          # GB_ROMS, GBA_ROMS, NDS_ROMS to look elsewhe
 
 It prints a line for each listed file: `ok`, `ok (named <its name>)`, `missing`, or `wrong file: sha1 <...>` for a file
 with a listed name and other bytes (a European release, a ROM hack, a bad dump), and names the files the list hasn't.
-A required file missing or wrong fails it; the optional ones and the Game Boy Advance and DS folders never do. Without
+Then each hack of `roms.patches` that is there is compared with its retail ROM. A required file missing or wrong, or a
+hack that differs outside its patch, fails it; the optional files missing and the Game Boy Advance and DS folders
+never do. Without
 `GB_ROMS`' folder it says it's skipped and succeeds, as in CI, where `kiwami/tests/ci.sh` runs it (and checks it on
 made-up folders).

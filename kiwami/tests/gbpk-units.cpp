@@ -22,6 +22,7 @@
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -206,7 +207,37 @@ static void testRomList()
 		required += x.need == "required";
 		CHECK(x.name.size() > 4 && (x.name.compare(x.name.size() - 3, 3, ".gb") == 0 || x.name.compare(x.name.size() - 4, 4, ".gbc") == 0));
 	}
-	CHECK(lines.size() == 26 && gb == 8 && required == 6);
+	CHECK(lines.size() == 28 && gb == 10 && required == 6);
+	// the ROM hacks read as the retail game they patch (roms.patches): each a Game Boy line, its retail ROM a required
+	// one of the same game, its ranges in order and apart, inside the bank-0 code and the header (gbpk-roms.sh compares
+	// the files themselves)
+	std::ifstream pf(testDir + "/roms.patches");
+	int hacks = 0;
+	auto find = [&](const std::string& sha1) -> const Line* { for (const Line& x : lines) if (x.sha1 == sha1) return &x; return nullptr; };
+	while (std::getline(pf, l))
+	{
+		if (l.empty() || l[0] == '#') continue;
+		std::istringstream in(l);
+		std::string hack, base, r;
+		in >> hack >> base;
+		const Line* h = find(hack);
+		const Line* b = find(base);
+		CHECK(h && b && h != b && h->system == "gb" && b->system == "gb" && h->game == b->game && b->need == "required");
+		long last = -1;
+		int ranges = 0;
+		while (in >> r)
+		{
+			size_t dash = r.find('-');
+			long lo = dash == std::string::npos ? -1 : strtol(r.substr(0, dash).c_str(), nullptr, 16);
+			long hi = dash == std::string::npos ? -1 : strtol(r.substr(dash + 1).c_str(), nullptr, 16);
+			CHECK(lo > last && hi > lo && hi <= 0x4000);
+			last = hi;
+			ranges++;
+		}
+		CHECK(ranges > 0);
+		hacks++;
+	}
+	CHECK(hacks == 2);
 	for (const char* key : { "red", "blue", "yellow", "gold", "silver", "crystal" })
 	{
 		GameData d;

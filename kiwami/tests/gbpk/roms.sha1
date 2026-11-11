@@ -1,10 +1,11 @@
 # The ROMs the Game Boy Pokémon companion's ROM tests expect (kiwami/GB-POKEMON.md, "The ROMs for the tests"), checked
 # in the player's own folders by kiwami/tests/gbpk-roms.sh. None of them is in the repository. One line a file:
-#   <sha1> <system> <required|optional> <game> <No-Intro file name>
+#   <sha1> <system> <required|optional> <game> <file name: No-Intro's for a dump, the file's own for a hack>
 # system is the folder the file is looked for in: gb in GB_ROMS (~/gb-companion/roms), gba in GBA_ROMS
 # (~/gba-companion/roms), nds in NDS_ROMS (~/nds-companion/roms). A file is found by its SHA-1, whatever its name. The
 # SHA-1s are PokeDaisy's (GameTitles.kt at 135ac809): pret's roms.sha1 for pokered, pokeyellow, pokegold, pokecrystal,
-# pokeruby, pokefirered, pokeemerald, pokeplatinum and pokeheartgold, No-Intro's for Black, White, Black 2 and White 2.
+# pokeruby, pokefirered, pokeemerald, pokeplatinum and pokeheartgold, No-Intro's for Black, White, Black 2 and White 2;
+# the ROM hacks' are their files' own.
 # The gb lines' games are the data files' keys, and their SHA-1s those files' releases (gbpk-units checks both ways).
 
 # Game Boy and Game Boy Color: what the companion's ROM tests read
@@ -16,6 +17,9 @@ d8b8a3600a465308c9953dfa04f0081c05bdcb94 gb required gold Pokemon - Gold Version
 f2f52230b536214ef7c9924f483392993e226cfb gb required crystal Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc
 f4cd194bdee0d04ca4eac29e09b8e4e9d818c133 gb optional crystal Pokemon - Crystal Version (USA).gbc
 a0fc810f1d4e124434f7be2c989ab5b5892ddf36 gb optional crystal Pokemon - Crystal Version (Australia).gbc
+# ROM hacks read as the retail game they patch: roms.patches says what each changes, and gbpk-roms.sh checks it
+e7bfd2c2245597da5016e682fca8f19665c6cfd0 gb optional red Pokemon - Red Version (USA, Europe) (Fast Red) (v1.0) (80C).gb
+5030c1114554207191f2e6ffb1f2920cf3d7c668 gb optional blue Pokemon - Blue Version (USA, Europe) (Fast Blue) (v1.0) (80C).gb
 
 # Game Boy Advance and DS: the other mainline games PokeDaisy supports (English releases), for a later comparison of
 # upstream's guides with PokeDaisy's tables; nothing reads them yet, and none is required

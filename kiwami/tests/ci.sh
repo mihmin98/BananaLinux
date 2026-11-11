@@ -134,6 +134,27 @@ has "2 of 2 required files ok in $T/ok"
 has "Made Up Advance (USA).gba: ok (named e.gba)"
 has "Made Up GBA (USA).gba: wrong file: sha1 $(h f)"
 ! grep -q 'readme' "$T/out" || { echo "gbpk-roms: looked at readme.txt" >&2; exit 1; }
+# a ROM hack (the list's .patches) against its retail ROM: changed only inside its ranges passes; changed outside them,
+# another size, or no retail ROM to compare with fails
+mkdir "$T/hack"
+mk() { python3 -I -c 'import sys; b = bytearray(256); [b.__setitem__(int(o, 16), 0xFF) for o in sys.argv[2:]]; open(sys.argv[1], "wb").write(b)' "$@"; }
+mk "$T/hack/retail.gb"; mk "$T/hack/fast.gb" 10 11 1f 80; mk "$T/hack/bad.gb" 10 20; head -c 255 "$T/hack/retail.gb" > "$T/hack/short.gb"
+f() { sha1sum < "$T/hack/$1" | cut -c1-40; }
+# hk <hack file>: the list with retail.gb and that file, and that file as a hack of retail.gb, then run
+hk() {
+    { echo "$(f retail.gb) gb required made Retail.gb"; echo "$(f $1) gb optional made Fast.gb"; } > "$T/hack.sha1"
+    echo "$(f $1) $(f retail.gb) 0010-0020 0080-0081" > "$T/hack.patches"
+    GBPK_ROMS_LIST=$T/hack.sha1 rr hack
+}
+hk fast.gb || { echo "gbpk-roms: a hack inside its patch failed: $(cat "$T/out")" >&2; exit 1; }
+has "fast.gb: differs from retail.gb only in its patch (4 bytes in 0010-0020 0080-0081)"
+! hk bad.gb || { echo "gbpk-roms: a hack changed outside its patch passed" >&2; exit 1; }
+has "bad.gb: differs from retail.gb outside its patch, first at 0x0020"
+! hk short.gb || { echo "gbpk-roms: a hack of another size passed" >&2; exit 1; }
+has "short.gb: not the size of retail.gb"
+mv "$T/hack/retail.gb" "$T/retail.gb"
+! GBPK_ROMS_LIST=$T/hack.sha1 rr hack || { echo "gbpk-roms: a hack with no retail ROM passed" >&2; exit 1; }
+has "short.gb: no ROM with sha1 $(sha1sum < "$T/retail.gb" | cut -c1-40) to compare it with"
 rm -rf "$T"
 echo "gbpk-roms: checked on made-up folders"
 

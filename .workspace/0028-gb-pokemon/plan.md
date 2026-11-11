@@ -56,11 +56,12 @@ Found while reading the code, each a change to what the investigation proposed:
   is started from and that Challenge mode applies.
 - **A2**: given both rows Off, when any game is started, then nothing of the fork's runs: no ROM read, no memory reads,
   no reply pipe made by the fork, and `make test`'s renders match `main`'s.
-- **A3**: given a row On and Second screen on, when one of the nine supported files is started from that system
-  (Red, Blue, Yellow USA/Europe; Gold, Silver USA/Europe; Crystal USA rev 0, USA/Europe rev 1, Australia; as `.gb`,
-  `.gbc`, `.zip` or `.7z`), then the log says `gb companion: <title>` and the pages show on the game panel, first
+- **A3**: given a row On and Second screen on, when one of the eleven supported files is started from that system
+  (Red, Blue, Yellow USA/Europe; Gold, Silver USA/Europe; Crystal USA rev 0, USA/Europe rev 1, Australia; the ROM
+  hacks Fast Red and Fast Blue v1.0, read as Red and Blue; as `.gb`, `.gbc`, `.zip` or `.7z`), then the log says `gb companion: <title>` and the pages show on the game panel, first
   "Reading your game", then the Party page.
-- **A4**: given a file with a supported game's header title but another SHA-1 (a European Yellow, a ROM hack), then
+- **A4**: given a file with a supported game's header title but another SHA-1 (a European Yellow, a ROM hack other than
+  Fast Red and Fast Blue), then
   the panel shows "Not supported" alone and nothing is read from the game's memory. A file with any other title gets no
   companion and the panel is as before.
 - **A5**: given a supported game started from the system whose row is Off, then no companion (the row of the system the
@@ -509,6 +510,30 @@ Common to the steps:
   files go into `~/gba-companion/roms/` and `~/nds-companion/roms/` whenever the user has them; no step waits on them.
 - **Commit**: `GB Pokémon companion: the list of ROMs its ROM tests expect, by SHA-1, and the check of the folder`
 
+### 5a. Fast Red and Fast Blue in the ROM list, and the check of their patch
+
+Added after step 5 was committed (*Deviations*, 2026-11-11).
+
+- **Files**:
+  - `kiwami/tests/gbpk/roms.patches` (new)
+  - `kiwami/tests/gbpk/roms.sha1`, `kiwami/tests/gbpk-roms.sh`, `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/ci.sh`
+    (changed)
+  - `kiwami/GB-POKEMON.md` (changed)
+- **Change**:
+  - `roms.sha1`: the two hacks as optional `gb` lines of `red` and `blue`, under their files' own names.
+  - `roms.patches`: one line a hack, its SHA-1, its retail ROM's SHA-1 and the ranges its patch changes (`00d0-00f7
+    014e-0150 05cc-05dc 06a1-06b1`), with what each range is in pret's code.
+  - `gbpk-roms.sh`: after the Game Boy folder's lines, each hack that is there is compared with its retail ROM (found by
+    its SHA-1 in the folder): the same size and every differing byte inside the ranges, or the check fails; no retail
+    ROM to compare with fails too. The list's `.patches` beside `GBPK_ROMS_LIST` is read for ci.sh's made-up lists.
+  - `GB-POKEMON.md`: what the patch is, why the hacks are read as Red and Blue, and the check.
+- **Tests**: `gbpk-units`: the list's 28 lines, 10 of them Game Boy and 6 required; each `roms.patches` line a hack and
+  a required retail ROM of the same game in the list, its ranges in order inside bank 0. `ci.sh` on made-up files: a
+  hack changed inside its ranges passes with its line, one changed outside, one of another size and one without its
+  retail ROM fail with theirs. By hand: `gbpk-roms.sh` on the user's folder, both hacks `differs ... only in its patch
+  (72 bytes ...)`.
+- **Commit**: `GB Pokémon companion: Fast Red and Fast Blue in the ROM list, checked to patch nothing it reads`
+
 ### 6. Gen II's ROM: the tables
 
 - **Files**:
@@ -797,6 +822,10 @@ Common to the steps:
     the header titles `POKEMON RED`, `POKEMON BLUE`, `POKEMON YELLOW` and the releases' SHA-1s. Their release lines,
     `pokered`, `pokeblue` and `pokeyellow`, go in `gbpk-symbols.txt`, so the titles and SHA-1s come from pret's
     Makefiles and `roms.sha1` as Gen II's do (step 1's deviation).
+  - **Fast Red and Fast Blue** (*Deviations*, step 5a): `gbpk-symbols.txt` gets a line type for a ROM hack read as the
+    game it patches, `<game> hack <sha1> <name>` (`red hack e7bfd2c2... Fast Red (v1.0)`), which `pret-extract.py`
+    adds to the game's releases with no code and leaves out of the check that a game's releases are PokeDaisy's set.
+    The SHA-1s are `roms.patches`' hacks, which `pret-extract.py --check` verifies.
   - **A set for Gen I**: the party (count, species list, 6 x 44 bytes, nicknames, OT names), the player, the one bag
     list, the map and coordinates, `wIsInBattle`, `wBattleMon` and `wEnemyMon` with the enemy party in a trainer
     battle, the stat modifiers, the Pokédex, the badges, the play time, and in Yellow Pikachu's happiness.
@@ -808,7 +837,8 @@ Common to the steps:
   - `text.cpp`: Gen I's character set where it differs.
 - **Tests**: `gbpk-units` replays the 16 captures and asserts each README's party, place and battle (`red`: its
   trainer, starter and map; `red_battle`: a wild battle with both battlers' levels and HP; `yellow`: Pikachu with its
-  happiness), and that `POKEMON RED`'s header is now `KNOWN`.
+  happiness), and that `POKEMON RED`'s header is now `KNOWN`. Its list check now covers Red and Blue too, so the two
+  hacks' SHA-1s must be releases of `red` and `blue`.
 - **Commit**: `GB Pokémon companion: Red, Blue and Yellow's memory read into the pages' Live`
 
 ### 13. Gen I's ROM: the tables
@@ -829,7 +859,7 @@ Common to the steps:
     class is its own name, so the guide's resolver finds "Brock").
 - **Tests**: `gbpk-units`: a made-up ROM with three species out of Dex order, one map and one trainer, read back; the
   reader's `live()` with it maps an internal index to its national number. `gbpk-roms` (with `GB_ROMS`): Red, Blue and
-  Yellow each name 151 species and 165 moves; Bulbasaur's base stats and types; Route 1's grass has Pidgey and
+  Yellow (and Fast Red and Fast Blue when there, as Red and Blue) each name 151 species and 165 moves; Bulbasaur's base stats and types; Route 1's grass has Pidgey and
   Rattata; Brock's team is Geodude Lv 12 and Onix Lv 14 (Yellow: Lv 10 and Lv 12).
 - **Commit**: `GB Pokémon companion: Red, Blue and Yellow's species, moves, items, encounters and trainers from the ROM`
 
@@ -966,8 +996,8 @@ Each run: Second screen on, the system's row On, the game started from the menu.
 | M4 | rgds-plus | Crystal: Guide page on a save before the first gym, beat Falkner, look again. Stand on a route with a hidden item. | The next milestone is Falkner, then the one after. The Here page lists the hidden item at its coordinates. | `banana-ui.log` (`no guide` must not appear) | A15 | not run |
 | M5 | rgds-plus | Gold and Silver: as M2 and M3, briefly, and the Guide page. | As Crystal; the guide lists the gyms from the ROM, Falkner first. | `banana-ui.log` | A3, A7, A16 | not run |
 | M6 | rgds-plus | After step 15. Red, Blue and Yellow: Party, a wild battle, a trainer battle, Dex, Map, Guide. In Yellow, Pikachu's summary. | One Special row, DVs and stat experience, no Item or Friendship row (Yellow's Pikachu has Friendship). The town map with the place lit. The guide's next milestone is Brock on a new save. | `banana-ui.log` | A8, A9, A10, A11, A13, A14, A15 | not run |
-| M7 | rgds-plus | Each of the nine releases the user has, in `.gb`/`.gbc`, and one as `.zip` and one as `.7z`. | Each opens the companion. | `banana-ui.log`: one `gb companion: <title>` each | A3 | not run |
-| M8 | rgds-plus | A European Yellow or a ROM hack of one of the six, if the user has one; and Tetris. | "Not supported" alone; Tetris gets no companion. | `banana-ui.log`: `not a release the companion knows (sha1 ...)` | A4 | not run |
+| M7 | rgds-plus | Each of the eleven releases the user has (Fast Red and Fast Blue among them), in `.gb`/`.gbc`, and one as `.zip` and one as `.7z`. Fast Red: a short walk holding B. | Each opens the companion. | `banana-ui.log`: one `gb companion: <title>` each | A3 | not run |
+| M8 | rgds-plus | A European Yellow or a ROM hack of one of the six other than Fast Red and Fast Blue, if the user has one; and Tetris. | "Not supported" alone; Tetris gets no companion. | `banana-ui.log`: `not a release the companion knows (sha1 ...)` | A4 | not run |
 | M9 | rgds-plus | Crystal with Settings > Other systems > Frontend on Auto (BananaFront), then on RetroArch; with the Game Boy Color's core set to gambatte, then SameBoy. Four runs, a battle in each. Then a fifth with RetroAchievements' Hardcore mode on (signed in), which sends the game to RetroArch. | The pages follow the game in the four. In Hardcore mode: either the same, or the panel says RetroArch can't read the game's memory; which one is recorded here and in `kiwami/GB-POKEMON.md`, and neither fails the test (whether RetroArch answers reads in Hardcore mode isn't known from upstream's code). | `banana-ui.log`: `the emulator attached to its memory export` with BananaFront, not with RetroArch; no `can't read the game's memory` | A18 | not run |
 | M10 | rgds-plus | Crystal, in a wild battle: close the lid, wait a minute, open it. Fight on. | The game and the pages resume; the pages follow the next turn. | `banana-ui.log`, `/data/banana/logs/bananad.log` around the sleep | A19 | not run |
 | M11 | rgds-plus | Crystal with the frame counter on (RetroArch's, Frontend on RetroArch): a minute of walking with the row Off, then On. Also BananaFront by eye for stutter. | The same frame rate both ways; no stutter when the pages update. | `banana-ui.log`; the two frame rates noted | A19 | not run |
@@ -1053,6 +1083,14 @@ Where the implementation turned out different from this plan, why, and what chan
   Every SHA-1 in `roms.sha1` was checked against PokeDaisy's `GameTitles.kt`, and the Game Boy ones against pret's
   four `roms.sha1` files (Crystal's USA is `pokecrystal`, rev 1 `pokecrystal11`, Australia `pokecrystal_au`).
   `gbpk-units` also checks that the list has its 26 lines, 8 of them Game Boy and 6 required.
+- **2026-11-11, after step 5: Fast Red and Fast Blue are supported** (the user's request, with the user's files). The
+  two are one 72-byte patch on Red and on Blue (running with B, a faster bike): `moveAhead2` and `DoBikeSpeedup` in
+  bank 0, a new routine in the zeros at 0x00D0, the header's global checksum, and a flag in WRAM D711, which pret's
+  `pokered` leaves unused. Header title, every RAM address and every ROM table are retail's, so they are read as Red
+  and Blue, by their SHA-1s. New step 5a lists them (optional, the user's choice) and makes `gbpk-roms.sh` prove the
+  patch is only that against the retail ROM; step 12 adds their SHA-1s to `red` and `blue`'s releases through a new
+  `hack` line type in `gbpk-symbols.txt`, outside step 1's rule that a game's releases are PokeDaisy's and pret's
+  set; step 13's ROM tests run on them as Red and Blue. A3 counts eleven files, A4, M7 and M8 name them.
 
 ## Progress
 
@@ -1065,6 +1103,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 3. Gen II's memory: the reader, checked against PokeDaisy's captures | done | `GB Pokémon companion: Gold, Silver and Crystal's memory read into the pages' Live` |
 | 4. Gen I's and Gen II's rules, in the logic | done | `GB Pokémon companion: Gen I's type chart and both generations' damage, speed and catch rules` |
 | 5. The ROMs for the ROM tests: the list, the folder and its check | done | `GB Pokémon companion: the list of ROMs its ROM tests expect, by SHA-1, and the check of the folder` |
+| 5a. Fast Red and Fast Blue in the ROM list, and the check of their patch | done | `GB Pokémon companion: Fast Red and Fast Blue in the ROM list, checked to patch nothing it reads` |
 | 6. Gen II's ROM: the tables | todo | |
 | 7. Gen II's ROM: the sprites and the Pokégear's maps | todo | |
 | 8. The companion on the game panel, with its Settings rows | todo | |

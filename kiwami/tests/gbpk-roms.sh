@@ -5,13 +5,16 @@
 # .gbc); without that folder everything is skipped and the check succeeds (as in CI). Each listed file is a line: ok,
 # ok (named <its name>) when it's there under another name, missing, or wrong file: sha1 <...> when a file has its name
 # and other bytes (a European release, a hack, a bad dump). A required one missing or wrong fails the check. Files the
-# list hasn't are named and left alone. Then the Game Boy Advance and DS games are looked for the same way in GBA_ROMS
-# (default ~/gba-companion/roms, .gba) and NDS_ROMS (default ~/nds-companion/roms, .nds), none of them failing it.
+# list hasn't are named and left alone. A ROM hack read as the retail game it patches (roms.patches, beside the list)
+# is compared with that game's ROM when both are there: the same size, and every byte that differs inside the patch's
+# ranges, or the check fails. Then the Game Boy Advance and DS games are looked for the same way in GBA_ROMS (default
+# ~/gba-companion/roms, .gba) and NDS_ROMS (default ~/nds-companion/roms, .nds), none of them failing it.
 # Run by kiwami/tests/ci.sh, or by hand:
-#   kiwami/tests/gbpk-roms.sh                      (GBPK_ROMS_LIST: another list, for ci.sh's made-up folders)
+#   kiwami/tests/gbpk-roms.sh      (GBPK_ROMS_LIST: another list, and its .patches, for ci.sh's made-up folders)
 set -e
 cd "$(dirname "$0")/../.."
 LIST=${GBPK_ROMS_LIST:-$PWD/kiwami/tests/gbpk/roms.sha1}
+PATCHES=${LIST%.sha1}.patches
 GB=${GB_ROMS:-$HOME/gb-companion/roms}
 GBA=${GBA_ROMS:-$HOME/gba-companion/roms}
 NDS=${NDS_ROMS:-$HOME/nds-companion/roms}
@@ -74,11 +77,46 @@ check() {
         }' "$LIST"
 }
 
+# patches: each hack of $PATCHES that is in GB_ROMS against its retail ROM there (GB_ROMS' hashes in $T/hashes); one
+# that differs elsewhere, or has no retail ROM to compare with, adds to nok
+patches() {
+    [ -f "$PATCHES" ] || return 0
+    while read -r hack base ranges; do
+        case $hack in ''|'#'*) continue ;; esac
+        hf=$(awk -v h="$hack" 'substr($0, 1, 40) == h { print substr($0, 42); exit }' "$T/hashes")
+        [ -n "$hf" ] || continue
+        bf=$(awk -v h="$base" 'substr($0, 1, 40) == h { print substr($0, 42); exit }' "$T/hashes")
+        if [ -z "$bf" ]; then
+            echo "gbpk-roms: $hf: no ROM with sha1 $base to compare it with"; nok=$((nok + 1)); continue
+        fi
+        if [ "$(wc -c < "$GB/$hf")" != "$(wc -c < "$GB/$bf")" ]; then
+            echo "gbpk-roms: $hf: not the size of $bf"; nok=$((nok + 1)); continue
+        fi
+        dr=
+        for r in $ranges; do dr="$dr $((0x${r%-*})) $((0x${r#*-}))"; done
+        res=$(cmp -l "$GB/$bf" "$GB/$hf" | awk -v r="$dr" '
+            BEGIN { n = split(r, a, " ") }
+            {
+                o = $1 - 1; in_r = 0
+                for (i = 1; i < n; i += 2) if (o >= a[i] + 0 && o < a[i + 1] + 0) in_r = 1
+                if (!in_r && !out) out = sprintf("0x%04x", o)
+                d++
+            }
+            END { print (d + 0) " " (out ? out : "-") }') || true
+        if [ "${res#* }" = - ]; then
+            echo "gbpk-roms: $hf: differs from $bf only in its patch (${res%% *} bytes in $ranges)"
+        else
+            echo "gbpk-roms: $hf: differs from $bf outside its patch, first at ${res#* }"; nok=$((nok + 1))
+        fi
+    done < "$PATCHES"
+}
+
 check gb "$GB" GB_ROMS 1 gb gbc
 nok=$(cat "$T/bad")
+patches
 check gba "$GBA" GBA_ROMS 0 gba
 check nds "$NDS" NDS_ROMS 0 nds
 if [ "$nok" != 0 ]; then
-    echo "gbpk-roms: FAIL $nok required files missing or wrong in $GB (${LIST#"$PWD"/} lists them)" >&2
+    echo "gbpk-roms: FAIL $nok required files missing or wrong, or hacks not their patch, in $GB (${LIST#"$PWD"/} lists them)" >&2
     exit 1
 fi

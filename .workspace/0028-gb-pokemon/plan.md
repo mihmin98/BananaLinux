@@ -1047,6 +1047,12 @@ Where the implementation turned out different from this plan, why, and what chan
   reads `Species::weight` in 0.1 kg, as upstream keeps it: **step 6 fills the weight in 0.1 kg** (the Gen II
   Pokédex's 0.1 lb converted). `docs/FORK.md` also gets `model.h`, `model.cpp` and `logic.cpp` in point 3's `git diff`
   list now, rather than in step 17. `gbpk-units` links `logic.cpp`.
+- **2026-11-11, step 5: a list for the tests, and the SHA-1s checked twice.** `gbpk-roms.sh` takes another list in
+  `GBPK_ROMS_LIST` (not planned), so `ci.sh` checks the `ok` and `ok (named ...)` lines, an optional file missing, an
+  unlisted file and the GBA folder on made-up files with a made-up list, besides the plan's failures on the real list.
+  Every SHA-1 in `roms.sha1` was checked against PokeDaisy's `GameTitles.kt`, and the Game Boy ones against pret's
+  four `roms.sha1` files (Crystal's USA is `pokecrystal`, rev 1 `pokecrystal11`, Australia `pokecrystal_au`).
+  `gbpk-units` also checks that the list has its 26 lines, 8 of them Game Boy and 6 required.
 
 ## Progress
 
@@ -1058,7 +1064,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 2. Telling the games apart, and their text | done | `GB Pokémon companion: the six games told by header title and SHA-1, their data files and character set` |
 | 3. Gen II's memory: the reader, checked against PokeDaisy's captures | done | `GB Pokémon companion: Gold, Silver and Crystal's memory read into the pages' Live` |
 | 4. Gen I's and Gen II's rules, in the logic | done | `GB Pokémon companion: Gen I's type chart and both generations' damage, speed and catch rules` |
-| 5. The ROMs for the ROM tests: the list, the folder and its check | todo | |
+| 5. The ROMs for the ROM tests: the list, the folder and its check | done | `GB Pokémon companion: the list of ROMs its ROM tests expect, by SHA-1, and the check of the folder` |
 | 6. Gen II's ROM: the tables | todo | |
 | 7. Gen II's ROM: the sprites and the Pokégear's maps | todo | |
 | 8. The companion on the game panel, with its Settings rows | todo | |

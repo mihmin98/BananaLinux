@@ -34,9 +34,9 @@ ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.
     $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -lz
 "$T/units" kiwami/tests/tailscale kiwami/tests/ra
 # the Game Boy Pokémon companion's (ui/src/kiwami/gbpk/, GPL-3.0: kiwami/GB-POKEMON.md), its own binary: which game a
-# ROM is (the made-up ones in kiwami/tests/gbpk/made-up/, plain and in archives), its data files, its text, and its
-# memory reader replayed over PokeDaisy's captures (kiwami/tests/gbpk/fixtures/), and Gen I's and II's rules through
-# upstream's logic and its hooks
+# ROM is (the made-up ones in kiwami/tests/gbpk/made-up/, plain and in archives), its data files and the list of ROMs
+# its ROM tests expect (kiwami/tests/gbpk/roms.sha1), its text, its memory reader replayed over PokeDaisy's captures
+# (kiwami/tests/gbpk/fixtures/), and Gen I's and II's rules through upstream's logic and its hooks
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/gbpk-units" kiwami/tests/gbpk-units.cpp ui/src/kiwami/gbpk/*.cpp \
     ui/src/kiwami/json.cpp ui/src/kiwami/ra7z.cpp ui/src/zip.cpp ui/src/zipdir.cpp ui/src/nds/nitro.cpp ui/src/nds/model.cpp \
     ui/src/nds/logic.cpp ui/src/pokemon.cpp ui/src/pokemap.cpp $(find ui/src/kiwami/third_party/lzma -name '*.kiwami.o') -lz -lpthread
@@ -92,6 +92,50 @@ for f in sys.argv[1:]:
             sys.exit('gb-pokemon: %s: ram.%s at %d:%s is neither WRAM nor HRAM' % (f, k, v['bank'], v['addr']))
 print('gb-pokemon: %d data files checked' % (len(sys.argv) - 1))
 EOF
+
+# ... and the check of the player's ROMs for its ROM tests (kiwami/tests/gbpk-roms.sh; skipped without ~/gb-companion/
+# roms, as here), then on made-up folders: none is skipped; an empty one fails naming the six required files; a file
+# with a listed name and other bytes is a wrong file, and six of them can't pass; and, with a made-up list, a file
+# found by its SHA-1 under its name or another, an optional one missing, an unlisted file named, the GBA folder's
+# files looked for without failing the check
+kiwami/tests/gbpk-roms.sh
+T=$(mktemp -d)
+rr() { GB_ROMS=$T/$1 GBA_ROMS=$T/${2:-none} NDS_ROMS=$T/none kiwami/tests/gbpk-roms.sh > "$T/out" 2>&1; }
+has() { grep -qxF -- "gbpk-roms: $1" "$T/out" || { echo "gbpk-roms: no line '$1' in: $(cat "$T/out")" >&2; exit 1; }; }
+rr none || { echo "gbpk-roms: failed with no folder" >&2; exit 1; }
+has "skipped, no ROMs in $T/none (GB_ROMS)"
+mkdir "$T/empty" "$T/six" "$T/ok" "$T/gba"
+! rr empty || { echo "gbpk-roms: an empty folder passed" >&2; exit 1; }
+awk '!/^#/ && $2 == "gb" && $3 == "required" { n = $0; for (i = 1; i <= 4; i++) sub(/^[^ ]+ +/, "", n); print n }' \
+    kiwami/tests/gbpk/roms.sha1 > "$T/required"
+[ "$(wc -l < "$T/required")" = 6 ] || { echo "gbpk-roms: roms.sha1 hasn't six required files" >&2; exit 1; }
+while IFS= read -r n; do has "$n: missing"; done < "$T/required"
+has "0 of 6 required files ok in $T/empty"
+has "no folder $T/none (GBA_ROMS): its 11 files not looked for"
+has "no folder $T/none (NDS_ROMS): its 7 files not looked for"
+while IFS= read -r n; do echo "$n" > "$T/six/$n"; done < "$T/required"
+! rr six || { echo "gbpk-roms: six made-up files passed" >&2; exit 1; }
+while IFS= read -r n; do has "$n: wrong file: sha1 $(echo "$n" | sha1sum | cut -c1-40)"; done < "$T/required"
+printf a > "$T/ok/Made Up (USA).gb"; printf b > "$T/ok/b.GBC"; printf c > "$T/ok/c.gbc"; printf d > "$T/ok/readme.txt"
+printf e > "$T/gba/e.gba"; printf f > "$T/gba/Made Up GBA (USA).gba"
+h() { printf "$1" | sha1sum | cut -c1-40; }
+{ echo '# made up'
+  echo "$(h a) gb required made Made Up (USA).gb"
+  echo "$(h b) gb required made Made Up (Europe).gbc"
+  echo "$(h z) gb optional made Made Up (Japan).gbc"
+  echo "$(h e) gba optional made Made Up Advance (USA).gba"
+  echo "$(h z) gba optional made Made Up GBA (USA).gba"; } > "$T/list"
+GBPK_ROMS_LIST=$T/list rr ok gba || { echo "gbpk-roms: the made-up list's files failed: $(cat "$T/out")" >&2; exit 1; }
+has "Made Up (USA).gb: ok"
+has "Made Up (Europe).gbc: ok (named b.GBC)"
+has "Made Up (Japan).gbc: missing"
+has "not listed, left alone: c.gbc (sha1 $(h c))"
+has "2 of 2 required files ok in $T/ok"
+has "Made Up Advance (USA).gba: ok (named e.gba)"
+has "Made Up GBA (USA).gba: wrong file: sha1 $(h f)"
+! grep -q 'readme' "$T/out" || { echo "gbpk-roms: looked at readme.txt" >&2; exit 1; }
+rm -rf "$T"
+echo "gbpk-roms: checked on made-up folders"
 
 # RomM's game list in banana-sync: 200 a page and its progress, each game kept small, against a large made-up library
 kiwami/tests/romm-list.sh

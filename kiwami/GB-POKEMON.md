@@ -187,3 +187,49 @@ step 12), JSON with sorted keys:
   another WRAM bank, read at `0x10000 + (bank - 2) * 0x1000 + (addr - 0xD000)` through `READ_CORE_MEMORY`.
 - `sizes` are counts: the pockets' capacities, the species, the bytes of event flags (pret's `NUM_EVENTS` / 8).
 - `flags` (the flag banks the guides read) and `rom` (the ROM tables' offsets) are filled by later steps.
+
+## The ROMs for the tests
+
+The companion's ROM reader is checked on the player's own ROMs, which are never added to this repository (it is
+public, and nothing of the games is in it or in the image). `kiwami/tests/gbpk/roms.sha1` lists what the tests expect,
+one line a file: its SHA-1, the folder it goes in (`gb`, `gba`, `nds`), `required` or `optional`, the game, and its
+No-Intro name. The SHA-1s are PokeDaisy's (`GameTitles.kt`), which are pret's `roms.sha1` for the games pret has
+disassembled; `gbpk-units` checks that the Game Boy lines and the data files' releases are the same, both ways.
+
+The Game Boy and Game Boy Color games go **unpacked** (`.gb`, `.gbc`) in `GB_ROMS`, by default `~/gb-companion/roms`,
+outside the repository so that no `git add` can pick one up:
+
+| No-Intro file name | SHA-1 | |
+|---|---|---|
+| `Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb` | `ea9bcae617fdf159b045185467ae58b2e4a48b9a` | required |
+| `Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb` | `d7037c83e1ae5b39bde3c30787637ba1d4c48ce2` | required |
+| `Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb` | `cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1` | required |
+| `Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc` | `d8b8a3600a465308c9953dfa04f0081c05bdcb94` | required |
+| `Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc` | `49b163f7e57702bc939d642a18f591de55d92dae` | required |
+| `Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc` | `f2f52230b536214ef7c9924f483392993e226cfb` | required |
+| `Pokemon - Crystal Version (USA).gbc` | `f4cd194bdee0d04ca4eac29e09b8e4e9d818c133` | optional |
+| `Pokemon - Crystal Version (Australia).gbc` | `a0fc810f1d4e124434f7be2c989ab5b5892ddf36` | optional |
+
+A file is found by its SHA-1, whatever it is called; a name other than the list's is only noted (older No-Intro sets
+write Yellow's `(GBC,SGB Enhanced)`). The two optional Crystals share every address with rev 1, so the ROM tests'
+Crystal checks run on each that is there.
+
+The English releases of the other mainline games PokeDaisy supports are listed too, all optional, for a later
+comparison of upstream's guides with PokeDaisy's tables; nothing reads them yet. They go in `GBA_ROMS` (by default
+`~/gba-companion/roms`, upstream's own test folder for its GBA companion) and `NDS_ROMS` (by default
+`~/nds-companion/roms`): Ruby and Sapphire (USA, and USA, Europe rev 1 and rev 2), Emerald, FireRed and LeafGreen
+(USA, and rev 1), Platinum (rev 1), HeartGold, SoulSilver, Black, White, Black 2 and White 2. Which SHA-1 is which
+revision of Ruby, Sapphire, FireRed and LeafGreen follows the order of pret's `roms.sha1` and is to be confirmed on the
+files themselves. PokeDaisy has no Diamond or Pearl; its non-English releases and the ROM hacks are left out.
+
+The folders are checked with:
+
+```sh
+kiwami/tests/gbpk-roms.sh          # GB_ROMS, GBA_ROMS, NDS_ROMS to look elsewhere
+```
+
+It prints a line for each listed file: `ok`, `ok (named <its name>)`, `missing`, or `wrong file: sha1 <...>` for a file
+with a listed name and other bytes (a European release, a ROM hack, a bad dump), and names the files the list hasn't.
+A required file missing or wrong fails it; the optional ones and the Game Boy Advance and DS folders never do. Without
+`GB_ROMS`' folder it says it's skipped and succeeds, as in CI, where `kiwami/tests/ci.sh` runs it (and checks it on
+made-up folders).

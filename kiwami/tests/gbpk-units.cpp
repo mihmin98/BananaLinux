@@ -1,7 +1,7 @@
 // The Game Boy Pokémon companion's code that needs no screen (ui/src/kiwami/gbpk/), checked on its own: which game a
-// ROM is, its data files, its text, and its memory reader replayed over PokeDaisy's RAM captures (kiwami/tests/gbpk/
-// fixtures/). Built and run by kiwami/tests/ci.sh with the host's g++ (the vendored C first, make -C ui kiwami-c, for
-// the 7z reader):
+// ROM is, its data files and the list of ROMs its ROM tests expect (kiwami/tests/gbpk/roms.sha1), its text, and its
+// memory reader replayed over PokeDaisy's RAM captures (kiwami/tests/gbpk/fixtures/). Built and run by
+// kiwami/tests/ci.sh with the host's g++ (the vendored C first, make -C ui kiwami-c, for the 7z reader):
 //   g++ -std=c++17 -Wall -Werror -I ui/src kiwami/tests/gbpk-units.cpp ui/src/kiwami/gbpk/*.cpp ui/src/kiwami/json.cpp
 //       ui/src/kiwami/ra7z.cpp ui/src/zip.cpp ui/src/zipdir.cpp ui/src/nds/nitro.cpp ui/src/nds/model.cpp
 //       ui/src/nds/logic.cpp ui/src/pokemon.cpp ui/src/pokemap.cpp ui/src/kiwami/third_party/lzma/*.kiwami.o -lz -lpthread
@@ -168,6 +168,71 @@ static void testText()
 	EQ(nameCase("HI JUMP KICK"), "Hi Jump Kick");
 	EQ(nameCase("NIDORAN♀"), "Nidoran♀");
 	EQ(nameCase("PORYGON2"), "Porygon2");
+}
+
+// the list of ROMs the ROM tests expect (kiwami/tests/gbpk/roms.sha1, checked in the player's folders by gbpk-roms.sh)
+// and the data files agree: a Game Boy line's SHA-1 is one of its game's releases, and every release of a game that
+// has a data file is a line of the list under that game
+static void testRomList()
+{
+	struct Line { std::string sha1, system, need, game, name; };
+	std::vector<Line> lines;
+	std::ifstream f(testDir + "/roms.sha1");
+	std::string l;
+	while (std::getline(f, l))
+	{
+		if (l.empty() || l[0] == '#') continue;
+		Line x;
+		size_t p = 0;
+		for (std::string* s : { &x.sha1, &x.system, &x.need, &x.game })
+		{
+			size_t e = l.find(' ', p);
+			if (e == std::string::npos) break;
+			*s = l.substr(p, e - p);
+			p = e + 1;
+		}
+		x.name = l.substr(p);
+		CHECK(x.sha1.size() == 40 && x.sha1.find_first_not_of("0123456789abcdef") == std::string::npos);
+		CHECK(x.need == "required" || x.need == "optional");
+		CHECK(!x.game.empty() && !x.name.empty());
+		lines.push_back(x);
+	}
+	int gb = 0, required = 0, games = 0, released = 0;
+	for (const Line& x : lines)
+	{
+		CHECK(x.system == "gb" || x.system == "gba" || x.system == "nds");
+		if (x.system != "gb") continue;
+		gb++;
+		required += x.need == "required";
+		CHECK(x.name.size() > 4 && (x.name.compare(x.name.size() - 3, 3, ".gb") == 0 || x.name.compare(x.name.size() - 4, 4, ".gbc") == 0));
+	}
+	CHECK(lines.size() == 26 && gb == 8 && required == 6);
+	for (const char* key : { "red", "blue", "yellow", "gold", "silver", "crystal" })
+	{
+		GameData d;
+		bool listed = false;
+		for (const Line& x : lines) listed |= x.system == "gb" && x.game == key;
+		CHECK(listed);
+		if (!loadData(key, d, nullptr)) continue;	// Red, Blue and Yellow have their data files from Gen I's memory on
+		games++;
+		for (const Line& x : lines)
+		{
+			if (x.system != "gb" || x.game != key) continue;
+			bool in = false;
+			for (const auto& r : d.releases) in |= r.sha1 == x.sha1;
+			if (!in) fprintf(stderr, "gbpk-units: roms.sha1's %s isn't one of %s's releases\n", x.name.c_str(), key);
+			CHECK(in);
+		}
+		for (const auto& r : d.releases)
+		{
+			bool in = false;
+			for (const Line& x : lines) in |= x.system == "gb" && x.game == key && x.sha1 == r.sha1;
+			if (!in) fprintf(stderr, "gbpk-units: %s's release %s isn't in roms.sha1\n", key, r.name.c_str());
+			CHECK(in);
+			released++;
+		}
+	}
+	CHECK(games == 3 && released == 5);
 }
 
 // ---- the memory reader, over PokeDaisy's captures ----------------------------------------------------------------
@@ -701,6 +766,7 @@ int main(int argc, char** argv)
 	testConfirm();
 	testRomFile();
 	testText();
+	testRomList();
 	testCaptures();
 	testReaderRules();
 	testRules();

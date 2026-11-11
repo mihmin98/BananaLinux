@@ -462,3 +462,26 @@ and in RetroArch (Hardcore mode or the Frontend row), with gambatte and SameBoy:
 13. How far the C++ is kept from PokeDaisy's Kotlin? *Answered*: not at all ("read Kotlin freely"). The GB companion's
     code is GPL-3.0, and so is the fork's banana-ui as a whole (oversight 2).
 14. One feature or several? *Answered*: one feature (#28), in Crystal-first steps.
+15. How is the ROM reader tested headless? *Answered* (planning, 2026-11-11): unit tests on made-up tables and
+    hand-built compressed data in CI, and a second test that runs only when `GB_ROMS` names a folder with the user's
+    own six ROMs (never committed, skipped in CI). This replaces "ROM tests: not planned" under *Testing*.
+16. Which hook form in `ui/src/nds/pages.cpp`? *Answered* (planning): the fork's blocks as members of `Pages::Impl`:
+    two `#include` lines (declarations inside the struct, definitions at the file's end) and the call-site lines.
+17. How do Gen I/II, the six games and stat experience get into `ui/src/nds/model.h`? *Answered* (planning): `Gen` and
+    `GameId` values as constants in the fork's header, cast into upstream's enum classes, so the two enum lines aren't
+    edited. One added line in `struct Mon` for the 16-bit stat experience. This replaces oversight 4's proposed
+    `Gen::I`/`Gen::II` hook.
+18. How is the game panel routed to the GB companion? *Answered* (planning): `settings.h`'s `gbaPanel` member becomes
+    a fork wrapper holding upstream's `gba::Panel` and the GB one (nothing in `settings_gamepanel.cpp`), and
+    `main.cpp` gets explicit one-line hooks. No wrapper around `pkmn::Companion`.
+19. Hide a place's hidden items once taken? *Answered* (planning): no. They are always listed, as upstream's GBA and DS
+    companions list them (the guide model has no "taken" state). The items' flags stay in the reference data.
+20. Gen I's Team score counts coverage over 17 types (Steel and Dark don't exist there), so it reads up to 3 points
+    low. Fix with three more hooks? *Answered* (planning): no, left as it is and documented.
+21. Where do the addresses and ROM offsets PokeDaisy doesn't have come from (Gen II's badges, Gold and Silver's flags,
+    the wild tables and trainers in the ROM)? *Answered* (planning, 2026-11-11): pret's disassemblies (pokecrystal,
+    pokegold, pokered, pokeyellow), added to `kiwami/DEPENDENCIES.md`. The user clones them; a script extracts the
+    symbol addresses and constants needed into the repository.
+22. The games' rules and layouts the plan states from memory? *Answered* (planning): each is checked against
+    Bulbapedia before the step that implements it is written.
+23. The reference data for Gen III to V, here or its own issue? *Answered* (planning): it stays in #28.

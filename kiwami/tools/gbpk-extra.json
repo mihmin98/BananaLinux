@@ -507,6 +507,86 @@
     },
     "gold": {
       "const": {
+        "badgeBoulder": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "BOULDERBADGE",
+          "value": 0
+        },
+        "badgeCascade": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "CASCADEBADGE",
+          "value": 1
+        },
+        "badgeEarth": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "EARTHBADGE",
+          "value": 7
+        },
+        "badgeFog": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "FOGBADGE",
+          "value": 3
+        },
+        "badgeGlacier": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "GLACIERBADGE",
+          "value": 6
+        },
+        "badgeHive": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "HIVEBADGE",
+          "value": 1
+        },
+        "badgeMarsh": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "MARSHBADGE",
+          "value": 5
+        },
+        "badgeMineral": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "MINERALBADGE",
+          "value": 4
+        },
+        "badgePlain": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "PLAINBADGE",
+          "value": 2
+        },
+        "badgeRainbow": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "RAINBOWBADGE",
+          "value": 3
+        },
+        "badgeRising": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "RISINGBADGE",
+          "value": 7
+        },
+        "badgeSoul": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "SOULBADGE",
+          "value": 4
+        },
+        "badgeStorm": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "STORMBADGE",
+          "value": 5
+        },
+        "badgeThunder": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "THUNDERBADGE",
+          "value": 2
+        },
+        "badgeVolcano": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "VOLCANOBADGE",
+          "value": 6
+        },
+        "badgeZephyr": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "ZEPHYRBADGE",
+          "value": 0
+        },
         "fastShipLandmark": {
           "file": "constants/landmark_constants.asm",
           "symbol": "LANDMARK_FAST_SHIP",
@@ -516,6 +596,86 @@
           "file": "constants/landmark_constants.asm",
           "symbol": "KANTO_LANDMARK",
           "value": 46
+        },
+        "leaderBlaine": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BLAINE",
+          "value": 46
+        },
+        "leaderBlue": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BLUE",
+          "value": 64
+        },
+        "leaderBrock": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BROCK",
+          "value": 17
+        },
+        "leaderBugsy": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BUGSY",
+          "value": 3
+        },
+        "leaderChuck": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "CHUCK",
+          "value": 7
+        },
+        "leaderClair": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "CLAIR",
+          "value": 8
+        },
+        "leaderErika": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "ERIKA",
+          "value": 21
+        },
+        "leaderFalkner": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "FALKNER",
+          "value": 1
+        },
+        "leaderJanine": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "JANINE",
+          "value": 26
+        },
+        "leaderJasmine": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "JASMINE",
+          "value": 6
+        },
+        "leaderLtSurge": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "LT_SURGE",
+          "value": 19
+        },
+        "leaderMisty": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "MISTY",
+          "value": 18
+        },
+        "leaderMorty": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "MORTY",
+          "value": 4
+        },
+        "leaderPryce": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "PRYCE",
+          "value": 5
+        },
+        "leaderSabrina": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "SABRINA",
+          "value": 35
+        },
+        "leaderWhitney": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "WHITNEY",
+          "value": 2
         },
         "numEvents": {
           "file": "constants/event_flags.asm",
@@ -995,6 +1155,86 @@
     },
     "silver": {
       "const": {
+        "badgeBoulder": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "BOULDERBADGE",
+          "value": 0
+        },
+        "badgeCascade": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "CASCADEBADGE",
+          "value": 1
+        },
+        "badgeEarth": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "EARTHBADGE",
+          "value": 7
+        },
+        "badgeFog": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "FOGBADGE",
+          "value": 3
+        },
+        "badgeGlacier": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "GLACIERBADGE",
+          "value": 6
+        },
+        "badgeHive": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "HIVEBADGE",
+          "value": 1
+        },
+        "badgeMarsh": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "MARSHBADGE",
+          "value": 5
+        },
+        "badgeMineral": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "MINERALBADGE",
+          "value": 4
+        },
+        "badgePlain": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "PLAINBADGE",
+          "value": 2
+        },
+        "badgeRainbow": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "RAINBOWBADGE",
+          "value": 3
+        },
+        "badgeRising": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "RISINGBADGE",
+          "value": 7
+        },
+        "badgeSoul": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "SOULBADGE",
+          "value": 4
+        },
+        "badgeStorm": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "STORMBADGE",
+          "value": 5
+        },
+        "badgeThunder": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "THUNDERBADGE",
+          "value": 2
+        },
+        "badgeVolcano": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "VOLCANOBADGE",
+          "value": 6
+        },
+        "badgeZephyr": {
+          "file": "constants/ram_constants.asm",
+          "symbol": "ZEPHYRBADGE",
+          "value": 0
+        },
         "fastShipLandmark": {
           "file": "constants/landmark_constants.asm",
           "symbol": "LANDMARK_FAST_SHIP",
@@ -1004,6 +1244,86 @@
           "file": "constants/landmark_constants.asm",
           "symbol": "KANTO_LANDMARK",
           "value": 46
+        },
+        "leaderBlaine": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BLAINE",
+          "value": 46
+        },
+        "leaderBlue": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BLUE",
+          "value": 64
+        },
+        "leaderBrock": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BROCK",
+          "value": 17
+        },
+        "leaderBugsy": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BUGSY",
+          "value": 3
+        },
+        "leaderChuck": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "CHUCK",
+          "value": 7
+        },
+        "leaderClair": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "CLAIR",
+          "value": 8
+        },
+        "leaderErika": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "ERIKA",
+          "value": 21
+        },
+        "leaderFalkner": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "FALKNER",
+          "value": 1
+        },
+        "leaderJanine": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "JANINE",
+          "value": 26
+        },
+        "leaderJasmine": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "JASMINE",
+          "value": 6
+        },
+        "leaderLtSurge": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "LT_SURGE",
+          "value": 19
+        },
+        "leaderMisty": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "MISTY",
+          "value": 18
+        },
+        "leaderMorty": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "MORTY",
+          "value": 4
+        },
+        "leaderPryce": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "PRYCE",
+          "value": 5
+        },
+        "leaderSabrina": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "SABRINA",
+          "value": 35
+        },
+        "leaderWhitney": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "WHITNEY",
+          "value": 2
         },
         "numEvents": {
           "file": "constants/event_flags.asm",

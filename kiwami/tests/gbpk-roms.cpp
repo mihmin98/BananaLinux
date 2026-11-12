@@ -12,6 +12,7 @@
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "kiwami/gbpk/games.h"
 #include "kiwami/gbpk/rom.h"
+#include "kiwami/gbpk/gsguide.h"
 #include "nds/guide.h"
 #include "nds/rom.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -23,6 +24,7 @@
 #include <cstring>
 #include <dirent.h>
 #include <fstream>
+#include <map>
 #include <regex>
 #include <set>
 #include <sstream>
@@ -248,6 +250,36 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 		for (const HiddenItem& h : hidden) ours.insert({ h.flag, h.item });
 		CHECK(theirs.size() == 85 && ours == theirs);
 		fprintf(stderr, "gbpk-roms: %s: the %zu hidden items are PokeDaisy's, by flag and item\n", current.c_str(), theirs.size());
+	}
+	if (d.game.id == GOLD || d.game.id == SILVER)
+	{
+		// Gold's and Silver's, from the ROM's trainers (gsguide.h): Johto's eight leaders, the Elite Four, Lance, then
+		// Kanto's eight, Falkner first; each leader by its gym's badge (Jasmine's MINERALBADGE is bit 4, Pryce's
+		// GLACIERBADGE bit 6, Blue's EARTHBADGE bit 7 of Kanto's), the Elite Four and the Champion by a later one
+		const nds::GuideData g = romGuide(r, d);
+		std::string order, badges;
+		std::map<std::string, std::string> doneWhen;
+		for (const nds::Milestone& m : g.milestones)
+		{
+			order += (order.empty() ? "" : ", ") + m.foeName;
+			doneWhen[m.foeName] = m.doneWhen;
+			if (m.kind == "gym") badges += m.doneWhen.compare(0, 6, "badge:") == 0 ? "" : " " + m.foeName;
+		}
+		EQ(order, "Falkner, Bugsy, Whitney, Morty, Chuck, Pryce, Jasmine, Clair, Will, Koga, Bruno, Karen, Lance, "
+			"Janine, Brock, Lt.Surge, Erika, Misty, Sabrina, Blaine, Blue");
+		EQ(badges, "");
+		EQ(doneWhen["Falkner"], "badge:1");
+		EQ(doneWhen["Chuck"], "badge:6");
+		EQ(doneWhen["Jasmine"], "badge:5");
+		EQ(doneWhen["Pryce"], "badge:7");
+		EQ(doneWhen["Clair"], "badge:8");
+		EQ(doneWhen["Brock"], "badge:9");
+		EQ(doneWhen["Blue"], "badge:16");
+		EQ(doneWhen["Will"], "later");
+		EQ(doneWhen["Lance"], "later");
+		fprintf(stderr, "gbpk-roms: %s: the guide from the ROM's trainers, %zu milestones: %s\n", current.c_str(),
+			g.milestones.size(), order.c_str());
+		return;
 	}
 	const std::string path = dataDir() + "/" + d.key + ".json";
 	if (FILE* f = fopen(path.c_str(), "r")) fclose(f);

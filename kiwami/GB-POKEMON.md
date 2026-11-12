@@ -54,7 +54,8 @@ Two sources, each read by its own script into files that are committed, so a bui
   and each release's SHA-1 (`roms.sha1`) and ROM header (the title and game code its Makefile gives `rgbfix`).
   `kiwami/tools/gbpk-symbols.txt` lists every value taken: an address is looked up in the release's `.sym` on the
   repository's `symbols` branch, a constant evaluated from its `constants/*.asm` file (rgbds' `const` macros and the
-  file's own `MACRO`s). pret publishes no licence; only these facts about the retail ROMs are taken, none of its code
+  file's own `MACRO`s; a `DEF` naming a symbol the file doesn't define, one from `hardware.inc`, is set aside, and
+  stops the run only when it is the one asked for). pret publishes no licence; only these facts about the retail ROMs are taken, none of its code
   or tables, as PokeDaisy's own `NOTICE` describes its use of them.
 
 What the two agree on is checked: every address PokeDaisy gives is also looked up in pret's symbols and must be the
@@ -121,7 +122,7 @@ shows "Not supported" alone and is never asked anything. The rules go to the gam
 to upstream's when the game ends (`rules off`). Upstream's `nds::SessionThread` keeps the journey log and the seen
 notices in `/data/banana/cache/gb-companion/`, as the GBA's are kept in `cache/gba-companion/`; a battle's start shows
 the Battle page and its end the Party page. Gen II's badges go to the rules with each state, for the badge boosts. The
-guides come with their own steps; until then the Guide page has none.
+Guide page's milestones and the Here page's hidden items are *The guides*.
 
 `kiwami/tests/gbpk-ui.sh` (in `ci.sh` when banana-ui is built) runs banana-ui headless at both panel sizes: the rows,
 and the panel through three test verbs of the fork's: `gbpanel <screen> <capture folder> [rom]` (the companion for the
@@ -327,8 +328,9 @@ The Guide page's milestones and notes, and the Here page's hidden items, in upst
 `nds::guideResolver` over the ROM's data. The six games are rows of upstream's guide loader by a hook
 (`ui/src/kiwami/gbpk/guide-games.inc`, included in `ui/src/nds/guide.cpp`'s `GAMES`): their ids, keys and codes (Gold's,
 Silver's and Crystal's headers'; Red's, Blue's and Yellow's `PKRD`, `PKBL`, `PKYL` are the fork's own, as their carts
-have none). The host (`host.cpp`) loads `<key>.json` from the data folder; no file, or one refused, logs
-`gb companion: no guide: <why>`, and the pages go on with the hidden items alone.
+have none). The host (`host.cpp`) loads `<key>.json` from the data folder, or for Gold and Silver builds the guide from
+the ROM (below); no file, or one refused, logs `gb companion: no guide: <why>`, and the pages go on with the hidden
+items alone. Either way it logs `gb companion: guide: <N> milestones, <M> hidden items`.
 
 **Crystal's**, `crystal.json`, is converted by `pokedaisy-extract.py` from PokeDaisy's `GuideCrystal.kt` (the bosses,
 their order and their rules, and the tips) over `GuideCrystalGen.kt` (the flags, and each boss's team, generated
@@ -354,6 +356,30 @@ there from pret/pokecrystal):
 - **Hidden items** are the ROM's (*Reading the ROM*), not the file's: the host adds a secret for each, on its own map
   with its x and y, "A hidden <item>." by the ROM's item name, every one listed whether found or not, as upstream's
   companions list theirs. Gold and Silver have theirs too.
+
+**Gold's and Silver's** come from the ROM, as PokeDaisy has no guide for them: `romGuide` (`ui/src/kiwami/gbpk/
+gsguide.cpp`, after upstream's `nds::guideFromRom`, which upstream since removed) makes a milestone of each trainer
+class the ROM names Leader, Elite Four or Champion, with every trainer of the class (`trainer_ids`) and the
+lowest-levelled team's top level as `level_cap`, and its type the one most of that team has.
+
+- **Order**: the story's stages, by level in each: Johto's leaders, the Elite Four, the Champion, then Kanto's
+  leaders. Level alone would be wrong: Janine's team (top Lv 39) is below Clair's (40) and the Elite Four's, and
+  Brock's (44) is the Elite Four's level, so the next milestone would sit on Janine from Jasmine to Kanto. In Gold
+  and Silver this gives Falkner, Bugsy, Whitney, Morty, Chuck, Pryce, Jasmine, Clair, Will, Koga, Bruno, Karen, Lance,
+  then Janine, Brock, Lt.Surge, Erika, Misty, Sabrina, Blaine and Blue (Kanto's gyms can be taken in any order, Blue
+  last).
+- **A gym is done by its badge** (`badge:N`, 1-8 Johto's, 9-16 Kanto's, the bits of `wJohtoBadges` and `wKantoBadges`
+  as `Live::badges` holds them), the badge its gym's script gives (`setflag ENGINE_<badge>` in pret/pokegold's
+  `maps/*Gym.asm`, Clair's in `maps/DragonsDenB1F.asm`), not its place in the order: Jasmine's MINERALBADGE is
+  `badge:5`, Chuck's STORMBADGE `badge:6`, Pryce's GLACIERBADGE `badge:7`, though Chuck and Pryce come first by
+  level. `gsguide.cpp` pairs each leader with its badge by name; both numbers are the data file's `sizes`, the leaders'
+  trainer classes (`leaderFalkner` ...) and the badges' bits (`badgeZephyr` ...), from pret's constants through
+  `gbpk-symbols.txt`. A leader class it doesn't know goes with Johto's and is done by a later milestone.
+- **The Elite Four and the Champion are done by a later milestone** (`later`): Gold's and Silver's flags aren't read,
+  so a member counts as beaten once a Kanto badge is set. Until then the Guide page's next milestone stays on Will
+  after the League is won.
+- No places, notes or `opens`: the ROM's trainers say nothing of where each is fought. The hidden items are the
+  ROM's, as for Crystal.
 
 The script refuses what it can't read: a boss that isn't `crBoss(title, where, flag, key[, crLeague(flag)])` with
 an optional `{ p -> p.flag(A) && p.flag(B) }`, a rule of another shape, a tip that isn't `entry(question, answer[,
@@ -426,8 +452,10 @@ Pidgey and Sentret; fishing at New Bark Town and none on Route 29; Falkner's Pid
 place with wild Pokémon named; every species' front picture drawn, at its base data's size, Chikorita's 5 x 5 tiles;
 both Pokégear maps drawn, New Bark Town on Johto's with its cell naming it, Pallet Town on Kanto's, and every named
 place but the special landmark's rooms on a map; every hidden item on a named map with a named item, and more than
-50; and the game's guide file (Crystal's) loaded with every place found by name and every boss's team the ROM's, at
-its level cap. Given PokeDaisy's checkout, every species' gender ratio and growth rate is compared with its
+50; the game's guide file (Crystal's) loaded with every place found by name and every boss's team the ROM's, at
+its level cap; and Gold's and Silver's guide from the ROM's trainers, its 21 milestones in the order above, each gym
+done by a badge (Falkner's `badge:1`, Jasmine's 5, Chuck's 6, Pryce's 7, Clair's 8, Brock's 9, Blue's 16) and Will
+and Lance by `later`. Given PokeDaisy's checkout, every species' gender ratio and growth rate is compared with its
 `Gen2SpeciesCrystal.kt`, and Crystal's hidden items with its `GuideCrystalGen.kt`'s 85, by flag and item. The pictures and maps go to `GBPK_ROMS_OUT` (by default
 `ui/tests/out/gbpk-roms/`) as PNGs for looking at: a sheet of every species' picture, normal and shiny, in the box the
 game draws it in, and each map.

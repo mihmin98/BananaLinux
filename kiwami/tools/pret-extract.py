@@ -81,7 +81,9 @@ def parse_sym(text):
 class Consts:
     """Enough of rgbds' assembler to evaluate a constants file: DEF (EQU, =, +=, -=), the const macros of
     macros/const.asm (const_def, const, const_skip, const_next, shift_const) and the file's own MACROs. Anything
-    else stops the run, so a value is never computed from a line that wasn't understood."""
+    else stops the run, so a value is never computed from a line that wasn't understood. A DEF whose expression names
+    a symbol the file doesn't define (one from hardware.inc, which it doesn't read) is set aside: asking for that
+    name stops the run with the reason, any other line using it too."""
 
     TOKEN = re.compile(r'\s*(?:(\$[0-9A-Fa-f]+)|(%[01]+)|(\d+)|([A-Za-z_][A-Za-z0-9_@#.]*)|(<<|>>|[-+*/%&|^~()]))')
 
@@ -89,6 +91,10 @@ class Consts:
         self.name = name
         self.v = {'const_value': 0, 'const_inc': 1}
         self.macros = {}
+        self.unknown = {}  # a DEF set aside: name -> why
+
+    class Undefined(Exception):
+        pass
 
     def expr(self, s, where):
         out, pos = [], 0
@@ -107,7 +113,7 @@ class Consts:
                 out.append(dec)
             elif ident:
                 if ident not in self.v:
-                    fail('%s: %s isn\'t defined' % (where, ident))
+                    raise Consts.Undefined('%s: %s isn\'t defined' % (where, self.unknown.get(ident, ident)))
                 out.append('(%d)' % self.v[ident])
             else:
                 out.append('//' if op == '/' else op)
@@ -140,10 +146,18 @@ class Consts:
                 self.macros[m.group(1)] = '\n'.join(body)
                 continue
             m = re.match(r'DEF\s+(\w+)\s*(EQU|=|\+=|-=)\s*(.+)$', line)
+            if m and m.group(2) in ('EQU', '='):
+                try:
+                    self.expr(m.group(3), where)
+                except Consts.Undefined as e:
+                    self.v.pop(m.group(1), None)
+                    self.unknown[m.group(1)] = '%s (%s)' % (m.group(1), e)
+                    continue
             if m:
                 name, op, val = m.group(1), m.group(2), self.expr(m.group(3), where)
                 if op in ('EQU', '='):
                     self.v[name] = val
+                    self.unknown.pop(name, None)
                 elif name not in self.v:
                     fail('%s: %s %s before it was defined' % (where, name, op))
                 else:
@@ -276,8 +290,13 @@ def build(pret, lines):
                 ck = (g['repo'], f)
                 if ck not in consts:
                     c = Consts('%s/%s' % ck)
-                    c.run(pret.read(g['repo'], f))
+                    try:
+                        c.run(pret.read(g['repo'], f))
+                    except Consts.Undefined as e:
+                        fail(str(e))
                     consts[ck] = c
+                if name in consts[ck].unknown:
+                    fail('%s:%d: %s/%s: %s' % (LIST, n, g['repo'], f, consts[ck].unknown[name]))
                 if name not in consts[ck].v:
                     fail('%s:%d: %s isn\'t in %s/%s' % (LIST, n, name, g['repo'], f))
                 g['const'][key] = {'value': consts[ck].v[name], 'symbol': name, 'file': f}

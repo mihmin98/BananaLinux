@@ -95,7 +95,8 @@ Found while reading the code, each a change to what the investigation proposed:
   follows the save (badges and flags), and the Here page lists the place's hidden items (always, taken or not, as
   upstream's companions do).
 - **A16**: Gold and Silver get a guide built from the ROM's trainer table: the gym leaders, the Elite Four and the
-  Champion in level order, each done by its badge or by a later one.
+  Champion in the story's stages (Johto's leaders, the Elite Four, the Champion, Kanto's leaders), by level in each
+  (changed in step 11, *Deviations*), each done by its badge or by a later one.
 - **A17**: Challenge mode follows upstream's `gba_challenge` row; the journey log and the seen notices are kept in
   `/data/banana/cache/gb-companion/`, per game and trainer.
 - **A18**: it reads through BananaFront's shared memory and through RetroArch's pipe, with gambatte and with SameBoy.
@@ -811,7 +812,8 @@ derived bits, the gyms by their leaders' flags, no `opens`.)
   gives five milestones in level order, each leader's badge the table's and not its place (two leaders whose level
   order and badge order differ), and the second is next once the first's badge is set.
   `gbpk-roms` (with `GB_ROMS`): Gold's guide has 16 gyms, 4 Elite Four and 1 Champion, the first Falkner; Jasmine's
-  milestone is `badge:6` and Pryce's `badge:7`.
+  milestone is `badge:6` and Pryce's `badge:7`. (*Deviations* 2026-11-12, step 11: Jasmine's is `badge:5`, Chuck's
+  `badge:6`; the order is by stage, then level.)
 - **Commit**: `GB Pokémon companion: Gold and Silver's gyms, Elite Four and Champion as a guide from the ROM's trainers`
 - (*Deviations* 2026-11-12: the host already adds Gold's and Silver's hidden items from the ROM since step 10; the
   ROM-built milestones join them.)
@@ -1204,6 +1206,26 @@ Where the implementation turned out different from this plan, why, and what chan
   - The event flags are one read of 256 bytes; `Live::flags` is 257 bytes (the bank and a byte of derived bits).
   - Also changed: `kiwami/tests/ci.sh` and `gbpk-roms.sh` link upstream's `guide.cpp` and `json.cpp`; `gbpk-ui.sh`
     checks the host logs `guide: 22 milestones, 0 hidden items` for the stand-in game (no ROM, no hidden items).
+- **2026-11-12, step 11: Gold's and Silver's guide in the story's stages, and the badges as pret has them** (agreed
+  with the user).
+  - **The order is by stage, then level**, not level alone: Johto's leaders, the Elite Four, the Champion, then
+    Kanto's leaders, each by its team's top level. By level alone Janine (Lv 39) comes before Clair (40) and the Elite
+    Four (42-47), and Brock (44) among them, so `nextMilestone`, the first not done, would show Janine from Jasmine
+    until Kanto. A leader class not in the table goes with Johto's (done by `later`). A16 changed to say so. The unit
+    test adds a Kanto leader below the Elite Four's level (Janine, after the Champion) and an unknown leader class.
+  - **Jasmine's milestone is `badge:5`, not the plan's `badge:6`**: pret/pokegold's `maps/OlivineGym.asm` sets
+    `ENGINE_MINERALBADGE`, bit 4 of `wJohtoBadges` (`constants/ram_constants.asm`: ZEPHYR, HIVE, PLAIN, FOG, MINERAL,
+    STORM, GLACIER, RISING), and `badge:N` is bit N - 1 (`ui/src/nds/logic.cpp`). Chuck's STORMBADGE is `badge:6`,
+    Pryce's GLACIERBADGE `badge:7`, as planned. Checked in pokecrystal too.
+  - **The badges' bits come from pret too**, not only the leaders' classes: `gbpk-symbols.txt` gets 16 `leader<Name>`
+    lines (`constants/trainer_constants.asm`) and 16 `badge<Name>` lines (`constants/ram_constants.asm`), and
+    `gsguide.cpp`'s table pairs the names, each gym's `setflag` in pret's maps. `ram_constants.asm` has a `DEF` over
+    `hardware.inc`'s names, so `pret-extract.py` (not in the plan's files) sets aside a `DEF` naming a symbol the file
+    doesn't define, and fails only when that one is asked for; its other outputs are unchanged.
+  - `romGuide` takes the `GameData` too (the class ids and bits are its `sizes`), and makes a milestone a trainer class
+    (every trainer of it in `trainer_ids`), as upstream's grouped by name. Its ids and names are `crystal.json`'s
+    (`gym-4-jasmine`, `Gym 4: Jasmine`, `e4-will`, `Champion: Lance`).
+  - Also changed: `kiwami/GB-POKEMON.md`'s *On the game panel* no longer says the Guide page is empty.
 
 ## Progress
 
@@ -1222,7 +1244,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 8. The companion on the game panel, with its Settings rows | done | `GB Pokémon companion: the pages on the game panel for Gold, Silver and Crystal, behind two Settings rows` |
 | 9. Gen-aware pages | done | `GB Pokémon companion: the pages show DVs, stat experience and Special, and no natures or abilities` |
 | 10. Crystal's guide | done | `GB Pokémon companion: Crystal's guide, converted from PokeDaisy's tables` |
-| 11. Gold and Silver's guide, built from the ROM | todo | |
+| 11. Gold and Silver's guide, built from the ROM | done | `GB Pokémon companion: Gold and Silver's gyms, Elite Four and Champion as a guide from the ROM's trainers` |
 | 12. Gen I's memory: Red, Blue and Yellow | todo | |
 | 13. Gen I's ROM: the tables | todo | |
 | 14. Gen I's ROM: the sprites and the town map | todo | |

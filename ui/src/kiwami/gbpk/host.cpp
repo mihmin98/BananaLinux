@@ -3,6 +3,7 @@
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "host.h"
+#include "gsguide.h"
 #include "rom.h"
 #include "rules.h"
 #include "../../nds/guide.h"
@@ -13,15 +14,18 @@ namespace banana::kiwami::gbpk
 {
 	namespace
 	{
-		// the game's guide: its file in the data folder (<key>.json, the places' maps found by name in the ROM), with
-		// the ROM's hidden items as the Here page's secrets, each listed whether found or not, as upstream's companions
-		// list theirs. A game without a file (or with one it refuses) has the hidden items alone.
+		// the game's guide: its file in the data folder (<key>.json, the places' maps found by name in the ROM), or for
+		// Gold and Silver, which have none, the one their ROM's trainers make (gsguide.h); with the ROM's hidden items as
+		// the Here page's secrets, each listed whether found or not, as upstream's companions list theirs. A game
+		// without a file (or with one it refuses) has the hidden items alone.
 		std::shared_ptr<const nds::GuideData> guideFor(const GameData& d, const nds::RomData& rom)
 		{
 			auto g = std::make_shared<nds::GuideData>();
 			const nds::GuideResolver res = nds::guideResolver(rom);
 			std::string why;
-			if (!nds::loadGuideFile(dataDir() + "/" + d.key + ".json", *g, d.game.id, &why, &res))
+			if (d.game.id == GOLD || d.game.id == SILVER)
+				*g = romGuide(rom, d);
+			else if (!nds::loadGuideFile(dataDir() + "/" + d.key + ".json", *g, d.game.id, &why, &res))
 			{
 				fprintf(stderr, "banana-ui: gb companion: no guide: %s\n", why.c_str());
 				*g = nds::GuideData();

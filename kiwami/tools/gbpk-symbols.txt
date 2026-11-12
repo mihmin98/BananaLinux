@@ -138,3 +138,39 @@ crystal,gold,silver rom.townMapPalMap TownMapPals.PalMap
 # (Crystal's boy's; the girl's differ only in the cities' colour, and the map is read once, not by the save)
 crystal rom.pokegearPals MalePokegearPals
 gold,silver rom.pokegearPals PokegearPals
+
+# Gold and Silver's guide, built from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp): each gym leader's trainer
+# class, and the badge each one's gym gives (its bit in wJohtoBadges or wKantoBadges). Which leader gives which badge
+# is gsguide.cpp's table, from each gym's script (maps/*Gym.asm, Clair's maps/DragonsDenB1F.asm: setflag ENGINE_...)
+gold,silver const.leaderFalkner constants/trainer_constants.asm FALKNER
+gold,silver const.leaderBugsy constants/trainer_constants.asm BUGSY
+gold,silver const.leaderWhitney constants/trainer_constants.asm WHITNEY
+gold,silver const.leaderMorty constants/trainer_constants.asm MORTY
+gold,silver const.leaderJasmine constants/trainer_constants.asm JASMINE
+gold,silver const.leaderChuck constants/trainer_constants.asm CHUCK
+gold,silver const.leaderPryce constants/trainer_constants.asm PRYCE
+gold,silver const.leaderClair constants/trainer_constants.asm CLAIR
+gold,silver const.leaderBrock constants/trainer_constants.asm BROCK
+gold,silver const.leaderMisty constants/trainer_constants.asm MISTY
+gold,silver const.leaderLtSurge constants/trainer_constants.asm LT_SURGE
+gold,silver const.leaderErika constants/trainer_constants.asm ERIKA
+gold,silver const.leaderJanine constants/trainer_constants.asm JANINE
+gold,silver const.leaderSabrina constants/trainer_constants.asm SABRINA
+gold,silver const.leaderBlaine constants/trainer_constants.asm BLAINE
+gold,silver const.leaderBlue constants/trainer_constants.asm BLUE
+gold,silver const.badgeZephyr constants/ram_constants.asm ZEPHYRBADGE
+gold,silver const.badgeHive constants/ram_constants.asm HIVEBADGE
+gold,silver const.badgePlain constants/ram_constants.asm PLAINBADGE
+gold,silver const.badgeFog constants/ram_constants.asm FOGBADGE
+gold,silver const.badgeMineral constants/ram_constants.asm MINERALBADGE
+gold,silver const.badgeStorm constants/ram_constants.asm STORMBADGE
+gold,silver const.badgeGlacier constants/ram_constants.asm GLACIERBADGE
+gold,silver const.badgeRising constants/ram_constants.asm RISINGBADGE
+gold,silver const.badgeBoulder constants/ram_constants.asm BOULDERBADGE
+gold,silver const.badgeCascade constants/ram_constants.asm CASCADEBADGE
+gold,silver const.badgeThunder constants/ram_constants.asm THUNDERBADGE
+gold,silver const.badgeRainbow constants/ram_constants.asm RAINBOWBADGE
+gold,silver const.badgeSoul constants/ram_constants.asm SOULBADGE
+gold,silver const.badgeMarsh constants/ram_constants.asm MARSHBADGE
+gold,silver const.badgeVolcano constants/ram_constants.asm VOLCANOBADGE
+gold,silver const.badgeEarth constants/ram_constants.asm EARTHBADGE

@@ -15,6 +15,7 @@
 // additional term under section 7(b): LICENSE and NOTICE in ui/src/kiwami/gbpk/. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "kiwami/gbpk/games.h"
+#include "kiwami/gbpk/gsguide.h"
 #include "kiwami/gbpk/pics.h"
 #include "kiwami/gbpk/reader.h"
 #include "kiwami/gbpk/rom.h"
@@ -982,6 +983,70 @@ static void testGuide()
 	EQ(next(), "gym-1-falkner");
 }
 
+// Gold's guide from a made-up ROM's trainers (gsguide.h), with gold.ram.json's class ids: the stages in the story's
+// order and by level in each, whatever the table's order; each leader done by its gym's badge, not its place (Chuck,
+// Pryce and Jasmine are fought in that order, their badges are STORM, GLACIER and MINERAL: bits 5, 6 and 4 of
+// wJohtoBadges, badge:6, 7 and 5); Janine, a Kanto leader below the Elite Four's level, after the Champion (SOULBADGE:
+// bit 4 of wKantoBadges, badge:13); a leader class it doesn't know with Johto's, done by a later milestone
+static void testRomGuide()
+{
+	const GameData d = game("gold");
+	FakeRom rom;
+	auto trainer = [&](int cls, const char* clsName, const char* name, std::vector<int> levels)
+	{
+		nds::Trainer t;
+		t.id = (uint16_t)(cls << 8 | 1);
+		t.cls = clsName;
+		t.name = name;
+		for (int lv : levels) { nds::TrainerMon m; m.level = (uint8_t)lv; m.species = 1; t.team.push_back(m); }
+		rom.trainers[t.id] = t;
+	};
+	CHECK(romGuide(rom, d).milestones.empty());
+	CHECK(d.size("leaderJasmine") == 6 && d.size("badgeMineral") == 4);
+	trainer(d.size("leaderJasmine"), "Leader", "Jasmine", { 30, 35, 30 });
+	trainer(0x0B, "Elite Four", "Will", { 40, 42 });
+	trainer(0x10, "Champion", "Lance", { 50, 47 });
+	trainer(d.size("leaderJanine"), "Leader", "Janine", { 36, 39 });
+	trainer(d.size("leaderPryce"), "Leader", "Pryce", { 27, 31 });
+	trainer(0x30, "Leader", "Ace", { 20 });
+	trainer(d.size("leaderChuck"), "Leader", "Chuck", { 29, 30 });
+	trainer(0x16, "Youngster", "Joey", { 4 });
+	const nds::GuideData g = romGuide(rom, d);
+	EQ(g.game, "gold");
+	EQ(g.title, "Pokémon Gold");
+	std::string got;
+	for (const nds::Milestone& m : g.milestones)
+		got += (got.empty() ? "" : ", ") + m.id + " " + m.doneWhen + " " + std::to_string(m.levelCap);
+	EQ(got, "gym-1-ace later 20, gym-2-chuck badge:6 30, gym-3-pryce badge:7 31, gym-4-jasmine badge:5 35, "
+		"e4-will later 42, champion-lance later 50, gym-5-janine badge:13 39");
+	if (g.milestones.size() == 7)
+	{
+		const nds::Milestone& j = g.milestones[3];
+		EQ(j.name, "Gym 4: Jasmine");
+		EQ(j.kind, "gym");
+		EQ(j.foeName, "Jasmine");
+		CHECK(j.badge == 5 && j.trainerIds.size() == 1 && j.trainerIds[0] == (d.size("leaderJasmine") << 8 | 1));
+		EQ(g.milestones[4].name, "Elite Four: Will");
+		EQ(g.milestones[4].kind, "elite4");
+		EQ(g.milestones[5].name, "Champion: Lance");
+		EQ(g.milestones[5].kind, "champion");
+	}
+
+	// the next milestone follows the badges (Johto's in the low byte, Kanto's in the high one)
+	nds::Live l;
+	l.valid = true;
+	auto next = [&] { const nds::Milestone* m = nds::nextMilestone(g, l); return m ? m->id : std::string("none"); };
+	EQ(next(), "gym-1-ace");
+	l.badges = 1 << 5;	// (STORMBADGE)
+	EQ(next(), "gym-3-pryce");
+	l.badges |= 1 << 4;	// (MINERALBADGE: Jasmine's, beaten before Pryce)
+	EQ(next(), "gym-3-pryce");
+	l.badges |= 1 << 6;
+	EQ(next(), "e4-will");
+	l.badges |= 1 << (8 + 4);	// (SOULBADGE: the Elite Four and the Champion done by a later milestone)
+	EQ(next(), "none");
+}
+
 static void testCaptures()
 {
 	checkCrystal("crystal", "crystal");
@@ -1391,6 +1456,7 @@ int main(int argc, char** argv)
 	testCaptures();
 	testDerivedFlags();
 	testGuide();
+	testRomGuide();
 	testReaderRules();
 	testRules();
 	if (failed)

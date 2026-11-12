@@ -1,5 +1,6 @@
 // banana-ui (kiwami): the Game Boy Pokémon companion's region maps (maps.h): the Pokégear's Johto and Kanto maps and
-// the places on them, as pret's pokecrystal and pokegold draw them.
+// the places on them, as pret's pokecrystal and pokegold draw them; the town map of Kanto and its places, as pret's
+// pokered and pokeyellow do.
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
@@ -22,6 +23,10 @@ namespace banana::kiwami::gbpk
 		const int ICON = 16;
 		const size_t SCRATCH = 0x80 * 16;		// ram/wram.asm wDecompressScratch, where DecompressRequest2bpp writes
 		const int LANDMARK_SPECIAL = 0;			// constants/landmark_constants.asm: on no map
+		// Gen I (pokered's engine/items/town_map.asm): the 16 tiles LoadTownMap copies (WorldMapTileGraphics); a town
+		// map entry's x, y as the icon's top left (TownMapCoordsToOAMCoords: 8 px a step from 24, 24;
+		// WriteTownMapSpriteOAM's -4, -4 is -4, -3 with the carry; less the OAM's 8, 16)
+		const int TOWN_MAP_TILES = 16, ENTRY_X = 12, ENTRY_Y = 5;
 	}
 
 	std::vector<uint32_t> townMapPicture(const uint8_t* map, const std::vector<uint8_t>& tiles, const uint8_t* palMap,
@@ -117,6 +122,99 @@ namespace banana::kiwami::gbpk
 			const int x0 = lx[lm] - ICON / 2, y0 = ly[lm] - ICON / 2;
 			loc.spot.x = (float)x0;
 			loc.spot.y = (float)y0;
+			loc.spot.w = loc.spot.h = ICON;
+		}
+		return true;
+	}
+
+	std::vector<uint8_t> townMapCells(const uint8_t* p, size_t n)
+	{
+		std::vector<uint8_t> cells;
+		for (size_t i = 0;; i++)
+		{
+			if (i >= n) return {};
+			if (!p[i]) break;
+			// (a length of 0 would run 256 in the game's loop)
+			const size_t len = p[i] & 0xF;
+			if (!len || cells.size() + len > (size_t)W * H) return {};
+			cells.insert(cells.end(), len, (uint8_t)(p[i] >> 4));
+		}
+		if (cells.size() != (size_t)W * H) return {};
+		return cells;
+	}
+
+	bool readTownMap(const RomView& r, const GameData& d, const std::map<uint16_t, uint8_t>& pointOf, nds::RomData& out,
+		std::string* why)
+	{
+		auto no = [&](const std::string& w) { if (why) *why = w; return false; };
+		out.regionMaps.clear();
+		auto table = [&](const char* k) { return r.at(d.rom.count(k) ? d.rom.at(k) : Addr{}); };
+		// the places TownMapOrder steps through (data/maps/town_map_order.asm: a map each), at their entry's cell
+		const size_t order = table("townMapOrder"), orderEnd = table("townMapOrderEnd");
+		if (order == RomView::NONE || orderEnd == RomView::NONE || orderEnd <= order || orderEnd - order > 255 ||
+			orderEnd / 0x4000 != order / 0x4000)
+			return no("the data file's townMapOrder and townMapOrderEnd aren't a list");
+		struct Place { int cx, cy; uint16_t name; };
+		std::vector<Place> places;
+		for (size_t o = order; o < orderEnd; o++)
+		{
+			const uint16_t m = r.u8(o);
+			auto p = pointOf.find(m);
+			auto z = out.zones.find(m);
+			auto n = z == out.zones.end() ? out.locationNames.end() : std::find(out.locationNames.begin(), out.locationNames.end(), z->second.name);
+			if (p == pointOf.end() || z == out.zones.end() || z->second.name.empty() || n == out.locationNames.end())
+				return no("TownMapOrder's map " + std::to_string(m) + " has no named town map entry");
+			// (the icon's middle: the cell 2 right of and 1 below the entry's x, y)
+			places.push_back({ (p->second & 0xF) + 2, (p->second >> 4) + 1, (uint16_t)(n - out.locationNames.begin()) });
+		}
+
+		nds::RegionMap rm;
+		rm.name = "Kanto";
+		rm.w = W * CELL;
+		rm.h = H * CELL;
+		rm.cell = CELL;
+		rm.gridW = W;
+		rm.gridH = H;
+		// the picture: the runs' tiles (WorldMapTileGraphics, 2-bit) in the town map's palette, the whole screen's
+		// (engine/gfx/palettes.asm SetPal_TownMap: PAL_TOWNMAP)
+		const size_t rle = table("townMap"), tiles = table("townMapTiles"), pals = table("palettes");
+		const int pal = d.sizes.count("palTownMap") ? d.size("palTownMap") : -1;
+		const size_t colors = pal >= 0 && pals != RomView::NONE ? pals + 8 * (size_t)pal : RomView::NONE;
+		std::vector<uint8_t> cells;
+		if (rle != RomView::NONE && r.has(tiles, (size_t)TOWN_MAP_TILES * 16) && r.has(colors, 8))
+			cells = townMapCells(r.b.data() + rle, std::min(r.b.size(), (rle / 0x4000 + 1) * 0x4000) - rle);
+		if (!cells.empty())
+		{
+			rm.rgba.resize((size_t)rm.w * rm.h);
+			for (int c = 0; c < W * H; c++)
+				for (int y = 0; y < CELL; y++)
+					for (int x = 0; x < CELL; x++)
+						rm.rgba[(size_t)(c / W * CELL + y) * rm.w + c % W * CELL + x] =
+							0xFF000000u | rgb555(r.le16(colors + 2 * (size_t)tilePixel(&r.b[tiles + (size_t)cells[c] * 16], x, y)));
+		}
+		// a cell names the place nearest it, a cell away at most (the first in TownMapOrder of two as near)
+		rm.cells.assign((size_t)W * H, 0xFFFF);
+		for (int cy = 0; cy < H; cy++)
+			for (int cx = 0; cx < W; cx++)
+			{
+				int bestD = 2;
+				for (const Place& p : places)
+				{
+					const int dist = std::max(std::abs(p.cx - cx), std::abs(p.cy - cy));
+					if (dist < bestD) { bestD = dist; rm.cells[(size_t)cy * W + cx] = p.name; }
+				}
+			}
+		out.regionMaps.push_back(std::move(rm));
+
+		// each place: the game's icon at its entry; a map with no entry or no name on none
+		for (auto& [z, loc] : out.zones)
+		{
+			loc.spot = nds::MapSpot{};
+			auto p = pointOf.find(z);
+			if (p == pointOf.end() || loc.name.empty()) continue;
+			loc.spot.map = 0;
+			loc.spot.x = (float)((p->second & 0xF) * CELL + ENTRY_X);
+			loc.spot.y = (float)((p->second >> 4) * CELL + ENTRY_Y);
 			loc.spot.w = loc.spot.h = ICON;
 		}
 		return true;

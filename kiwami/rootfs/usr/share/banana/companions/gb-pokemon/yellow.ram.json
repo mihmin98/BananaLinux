@@ -213,6 +213,11 @@
       "bank": 1,
       "src": "pret (ItemPrices)"
     },
+    "monPaletteIds": {
+      "addr": "0x6921",
+      "bank": 28,
+      "src": "pokedaisy pret (MonsterPalettes)"
+    },
     "moveNames": {
       "addr": "0x4000",
       "bank": 47,
@@ -227,6 +232,36 @@
       "addr": "0x60F9",
       "bank": 3,
       "src": "pret (ItemUseOldRod)"
+    },
+    "palettes": {
+      "addr": "0x6AF9",
+      "bank": 28,
+      "src": "pokedaisy pret (CGBBasePalettes)"
+    },
+    "pics1": {
+      "addr": "0x4000",
+      "bank": 9,
+      "src": "pret (RhydonPicFront)"
+    },
+    "pics2": {
+      "addr": "0x4000",
+      "bank": 10,
+      "src": "pret (GrowlithePicFront)"
+    },
+    "pics3": {
+      "addr": "0x4000",
+      "bank": 11,
+      "src": "pret (ArticunoPicFront)"
+    },
+    "pics4": {
+      "addr": "0x4000",
+      "bank": 12,
+      "src": "pret (DodrioPicFront)"
+    },
+    "pics5": {
+      "addr": "0x4000",
+      "bank": 13,
+      "src": "pret (BulbasaurPicFront)"
     },
     "pokemonNames": {
       "addr": "0x4000",
@@ -247,6 +282,26 @@
       "addr": "0x632D",
       "bank": 4,
       "src": "pret (TechnicalMachines)"
+    },
+    "townMap": {
+      "addr": "0x518A",
+      "bank": 28,
+      "src": "pokedaisy pret (CompressedMap)"
+    },
+    "townMapOrder": {
+      "addr": "0x4F95",
+      "bank": 28,
+      "src": "pret (TownMapOrder)"
+    },
+    "townMapOrderEnd": {
+      "addr": "0x4FC4",
+      "bank": 28,
+      "src": "pret (TownMapOrderEnd)"
+    },
+    "townMapTiles": {
+      "addr": "0x5138",
+      "bank": 4,
+      "src": "pokedaisy pret (WorldMapTileGraphics)"
     },
     "trainerClassNames": {
       "addr": "0x597E",
@@ -286,6 +341,11 @@
     "numPokemon": 151,
     "numPokemonIndexes": 190,
     "numTrainerClasses": 47,
+    "palTownMap": 12,
+    "picsBeedrill": 114,
+    "picsMoltres": 73,
+    "picsStarmie": 152,
+    "picsTangela": 30,
     "quickAttack": 98,
     "starterPikachu": 84,
     "tm01": 201

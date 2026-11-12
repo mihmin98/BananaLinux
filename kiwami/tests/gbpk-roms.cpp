@@ -3,8 +3,8 @@
 // SHA-1) is read, and what the ROM is known to hold is checked against what was read, the game's guide file with it.
 // With a PokeDaisy checkout, every species' gender ratio and growth rate are compared with PokeDaisy's tables
 // (Gen2SpeciesCrystal.kt), and Crystal's hidden items with its guide's (GuideCrystalGen.kt). With
-// GBPK_ROMS_OUT set, every species' front picture (normal, shiny) and the region maps are written there as PNGs, a
-// game's <key>-pics.png, <key>-shiny.png and <key>-<map>.png, for looking at. Built and run by
+// GBPK_ROMS_OUT set, every species' front picture (normal, and Gen II's shiny) and the region maps are written there as
+// PNGs, a game's <key>-pics.png, <key>-shiny.png and <key>-<map>.png, for looking at. Built and run by
 // kiwami/tests/gbpk-roms.sh after its check of the folder:
 //   gbpk-roms <the data files' folder> <roms.sha1> <the ROMs' folder> [<pokedaisy checkout>]
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
@@ -67,16 +67,19 @@ static void png(const std::string& path, const std::vector<uint32_t>& px, int w,
 	if (!stbi_write_png(path.c_str(), w, h, 3, rgb.data(), w * 3)) fprintf(stderr, "gbpk-roms: couldn't write %s\n", path.c_str());
 }
 
-// every species' front picture: drawn, at its base data's size (5, 6 or 7 tiles), Chikorita's 5 x 5; written as two
-// sheets of 16 x 16 boxes of 7 x 7 tiles, each picture where the game puts it in its box (PadFrontpic: a column in,
-// on the box's bottom), on its own white
+// every species' front picture: drawn, at its size (5, 6 or 7 tiles; Gen II's from its base data, Gen I's the
+// stream's own first byte), Chikorita's 5 x 5; Gen I's Bulbasaur 5 x 5 and Mewtwo 7 x 7 (pret's
+// gfx/pokemon/front/*.png), each with one palette (shiny the same); written as two sheets of 16 x 16 boxes of 7 x 7
+// tiles, each picture where the game puts it in its box (PadFrontpic, LoadUncompressedSpriteData: a column in, on the
+// box's bottom), on its own white
 static void checkPics(const nds::RomData& r, const std::vector<uint8_t>& rom, const std::string& out, const std::string& key)
 {
-	const int box = 56, cols = 16, sheetW = cols * box, sheetH = 16 * box;
+	const GbRomData& g = static_cast<const GbRomData&>(r);
+	const int box = 56, cols = 16, sheetW = cols * box, sheetH = 16 * box, count = (int)r.species.size() - 1;
 	std::vector<uint32_t> normal((size_t)sheetW * sheetH, 0xC0C0C0), shiny = normal;
-	int drawn = 0, sized = 0;
+	int drawn = 0, sized = 0, same = 0;
 	auto t0 = std::chrono::steady_clock::now();
-	for (int s = 1; s < (int)r.species.size(); s++)
+	for (int s = 1; s <= count; s++)
 	{
 		auto sp = r.sprite((uint16_t)s);
 		if (!sp || sp->frames.size() != 1 || sp->w != sp->h) { fprintf(stderr, "gbpk-roms: %s: species %d's picture doesn't decode\n", current.c_str(), s); continue; }
@@ -84,9 +87,11 @@ static void checkPics(const nds::RomData& r, const std::vector<uint8_t>& rom, co
 		bool any = false;
 		for (uint8_t v : f) any |= v != 0;
 		drawn += any;
-		// (BaseData's picture size: the record's byte 17, dn w, h; rom.h's GbRomData keeps where BaseData is)
-		const int size = rom[static_cast<const GbRomData&>(r).pics.baseData + 32 * (s - 1) + 17] & 0xF;
+		// (Gen II: BaseData's picture size, the record's byte 17, dn w, h, rom.h's GbRomData keeping where BaseData is;
+		// Gen I: the picture's own first byte, dn w, h)
+		const int size = g.gen == 1 ? rom[g.pics1.pic[s]] >> 4 : rom[g.pics.baseData + 32 * (s - 1) + 17] & 0xF;
 		sized += sp->w == size * 8;
+		same += sp->normal == sp->shiny;
 		const int ox = (s - 1) % cols * box + (7 - size + 1) / 2 * 8, oy = (s - 1) / cols * box + (7 - size) * 8;
 		for (int y = 0; y < sp->h; y++)
 			for (int x = 0; x < sp->w; x++)
@@ -97,13 +102,48 @@ static void checkPics(const nds::RomData& r, const std::vector<uint8_t>& rom, co
 			}
 	}
 	const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
-	CHECK(drawn == 251 && sized == 251);
-	auto chikorita = r.sprite(152);
-	CHECK(chikorita && chikorita->w == 40 && chikorita->h == 40);
+	CHECK(drawn == count && sized == count && count == (g.gen == 1 ? 151 : 251));
+	if (g.gen == 1)
+	{
+		auto bulbasaur = r.sprite(1), mewtwo = r.sprite(150);
+		CHECK(bulbasaur && bulbasaur->w == 40 && bulbasaur->h == 40 && mewtwo && mewtwo->w == 56 && mewtwo->h == 56);
+		CHECK(same == count);
+	}
+	else
+	{
+		auto chikorita = r.sprite(152);
+		CHECK(chikorita && chikorita->w == 40 && chikorita->h == 40);
+	}
 	fprintf(stderr, "gbpk-roms: %s: %d front pictures decoded in %.1f ms\n", current.c_str(), drawn, ms);
 	if (out.empty()) return;
 	png(out + "/" + key + "-pics.png", normal, sheetW, sheetH);
-	png(out + "/" + key + "-shiny.png", shiny, sheetW, sheetH);
+	if (g.gen == 2) png(out + "/" + key + "-shiny.png", shiny, sheetW, sheetH);
+}
+
+// Gen I's town map: drawn, Pallet Town's place on it and its cell naming it, as TownMapOrder's first; every named
+// place on it; written as <key>-Kanto.png
+static void checkTownMap(const nds::RomData& r, const std::string& out, const std::string& key)
+{
+	CHECK(r.regionMaps.size() == 1);
+	if (r.regionMaps.size() != 1) return;
+	const nds::RegionMap& m = r.regionMaps[0];
+	EQ(m.name, "Kanto");
+	CHECK(m.w == 160 && m.h == 144 && m.rgba.size() == 160 * 144 && m.cells.size() == 360);
+	if (!out.empty() && m.rgba.size() == (size_t)m.w * m.h) png(out + "/" + key + "-" + m.name + ".png", m.rgba, m.w, m.h);
+	const nds::MapSpot* pallet = r.zones.count(0) ? &r.zones.at(0).spot : nullptr;
+	CHECK(pallet && pallet->map == 0 && pallet->w == 16 && pallet->h == 16);
+	if (pallet && pallet->map == 0)
+	{
+		const int cx = (int)(pallet->x + pallet->w / 2) / m.cell, cy = (int)(pallet->y + pallet->h / 2) / m.cell;
+		const uint16_t id = cx >= 0 && cy >= 0 && cx < m.gridW && cy < m.gridH ? m.cells[(size_t)cy * m.gridW + cx] : 0xFFFF;
+		EQ(id < r.locationNames.size() ? r.locationNames[id] : "", "Pallet Town");
+	}
+	int placed = 0, named = 0, cells = 0;
+	for (const auto& [z, l] : r.zones)
+		if (!l.name.empty()) { named++; placed += l.spot.map == 0; }
+	for (uint16_t c : m.cells) cells += c != 0xFFFF;
+	CHECK(placed == named && named > 100 && cells > 47);
+	fprintf(stderr, "gbpk-roms: %s: %d places on the town map, %d cells named\n", current.c_str(), placed, cells);
 }
 
 // the Pokégear's maps: both drawn, New Bark Town's place on Johto's and its cell naming it, Pallet Town's on Kanto's;
@@ -452,14 +492,16 @@ int main(int argc, char** argv)
 		CHECK(r);
 		if (!r) continue;
 		read++;
+		const char* out = getenv("GBPK_ROMS_OUT");
 		if (d.gen == 1)
 		{
 			checkGen1(*r, d);
+			checkPics(*r, *rom, out ? out : "", key);
+			checkTownMap(*r, out ? out : "", key);
 			continue;
 		}
 		checkGen2(*r, key, pokedaisy);
 		checkGuide(*r, d, pokedaisy);
-		const char* out = getenv("GBPK_ROMS_OUT");
 		checkPics(*r, *rom, out ? out : "", key);
 		checkMaps(*r, out ? out : "", key);
 	}

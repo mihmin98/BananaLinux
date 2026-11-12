@@ -280,3 +280,31 @@ red,blue const.leaderKoga constants/trainer_constants.asm KOGA
 red,blue const.leaderSabrina constants/trainer_constants.asm SABRINA
 red,blue const.leaderBlaine constants/trainer_constants.asm BLAINE
 red,blue const.leaderGiovanni constants/trainer_constants.asm GIOVANNI
+
+# Gen I's front pictures and their palettes (ui/src/kiwami/gbpk/pics.cpp), the town map (maps.cpp). PokeDaisy's
+# Gen1Dex.kt and Gen1Art.kt give some of them too: pret's value must agree with it. A picture's bank is by the species'
+# internal index (home/pics.asm UncompressMonSprite): "Pics 1" below TANGELA + 1, "Pics 2" below MOLTRES + 1, "Pics 3"
+# below BEEDRILL + 2, "Pics 4" below STARMIE + 1, "Pics 5" the rest; Red's and Blue's Mew, its base data apart, in
+# MewPicFront's bank. Each section's bank is its first picture's
+red,blue,yellow rom.pics1 RhydonPicFront
+red,blue,yellow rom.pics2 GrowlithePicFront
+red,blue,yellow rom.pics3 ArticunoPicFront
+red,blue,yellow rom.pics4 DodrioPicFront
+red,blue,yellow rom.pics5 BulbasaurPicFront
+red,blue rom.mewPicFront MewPicFront
+red,blue,yellow const.picsTangela constants/pokemon_constants.asm TANGELA
+red,blue,yellow const.picsMoltres constants/pokemon_constants.asm MOLTRES
+red,blue,yellow const.picsBeedrill constants/pokemon_constants.asm BEEDRILL
+red,blue,yellow const.picsStarmie constants/pokemon_constants.asm STARMIE
+# (a palette id a species by its national number, then the palettes: on a Super Game Boy Red's and Blue's, on a Game
+# Boy Color Yellow's own, engine/gfx/palettes.asm)
+red,blue,yellow rom.monPaletteIds MonsterPalettes
+red,blue rom.palettes SuperPalettes
+yellow rom.palettes CGBBasePalettes
+red,blue,yellow const.palTownMap constants/palette_constants.asm PAL_TOWNMAP
+# (the town map: its run-length tile map and tiles, engine/items/town_map.asm LoadTownMap; the places its cursor steps
+# through, TownMapOrder, which name the cells)
+red,blue,yellow rom.townMap CompressedMap
+red,blue,yellow rom.townMapTiles WorldMapTileGraphics
+red,blue,yellow rom.townMapOrder TownMapOrder
+red,blue,yellow rom.townMapOrderEnd TownMapOrderEnd

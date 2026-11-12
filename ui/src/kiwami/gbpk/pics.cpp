@@ -1,5 +1,6 @@
 // banana-ui (kiwami): the Game Boy Pokémon companion's pictures (pics.h): Gen II's LZ and its front pictures, as
-// pret's pokecrystal and pokegold draw them (home/decompress.asm, engine/gfx/load_pics.asm, engine/gfx/color.asm).
+// pret's pokecrystal and pokegold draw them (home/decompress.asm, engine/gfx/load_pics.asm, engine/gfx/color.asm);
+// Gen I's compression and front pictures, as pret's pokered and pokeyellow do (home/uncompress.asm, home/pics.asm).
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
@@ -102,14 +103,15 @@ namespace banana::kiwami::gbpk
 		return (r << 3 | r >> 2) << 16 | (g << 3 | g >> 2) << 8 | (b << 3 | b >> 2);
 	}
 
-	bool pictureFrame(const std::vector<uint8_t>& tiles, int size, nds::Sprite& out)
+	bool pictureFrame(const std::vector<uint8_t>& tiles, int w, int h, nds::Sprite& out)
 	{
-		if (size < 1 || size > 7 || tiles.size() < (size_t)size * size * 16) return false;
-		out.w = out.h = size * 8;
+		if (w < 1 || w > 7 || h < 1 || h > 7 || tiles.size() < (size_t)w * h * 16) return false;
+		out.w = w * 8;
+		out.h = h * 8;
 		std::vector<uint8_t> f((size_t)out.w * out.h);
-		for (int t = 0; t < size * size; t++)
+		for (int t = 0; t < w * h; t++)
 		{
-			const int tx = t / size, ty = t % size;	// (in columns)
+			const int tx = t / h, ty = t % h;	// (in columns)
 			for (int y = 0; y < 8; y++)
 				for (int x = 0; x < 8; x++) f[(size_t)(ty * 8 + y) * out.w + tx * 8 + x] = (uint8_t)tilePixel(&tiles[(size_t)t * 16], x, y);
 		}
@@ -158,6 +160,126 @@ namespace banana::kiwami::gbpk
 			sp->normal[1 + k] = rgb555(r.le16(pal + 2 * k));
 			sp->shiny[1 + k] = rgb555(r.le16(pal + 4 + 2 * k));
 		}
+		return sp;
+	}
+
+	bool pic1(const uint8_t* p, size_t n, int& wTiles, int& hTiles, std::vector<uint8_t>& out)
+	{
+		out.clear();
+		if (n < 1) return false;
+		wTiles = p[0] >> 4;
+		hTiles = p[0] & 0xF;
+		if (wTiles < 1 || wTiles > 7 || hTiles < 1 || hTiles > 7) return false;
+		// ReadNextInputBit: the stream's bits from each byte's highest; past n, the stream has run out
+		size_t i = 1;
+		int left = 0;
+		uint8_t cur = 0;
+		bool ok = true;
+		auto bit = [&]() -> int {
+			if (!left)
+			{
+				if (i >= n) { ok = false; return 0; }
+				cur = p[i++];
+				left = 8;
+			}
+			return cur >> --left & 1;
+		};
+		// two 1-bit planes, each wTiles columns of 8 px by H rows, a byte a row of a column (sSpriteBuffer1, 2)
+		const int H = hTiles * 8;
+		const size_t size = (size_t)wTiles * H;
+		std::vector<uint8_t> plane[2] = { std::vector<uint8_t>(size), std::vector<uint8_t>(size) };
+		const int first = bit();	// the plane the first chunk goes in (wSpriteLoadFlags' bit 0)
+		int mode = 0;
+		for (int chunk = 0; chunk < 2 && ok; chunk++)
+		{
+			std::vector<uint8_t>& b = plane[first ^ chunk];
+			if (chunk == 1) mode = bit() ? 1 + bit() : 0;	// (the last chunk's unpacking mode: 0, 10 or 11)
+			// WriteSpriteBitsToBuffer and MoveToNextBufferPosition: a pair at bits 7-6 of each row of a column, then
+			// 5-4, 3-2, 1-0, then the next column; the chunk ends at its last pair, a run of zeros cut there
+			int col = 0, y = 0, shift = 6;
+			bool done = false;
+			auto put = [&](int pair) {
+				b[(size_t)col * H + y] |= (uint8_t)(pair << shift);
+				if (++y < H) return;
+				y = 0;
+				if (shift) shift -= 2;
+				else { shift = 6; done = ++col == wTiles; }
+			};
+			bool zeros = !bit();	// (the chunk starts with a run of zeros or with pairs)
+			while (!done && ok)
+			{
+				if (zeros)
+				{
+					// a run: c ones and a 0, then c + 1 bits, plus LengthEncodingOffsetList's 2^(c + 1) - 1 (16 entries;
+					// 16-bit arithmetic: 0 runs 65536)
+					int c = 0;
+					while (bit() && ok)
+						if (++c > 15) return false;
+					uint32_t v = 0;
+					for (int k = 0; k <= c; k++) v = v << 1 | (uint32_t)bit();
+					uint32_t run = (v + (2u << c) - 1) & 0xFFFF;
+					if (!run) run = 0x10000;
+					for (; run && !done && ok; run--) put(0);
+					zeros = false;
+				}
+				else
+				{
+					const int hi = bit(), pair = hi << 1 | bit();
+					if (!pair) zeros = true;
+					else put(pair);
+				}
+			}
+		}
+		if (!ok) return false;
+		// SpriteDifferentialDecode: across each row, a 1 bit flips the value, from 0 at the row's start
+		auto delta = [&](std::vector<uint8_t>& b) {
+			for (int y = 0; y < H; y++)
+			{
+				int last = 0;
+				for (int col = 0; col < wTiles; col++)
+				{
+					const uint8_t v = b[(size_t)col * H + y];
+					uint8_t o = 0;
+					for (int k = 7; k >= 0; k--) { last ^= v >> k & 1; o |= (uint8_t)(last << k); }
+					b[(size_t)col * H + y] = o;
+				}
+			}
+		};
+		// UnpackSprite: mode 0 both planes decoded; 1 the first chunk's decoded and XORed into the second's; 2 both
+		// decoded, the second's first, then the same XOR (XorSpriteChunks, UnpackSpriteMode2)
+		std::vector<uint8_t>& a = plane[first];
+		std::vector<uint8_t>& c = plane[first ^ 1];
+		if (mode == 0) { delta(plane[0]); delta(plane[1]); }
+		else
+		{
+			if (mode == 2) delta(c);
+			delta(a);
+			for (size_t k = 0; k < size; k++) c[k] ^= a[k];
+		}
+		// InterlaceMergeSpriteBuffers: sSpriteBuffer1 is each row's low plane, sSpriteBuffer2 its high one
+		out.assign(size * 2, 0);
+		for (int col = 0; col < wTiles; col++)
+			for (int y = 0; y < H; y++)
+			{
+				const size_t t = (size_t)col * hTiles + y / 8, o = t * 16 + (size_t)(y % 8) * 2;
+				out[o] = plane[0][(size_t)col * H + y];
+				out[o + 1] = plane[1][(size_t)col * H + y];
+			}
+		return true;
+	}
+
+	std::shared_ptr<const nds::Sprite> gen1FrontPic(const RomView& r, const Gen1Pics& t, uint16_t species)
+	{
+		if (species < 1 || species >= t.pic.size() || species >= t.palette.size()) return nullptr;
+		const size_t o = t.pic[species], pal = t.palette[species];
+		if (o == RomView::NONE || !r.has(o, 1) || !r.has(pal, 8)) return nullptr;
+		// (the stream is read in its bank's window: past 7FFF isn't the next bank)
+		const size_t end = std::min(r.b.size(), (o / 0x4000 + 1) * 0x4000);
+		std::vector<uint8_t> tiles;
+		int w, h;
+		auto sp = std::make_shared<nds::Sprite>();
+		if (!pic1(r.b.data() + o, end - o, w, h, tiles) || !pictureFrame(tiles, w, h, *sp)) return nullptr;
+		for (int k = 0; k < 4; k++) sp->normal[k] = sp->shiny[k] = rgb555(r.le16(pal + 2 * k));
 		return sp;
 	}
 }

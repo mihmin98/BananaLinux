@@ -1,8 +1,9 @@
 #pragma once
 // banana-ui (kiwami): the Game Boy Pokémon companion's region maps: Gold's, Silver's and Crystal's Pokégear maps of
-// Johto and Kanto, decoded from the player's ROM as upstream's nds::RegionMap (160 x 144 px, the screen the Pokégear
-// fills, in 8 px cells), and where every place is on them (nds::MapSpot), as pret's pokecrystal and pokegold draw them
-// (engine/pokegear/pokegear.asm, data/maps/landmarks.asm).
+// Johto and Kanto, and Red's, Blue's and Yellow's town map, decoded from the player's ROM as upstream's nds::RegionMap
+// (160 x 144 px, the screen the map fills, in 8 px cells), and where every place is on them (nds::MapSpot), as pret's
+// pokecrystal and pokegold (engine/pokegear/pokegear.asm, data/maps/landmarks.asm) and pokered and pokeyellow
+// (engine/items/town_map.asm, data/maps/town_map_entries.asm) draw them.
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
@@ -26,4 +27,17 @@ namespace banana::kiwami::gbpk
 	// colours each, count of them). Empty when a tile or a palette isn't there
 	std::vector<uint32_t> townMapPicture(const uint8_t* map, const std::vector<uint8_t>& tiles, const uint8_t* palMap,
 		const uint8_t* pals, int count);
+
+	// Gen I's town map into out.regionMaps (one, "Kanto"), and every zone's spot on it: the game's 16 x 16 icon at the
+	// zone's town map entry (pointOf: the entry's dn y, x); a zone with no entry, or no name, on none. Each cell names
+	// the place of TownMapOrder (the places the game's own town map steps through) nearest its middle, within a cell.
+	// out.zones and out.locationNames must be read already. A picture that doesn't decode is left empty, so the pages
+	// draw the places' squares; false (why set, no map) when TownMapOrder isn't a list of named maps
+	bool readTownMap(const RomView& r, const GameData& d, const std::map<uint16_t, uint8_t>& pointOf, nds::RomData& out,
+		std::string* why = nullptr);
+
+	// Gen I's run-length tile map (LoadTownMap: a byte a run, the tile in its high nybble, counted from
+	// WorldMapTileGraphics' first, the length in its low one; 0 ends) from p's first n bytes as its 20 x 18 cells'
+	// tiles (0-15); empty when the runs don't fill the screen exactly, a run is empty or the end is past n
+	std::vector<uint8_t> townMapCells(const uint8_t* p, size_t n);
 }

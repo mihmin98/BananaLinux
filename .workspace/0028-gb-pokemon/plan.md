@@ -1290,6 +1290,35 @@ Where the implementation turned out different from this plan, why, and what chan
     `items.inc`. `gbpk-units`' made-up ROM also has Red's Mew apart, a Moon Stone and a trade evolution, an empty class
     and a special move; its `live()` check replays the `red` capture cut to its first member (the captures' six
     species can't all be among three made-up ones).
+- **2026-11-12, step 14: Gen I's pictures and town map as pret's code has them, with what the plan missed** (agreed
+  with the user).
+  - **More files than planned**, as step 7's: `pics.h`, `maps.h` (the new functions), `rom.h` and `rom.cpp`
+    (`GbRomData::pics1`, each species' picture and palette by national number, and `sprite()` for Gen I),
+    `gbpk-symbols.txt` and `gbpk-extra.json` (pret's "Pics 1" .. "Pics 5" banks by each section's first picture, Red's
+    and Blue's `MewPicFront`, `TANGELA`, `MOLTRES`, `BEEDRILL` and `STARMIE` as `UncompressMonSprite`'s bounds,
+    `MonsterPalettes`, `SuperPalettes` for Red and Blue and `CGBBasePalettes` for Yellow, `PAL_TOWNMAP`,
+    `CompressedMap`, `WorldMapTileGraphics`, `TownMapOrder` and its end) and `GB-POKEMON.md`. `pokedaisy-extract.py`
+    also reads `Gen1Art.kt` (the user's choice), its `townMap` and `townMapTiles` compared with pret's; `Gen1Dex.kt`'s
+    `monsterPalettes` and `cgbPalettes` are compared the same way, its `picsBank`, `picsBankBreaks` and `mewPicsBank`
+    checked against pret's banks and constants, and its fossil Kabutops fields left out (the museum's picture, not a
+    species'). Every value both give agrees.
+  - **`pic1`'s output** is the picture's 2-bit tiles in columns, as the game interlaces its two planes, so the existing
+    `pictureFrame` (now any w x h) makes the sprite; a picture is at its own size, not padded to 7 x 7, as step 7's.
+    Red's and Yellow's 151 decoded pictures were compared with pret's `gfx/pokemon/front/*.png` by a one-off script
+    (not committed): every one equal, pixel for pixel.
+  - **The cells name `TownMapOrder`'s places** (the user's choice): the 47 the game's own town map steps through, each
+    at the cell its icon covers (its entry's x + 2, y + 1), the nearest a cell away at most. Every map's entry would
+    have put the unused map $0B's stray "Pallet Town" in the corner and second points for Routes 4, 12 and 22. A spot
+    is the game's 16 x 16 icon where `WriteTownMapSpriteOAM` puts it (x * 8 + 12, y * 8 + 5). `rom1.cpp` keeps each
+    map's entry point as it names the maps and hands them to `maps.cpp`'s `readTownMap`, as `rom2.cpp` hands the
+    landmarks to `readPokegearMaps`.
+  - **Checks the plan didn't name**: `readGen1` refuses a ROM whose Bulbasaur doesn't decode at its base data's size,
+    a data file with Mew's base data apart but not its picture's bank (or the other way), bounds out of order, or a
+    `TownMapOrder` that isn't a list of named maps; runs that don't fill the screen exactly leave the map undrawn (its
+    cells kept). The unit tests' made-up Gen I ROM puts Bulbasaur in "Pics 3"'s bank (bank 2) and Mew in its own (3),
+    so a wrong bank is caught. `gbpk-roms` checks Gen I's pictures and map with Gen II's `checkPics` (each picture's
+    size from its stream; Bulbasaur 5 x 5 and Mewtwo 7 x 7, as pret's PNGs) and a new `checkTownMap`, and writes
+    `<key>-pics.png` and `<key>-Kanto.png` (no shiny sheet for Gen I).
 
 ## Progress
 
@@ -1311,7 +1340,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 11. Gold and Silver's guide, built from the ROM | done | `GB Pokémon companion: Gold and Silver's gyms, Elite Four and Champion as a guide from the ROM's trainers` |
 | 12. Gen I's memory: Red, Blue and Yellow | done | `GB Pokémon companion: Red, Blue and Yellow's memory read into the pages' Live` |
 | 13. Gen I's ROM: the tables | done | `GB Pokémon companion: Red, Blue and Yellow's species, moves, items, encounters and trainers from the ROM` |
-| 14. Gen I's ROM: the sprites and the town map | todo | |
+| 14. Gen I's ROM: the sprites and the town map | done | `GB Pokémon companion: Gen I's sprites and town map, decoded from the ROM` |
 | 15. Red, Blue and Yellow's guides | todo | |
 | 16. PokeDaisy's reference data for every mainline game | todo | |
 | 17. The documentation, and what the feature weighs | todo | |

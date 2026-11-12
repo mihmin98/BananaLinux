@@ -16,6 +16,7 @@
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "kiwami/gbpk/games.h"
 #include "kiwami/gbpk/gsguide.h"
+#include "kiwami/gbpk/maps.h"
 #include "kiwami/gbpk/pics.h"
 #include "kiwami/gbpk/reader.h"
 #include "kiwami/gbpk/rom.h"
@@ -773,8 +774,65 @@ static void testPictureFormats()
 	}
 	tiles.resize(3 * 16);
 	CHECK(!pictureFrame(tiles, 2, s));
+	// w x h: tile 1 of a 2 x 1 picture is on the right of tile 0; a side of 8 refused
+	CHECK(pictureFrame(tiles, 2, 1, s) && s.w == 16 && s.h == 8 && s.frames.size() == 1 && s.frames[0][8] == 2 && s.frames[0][0] == 1);
+	tiles.assign(8 * 16, 0);
+	CHECK(!pictureFrame(tiles, 8, 1, s));
 	CHECK(rgb555(0x7FFF) == 0xFFFFFF && rgb555(0) == 0 && rgb555(0x001F) == 0xFF0000 && rgb555(0x7C00) == 0x0000FF);
 	CHECK(rgb555(0x46DE) == 0xF7B58C);	// RGB 30, 22, 17: 247, 181, 140
+}
+
+// Gen I's picture compression (pret's home/uncompress.asm) on 1 x 1-tile streams, the bits worked from that code. The
+// first chunk: its plane's bit, 1 (pairs first), the pair 11 at the first place (row 0, bits 7-6), 00, a run of 31
+// zeros (11110: c = 4, 2^5 - 1, then 00000) to the chunk's end. The second: its mode (0, 10 or 11), 0 (zeros first),
+// a run of 1 (0, then 0), the pair 10 at row 1, 00, a run of 30 (1110: c = 3, 15, then 1111). Then each row decoded
+// across (a 1 flips the value), and in modes 1 and 2 the second chunk's plane XORed with the first's
+static void testPic1()
+{
+	using V = std::vector<uint8_t>;
+	auto pic = [](V in, int& w, int& h) {
+		std::vector<uint8_t> out;
+		return pic1(in.data(), in.size(), w, h, out) ? out : V{ 0xEE };
+	};
+	// a tile's rows 0 and 1, low plane then high (the rest zeros)
+	auto tile = [](uint8_t lo0, uint8_t hi0, uint8_t lo1, uint8_t hi1) { V t(16, 0); t[0] = lo0; t[1] = hi0; t[2] = lo1; t[3] = hi1; return t; };
+	int w = 0, h = 0;
+	// mode 0: both planes decoded: row 0's 11000000 is 10000000, row 1's 10000000 is 11111111
+	CHECK((pic({ 0x11, 0x73, 0xC0, 0x08, 0xEF }, w, h) == tile(0x80, 0, 0, 0xFF)) && w == 1 && h == 1);
+	// mode 1: the first decoded (10000000) and XORed into the second, not decoded
+	CHECK((pic({ 0x11, 0x73, 0xC0, 0x84, 0x77, 0x80 }, w, h) == tile(0x80, 0x80, 0, 0x80)));
+	// mode 2: both decoded, the second then XORed with the first
+	CHECK((pic({ 0x11, 0x73, 0xC0, 0xC4, 0x77, 0x80 }, w, h) == tile(0x80, 0x80, 0, 0xFF)));
+	// mode 1 with the first chunk in the high plane: the low one is the second, XORed
+	CHECK((pic({ 0x11, 0xF3, 0xC0, 0x84, 0x77, 0x80 }, w, h) == tile(0x80, 0x80, 0x80, 0)));
+	// refused: the stream runs out (its last byte gone), a side of 0 or 8
+	CHECK((pic({ 0x11, 0x73, 0xC0, 0x08 }, w, h) == V{ 0xEE }));
+	CHECK((pic({ 0x10, 0x73, 0xC0, 0x08, 0xEF }, w, h) == V{ 0xEE }));
+	CHECK((pic({ 0x81, 0x73, 0xC0, 0x08, 0xEF }, w, h) == V{ 0xEE }));
+	CHECK((pic({}, w, h) == V{ 0xEE }));
+}
+
+// Gen I's town map runs (LoadTownMap: the tile in the high nybble, the length in the low, 0 ends): tile 5 twice, tile
+// 0 twenty-three times 15, tile 1 thirteen times, the screen's 360; refused when one short, one over, a run of 0 or no
+// end in the bytes given
+static void testTownMapCells()
+{
+	std::vector<uint8_t> rle = { 0x52 };
+	rle.insert(rle.end(), 23, 0x0F);
+	rle.push_back(0x1D);
+	rle.push_back(0);
+	auto cells = townMapCells(rle.data(), rle.size());
+	CHECK(cells.size() == 360);
+	if (cells.size() == 360) CHECK(cells[0] == 5 && cells[1] == 5 && cells[2] == 0 && cells[346] == 0 && cells[347] == 1 && cells[359] == 1);
+	auto bad = rle;
+	bad[24] = 0x1C;
+	CHECK(townMapCells(bad.data(), bad.size()).empty());
+	bad[24] = 0x1E;
+	CHECK(townMapCells(bad.data(), bad.size()).empty());
+	bad = rle;
+	bad.insert(bad.begin() + 1, 0x30);
+	CHECK(townMapCells(bad.data(), bad.size()).empty());
+	CHECK(townMapCells(rle.data(), rle.size() - 1).empty());
 }
 
 // ---- the memory reader, over PokeDaisy's captures ----------------------------------------------------------------
@@ -1286,10 +1344,11 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpGen1(GameData& d, int b
 	order[IDX - 1] = bad == 1 ? 2 : 1;
 	m.key("dexOrder", m.put(order));
 	// base data: species, HP, Attack, Defense, Speed, Special, types (Grass 22, Poison 3), catch rate, base exp, picture
-	// size and pointers, level 1 moves (move 1), growth, TM/HM bits (TM01, HM01: bit 50), pad; species 3's apart
-	std::vector<int> b1 = { 1, bad == 2 ? 44 : 45, 49, 49, 45, 65, 22, 3, 45, 64, 0x55, 0, 0, 0, 0, 1, 0, 0, 0, 3, 0x01, 0, 0, 0, 0, 0, 0x04, 0 };
+	// size and pointers (the front's at 4000 in its bank; species 2 none), level 1 moves (move 1), growth, TM/HM bits
+	// (TM01, HM01: bit 50), pad; species 3's apart
+	std::vector<int> b1 = { 1, bad == 2 ? 44 : 45, 49, 49, 45, 65, 22, 3, 45, 64, 0x55, 0x00, 0x40, 0, 0, 1, 0, 0, 0, 3, 0x01, 0, 0, 0, 0, 0, 0x04, 0 };
 	std::vector<int> b2 = { 2, 60, 62, 63, 60, 80, 22, 22, 45, 141, 0x66, 0, 0, 0, 0, 1, 2, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
-	std::vector<int> b3 = { 3, 100, 100, 100, 100, 100, 24, 24, 45, 64, 0x55, 0, 0, 0, 0, 1, 0, 0, 0, 3, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0 };
+	std::vector<int> b3 = { 3, 100, 100, 100, 100, 100, 24, 24, 45, 64, 0x55, 0x00, 0x40, 0, 0, 1, 0, 0, 0, 3, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0 };
 	m.key("baseData", m.put(R::cat(b1, b2)));
 	m.key("mewBaseData", m.put(b3));
 	// MonsterNames by internal index, 10 bytes each
@@ -1367,6 +1426,33 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpGen1(GameData& d, int b
 	m.key("trainerGroups", m.put(R::words({ c1, c3, c3 })));
 	// Yellow's table: class 1's second trainer, its second member's fourth move Ember; the list to -1
 	m.key("specialTrainerMoves", m.put({ 1, 2, 2, 4, 3, 0, 0xFF }));
+	// the front pictures by internal index (home/pics.asm UncompressMonSprite, the games' bounds): Bulbasaur ($54, from
+	// BEEDRILL + 2 below STARMIE + 1: "Pics 3", here bank 2) 5 x 5 tiles, its first pixel 1 (a pair 11 and a run of 799
+	// zeros: 111111110 and 288; the second plane a run of 800: 289); Mew, its base data apart, in its own bank (3):
+	// testPic1's mode 0 tile; the other banks 1
+	m.d.sizes.insert({ { "picsTangela", 0x1E }, { "picsMoltres", 0x49 }, { "picsBeedrill", 0x72 }, { "picsStarmie", 0x98 }, { "palTownMap", 3 } });
+	for (const char* k : { "pics1", "pics2", "pics4", "pics5" }) m.d.rom[k] = Addr{ 1, 0x4000 };
+	m.d.rom["pics3"] = Addr{ 2, 0x4000 };
+	m.d.rom["mewPicFront"] = Addr{ 3, 0x4000 };
+	const uint8_t bulbasaurPic[] = { 0x55, 0x73, 0xFD, 0x20, 0x3F, 0xD2, 0x10 }, mewPic[] = { 0x11, 0x73, 0xC0, 0x08, 0xEF };
+	memcpy(&m.b[0x8000], bulbasaurPic, sizeof bulbasaurPic);
+	memcpy(&m.b[0xC000], mewPic, sizeof mewPic);
+	// the palettes: an id by national number (MissingNo.'s first), four RGB555 colours each: Bulbasaur's 2 white, red,
+	// green, black; Mew's 0 white; the town map's 3 white, blue, green, black
+	m.key("monPaletteIds", m.put({ 0, 2, 1, 0 }));
+	m.key("palettes", m.put(R::words({ 0x7FFF, 0, 0, 0, 0x7FFF, 0, 0, 0, 0x7FFF, 0x001F, 0x03E0, 0, 0x7FFF, 0x7C00, 0x03E0, 0 })));
+	// the town map: tile 1 (every pixel 1) in the first cell, tile 0 (every pixel 0) in the other 359; TownMapOrder Pallet
+	// Town (its entry's x 2, y 11) then map 1 (Viridian Forest's group, x 2, y 4)
+	std::vector<int> rle = { 0x11 };
+	rle.insert(rle.end(), 23, 0x0F);
+	rle.push_back(0x0E);
+	rle.push_back(0);
+	m.key("townMap", m.put(rle));
+	std::vector<int> tiles(256, 0);
+	for (int k = 0; k < 16; k += 2) tiles[16 + k] = 0xFF;
+	m.key("townMapTiles", m.put(tiles));
+	m.key("townMapOrder", m.put({ 0, 1 }));
+	m.key("townMapOrderEnd", m.next);
 	d = m.d;
 	return std::make_shared<std::vector<uint8_t>>(m.b);
 }
@@ -1468,7 +1554,47 @@ static void testGen1RomTables()
 		EQ(brock.name, "Brock");
 		CHECK(brock.team.size() == 1 && brock.team[0].species == 2 && brock.team[0].level == 20);
 	}
-	CHECK(!r->sprite(1));
+	// the pictures: Bulbasaur's from "Pics 3"'s bank, 5 x 5 tiles, its first pixel 1, in its palette (shiny the same);
+	// Mew's from its own bank, 1 x 1; Ivysaur none
+	auto bulbasaur = r->sprite(1);
+	CHECK(bulbasaur && bulbasaur->w == 40 && bulbasaur->h == 40 && bulbasaur->frames.size() == 1);
+	if (bulbasaur && bulbasaur->frames.size() == 1 && bulbasaur->frames[0].size() == 1600)
+	{
+		int drawn = 0;
+		for (uint8_t v : bulbasaur->frames[0]) drawn += v != 0;
+		CHECK(bulbasaur->frames[0][0] == 1 && drawn == 1);
+		CHECK(bulbasaur->normal[0] == 0xFFFFFF && bulbasaur->normal[1] == 0xFF0000 && bulbasaur->normal[2] == 0x00FF00 && bulbasaur->normal[3] == 0);
+		CHECK(bulbasaur->shiny == bulbasaur->normal);
+	}
+	auto mew = r->sprite(3);
+	CHECK(mew && mew->w == 8 && mew->h == 8 && mew->frames.size() == 1 && mew->frames[0][0] == 1 && mew->frames[0][8] == 2);
+	CHECK(!r->sprite(2) && !r->sprite(0) && !r->sprite(4));
+	// the town map: the first cell blue (tile 1, the town map's palette's colour 1), the rest white; the cells a cell
+	// from TownMapOrder's places name them (Pallet Town about 4, 12, its entry's x + 2, y + 1; Viridian Forest about
+	// 4, 5); the places' spots: the game's 16 x 16 icon at their entry (x * 8 + 12, y * 8 + 5)
+	CHECK(r->regionMaps.size() == 1);
+	if (r->regionMaps.size() == 1)
+	{
+		const nds::RegionMap& k = r->regionMaps[0];
+		EQ(k.name, "Kanto");
+		CHECK(k.w == 160 && k.h == 144 && k.cell == 8 && k.gridW == 20 && k.gridH == 18 && k.cellX == 0 && k.cellY == 0);
+		CHECK(k.rgba.size() == 160 * 144);
+		if (k.rgba.size() == 160 * 144)
+			CHECK(k.rgba[0] == 0xFF0000FFu && k.rgba[7 * 160 + 7] == 0xFF0000FFu && k.rgba[8] == 0xFFFFFFFFu && k.rgba[143 * 160 + 159] == 0xFFFFFFFFu);
+		auto cell = [&](int x, int y) { return k.cells[(size_t)y * k.gridW + x]; };
+		CHECK(k.cells.size() == 360);
+		if (k.cells.size() == 360)
+		{
+			CHECK(cell(4, 12) == 0 && cell(3, 11) == 0 && cell(5, 13) == 0 && cell(6, 12) == 0xFFFF && cell(4, 10) == 0xFFFF);
+			CHECK(cell(4, 5) == 1 && cell(5, 6) == 1 && cell(4, 7) == 0xFFFF);
+			int named = 0;
+			for (uint16_t c : k.cells) named += c != 0xFFFF;
+			CHECK(named == 18);
+		}
+	}
+	const nds::MapSpot& pallet = r->zones.at(0).spot;
+	CHECK(pallet.map == 0 && pallet.x == 28 && pallet.y == 93 && pallet.w == 16 && pallet.h == 16);
+	CHECK(r->zones.at(2).spot.map == 0 && r->zones.at(2).spot.x == 28 && r->zones.at(2).spot.y == 37);
 
 	// the reader's live() through the ROM's internal order: the red capture's party cut to its first, Pikachu's index
 	// $54, here species 1; without the ROM the index as it is
@@ -1510,6 +1636,28 @@ static void testGen1RomTables()
 	d2 = d;
 	d2.sizes["tm01"] = 0xC8;
 	CHECK(!readRom(rom, d2, &why) && why.find("tm01") != std::string::npos);
+	// ... Bulbasaur's picture in another bank, Mew's base data apart without its picture's bank, TownMapOrder not a list
+	// or naming a map with no entry; a town map whose runs don't fill the screen is left undrawn
+	d2 = d;
+	d2.rom["pics3"] = d2.rom["pics2"];
+	CHECK(!readRom(rom, d2, &why) && why.find("Bulbasaur's front picture") != std::string::npos);
+	d2 = d;
+	d2.rom.erase("mewPicFront");
+	CHECK(!readRom(rom, d2, &why) && why.find("Mew") != std::string::npos);
+	d2 = d;
+	d2.rom["townMapOrderEnd"] = d2.rom["townMapOrder"];
+	CHECK(!readRom(rom, d2, &why) && why.find("townMapOrder") != std::string::npos);
+	d2 = d;
+	d2.rom.erase("townMapTiles");
+	CHECK(!readRom(rom, d2, &why) && why.find("rom.townMapTiles") != std::string::npos);
+	auto bad = std::make_shared<std::vector<uint8_t>>(*rom);
+	const size_t order = RomView{ *bad }.at(d.rom.at("townMapOrder"));
+	(*bad)[order + 1] = 3;
+	CHECK(!readRom(bad, d, &why) && why.find("TownMapOrder's map 3") != std::string::npos);
+	bad = std::make_shared<std::vector<uint8_t>>(*rom);
+	(*bad)[RomView{ *bad }.at(d.rom.at("townMap"))] = 0x12;
+	r = readRom(bad, d, &why);
+	CHECK(r && r->regionMaps.size() == 1 && r->regionMaps[0].rgba.empty() && r->regionMaps[0].cells.size() == 360);
 }
 
 static void testCaptures()
@@ -1918,6 +2066,8 @@ int main(int argc, char** argv)
 	testRomTables();
 	testLz();
 	testPictureFormats();
+	testPic1();
+	testTownMapCells();
 	testCaptures();
 	testGen1Captures();
 	testGen1RomTables();

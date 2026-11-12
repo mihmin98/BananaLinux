@@ -102,7 +102,8 @@ namespace banana::kiwami::gbpk
 	// (no picture by gender or form in these games: one a species)
 	std::shared_ptr<const nds::Sprite> GbRomData::sprite(uint16_t species, bool, uint8_t) const
 	{
-		if (!rom || gen != 2) return nullptr;
+		if (!rom) return nullptr;
+		if (gen == 1) return gen1FrontPic(RomView{ *rom, 1 }, pics1, species);
 		return gen2FrontPic(RomView{ *rom }, pics, species);
 	}
 

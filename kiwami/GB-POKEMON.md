@@ -47,11 +47,12 @@ Two sources, each read by its own script into files that are committed, so a bui
   `wramx(bank, addr)` and `.copy(...)`; Gen I's English configs only, checked by their `language`), Crystal's
   guide RAM (`GuideCrystalGen.kt`), Crystal's guide (*The guides*), the ROM tables its Pokédex reads (`Gen2Dex.kt`,
   `Gen2Art.kt`, and `Gen1Dex.kt`'s English `GEN1_DEX_RED` and `GEN1_DEX_YELLOW`: the base stats, Mew's apart in Red
-  and Blue, the pages, and the Pokédex's RAM; the fields its other releases change checked to be their defaults), and
-  the releases' SHA-1s (`GameTitles.kt`). The configs' fields that are the
-  games' tables (landmarks, gender ratios, TM items, Gen I's internal species order)
-  or PokeDaisy's own features (its battle buttons' cursor columns) are left out by name, and so are Gen I's front
-  pictures' tables, not read yet; a field it can't read fails the run, listed under `unread:`.
+  and Blue, the pages, the palettes, and the Pokédex's RAM; the fields its other releases change checked to be their
+  defaults; its front pictures' banks checked against pret's, `Gen1Art.kt`'s town map tables), and the releases'
+  SHA-1s (`GameTitles.kt`). The configs' fields that are the games' tables (landmarks, gender ratios, TM items, Gen I's
+  internal species order) or PokeDaisy's own features (its battle buttons' cursor columns, its fonts, party icons and
+  the colours it sampled from an emulator) are left out by name; a field it can't read fails the run, listed under
+  `unread:`.
 - **pret's disassemblies** (`pret/pokecrystal`, `pret/pokegold`, and for Red, Blue and Yellow `pret/pokered` and
   `pret/pokeyellow`), by `kiwami/tools/pret-extract.py`, into `kiwami/tools/gbpk-extra.json`: what PokeDaisy doesn't
   have (Gen II's badges, the daycare, the roamers, the stat stages, the event flags, the ROM tables' offsets),
@@ -319,6 +320,8 @@ millisecond on a PC.
 
 `ui/src/kiwami/gbpk/pics.cpp` and `maps.cpp`, as pret's code draws them:
 
+Gen II's, pokecrystal's and pokegold's; Gen I's, pokered's and pokeyellow's:
+
 - **Gen II's LZ** (`home/decompress.asm`): literal, iterate, alternate, zero fill, and the three copies from what is
   already written (repeat, bit-flipped, reversed; a negative offset back from the end, or a positive one from the
   start), each in its short form or the long one, whose own command 7 copies as a repeat (the code falls through). A
@@ -340,12 +343,39 @@ millisecond on a PC.
   the special landmark (rooms the game puts on no map) is on none, and the Map page says the player is inside. A tap
   on the map names the landmark of that map nearest the cell's middle, a cell away at most. A map whose picture
   doesn't decode keeps its cells, which the pages draw as squares.
+- **Gen I's picture compression** (`home/uncompress.asm`): the size (w, h in tiles, at most 7), then two 1-bit planes,
+  each bit pairs written down a column's rows two bits at a time and runs of zeros (their length's bits counted by
+  ones, plus `LengthEncodingOffsetList`'s 2^(n + 1) - 1), the first bit saying which plane comes first and the second
+  plane its unpacking mode: both decoded across each row (a 1 flips the value), or the first decoded and XORed into
+  the second, or both decoded and then XORed. The first plane in `sSpriteBuffer1` is each row's low bit. A stream that
+  runs past its bank, or a size over 7, is refused. The decoded pictures of Red and Yellow were compared with pret's
+  `gfx/pokemon/front/*.png`, all 151 pixel for pixel, when this was written.
+- **A species' front picture** in Red, Blue and Yellow: its base data's pointer, in the bank `UncompressMonSprite`
+  picks by its internal index ("Pics 1" below `TANGELA` + 1, "Pics 2" below `MOLTRES` + 1, "Pics 3" below
+  `BEEDRILL` + 2, "Pics 4" below `STARMIE` + 1, "Pics 5" the rest; Red's and Blue's Mew, `cp MEW`, in its own), at its
+  own size (the stream's first byte), not padded to 7 x 7. One palette: `MonsterPalettes`' id for the species into
+  `SuperPalettes` (Red, Blue: the colours a Super Game Boy shows) or `CGBBasePalettes` (Yellow's own on a Game Boy
+  Color), four colours; the shiny the same, Gen I having none. `readGen1` checks that Bulbasaur's decodes, at the size
+  its base data gives.
+- **Red's, Blue's and Yellow's town map** (`engine/items/town_map.asm` `LoadTownMap`): `CompressedMap`'s runs (a tile
+  of `WorldMapTileGraphics`' 16 in the high nybble, its count in the low; 0 ends), which must fill the screen's
+  20 x 18 cells exactly, in `PAL_TOWNMAP` of the same palettes. A place's spot is the game's 16 x 16 icon at its town
+  map entry (`LoadTownMapEntry`'s x, y: `TownMapCoordsToOAMCoords` and `WriteTownMapSpriteOAM` put its top left at
+  x * 8 + 12, y * 8 + 5); every named map has one. A tap names the place of `TownMapOrder` (the 47 the game's own town
+  map steps through) nearest the cell's middle, a cell away at most, the first in that list of two as near: the
+  unused map $0B's stray entry at the corner, and the buildings' second points (Route 4's Pokémon Center), name no
+  cell. A map whose runs don't decode keeps its cells, drawn as squares.
 
 `kiwami/tests/gbpk-units.cpp` reads a made-up 64 KB ROM with every table and checks each field read back, and that a
 ROM whose first species isn't Bulbasaur, whose palettes' first entry isn't the games' or whose Bulbasaur doesn't
 decode, or a data file without a table, gives none. It checks the LZ command by command against bytes worked from
 pret's code, a made-up picture's pixels and palettes, Gold's bank pairs, and the made-up maps' pictures, cells and
-spots. `kiwami/tests/gbpk-roms.sh` reads the player's own ROMs (*The ROMs for the tests*).
+spots. For Gen I: the compression on 1 x 1-tile streams in each mode and with either plane first (bits and bytes
+worked from pret's code, written out in the test), a stream that runs out or a size of 0 or 8 refused; the town map's
+runs, and runs one short, one over, of 0 or with no end refused; and a made-up Gen I ROM's pictures (Bulbasaur in
+"Pics 3"'s bank, Mew in its own), palettes, town map picture, cells and spots, and its refusals (Bulbasaur's bank
+wrong, Mew's missing, `TownMapOrder` empty or naming a map with no entry, a table missing; runs that don't fill the
+screen leave the map undrawn). `kiwami/tests/gbpk-roms.sh` reads the player's own ROMs (*The ROMs for the tests*).
 
 ## The data files
 
@@ -387,7 +417,11 @@ JSON with sorted keys:
 - `rom` is where each ROM table is: its bank and its address in the bank's window (bank 0 at 0000-3FFF, the others at
   4000-7FFF), from pret's symbols, and where PokeDaisy's `Gen2Dex.kt` gives the same table, checked equal to its
   value (`src` says which), and `Gen2Art.kt` the Pokégear's map tables (its `townMaps` are `johtoMap` and
-  `kantoMap`). Crystal looks a Pokédex entry's bank up in a table (`dexEntryBanks`); Gold and Silver count it from the
+  `kantoMap`); Gen I's palettes from `Gen1Dex.kt` (`monsterPalettes` as `monPaletteIds`, `cgbPalettes` as
+  `palettes`) and the town map's from `Gen1Art.kt`. Gen I's pictures' banks are `pics1` .. `pics5` (each section's
+  first picture; only the bank is used), Red's and Blue's `mewPicFront`, and the internal indexes they start after,
+  `picsTangela` .. `picsStarmie` in `sizes` (pret's constants; PokeDaisy's `picsBank`, `picsBankBreaks` and
+  `mewPicsBank` checked against them). Crystal looks a Pokédex entry's bank up in a table (`dexEntryBanks`); Gold and Silver count it from the
   first entry's (`dexEntryFirst`, checked against PokeDaisy's `dexEntryFirstBank`). Crystal fixes a picture's bank by
   `picsBanks`, Gold and Silver by `picBankFixes`.
 - `flags` are the banks of the save's flags the guide reads, each at a `ram` key's address, its `bytes` laid into
@@ -535,7 +569,9 @@ learnset and a Pokédex text, all 165 moves; Bulbasaur's base stats, types, leve
 and height and weight; Mew; Clefairy's Moon Stone and Kadabra's trade; Quick Attack's and Counter's priorities;
 TM01 and HM01's moves; item names and prices; Route 1's grass with Pidgey and Rattata; the three rods at Pallet Town
 and none on Route 1; Brock's Geodude and Onix at Lv 12 and 14 (Yellow's 10 and 12), his Onix with Bide (Yellow's
-with Bind and Bide); Lorelei's Lapras with Blizzard; every place with wild Pokémon named. Given PokeDaisy's checkout, every species' gender ratio and growth rate is compared with its
+with Bind and Bide); Lorelei's Lapras with Blizzard; every place with wild Pokémon named; all 151 front pictures
+drawn at their own size, Bulbasaur's 5 x 5 tiles and Mewtwo's 7 x 7 (pret's PNGs), each with one palette; the town map
+drawn, Pallet Town's spot on it with its cell naming it, every named place on it. Given PokeDaisy's checkout, every species' gender ratio and growth rate is compared with its
 `Gen2SpeciesCrystal.kt`, and Crystal's hidden items with its `GuideCrystalGen.kt`'s 85, by flag and item. The pictures and maps go to `GBPK_ROMS_OUT` (by default
-`ui/tests/out/gbpk-roms/`) as PNGs for looking at: a sheet of every species' picture, normal and shiny, in the box the
-game draws it in, and each map.
+`ui/tests/out/gbpk-roms/`) as PNGs for looking at: a sheet of every species' picture, normal and (Gen II's) shiny, in
+the box the game draws it in, and each map.

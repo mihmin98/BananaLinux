@@ -2,12 +2,15 @@
 // (pokered; pokeyellow the same where it isn't named), named at each table below; where each table is comes from the
 // data file. Each table is checked as it is read: PokedexOrder gives each species one internal index, every base data
 // record names its own species and the first is Bulbasaur's, every move record its own animation and the first is
-// Pound's, the lists end where pret's do, a class's trainers end where the next class's begin, and a pointer that
-// leaves its bank stops the read.
+// Pound's, the lists end where pret's do, a class's trainers end where the next class's begin, Bulbasaur's front
+// picture decodes at its base data's size, and a pointer that leaves its bank stops the read. The pictures and the
+// town map are decoded by pics.cpp and maps.cpp.
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "rom.h"
+#include "maps.h"
+#include "pics.h"
 #include "text.h"
 #include "../../nds/rom.h"
 #include <algorithm>
@@ -26,6 +29,8 @@ namespace banana::kiwami::gbpk
 		const int BASE_DATA = 28;			// data/pokemon/base_stats/*.asm: species, HP, Attack, Defense, Speed, Special,
 											// types, catch rate, base exp, picture size, the pictures' pointers, the four
 											// level 1 moves, growth, TM/HM bits, a pad
+		const int BASE_PIC_SIZE = 10, BASE_FRONT_PIC = 11;	// (the front picture's first byte, its size; its pointer)
+		const int PALETTE = 8;				// data/sgb/sgb_palettes.asm: four RGB555 colours
 		const int MOVE = 6;					// data/moves/moves.asm: animation (the move's id), effect, power, type,
 											// accuracy (n * 255 / 100), PP
 		const int MON_NAME = 10;			// data/pokemon/names.asm
@@ -84,19 +89,28 @@ namespace banana::kiwami::gbpk
 			moveNames = table("moveNames"), itemNames = table("itemNames"), prices = table("itemPrices"), tmHm = table("tmHmMoves"),
 			external = table("externalMapEntries"), internal = table("internalMapEntries"), wildData = table("wildData"),
 			wildSlots = table("wildSlots"), oldRod = table("oldRod"), goodRod = table("goodRodMons"), trainers = table("trainerGroups"),
-			trainersEnd = table("trainerGroupsEnd"), classNames = table("trainerClassNames");
+			trainersEnd = table("trainerGroupsEnd"), classNames = table("trainerClassNames"), paletteIds = table("monPaletteIds"),
+			palettes = table("palettes");
+		// the front pictures' banks ("Pics 1" .. "Pics 5", each its first picture's) and the town map's tables (maps.cpp
+		// reads them; here only that the data file has them)
+		for (const char* k : { "pics1", "pics2", "pics3", "pics4", "pics5", "townMap", "townMapTiles", "townMapOrder", "townMapOrderEnd" }) table(k);
 		// Red's and Blue's: Mew's base data apart, the Super Rod's groups, the bosses' LoneMoves and TeamMoves; Yellow's:
 		// the Super Rod's four slots and SpecialTrainerMoves
-		const size_t mew = optional("mewBaseData"), superRod = optional("superRod"), rodSlots = optional("superRodSlots"),
+		const size_t mew = optional("mewBaseData"), mewPic = optional("mewPicFront"), superRod = optional("superRod"), rodSlots = optional("superRodSlots"),
 			loneMoves = optional("loneMoves"), teamMoves = optional("teamMoves"), special = optional("specialTrainerMoves");
 		if (!missing.empty()) return no("no rom." + missing + " in the data file, or it is past the ROM's end");
 		if ((superRod == RomView::NONE) == (rodSlots == RomView::NONE)) return no("the data file gives neither rom.superRod nor rom.superRodSlots, or both");
+		if ((mew == RomView::NONE) != (mewPic == RomView::NONE)) return no("the data file gives Mew's base data apart without its picture's bank, or that without it");
 		const int nSp = d.size("numPokemon"), nIdx = d.size("numPokemonIndexes"), nMoves = d.size("numMoves"),
 			nItems = d.size("numItems"), nClasses = d.size("numTrainerClasses"), nMaps = d.size("numMaps"),
 			firstIndoor = d.size("firstIndoorMap"), quickAttack = d.size("quickAttack"), counter = d.size("counter");
+		// (UncompressMonSprite's bounds, by internal index: "Pics 1" below TANGELA + 1, .., "Pics 5" from STARMIE + 1)
+		const int picsBound[4] = { d.size("picsTangela") + 1, d.size("picsMoltres") + 1, d.size("picsBeedrill") + 2, d.size("picsStarmie") + 1 };
 		if (nSp < 1 || nSp > nIdx || nIdx > 254 || nMoves < 1 || nMoves > 254 || nItems < 1 || nItems > 254 || nClasses < 1 ||
 			nClasses > 255 || nMaps < 1 || nMaps > 255 || firstIndoor < 1 || firstIndoor > nMaps)
 			return no("the data file's counts (numPokemon, numPokemonIndexes, numMoves, numItems, numTrainerClasses, numMaps, firstIndoorMap) aren't Gen I's");
+		if (picsBound[0] < 2 || picsBound[0] >= picsBound[1] || picsBound[1] >= picsBound[2] || picsBound[2] >= picsBound[3] || picsBound[3] > 256)
+			return no("the data file's picsTangela, picsMoltres, picsBeedrill and picsStarmie aren't in order");
 		// (the TM and HM items where items.inc has them)
 		if (d.size("tm01") < 1 || gen1Item((uint8_t)d.size("tm01")) != 328 || d.size("hm01") < 1 || gen1Item((uint8_t)d.size("hm01")) != 420)
 			return no("the data file's tm01 and hm01 aren't the items' table's");
@@ -124,6 +138,26 @@ namespace banana::kiwami::gbpk
 		for (int s = 1; s <= nSp; s++)
 			if (r.u8(record(s)) != s) return no("BaseStats' record " + std::to_string(s) + " isn't species " + std::to_string(s) + "'s");
 		if (memcmp(r.b.data() + baseData + 1, BULBASAUR, 5) != 0) return no("BaseStats' first record isn't Bulbasaur's");
+		// the front pictures (home/pics.asm UncompressMonSprite: the base data's pointer, in the bank its internal index
+		// falls in; Red's and Blue's Mew, cp MEW, in its own) and their palettes (data/pokemon/palettes.asm
+		// MonsterPalettes: an id by national number, from MissingNo.'s at 0), checked: Bulbasaur's decodes, at the
+		// size its base data gives
+		if (!r.has(paletteIds, (size_t)nSp + 1)) return no("MonsterPalettes runs past the ROM");
+		out.pics1.pic.assign((size_t)nSp + 1, RomView::NONE);
+		out.pics1.palette.assign((size_t)nSp + 1, RomView::NONE);
+		static const char* const PICS[5] = { "pics1", "pics2", "pics3", "pics4", "pics5" };
+		for (int s = 1; s <= nSp; s++)
+		{
+			int k = 0;
+			while (k < 4 && internalOf[s] >= picsBound[k]) k++;
+			const int bank = s > inTable ? d.rom.at("mewPicFront").bank : d.rom.at(PICS[k]).bank;
+			const uint16_t a = r.le16(record(s) + BASE_FRONT_PIC);
+			if (a >= 0x4000) out.pics1.pic[s] = r.at(bank, a);
+			const size_t pal = palettes + (size_t)PALETTE * r.u8(paletteIds + s);
+			if (r.has(pal, PALETTE)) out.pics1.palette[s] = pal;
+		}
+		if (!gen1FrontPic(r, out.pics1, 1) || r.u8(out.pics1.pic[1]) != r.u8(record(1) + BASE_PIC_SIZE))
+			return no("Bulbasaur's front picture doesn't decode at its base data's size");
 		if (!r.has(names, (size_t)MON_NAME * nIdx)) return no("MonsterNames runs past the ROM");
 		// the moves, checked (each record's animation is its move; Pound first: Normal, 40, 35 PP)
 		if (!r.has(moves, (size_t)MOVE * nMoves)) return no("Moves runs past the ROM");
@@ -241,11 +275,13 @@ namespace banana::kiwami::gbpk
 
 		// places: every map by its number, named as the town map names it (engine/items/town_map.asm LoadTownMapEntry:
 		// below FIRST_INDOOR_MAP the map's own ExternalMapEntries entry; above, the first InternalMapEntries group whose
-		// bound is past the map, to -1); the names in the order the town map lists them
+		// bound is past the map, to -1), and its point on the town map (the entry's dn y, x); the names in the order
+		// the town map lists them
 		if (!r.has(external, (size_t)EXTERNAL_MAP * firstIndoor)) return no("ExternalMapEntries runs past the ROM");
-		auto placeName = [&](size_t entry) { return nameCase(r.text(r.near(entry + 1), 24)); };
+		std::map<uint16_t, uint8_t> pointOf;
+		auto placeName = [&](int m, size_t entry) { pointOf[(uint16_t)m] = r.u8(entry); return nameCase(r.text(r.near(entry + 1), 24)); };
 		std::vector<std::string> mapName((size_t)nMaps);
-		for (int m = 0; m < firstIndoor; m++) mapName[m] = placeName(external + EXTERNAL_MAP * (size_t)m);
+		for (int m = 0; m < firstIndoor; m++) mapName[m] = placeName(m, external + EXTERNAL_MAP * (size_t)m);
 		std::vector<size_t> groups;
 		for (size_t o = internal; r.has(o, 1) && r.u8(o) != END; o += INTERNAL_MAP)
 		{
@@ -254,7 +290,7 @@ namespace banana::kiwami::gbpk
 		}
 		for (int m = firstIndoor; m < nMaps; m++)
 			for (size_t g : groups)
-				if (m < r.u8(g)) { mapName[m] = placeName(g + 1); break; }
+				if (m < r.u8(g)) { mapName[m] = placeName(m, g + 1); break; }
 		for (int m = 0; m < nMaps; m++)
 		{
 			if (mapName[m].empty()) continue;
@@ -340,6 +376,10 @@ namespace banana::kiwami::gbpk
 			if (it != superMons.end())
 				for (size_t j = 0; j < it->second.size(); j++) add(loc, it->second[j].first, it->second[j].second, superPct[m][j], EncounterKind::SUPER_ROD);
 		}
+
+		// the town map, and each place's spot on it (maps.cpp)
+		std::string w;
+		if (!readTownMap(r, d, pointOf, out, &w)) return no(w);
 
 		// trainers (data/trainers/parties.asm: TrainerDataPointers' pointer a class; a class's trainers one after another
 		// up to the next class's, the last class's up to TrainerAI: a level and its species to 0, or OWN_LEVELS and a

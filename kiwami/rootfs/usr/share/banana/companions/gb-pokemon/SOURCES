@@ -6,9 +6,10 @@
 
 [pokedaisy]
 commit pokedaisy 135ac809a597230c1fe3ad6359ae0fe81e233583
-in  606ce321bffa4a0a30585cbff7a406f4c7112dc1cbb46130ba99d73107a5cb5c  kiwami/tools/gbpk-extra.json
+in  015e735b96bfe3e4f23c3afabd0ce44e7137085f2501821caa3181f3f558f7d0  kiwami/tools/gbpk-extra.json
 in  e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  pokedaisy LICENSE
 in  02efcb677831c264613b4313be1c24e9e042f577636b20469fc3f984734c7085  pokedaisy app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt
+in  63c1c1e7c2fef1af92c3abe2235091fc3d41768fd590d68469594a974c51f286  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Art.kt
 in  447dd3d7708ea8c31a8761b0b075384d9995843468972e22be7a2607d3e71a1d  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Dex.kt
 in  850a25a6c445e71a38a487168e196e4dfeb0aa59e04ceed75676dde4c94b6057  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Reader.kt
 in  96a498f182ceea68d95040239dcd3c2faf4b02fbd103291cfa35036bd532f28e  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Art.kt
@@ -17,13 +18,13 @@ in  f33fd7f41938deb6c1b29556669f643495bb4c42fb554ed849280ba2f6229d92  pokedaisy 
 in  aa78cc353530d524f44f4b168a72e1fcf65a7cbb957cc430b51a8b96a02d2211  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystal.kt
 in  816154d8b641ee466f82736eea9c40d086708fdd2399052ec8502bb6d29dcbe6  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt
 out e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/LICENSE
-out 6d6d4e5596088b6dc1ab67da733999422399d98c3d7ada7a060d609a99f5a935  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/blue.ram.json
+out fb7508b4a2f96c2fbd02b13d24d93df7352d9fe98f0380bb9dfac05bdc9df546  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/blue.ram.json
 out 477bd98fc9e34e70ae72bb62bc38b42cf76633e0e7589c6213af7f4dbe9adba1  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.json
 out 1e98970db14a16238c9b41033d5f1a1c067c9acd7177b934225ba9444714c326  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.ram.json
 out a692e44aa7ff26d8eb70c67de2b8ee21aa17e2dba6b139d1412ed2f061318b53  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/gold.ram.json
-out a0121d25e7c942abe0152e2617a3c8e193993516c820387e0d1fa4a3af2ba5e2  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/red.ram.json
+out a5e47a65f51eca24dfbb4db71fb9a45bfff497b5f7ffd480a909e4bd9cefc5e8  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/red.ram.json
 out 306fc0ab65638ed970241b092beda620187cbda6d863e5bab879eb15958991f6  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/silver.ram.json
-out 7e73beba68236acfc6ca1fef87f8d90059c05259c5d0eaa2c6b275cc1e7ac6a8  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow.ram.json
+out 54a65a5e61c508c95647fb7b080f85721e87842fffbf0ae621b8e6a959421180  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow.ram.json
 
 [pret]
 commit pokecrystal 3c813b0b4d82b39bf62185aceffb76fd6026c70b symbols 3b13ca4fa74171364afd6bba61a6e8560212860b
@@ -55,6 +56,7 @@ in  b5a1db015fbf0de637381eb39350f21f35a436a8088e2f6657f65c79f118f97f  pokered co
 in  4129ef4e6908267e554c0308254f2269f1fb8f75b5c529faad6fd14c92119271  pokered constants/map_constants.asm
 in  fbd0e91bd6ac5f8a491a4d5df3ccbc4438f34c234ce9be684f82b2537c6022ac  pokered constants/menu_constants.asm
 in  e8ac9263abd68b85c1292893b7a55d0664005e52ffc832fe8f6abe2c9d48c74d  pokered constants/move_constants.asm
+in  95dce1244a31e454e8a1147a448a8cd16bb33b99b056fdc9bec060d91b78848a  pokered constants/palette_constants.asm
 in  cddea6d35fd356a2982b50af10122225b46273e5e0f7f0ea04a7a31c5e93cfef  pokered constants/pokedex_constants.asm
 in  0914f9edb2bb72788d0e7b1e4ae7dedef2bb2f29533363375f8d874fec41e604  pokered constants/pokemon_constants.asm
 in  27d774417a45f20d127d96fcb07b4625f2fc92fe4ffbc79efebee86c90b79a58  pokered constants/trainer_constants.asm
@@ -66,11 +68,12 @@ in  17837f53ed3a59bb54717068f0ecd9271bb52166dd694521695cbfc00132c5f1  pokeyellow
 in  3e21ca97d230113817fd8765c256d620efae1c64da986305116a0cfeb7bf3b82  pokeyellow constants/map_constants.asm
 in  fbd0e91bd6ac5f8a491a4d5df3ccbc4438f34c234ce9be684f82b2537c6022ac  pokeyellow constants/menu_constants.asm
 in  e8ac9263abd68b85c1292893b7a55d0664005e52ffc832fe8f6abe2c9d48c74d  pokeyellow constants/move_constants.asm
+in  71e01b710889d20e685a203ea839be97ac45a7404cd1425eec9341b4a56240fe  pokeyellow constants/palette_constants.asm
 in  cddea6d35fd356a2982b50af10122225b46273e5e0f7f0ea04a7a31c5e93cfef  pokeyellow constants/pokedex_constants.asm
 in  629b60d9e5a6265ee82d31f918d63d2de73bb582e5454f054df3986260c63d3b  pokeyellow constants/pokemon_constants.asm
 in  27d774417a45f20d127d96fcb07b4625f2fc92fe4ffbc79efebee86c90b79a58  pokeyellow constants/trainer_constants.asm
 in  1b95202b710dbd8e5f5b71165be519e25ff0227dec3f22d347e6bdb5a9ae9390  pokeyellow roms.sha1
 in  ec6ef2f4e5fc0b8b503eeaf61ab0d8444020fb2276e6912fe46583b003219f85  pokeyellow symbols:pokeyellow.sym
-in  fd5fa3b1de25411f3ecc68d90e1a4998abc96ce51ccd84edf897c324efba25f5  kiwami/tools/gbpk-symbols.txt
+in  c91845b145fc636a479e1e9c7db7ab879711348ec49d7b4f5a62935b6d4f4015  kiwami/tools/gbpk-symbols.txt
 in  8347055098f870e8067f2945f057833f1bcb7c6f9e85ee600dc2aa5df421fbe1  kiwami/tests/gbpk/roms.patches
-out 606ce321bffa4a0a30585cbff7a406f4c7112dc1cbb46130ba99d73107a5cb5c  kiwami/tools/gbpk-extra.json
+out 015e735b96bfe3e4f23c3afabd0ce44e7137085f2501821caa3181f3f558f7d0  kiwami/tools/gbpk-extra.json

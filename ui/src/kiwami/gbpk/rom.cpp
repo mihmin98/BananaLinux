@@ -4,6 +4,7 @@
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "rom.h"
+#include "pics.h"
 #include "text.h"
 #include <algorithm>
 
@@ -45,9 +46,11 @@ namespace banana::kiwami::gbpk
 		return NONE;
 	}
 
-	std::shared_ptr<const nds::Sprite> GbRomData::sprite(uint16_t, bool, uint8_t) const
+	// (no picture by gender or form in these games: one a species)
+	std::shared_ptr<const nds::Sprite> GbRomData::sprite(uint16_t species, bool, uint8_t) const
 	{
-		return nullptr;
+		if (!rom || gen != 2) return nullptr;
+		return gen2FrontPic(RomView{ *rom }, pics, species);
 	}
 
 	std::shared_ptr<const nds::RomData> readRom(std::shared_ptr<const std::vector<uint8_t>> rom, const GameData& d,
@@ -58,6 +61,7 @@ namespace banana::kiwami::gbpk
 		auto out = std::make_shared<GbRomData>();
 		out->rom = rom;
 		out->game = d.game;
+		out->gen = d.gen;
 		RomView r{ *rom };
 		std::string w;
 		if (d.gen == 2)

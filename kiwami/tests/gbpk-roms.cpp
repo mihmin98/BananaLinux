@@ -1,8 +1,10 @@
 // The Game Boy Pokémon companion's ROM reader (ui/src/kiwami/gbpk/rom.h) on the player's own ROMs, which are never in
 // the repository: each .gb/.gbc in the folder that is a release the data files list (kiwami/tests/gbpk/roms.sha1, by
 // SHA-1) is read, and what the ROM is known to hold is checked against what was read. With a PokeDaisy checkout, every
-// species' gender ratio and growth rate are compared with PokeDaisy's tables (Gen2SpeciesCrystal.kt). Built and run
-// by kiwami/tests/gbpk-roms.sh after its check of the folder:
+// species' gender ratio and growth rate are compared with PokeDaisy's tables (Gen2SpeciesCrystal.kt). With
+// GBPK_ROMS_OUT set, every species' front picture (normal, shiny) and the region maps are written there as PNGs, a
+// game's <key>-pics.png, <key>-shiny.png and <key>-<map>.png, for looking at. Built and run by
+// kiwami/tests/gbpk-roms.sh after its check of the folder:
 //   gbpk-roms <the data files' folder> <roms.sha1> <the ROMs' folder> [<pokedaisy checkout>]
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in ui/src/kiwami/gbpk/. SPDX-License-Identifier: GPL-3.0-only
@@ -10,6 +12,8 @@
 #include "kiwami/gbpk/games.h"
 #include "kiwami/gbpk/rom.h"
 #include "nds/rom.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../third_party/stb_image_write.h"
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -49,6 +53,87 @@ static const nds::Location* place(const nds::RomData& r, const std::string& name
 {
 	for (const auto& [z, l] : r.zones) if (l.name == name && !l.encounters.empty()) return &l;
 	return nullptr;
+}
+
+// a picture (0xRRGGBB, opaque) as a PNG
+static void png(const std::string& path, const std::vector<uint32_t>& px, int w, int h)
+{
+	std::vector<uint8_t> rgb((size_t)w * h * 3);
+	for (size_t i = 0; i < px.size(); i++) { rgb[i * 3] = (uint8_t)(px[i] >> 16); rgb[i * 3 + 1] = (uint8_t)(px[i] >> 8); rgb[i * 3 + 2] = (uint8_t)px[i]; }
+	if (!stbi_write_png(path.c_str(), w, h, 3, rgb.data(), w * 3)) fprintf(stderr, "gbpk-roms: couldn't write %s\n", path.c_str());
+}
+
+// every species' front picture: drawn, at its base data's size (5, 6 or 7 tiles), Chikorita's 5 x 5; written as two
+// sheets of 16 x 16 boxes of 7 x 7 tiles, each picture where the game puts it in its box (PadFrontpic: a column in,
+// on the box's bottom), on its own white
+static void checkPics(const nds::RomData& r, const std::vector<uint8_t>& rom, const std::string& out, const std::string& key)
+{
+	const int box = 56, cols = 16, sheetW = cols * box, sheetH = 16 * box;
+	std::vector<uint32_t> normal((size_t)sheetW * sheetH, 0xC0C0C0), shiny = normal;
+	int drawn = 0, sized = 0;
+	auto t0 = std::chrono::steady_clock::now();
+	for (int s = 1; s < (int)r.species.size(); s++)
+	{
+		auto sp = r.sprite((uint16_t)s);
+		if (!sp || sp->frames.size() != 1 || sp->w != sp->h) { fprintf(stderr, "gbpk-roms: %s: species %d's picture doesn't decode\n", current.c_str(), s); continue; }
+		const auto& f = sp->frames[0];
+		bool any = false;
+		for (uint8_t v : f) any |= v != 0;
+		drawn += any;
+		// (BaseData's picture size: the record's byte 17, dn w, h; rom.h's GbRomData keeps where BaseData is)
+		const int size = rom[static_cast<const GbRomData&>(r).pics.baseData + 32 * (s - 1) + 17] & 0xF;
+		sized += sp->w == size * 8;
+		const int ox = (s - 1) % cols * box + (7 - size + 1) / 2 * 8, oy = (s - 1) / cols * box + (7 - size) * 8;
+		for (int y = 0; y < sp->h; y++)
+			for (int x = 0; x < sp->w; x++)
+			{
+				const uint8_t v = f[(size_t)y * sp->w + x];
+				normal[(size_t)(oy + y) * sheetW + ox + x] = sp->normal[v];
+				shiny[(size_t)(oy + y) * sheetW + ox + x] = sp->shiny[v];
+			}
+	}
+	const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+	CHECK(drawn == 251 && sized == 251);
+	auto chikorita = r.sprite(152);
+	CHECK(chikorita && chikorita->w == 40 && chikorita->h == 40);
+	fprintf(stderr, "gbpk-roms: %s: %d front pictures decoded in %.1f ms\n", current.c_str(), drawn, ms);
+	if (out.empty()) return;
+	png(out + "/" + key + "-pics.png", normal, sheetW, sheetH);
+	png(out + "/" + key + "-shiny.png", shiny, sheetW, sheetH);
+}
+
+// the Pokégear's maps: both drawn, New Bark Town's place on Johto's and its cell naming it, Pallet Town's on Kanto's;
+// every named place but the rooms of the special landmark on a map
+static void checkMaps(const nds::RomData& r, const std::string& out, const std::string& key)
+{
+	CHECK(r.regionMaps.size() == 2);
+	if (r.regionMaps.size() != 2) return;
+	EQ(r.regionMaps[0].name, "Johto");
+	EQ(r.regionMaps[1].name, "Kanto");
+	for (const auto& m : r.regionMaps)
+	{
+		CHECK(m.w == 160 && m.h == 144 && m.rgba.size() == 160 * 144 && m.cells.size() == 360);
+		if (!out.empty() && m.rgba.size() == (size_t)m.w * m.h) png(out + "/" + key + "-" + m.name + ".png", m.rgba, m.w, m.h);
+	}
+	auto spotOf = [&](const std::string& name) -> const nds::MapSpot* {
+		for (const auto& [z, l] : r.zones) if (l.name == name) return &l.spot;
+		return nullptr;
+	};
+	const nds::MapSpot* nb = spotOf("New Bark Town");
+	const nds::MapSpot* pallet = spotOf("Pallet Town");
+	CHECK(nb && nb->map == 0 && pallet && pallet->map == 1);
+	if (nb && nb->map == 0)
+	{
+		const nds::RegionMap& j = r.regionMaps[0];
+		const int cx = (int)(nb->x + nb->w / 2) / j.cell, cy = (int)(nb->y + nb->h / 2) / j.cell;
+		const uint16_t id = cx >= 0 && cy >= 0 && cx < j.gridW && cy < j.gridH ? j.cells[(size_t)cy * j.gridW + cx] : 0xFFFF;
+		EQ(id < r.locationNames.size() ? r.locationNames[id] : "", "New Bark Town");
+	}
+	int placed = 0, named = 0;
+	for (const auto& [z, l] : r.zones)
+		if (!l.name.empty() && l.name != "Special") { named++; placed += l.spot.map >= 0; }
+	CHECK(placed == named && named > 300);
+	fprintf(stderr, "gbpk-roms: %s: %d places on the Pokégear's maps\n", current.c_str(), placed);
 }
 
 static void checkGen2(const nds::RomData& r, const std::string& key, const std::string& pokedaisy)
@@ -188,6 +273,9 @@ int main(int argc, char** argv)
 		CHECK(r);
 		if (!r) continue;
 		checkGen2(*r, key, pokedaisy);
+		const char* out = getenv("GBPK_ROMS_OUT");
+		checkPics(*r, *rom, out ? out : "", key);
+		checkMaps(*r, out ? out : "", key);
 		read++;
 	}
 	if (failed)

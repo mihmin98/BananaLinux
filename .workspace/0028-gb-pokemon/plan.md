@@ -1114,6 +1114,28 @@ Where the implementation turned out different from this plan, why, and what chan
   - `gbpk-roms.sh` takes the PokeDaisy checkout as its argument and passes it on, and `gbpk-roms` checks more than
     planned: priorities, TM and HM moves, item names and prices, Chikorita's evolution and Pokédex entry, fishing at
     New Bark Town and not on Route 29, every place with wild Pokémon named.
+- **2026-11-12, step 7: the pictures and maps as pret's code has them** (agreed with the user).
+  - More files than planned: `gbpk-symbols.txt` and `gbpk-extra.json` (the pictures' and maps' tables, from pret,
+    and the constants `KANTO_LANDMARK` and `LANDMARK_FAST_SHIP`), `rom.h` and `rom.cpp` (`GbRomData` keeps where the
+    pictures are; its `sprite()`, shared by both generations, hands a Gen II species to `pics.cpp`'s
+    `gen2FrontPic`), `gbpk-roms.sh` (the PNGs' folder) and `GB-POKEMON.md`. `pokedaisy-extract.py` also reads
+    `Gen2Art.kt` (the Pokégear's tables; Silver's config by position over Gold's, `GOLD.let { ... it.field }`), and
+    PokeDaisy's and pret's values agree for every table.
+  - Crystal's `PICS_FIX` ($36) is defined in pret's code (`engine/gfx/load_pics.asm`), not a constants file, so it is a
+    named constant in `pics.cpp`, as step 6's fixed layouts are in `rom2.cpp`.
+  - A picture is at its own size (5, 6 or 7 tiles square), not padded to 7 x 7: upstream's pages crop a picture to what
+    is drawn. Crystal's animation frames, which follow in the same stream, aren't read.
+  - A place's spot is the game's 16 x 16 player icon around its landmark's point (pret's `OAMData_RedWalk`); a cell
+    names its map's landmark nearest the cell's middle, a cell away at most. Both maps use Chris's Pokégear palettes
+    (Kris's cities are blue in the game, orange here): the map is decoded once, not by the save.
+  - `readGen2` also checks the pictures before use: `PokemonPalettes`' first entry is the games' unused one, and
+    Bulbasaur's picture decodes. A data file whose `kantoLandmark` or `fastShipLandmark` isn't a landmark gives no
+    tables, as its other counts do; a map picture that doesn't decode is left empty (the squares), as planned.
+  - The unit tests' made-up maps are the game's 20 x 18 tiles (not 3 x 2), with tiles in two palettes, a map whose tile
+    isn't among the 48 (no picture), and four landmarks (one on each map, the Fast Ship, the special one). `gbpk-roms`
+    writes a sheet of all 251 pictures (normal, shiny) and each map a game to `GBPK_ROMS_OUT` (default
+    `ui/tests/out/gbpk-roms/`), rather than a PNG a picture, and checks too that Pallet Town is on Kanto's map and
+    every named place but the special landmark's rooms is on one.
 
 ## Progress
 
@@ -1128,7 +1150,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 5. The ROMs for the ROM tests: the list, the folder and its check | done | `GB Pokémon companion: the list of ROMs its ROM tests expect, by SHA-1, and the check of the folder` |
 | 5a. Fast Red and Fast Blue in the ROM list, and the check of their patch | done | `GB Pokémon companion: Fast Red and Fast Blue in the ROM list, checked to patch nothing it reads` |
 | 6. Gen II's ROM: the tables | done | `GB Pokémon companion: Gold, Silver and Crystal's species, moves, items, encounters and trainers from the ROM` |
-| 7. Gen II's ROM: the sprites and the Pokégear's maps | todo | |
+| 7. Gen II's ROM: the sprites and the Pokégear's maps | done | `GB Pokémon companion: Gen II's sprites in their palettes and the Pokégear's maps, decoded from the ROM` |
 | 8. The companion on the game panel, with its Settings rows | todo | |
 | 9. Gen-aware pages | todo | |
 | 10. Crystal's guide | todo | |

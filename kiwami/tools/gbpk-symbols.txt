@@ -119,3 +119,22 @@ crystal,gold,silver const.numMoves constants/move_constants.asm NUM_ATTACKS
 crystal,gold,silver const.vitalThrow constants/move_constants.asm VITAL_THROW
 crystal,gold,silver const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINER_CLASSES
 crystal,gold,silver const.numLandmarks constants/landmark_constants.asm NUM_LANDMARKS
+# (the Pokégear: a landmark from KANTO_LANDMARK up is on the Kanto map, the Fast Ship's on Johto's)
+crystal,gold,silver const.kantoLandmark constants/landmark_constants.asm KANTO_LANDMARK
+crystal,gold,silver const.fastShipLandmark constants/landmark_constants.asm LANDMARK_FAST_SHIP
+
+# Gen II's front pictures and their palettes (ui/src/kiwami/gbpk/pics.cpp), the Pokégear's Johto and Kanto maps
+# (maps.cpp). PokeDaisy's Gen2Dex.kt and Gen2Art.kt give them too: pret's value must agree with it. Crystal fixes a
+# picture's bank by an index into a table, Gold and Silver by a list of pairs (engine/gfx/load_pics.asm FixPicBank)
+crystal,gold,silver rom.picPointers PokemonPicPointers
+crystal,gold,silver rom.unownPicPointers UnownPicPointers
+crystal rom.picsBanks FixPicBank.PicsBanks
+gold,silver rom.picBankFixes FixPicBank.FixPicBankTable
+crystal,gold,silver rom.monPalettes PokemonPalettes
+crystal,gold,silver rom.townMapGfx TownMapGFX
+crystal,gold,silver rom.johtoMap JohtoMap
+crystal,gold,silver rom.kantoMap KantoMap
+crystal,gold,silver rom.townMapPalMap TownMapPals.PalMap
+# (Crystal's boy's; the girl's differ only in the cities' colour, and the map is read once, not by the save)
+crystal rom.pokegearPals MalePokegearPals
+gold,silver rom.pokegearPals PokegearPals

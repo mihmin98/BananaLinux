@@ -7,6 +7,8 @@
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "rom.h"
+#include "maps.h"
+#include "pics.h"
 #include "text.h"
 #include "../../nds/rom.h"
 #include <algorithm>
@@ -104,7 +106,12 @@ namespace banana::kiwami::gbpk
 			grassProbs = table("grassProbs"), waterProbs = table("waterProbs"), fish = table("fishGroups"),
 			timeFish = table("timeFishGroups"), treeMaps = table("treeMonMaps"), rockMaps = table("rockMonMaps"),
 			treeMons = table("treeMons"), trainers = table("trainerGroups"), classNames = table("trainerClassNames"),
-			landmarks = table("landmarks"), mapGroups = table("mapGroups"), mapsEnd = table("mapHeadersEnd");
+			landmarks = table("landmarks"), mapGroups = table("mapGroups"), mapsEnd = table("mapHeadersEnd"),
+			picPointers = table("picPointers"), unownPics = table("unownPicPointers"), monPalettes = table("monPalettes");
+		// a picture's bank: Crystal's PicsBanks, or Gold's and Silver's pairs (pics.cpp)
+		const bool bankPairs = d.rom.count("picBankFixes") > 0;
+		const size_t picBanks = table(bankPairs ? "picBankFixes" : "picsBanks");
+		for (const char* k : { "townMapGfx", "johtoMap", "kantoMap", "townMapPalMap", "pokegearPals" }) table(k);
 		const size_t grass[2] = { table("johtoGrass"), table("kantoGrass") }, water[2] = { table("johtoWater"), table("kantoWater") };
 		// a Pokédex entry's bank: Crystal's table of four, or Gold's and Silver's first bank and the three after it
 		const size_t dexBanks = d.rom.count("dexEntryBanks") ? r.at(d.rom.at("dexEntryBanks")) : RomView::NONE;
@@ -128,6 +135,19 @@ namespace banana::kiwami::gbpk
 		for (int m = 1; m <= nMoves; m++)
 			if (r.u8(moves + MOVE * (m - 1)) != m) return no("Moves' record " + std::to_string(m) + " isn't move " + std::to_string(m) + "'s");
 		if (r.u8(moves + 2) != 40 || r.u8(moves + 3) != 0 || r.u8(moves + 5) != 35) return no("Moves' first record isn't Pound's");
+		// the pictures, checked (PokemonPalettes' first entry, no species', is RGB 30, 22, 17 and 16, 14, 19 twice;
+		// Bulbasaur's front picture decodes)
+		out.pics.pointers = picPointers;
+		out.pics.unown = unownPics;
+		out.pics.banks = picBanks;
+		out.pics.bankPairs = bankPairs;
+		out.pics.palettes = monPalettes;
+		out.pics.baseData = baseData;
+		out.pics.count = nSp;
+		static const uint8_t PALETTE_0[8] = { 0xDE, 0x46, 0xD0, 0x4D, 0xDE, 0x46, 0xD0, 0x4D };
+		if (!r.has(monPalettes, 8 * ((size_t)nSp + 1)) || memcmp(r.b.data() + monPalettes, PALETTE_0, 8) != 0)
+			return no("PokemonPalettes' first entry isn't the games'");
+		if (!gen2FrontPic(r, out.pics, 1)) return no("Bulbasaur's front picture doesn't decode");
 
 		// moves: names (a list of strings), descriptions (a pointer each), priorities (MoveEffectPriorities: effect,
 		// priority pairs to -1; Vital Throw goes last, by its id; the rest BASE_PRIORITY), the category by the type
@@ -280,7 +300,7 @@ namespace banana::kiwami::gbpk
 			firstGroup = std::min(firstGroup, g);
 		}
 		if (mapsEnd / 0x4000 != mapGroups / 0x4000 || mapsEnd <= firstGroup) return no("rom.mapHeadersEnd isn't after the map groups");
-		std::map<uint16_t, uint8_t> fishGroupOf;
+		std::map<uint16_t, uint8_t> fishGroupOf, landmarkOf;
 		for (size_t g = 0; g < groups.size(); g++)
 		{
 			size_t end = mapsEnd;
@@ -295,6 +315,7 @@ namespace banana::kiwami::gbpk
 				loc.id = z;
 				const uint8_t lm = r.u8(h + 5);
 				if (lm < out.locationNames.size()) loc.name = out.locationNames[lm];
+				landmarkOf[z] = lm;
 				if (r.u8(h + 8)) fishGroupOf[z] = r.u8(h + 8);
 			}
 		}
@@ -412,6 +433,9 @@ namespace banana::kiwami::gbpk
 			return true;
 		};
 		if (!trees(treeMaps, EncounterKind::HEADBUTT, 2) || !trees(rockMaps, EncounterKind::ROCK_SMASH, 1)) return no("TreeMons' pointer leaves its bank");
+		// the Pokégear's maps, and each place's spot on them (maps.cpp)
+		std::string w;
+		if (!readPokegearMaps(r, d, landmarkOf, out, &w)) return no(w);
 
 		// trainers (data/trainers/parties.asm: a group a class, TrainerGroups' pointer each; a group's trainers one after
 		// another to the next group: name, party type, then level, species, item when the type has items, four moves

@@ -13,6 +13,7 @@
 // additional term under section 7(b): LICENSE and NOTICE in ui/src/kiwami/gbpk/. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "kiwami/gbpk/games.h"
+#include "kiwami/gbpk/pics.h"
 #include "kiwami/gbpk/reader.h"
 #include "kiwami/gbpk/rom.h"
 #include "kiwami/gbpk/rules.h"
@@ -283,9 +284,10 @@ static void testRomList()
 
 // ---- the ROM reader on a made-up ROM ----------------------------------------------------------------------------
 
-// a made-up Gen II ROM, 64 KB, laid out by a made-up data file (every table in bank 1, 4000-7FFF): two species, three
-// moves, three items, one map group of two maps with wild Pokémon in the first (grass, water, three rods, a tree and a
-// rock), one trainer class with two trainers. The layouts are pret's (rom2.cpp names each).
+// a made-up Gen II ROM, 64 KB, laid out by a made-up data file (every table in bank 1, 4000-7FFF): two species with
+// their pictures and palettes, three moves, three items, four landmarks, one map group of two maps with wild Pokémon
+// in the first (grass, water, three rods, a tree and a rock), one trainer class with two trainers, the Pokégear's two
+// maps. The layouts are pret's (rom2.cpp, pics.cpp and maps.cpp name each).
 struct MadeUpRom
 {
 	std::vector<uint8_t> b = std::vector<uint8_t>(0x10000, 0);
@@ -327,13 +329,13 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	m.d.game.id = CRYSTAL;
 	m.d.game.gen = GEN_II;
 	m.d.game.title = "Made-up";
-	m.d.sizes = { { "numPokemon", 2 }, { "numMoves", 3 }, { "numTrainerClasses", 1 }, { "numLandmarks", 2 }, { "firstTm", 4 },
-		{ "vitalThrow", 3 } };
+	m.d.sizes = { { "numPokemon", 2 }, { "numMoves", 3 }, { "numTrainerClasses", 1 }, { "numLandmarks", 4 }, { "firstTm", 4 },
+		{ "vitalThrow", 3 }, { "kantoLandmark", 2 }, { "fastShipLandmark", 3 } };
 	// base data: species, HP .. Sp. Def, types (Grass 22, Poison 3), catch rate, base exp, items, gender, 3 bytes,
-	// picture size, 4 unused, growth, egg groups, TM/HM bits (TM01, and HM01: bit 50)
+	// picture size (5 x 5, 6 x 6), 4 unused, growth, egg groups, TM/HM bits (TM01, and HM01: bit 50)
 	std::vector<int> b1(32, 0), b2(32, 0);
-	b1 = { 1, notBulbasaur ? 44 : 45, 49, 49, 45, 65, 65, 22, 3, 45, 64, 0, 0, 31, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0x01, 0, 0, 0, 0, 0, 0x04, 0 };
-	b2 = { 2, 60, 62, 63, 60, 80, 80, 22, 22, 45, 141, 0, 0, 31, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	b1 = { 1, notBulbasaur ? 44 : 45, 49, 49, 45, 65, 65, 22, 3, 45, 64, 0, 0, 31, 0, 0, 0, 0x55, 0, 0, 0, 0, 3, 0, 0x01, 0, 0, 0, 0, 0, 0x04, 0 };
+	b2 = { 2, 60, 62, 63, 60, 80, 80, 22, 22, 45, 141, 0, 0, 31, 0, 0, 0, 0x66, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	m.key("baseData", m.put(R::cat(b1, b2)));
 	std::vector<int> n1 = R::str("BULBASAUR"), n2 = R::str("IVYSAUR");
 	n1.resize(10, 0x50);
@@ -364,9 +366,13 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	const int x2 = m.put(R::cat(R::cat(R::cat(R::str("SEED"), { 0x2C, 1, 0x1E, 1 }), R::str("P")), R::str("Q")));
 	m.key("dexEntryPointers", m.put(R::words({ x1, x2 })));
 	m.d.rom["dexEntryFirst"] = Addr{ 1, 0x4000 };
-	// landmarks: x, y, the name's pointer
-	const int l0 = m.put(R::str("SPECIAL")), l1 = m.put(R::str("NEW_BARK_TOWN"));
-	m.key("landmarks", m.put({ 8, 16, l0 & 0xFF, l0 >> 8, 100, 100, l1 & 0xFF, l1 >> 8 }));
+	// landmarks: x + 8, y + 16 (the point on the screen), the name's pointer: the special one, New Bark Town (at 92,
+	// 84 on Johto's map), Pallet Town (Kanto's from 2, KANTO_LANDMARK; at 52, 108) and the Fast Ship (at 140, 116, on
+	// Johto's)
+	const int l0 = m.put(R::str("SPECIAL")), l1 = m.put(R::str("NEW_BARK_TOWN")), l2 = m.put(R::str("PALLET TOWN")),
+		l3 = m.put(R::str("FAST SHIP"));
+	m.key("landmarks", m.put({ 8, 16, l0 & 0xFF, l0 >> 8, 100, 100, l1 & 0xFF, l1 >> 8, 60, 124, l2 & 0xFF, l2 >> 8,
+		148, 132, l3 & 0xFF, l3 >> 8 }));
 	// one map group, right after its pointer: map 1 at landmark 1 with fishing group 2, map 2 at landmark 0 with the
 	// Shore group and no water (no fishing); the headers end where the next table starts
 	const int mg = m.next;
@@ -399,6 +405,41 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	const int tg = m.next;
 	m.key("trainerGroups", m.put(R::words({ tg + 2 })));
 	m.put(R::cat(R::cat(R::str("FALKNER"), { 3, 7, 1, 0, 1, 2, 0, 0, 9, 2, 2, 3, 0, 0, 0, 0xFF }), R::cat(R::str("BOB"), { 0, 8, 1, 0xFF })));
+	// the pictures: one LZ stream for both, 25 tiles (literal: tile 0 with pixels 1 at 0,0, 2 at 1,1 and 3 at 2,2;
+	// tile 1, below it, 3 at 0,0; then a long zero fill of 368), too short for Ivysaur's 36. The stored bank is 1 less
+	// PICS_FIX ($36), fixed by PicsBanks (its first, "Pics 1", bank 1). The palettes' first entry is the games' unused
+	// one; Bulbasaur's normal colours red and green, its shiny ones blue and yellow
+	std::vector<int> pic = { 0x1F, 0x80, 0, 0, 0x40, 0x20, 0x20 };
+	pic.resize(17, 0);
+	pic.push_back(0x80);
+	pic.push_back(0x80);
+	pic.resize(33, 0);
+	pic.insert(pic.end(), { 0xED, 0x6F, 0xFF });
+	const int lz = m.put(pic), stored = (1 - 0x36) & 0xFF;
+	m.key("picPointers", m.put({ stored, lz & 0xFF, lz >> 8, 0, 0, 0, stored, lz & 0xFF, lz >> 8, 0, 0, 0 }));
+	m.key("unownPicPointers", m.put({ 0, 0, 0, 0, 0, 0 }));
+	std::vector<int> banks(24);
+	for (int i = 0; i < 24; i++) banks[i] = 1 + i;
+	m.key("picsBanks", m.put(banks));
+	m.key("monPalettes", m.put({ 0xDE, 0x46, 0xD0, 0x4D, 0xDE, 0x46, 0xD0, 0x4D, 0x1F, 0, 0xE0, 0x03, 0, 0x7C, 0xFF, 0x03,
+		0, 0, 0, 0, 0, 0, 0, 0 }));
+	// the Pokégear: 48 tiles (0 blank, 1 all colour 3, 2 all colour 1 - LZ: zero 16, iterate 16, alternate 16, a long
+	// zero fill of 720), tile 1 in palette 1 and tile 2 in palette 5 (the palette map's nybbles, the even id's low),
+	// palette 0's colour 0 white, 1's colour 3 green, 5's colour 1 blue; Johto's map tiles 1 and 2 first on its top
+	// row, Kanto's a tile past the 48 (no picture)
+	m.key("townMapGfx", m.put({ 0x6F, 0x2F, 0xFF, 0x4F, 0xFF, 0x00, 0xEE, 0xCF, 0xFF }));
+	std::vector<int> palMap(0x30, 0), pals(48, 0), johto(361, 0), kanto(361, 0);
+	palMap[0] = 0x10;
+	palMap[1] = 0x05;
+	m.key("townMapPalMap", m.put(palMap));
+	pals[0] = 0xFF; pals[1] = 0x7F;
+	pals[8 + 6] = 0xE0; pals[8 + 7] = 0x03;
+	pals[40 + 2] = 0x00; pals[40 + 3] = 0x7C;
+	m.key("pokegearPals", m.put(pals));
+	johto[0] = 1; johto[1] = 2; johto[360] = 0xFF;
+	m.key("johtoMap", m.put(johto));
+	kanto[5] = 48; kanto[360] = 0xFF;
+	m.key("kantoMap", m.put(kanto));
 	d = m.d;
 	return std::make_shared<std::vector<uint8_t>>(m.b);
 }
@@ -451,7 +492,7 @@ static void testRomTables()
 	EQ(r->items[420].name, "HM01");
 	CHECK(r->tmMoves.size() == 100 && r->tmMoves[0] == 1 && r->tmMoves[92] == 2);
 	// places
-	CHECK((r->locationNames == std::vector<std::string>{ "Special", "New Bark Town" }));
+	CHECK((r->locationNames == std::vector<std::string>{ "Special", "New Bark Town", "Pallet Town", "Fast Ship" }));
 	CHECK(r->zones.size() == 2 && r->zones.count(0x0101) && r->zones.count(0x0102));
 	const nds::Location& z = r->zones.at(0x0101);
 	EQ(z.name, "New Bark Town");
@@ -502,7 +543,64 @@ static void testRomTables()
 		EQ(bob.name, "Bob");
 		CHECK(bob.team.size() == 1 && bob.team[0].level == 8 && bob.team[0].moves[0] == 1 && bob.team[0].moves[1] == 2 && bob.team[0].moves[2] == 0);
 	}
-	CHECK(!r->sprite(1));
+
+	// the pictures: Bulbasaur's 5 x 5 tiles in columns, its palettes white, the two colours, black; Ivysaur's stream is
+	// too short for its 6 x 6, no species 3
+	auto bulbasaur = r->sprite(1);
+	CHECK(bulbasaur && bulbasaur->w == 40 && bulbasaur->h == 40 && bulbasaur->frames.size() == 1 && bulbasaur->anim.empty());
+	if (bulbasaur && bulbasaur->frames.size() == 1 && bulbasaur->frames[0].size() == 1600)
+	{
+		const auto& f = bulbasaur->frames[0];
+		CHECK(f[0] == 1 && f[41] == 2 && f[82] == 3 && f[8 * 40] == 3);
+		int drawn = 0;
+		for (uint8_t v : f) drawn += v != 0;
+		CHECK(drawn == 4);
+		CHECK(bulbasaur->normal[0] == 0xFFFFFF && bulbasaur->normal[1] == 0xFF0000 && bulbasaur->normal[2] == 0x00FF00 && bulbasaur->normal[3] == 0);
+		CHECK(bulbasaur->shiny[0] == 0xFFFFFF && bulbasaur->shiny[1] == 0x0000FF && bulbasaur->shiny[2] == 0xFFFF00 && bulbasaur->shiny[3] == 0);
+	}
+	CHECK(!r->sprite(2) && !r->sprite(3) && !r->sprite(0));
+	// Gold's and Silver's bank fix: a list of {stored, real} pairs to -1; a bank not in it is the stored one
+	{
+		std::vector<uint8_t> g = *rom;
+		Gen2Pics t = static_cast<const GbRomData&>(*r).pics;
+		t.bankPairs = true;
+		t.banks = 0xF000;
+		g[t.pointers] = 0x13;
+		const uint8_t pairs[] = { 0x20, 9, 0x13, 1, 0xFF };
+		memcpy(&g[0xF000], pairs, sizeof pairs);
+		CHECK(gen2FrontPic(RomView{ g }, t, 1));
+		g[0xF002] = 0xFF;
+		CHECK(!gen2FrontPic(RomView{ g }, t, 1));
+	}
+
+	// the Pokégear's maps: Johto's picture (tile 1 green, tile 2 blue, tile 0 white), Kanto's none (a tile past the 48);
+	// the cells a cell from a landmark's point name it (New Bark Town's 3 x 3 about 92, 84; Pallet Town's on Kanto's
+	// about 52, 108; the Fast Ship's on Johto's about 140, 116); the places' spots: the player's 16 x 16 icon about
+	// their landmark's point, on its map; the special landmark's on none
+	CHECK(r->regionMaps.size() == 2);
+	if (r->regionMaps.size() == 2)
+	{
+		const nds::RegionMap& j = r->regionMaps[0];
+		const nds::RegionMap& k = r->regionMaps[1];
+		EQ(j.name, "Johto");
+		EQ(k.name, "Kanto");
+		CHECK(j.w == 160 && j.h == 144 && j.cell == 8 && j.gridW == 20 && j.gridH == 18 && j.cellX == 0 && j.cellY == 0);
+		CHECK(j.rgba.size() == 160 * 144 && k.rgba.empty());
+		if (j.rgba.size() == 160 * 144)
+			CHECK(j.rgba[0] == 0xFF00FF00u && j.rgba[7 * 160 + 7] == 0xFF00FF00u && j.rgba[8] == 0xFF0000FFu && j.rgba[16] == 0xFFFFFFFFu &&
+				j.rgba[143 * 160 + 159] == 0xFFFFFFFFu);
+		auto cell = [](const nds::RegionMap& m, int x, int y) { return m.cells[(size_t)y * m.gridW + x]; };
+		CHECK(j.cells.size() == 360 && k.cells.size() == 360);
+		CHECK(cell(j, 11, 10) == 1 && cell(j, 10, 9) == 1 && cell(j, 12, 11) == 1 && cell(j, 13, 10) == 0xFFFF && cell(j, 11, 8) == 0xFFFF);
+		CHECK(cell(j, 17, 14) == 3 && cell(k, 17, 14) == 0xFFFF);
+		CHECK(cell(k, 6, 13) == 2 && cell(j, 6, 13) == 0xFFFF && cell(k, 11, 10) == 0xFFFF);
+		int named = 0;
+		for (uint16_t c : j.cells) named += c != 0xFFFF;
+		CHECK(named == 18);	// (New Bark Town's 9, the Fast Ship's 9)
+	}
+	const nds::MapSpot& s1 = r->zones.at(0x0101).spot;
+	CHECK(s1.map == 0 && s1.x == 84 && s1.y == 76 && s1.w == 16 && s1.h == 16 && s1.tilesW == 0);
+	CHECK(r->zones.at(0x0102).spot.map == -1);
 
 	// refusals: a first species that isn't Bulbasaur, a table the data file doesn't give, no ROM, Generation I
 	rom = madeUpRom(d, true);
@@ -516,6 +614,83 @@ static void testRomTables()
 	rom = madeUpRom(d);
 	d.gen = 1;
 	CHECK(!readRom(rom, d, &why));
+	// ... the palettes' first entry isn't the games', Bulbasaur's picture doesn't decode, the Pokégear's landmarks
+	// aren't the landmarks'
+	rom = madeUpRom(d);
+	auto bad = std::make_shared<std::vector<uint8_t>>(*rom);
+	(*bad)[RomView{ *bad }.at(d.rom.at("monPalettes"))] ^= 1;
+	CHECK(!readRom(bad, d, &why));
+	CHECK(why.find("PokemonPalettes") != std::string::npos);
+	bad = std::make_shared<std::vector<uint8_t>>(*rom);
+	(*bad)[RomView{ *bad }.at(d.rom.at("picPointers"))] = 0;
+	CHECK(!readRom(bad, d, &why));
+	CHECK(why.find("Bulbasaur's front picture") != std::string::npos);
+	d.sizes["kantoLandmark"] = 4;
+	CHECK(!readRom(rom, d, &why));
+	CHECK(why.find("kantoLandmark") != std::string::npos);
+	rom = madeUpRom(d);
+	d.rom.erase("johtoMap");
+	CHECK(!readRom(rom, d, &why));
+	CHECK(why.find("rom.johtoMap") != std::string::npos);
+}
+
+// ---- the pictures' formats ----------------------------------------------------------------------------------------
+
+// Gen II's LZ (pret's home/decompress.asm), command by command; the expected bytes are worked from that code
+static void testLz()
+{
+	auto lz = [](std::vector<uint8_t> in, size_t max = 0x800) {
+		std::vector<uint8_t> out;
+		return lz2(in.data(), in.size(), out, max) ? out : std::vector<uint8_t>{ 0xEE, 0xEE, 0xEE };
+	};
+	using V = std::vector<uint8_t>;
+	CHECK((lz({ 0x02, 7, 8, 9, 0xFF }) == V{ 7, 8, 9 }));						// literal, 3
+	CHECK((lz({ 0x23, 0x55, 0xFF }) == V{ 0x55, 0x55, 0x55, 0x55 }));			// iterate, 4
+	CHECK((lz({ 0x44, 0x12, 0x34, 0xFF }) == V{ 0x12, 0x34, 0x12, 0x34, 0x12 }));	// alternate, 5, from the first
+	CHECK((lz({ 0x61, 0xFF }) == V{ 0, 0 }));									// zero, 2
+	CHECK((lz({ 0x02, 1, 2, 3, 0x81, 0x82, 0xFF }) == V{ 1, 2, 3, 1, 2 }));	// repeat 2 from 2 + 1 back
+	CHECK((lz({ 0x00, 0xAA, 0x82, 0x00, 0x00, 0xFF }) == V{ 0xAA, 0xAA, 0xAA, 0xAA }));	// repeat 3 from the start: into itself
+	CHECK((lz({ 0x01, 0x01, 0x30, 0xA1, 0x81, 0xFF }) == V{ 0x01, 0x30, 0x80, 0x0C }));	// flip 2 from 1 + 1 back
+	CHECK((lz({ 0x02, 1, 2, 3, 0xC2, 0x80, 0xFF }) == V{ 1, 2, 3, 3, 2, 1 }));	// reverse 3 from the last
+	CHECK((lz({ 0xEE, 0x05, 0xFF }) == V(0x206, 0)));							// long zero: 2 << 8 | 5, + 1
+	CHECK((lz({ 0xE0, 0x01, 4, 5, 0xFF }) == V{ 4, 5 }));						// long literal, 2
+	CHECK((lz({ 0x00, 0x07, 0xFC, 0x01, 0x80, 0xFF }) == V{ 7, 7, 7 }));		// long command 7: a repeat
+	CHECK((lz({ 0xFF }) == V{}));
+	// refused: past its end (a literal's bytes, an alternate's second, no end mark), a copy before the start or past
+	// what is written, longer than the buffer
+	CHECK((lz({ 0x02, 1 }) == V{ 0xEE, 0xEE, 0xEE }));
+	CHECK((lz({ 0x41, 1 }) == V{ 0xEE, 0xEE, 0xEE }));
+	CHECK((lz({ 0x00, 1 }) == V{ 0xEE, 0xEE, 0xEE }));
+	CHECK((lz({ 0x80, 0x80, 0xFF }) == V{ 0xEE, 0xEE, 0xEE }));
+	CHECK((lz({ 0x00, 1, 0x80, 0x00, 0x01, 0xFF }) == V{ 0xEE, 0xEE, 0xEE }));
+	CHECK((lz({ 0x00, 1, 0xC1, 0x80, 0xFF }) == V{ 0xEE, 0xEE, 0xEE }));
+	CHECK((lz({ 0x63, 0xFF }, 3) == V{ 0xEE, 0xEE, 0xEE }));
+	CHECK((lz({ 0x63, 0xFF }, 4) == V{ 0, 0, 0, 0 }));
+}
+
+// tiles to a picture: 2 x 2 tiles in columns (0 top left, 1 below it, 2 top right), the pixel's two bit planes; and
+// the colours (RGB555 widened by their top 3 bits)
+static void testPictureFormats()
+{
+	std::vector<uint8_t> tiles(4 * 16, 0);
+	tiles[0] = 0x80;						// tile 0, row 0: pixel 0 is 1 (low plane)
+	tiles[16 + 1] = 0x80;					// tile 1, row 0: pixel 0 is 2 (high plane): the picture's 0, 8
+	tiles[32 + 14] = 0x01; tiles[32 + 15] = 0x01;	// tile 2, row 7: pixel 7 is 3: the picture's 15, 7
+	nds::Sprite s;
+	CHECK(pictureFrame(tiles, 2, s));
+	CHECK(s.w == 16 && s.h == 16 && s.frames.size() == 1);
+	if (s.frames.size() == 1 && s.frames[0].size() == 256)
+	{
+		const auto& f = s.frames[0];
+		CHECK(f[0] == 1 && f[8 * 16] == 2 && f[7 * 16 + 15] == 3);
+		int drawn = 0;
+		for (uint8_t v : f) drawn += v != 0;
+		CHECK(drawn == 3);
+	}
+	tiles.resize(3 * 16);
+	CHECK(!pictureFrame(tiles, 2, s));
+	CHECK(rgb555(0x7FFF) == 0xFFFFFF && rgb555(0) == 0 && rgb555(0x001F) == 0xFF0000 && rgb555(0x7C00) == 0x0000FF);
+	CHECK(rgb555(0x46DE) == 0xF7B58C);	// RGB 30, 22, 17: 247, 181, 140
 }
 
 // ---- the memory reader, over PokeDaisy's captures ----------------------------------------------------------------
@@ -1051,6 +1226,8 @@ int main(int argc, char** argv)
 	testText();
 	testRomList();
 	testRomTables();
+	testLz();
+	testPictureFormats();
 	testCaptures();
 	testReaderRules();
 	testRules();

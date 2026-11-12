@@ -9,8 +9,9 @@
 #   pokedaisy-extract.py --check                               without the checkout: the files against SOURCES' hashes
 #
 # A checkout at another commit than PIN is refused unless --any-commit is given. PokeDaisy's hand-written configs
-# (Gen2Config(...) with named arguments, wramx(bank, addr), .copy(...) of another config; Gen2DexTables(...) with
-# bank to address pairs) are read by a small evaluator: a field it can't read is listed under "unread:" and fails the
+# (Gen2Config(...) with named arguments, wramx(bank, addr), .copy(...) of another config; Gen2DexTables(...) and
+# Gen2ArtTables(...) with bank to address pairs, the latter also by position over another's, X.let { ... it.field })
+# are read by a small evaluator: a field it can't read is listed under "unread:" and fails the
 # run; the fields that are the games' own tables (SKIP, DEX_SKIP) are left out by name. A value both sources give must
 # agree. Python 3, standard library only.
 import importlib.util
@@ -25,6 +26,7 @@ PIN = '135ac809a597230c1fe3ad6359ae0fe81e233583'      # 1.5.0.1
 DATA = 'app/src/main/kotlin/com/pokedaisy/app/companion/data'
 GEN2 = DATA + '/Gen2Reader.kt'
 GEN2_DEX = DATA + '/Gen2Dex.kt'
+GEN2_ART = DATA + '/Gen2Art.kt'
 CRYSTAL_GUIDE = DATA + '/GuideCrystalGen.kt'
 TITLES = 'app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt'
 
@@ -38,12 +40,12 @@ REPO, SOURCES, EXTRA = pe.REPO, pe.SOURCES, pe.OUT
 FOLDER = os.path.dirname(SOURCES)
 SECTION = 'pokedaisy'
 
-# The games: their key, generation, title, PokeDaisy's config, its ROM tables' config (Gen2Dex.kt) and the title
-# GameTitles.kt gives their releases
+# The games: their key, generation, title, PokeDaisy's config, its ROM tables' config (Gen2Dex.kt), its art's
+# (Gen2Art.kt) and the title GameTitles.kt gives their releases
 GAMES = [
-    ('crystal', 2, 'Crystal', 'GEN2_CRYSTAL', 'GEN2_DEX_CRYSTAL', 'Pokémon Crystal'),
-    ('gold', 2, 'Gold', 'GEN2_GOLD', 'GEN2_DEX_GOLD_SILVER', 'Pokémon Gold'),
-    ('silver', 2, 'Silver', 'GEN2_SILVER', 'GEN2_DEX_GOLD_SILVER', 'Pokémon Silver'),
+    ('crystal', 2, 'Crystal', 'GEN2_CRYSTAL', 'GEN2_DEX_CRYSTAL', 'CRYSTAL', 'Pokémon Crystal'),
+    ('gold', 2, 'Gold', 'GEN2_GOLD', 'GEN2_DEX_GOLD_SILVER', 'GOLD', 'Pokémon Gold'),
+    ('silver', 2, 'Silver', 'GEN2_SILVER', 'GEN2_DEX_GOLD_SILVER', 'SILVER', 'Pokémon Silver'),
 ]
 
 # Gen2Config's fields that are the games' own tables, or PokeDaisy's features outside the companion: left out
@@ -58,22 +60,32 @@ SKIP = {
 }
 
 # Gen2DexTables' fields: the ROM tables the data files' rom section takes (by its key), the numbers its sizes take,
-# and what is left out (the sprites' come with them, later; the rest are PokeDaisy's own or the games' tables)
+# and what is left out (PokeDaisy's own or the games' tables)
 DEX_ROM = {'baseData': 'baseData', 'dexEntryPointers': 'dexEntryPointers', 'dexEntryBanks': 'dexEntryBanks',
-           'itemDescriptions': 'itemDescriptions', 'tmHmMoves': 'tmHmMoves', 'moveDescriptions': 'moveDescriptions'}
+           'itemDescriptions': 'itemDescriptions', 'tmHmMoves': 'tmHmMoves', 'moveDescriptions': 'moveDescriptions',
+           'picPointers': 'picPointers', 'unownPicPointers': 'unownPicPointers', 'picsBanks': 'picsBanks',
+           'picBankFixes': 'picBankFixes', 'palettes': 'monPalettes'}
 DEX_SIZES = {'firstTm': 'firstTm'}
 DEX_SKIP = {
-    'picPointers': 'the sprites\' tables, read with them', 'unownPicPointers': 'the sprites\' tables, read with them',
-    'picsBanks': 'the sprites\' tables, read with them', 'palettes': 'the sprites\' tables, read with them',
-    'picBankFixes': 'the sprites\' tables, read with them',
     'tmItems': 'a table of the game\'s (the TM items\' ids)',
     'dexEntryFirstBank': 'checked against pret\'s rom.dexEntryFirst instead',
     'textDict': 'a ROM hack\'s', 'packed': 'a ROM hack\'s', 'dexOrder': 'a ROM hack\'s', 'baseDataSize': 'a ROM hack\'s',
-    'picBankDirect': 'a ROM hack\'s', 'unown': 'the sprites\'', 'lastItem': 'firstTm - 1 in the retail games',
+    'picBankDirect': 'a ROM hack\'s', 'unown': 'Unown\'s species, 201 in the retail games', 'lastItem': 'firstTm - 1 in the retail games',
     'dexEntryFar': 'a ROM hack\'s', 'polished': 'a ROM hack\'s',
 }
-# (Gold's and Silver's dexEntryBanks is PokeDaisy's placeholder: their entries' bank is counted from the first's)
-DEX_UNUSED = {('GEN2_DEX_GOLD_SILVER', 'dexEntryBanks')}
+# (Gold's and Silver's dexEntryBanks and picsBanks are PokeDaisy's placeholders: their entries' bank is counted from
+# the first's, and their pictures' banks are fixed by picBankFixes' pairs)
+DEX_UNUSED = {('GEN2_DEX_GOLD_SILVER', 'dexEntryBanks'), ('GEN2_DEX_GOLD_SILVER', 'picsBanks')}
+
+# Gen2ArtTables' fields: the Pokégear's maps the rom section takes (townMaps: Johto's, then Kanto's), and what is left
+# out (PokeDaisy's own art: the font, the party icons, the player on the map)
+ART_ROM = {'townMapGfx': 'townMapGfx', 'townMapPalMap': 'townMapPalMap', 'pokegearPals': 'pokegearPals'}
+ART_LISTS = {'townMaps': ('johtoMap', 'kantoMap')}
+ART_SKIP = {k: 'PokeDaisy\'s own art, not the companion\'s' for k in (
+    'font', 'fontPath', 'icons', 'monMenuIcons', 'eggIcon', 'heldItemIcons', 'partyMenuObPals', 'iconsDir',
+    'holdIconsPath', 'playerSprites', 'objectPals', 'playerPaths')}
+ART_SKIP.update({'name': 'PokeDaisy\'s name for the art\'s files', 'sha1s': 'the releases, from GameTitles.kt instead',
+                 'townMapPaths': 'PokeDaisy\'s files'})
 
 # GuideCrystalGen.kt's RAM constants (WRAM bank 1), by the data file's key
 CRYSTAL_GUIDE_RAM = {'CR_EVENT_FLAGS': 'eventFlags', 'CR_TIME_OF_DAY': 'timeOfDay', 'CR_BADGES': 'johtoBadges',
@@ -267,6 +279,55 @@ def read_dex(src, name):
     return out
 
 
+def read_art(src, name):
+    """A Gen2ArtTables config's fields: name -> (bank, address), a list of them, or the text it couldn't read. A config
+    made from another (X.let { Gen2ArtTables(...) }) is read by position, its 'it.field' the other's field."""
+    s = strip_comments(src)
+    m = re.search(r'class Gen2ArtTables\(', s)
+    if not m:
+        fail('no class Gen2ArtTables in %s' % GEN2_ART)
+    order = []
+    for p in split_args(s[m.end():closing(s, m.end() - 1)], angles=True):
+        pm = re.match(r'val\s+(\w+)\s*:', p)
+        if not pm:
+            fail('a Gen2ArtTables field it can\'t read: %s' % p)
+        order.append(pm.group(1))
+
+    def value(v):
+        v = v.strip()
+        pm = re.fullmatch(r'(0x[0-9A-Fa-f]+|\d+)\s+to\s+(0x[0-9A-Fa-f]+|\d+)', v)
+        if pm:
+            return int(pm.group(1), 0), int(pm.group(2), 0)
+        lm = re.fullmatch(r'listOf\((.*)\)', v, re.S)
+        if lm:
+            items = [value(x) for x in split_args(lm.group(1))]
+            return items if all(isinstance(x, tuple) for x in items) else v
+        return v
+
+    m = re.search(r'\bval\s+%s\s*=\s*Gen2ArtTables\(' % name, s)
+    if m:
+        out = {}
+        for a in split_args(s[m.end():closing(s, m.end() - 1)]):
+            am = re.fullmatch(r'(\w+)\s*=\s*(.+)', a, re.S)
+            if not am:
+                fail('%s: an argument it can\'t read: %s' % (name, a))
+            out[am.group(1)] = value(am.group(2))
+        return out
+    m = re.search(r'\bval\s+%s\s*=\s*(\w+)\.let\s*\{\s*Gen2ArtTables\(' % name, s)
+    if not m:
+        fail('no %s = Gen2ArtTables(...) in %s' % (name, GEN2_ART))
+    base = read_art(src, m.group(1))
+    out = {}
+    for i, a in enumerate(split_args(s[m.end():closing(s, m.end() - 1)])):
+        if i >= len(order):
+            fail('%s: more arguments than Gen2ArtTables has' % name)
+        im = re.fullmatch(r'it\.(\w+)', a.strip())
+        if im and im.group(1) != order[i]:
+            fail('%s: %s is given %s' % (name, order[i], a))
+        out[order[i]] = base.get(order[i], a) if im else value(a)
+    return out
+
+
 def guide_consts(src):
     return {m.group(1): int(m.group(2), 0)
             for m in re.finditer(r'const val (\w+)\s*=\s*(0x[0-9A-Fa-f]+|\d+)\b', strip_comments(src))}
@@ -296,13 +357,14 @@ def build(checkout):
 
     fields, configs = read_configs(read(GEN2))
     dex_src = read(GEN2_DEX)
+    art_src = read(GEN2_ART)
     guide = guide_consts(read(CRYSTAL_GUIDE))
     titles = retail_sha1s(read(TITLES))
     extra_text = open(os.path.join(REPO, EXTRA), encoding='utf-8').read()
     inputs[EXTRA] = pe.sha256(extra_text.encode('utf-8'))
     extra = json.loads(extra_text)
     files, unread = {}, []
-    for key, gen, title, cfg, dex_cfg, pd_title in GAMES:
+    for key, gen, title, cfg, dex_cfg, art_cfg, pd_title in GAMES:
         ram, sizes, u = config_values(cfg, fields, configs)
         unread += u
         rom, rom_src = {}, {}
@@ -316,6 +378,16 @@ def build(checkout):
                 sizes[DEX_SIZES[k]] = v
             else:
                 unread.append('%s.%s = %s' % (dex_cfg, k, v))
+        for k, v in read_art(art_src, art_cfg).items():
+            if k in ART_SKIP:
+                continue
+            if k in ART_ROM and isinstance(v, tuple):
+                rom[ART_ROM[k]], rom_src[ART_ROM[k]] = v, 'pokedaisy'
+            elif k in ART_LISTS and isinstance(v, list) and len(v) == len(ART_LISTS[k]):
+                for rk, rv in zip(ART_LISTS[k], v):
+                    rom[rk], rom_src[rk] = rv, 'pokedaisy'
+            else:
+                unread.append('%s.%s = %s' % (art_cfg, k, v))
         src = {k: 'pokedaisy' for k in ram}
         if key == 'crystal':
             for c, k in CRYSTAL_GUIDE_RAM.items():

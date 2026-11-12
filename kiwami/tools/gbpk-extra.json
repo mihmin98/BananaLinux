@@ -2,6 +2,16 @@
   "games": {
     "crystal": {
       "const": {
+        "fastShipLandmark": {
+          "file": "constants/landmark_constants.asm",
+          "symbol": "LANDMARK_FAST_SHIP",
+          "value": 95
+        },
+        "kantoLandmark": {
+          "file": "constants/landmark_constants.asm",
+          "symbol": "KANTO_LANDMARK",
+          "value": 47
+        },
         "numEvents": {
           "file": "constants/event_flags.asm",
           "symbol": "NUM_EVENTS",
@@ -353,6 +363,11 @@
           "bank": 10,
           "symbol": "JohtoGrassWildMons"
         },
+        "johtoMap": {
+          "addr": "0x5FFF",
+          "bank": 36,
+          "symbol": "JohtoMap"
+        },
         "johtoWater": {
           "addr": "0x711D",
           "bank": 10,
@@ -362,6 +377,11 @@
           "addr": "0x7274",
           "bank": 10,
           "symbol": "KantoGrassWildMons"
+        },
+        "kantoMap": {
+          "addr": "0x6168",
+          "bank": 36,
+          "symbol": "KantoMap"
         },
         "kantoWater": {
           "addr": "0x77F7",
@@ -383,6 +403,11 @@
           "bank": 37,
           "symbol": "NewBarkTown_MapAttributes"
         },
+        "monPalettes": {
+          "addr": "0x68CE",
+          "bank": 2,
+          "symbol": "PokemonPalettes"
+        },
         "moveDescriptions": {
           "addr": "0x4B52",
           "bank": 11,
@@ -402,6 +427,21 @@
           "addr": "0x5AFB",
           "bank": 16,
           "symbol": "Moves"
+        },
+        "picPointers": {
+          "addr": "0x4000",
+          "bank": 72,
+          "symbol": "PokemonPicPointers"
+        },
+        "picsBanks": {
+          "addr": "0x51D4",
+          "bank": 20,
+          "symbol": "FixPicBank.PicsBanks"
+        },
+        "pokegearPals": {
+          "addr": "0x7729",
+          "bank": 2,
+          "symbol": "MalePokegearPals"
         },
         "pokemonNames": {
           "addr": "0x7384",
@@ -423,6 +463,16 @@
           "bank": 4,
           "symbol": "TMHMMoves"
         },
+        "townMapGfx": {
+          "addr": "0x4BA0",
+          "bank": 62,
+          "symbol": "TownMapGFX"
+        },
+        "townMapPalMap": {
+          "addr": "0x5F4B",
+          "bank": 36,
+          "symbol": "TownMapPals.PalMap"
+        },
         "trainerClassNames": {
           "addr": "0x41EF",
           "bank": 11,
@@ -443,6 +493,11 @@
           "bank": 46,
           "symbol": "TreeMons"
         },
+        "unownPicPointers": {
+          "addr": "0x4000",
+          "bank": 73,
+          "symbol": "UnownPicPointers"
+        },
         "waterProbs": {
           "addr": "0x61D9",
           "bank": 10,
@@ -452,6 +507,16 @@
     },
     "gold": {
       "const": {
+        "fastShipLandmark": {
+          "file": "constants/landmark_constants.asm",
+          "symbol": "LANDMARK_FAST_SHIP",
+          "value": 94
+        },
+        "kantoLandmark": {
+          "file": "constants/landmark_constants.asm",
+          "symbol": "KANTO_LANDMARK",
+          "value": 46
+        },
         "numEvents": {
           "file": "constants/event_flags.asm",
           "symbol": "NUM_EVENTS",
@@ -786,6 +851,11 @@
           "bank": 10,
           "symbol": "JohtoGrassWildMons"
         },
+        "johtoMap": {
+          "addr": "0x5F52",
+          "bank": 36,
+          "symbol": "JohtoMap"
+        },
         "johtoWater": {
           "addr": "0x7669",
           "bank": 10,
@@ -795,6 +865,11 @@
           "addr": "0x77C0",
           "bank": 10,
           "symbol": "KantoGrassWildMons"
+        },
+        "kantoMap": {
+          "addr": "0x60BB",
+          "bank": 36,
+          "symbol": "KantoMap"
         },
         "kantoWater": {
           "addr": "0x7D43",
@@ -816,6 +891,11 @@
           "bank": 37,
           "symbol": "NewBarkTown_MapAttributes"
         },
+        "monPalettes": {
+          "addr": "0x6D3D",
+          "bank": 2,
+          "symbol": "PokemonPalettes"
+        },
         "moveDescriptions": {
           "addr": "0x4000",
           "bank": 109,
@@ -835,6 +915,21 @@
           "addr": "0x5AFE",
           "bank": 16,
           "symbol": "Moves"
+        },
+        "picBankFixes": {
+          "addr": "0x5878",
+          "bank": 20,
+          "symbol": "FixPicBank.FixPicBankTable"
+        },
+        "picPointers": {
+          "addr": "0x4000",
+          "bank": 18,
+          "symbol": "PokemonPicPointers"
+        },
+        "pokegearPals": {
+          "addr": "0x7B6E",
+          "bank": 2,
+          "symbol": "PokegearPals"
         },
         "pokemonNames": {
           "addr": "0x4B74",
@@ -856,6 +951,16 @@
           "bank": 4,
           "symbol": "TMHMMoves"
         },
+        "townMapGfx": {
+          "addr": "0x4C92",
+          "bank": 62,
+          "symbol": "TownMapGFX"
+        },
+        "townMapPalMap": {
+          "addr": "0x5EAC",
+          "bank": 36,
+          "symbol": "TownMapPals.PalMap"
+        },
         "trainerClassNames": {
           "addr": "0x4955",
           "bank": 108,
@@ -876,6 +981,11 @@
           "bank": 46,
           "symbol": "TreeMons"
         },
+        "unownPicPointers": {
+          "addr": "0x4000",
+          "bank": 31,
+          "symbol": "UnownPicPointers"
+        },
         "waterProbs": {
           "addr": "0x6735",
           "bank": 10,
@@ -885,6 +995,16 @@
     },
     "silver": {
       "const": {
+        "fastShipLandmark": {
+          "file": "constants/landmark_constants.asm",
+          "symbol": "LANDMARK_FAST_SHIP",
+          "value": 94
+        },
+        "kantoLandmark": {
+          "file": "constants/landmark_constants.asm",
+          "symbol": "KANTO_LANDMARK",
+          "value": 46
+        },
         "numEvents": {
           "file": "constants/event_flags.asm",
           "symbol": "NUM_EVENTS",
@@ -1219,6 +1339,11 @@
           "bank": 10,
           "symbol": "JohtoGrassWildMons"
         },
+        "johtoMap": {
+          "addr": "0x5F52",
+          "bank": 36,
+          "symbol": "JohtoMap"
+        },
         "johtoWater": {
           "addr": "0x7669",
           "bank": 10,
@@ -1228,6 +1353,11 @@
           "addr": "0x77C0",
           "bank": 10,
           "symbol": "KantoGrassWildMons"
+        },
+        "kantoMap": {
+          "addr": "0x60BB",
+          "bank": 36,
+          "symbol": "KantoMap"
         },
         "kantoWater": {
           "addr": "0x7D43",
@@ -1249,6 +1379,11 @@
           "bank": 37,
           "symbol": "NewBarkTown_MapAttributes"
         },
+        "monPalettes": {
+          "addr": "0x6D3D",
+          "bank": 2,
+          "symbol": "PokemonPalettes"
+        },
         "moveDescriptions": {
           "addr": "0x4000",
           "bank": 109,
@@ -1268,6 +1403,21 @@
           "addr": "0x5AFE",
           "bank": 16,
           "symbol": "Moves"
+        },
+        "picBankFixes": {
+          "addr": "0x5878",
+          "bank": 20,
+          "symbol": "FixPicBank.FixPicBankTable"
+        },
+        "picPointers": {
+          "addr": "0x4000",
+          "bank": 18,
+          "symbol": "PokemonPicPointers"
+        },
+        "pokegearPals": {
+          "addr": "0x7B6E",
+          "bank": 2,
+          "symbol": "PokegearPals"
         },
         "pokemonNames": {
           "addr": "0x4B74",
@@ -1289,6 +1439,16 @@
           "bank": 4,
           "symbol": "TMHMMoves"
         },
+        "townMapGfx": {
+          "addr": "0x4C92",
+          "bank": 62,
+          "symbol": "TownMapGFX"
+        },
+        "townMapPalMap": {
+          "addr": "0x5EAC",
+          "bank": 36,
+          "symbol": "TownMapPals.PalMap"
+        },
         "trainerClassNames": {
           "addr": "0x4955",
           "bank": 108,
@@ -1308,6 +1468,11 @@
           "addr": "0x6470",
           "bank": 46,
           "symbol": "TreeMons"
+        },
+        "unownPicPointers": {
+          "addr": "0x4000",
+          "bank": 31,
+          "symbol": "UnownPicPointers"
         },
         "waterProbs": {
           "addr": "0x6735",

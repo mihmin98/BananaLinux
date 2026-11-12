@@ -6,16 +6,17 @@
 
 [pokedaisy]
 commit pokedaisy 135ac809a597230c1fe3ad6359ae0fe81e233583
-in  c824c1084a09b1a7568ba5634a4acb6de603bd3e2205c2f8a49737398834526e  kiwami/tools/gbpk-extra.json
+in  b842df70d7fce1729b3a8a818ff91b01c2daf398deb1466a26b57817eef9584e  kiwami/tools/gbpk-extra.json
 in  e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  pokedaisy LICENSE
 in  02efcb677831c264613b4313be1c24e9e042f577636b20469fc3f984734c7085  pokedaisy app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt
+in  96a498f182ceea68d95040239dcd3c2faf4b02fbd103291cfa35036bd532f28e  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Art.kt
 in  ebfde8f4fc1bf6a4f2f411b8cb030dd7c8be36b23a08c2c9a04cb34932e51923  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Dex.kt
 in  f33fd7f41938deb6c1b29556669f643495bb4c42fb554ed849280ba2f6229d92  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Reader.kt
 in  816154d8b641ee466f82736eea9c40d086708fdd2399052ec8502bb6d29dcbe6  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt
 out e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/LICENSE
-out 8205345f16c1c9323d3a39d6fe4a0d27ecc9dcdb85ca15e2528f140ca39b0d84  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.ram.json
-out bb22da0239c2cdb750dfee511a674623602514966692f28e3a28a1b52d245749  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/gold.ram.json
-out 6f5f8a3292720847e78055571654d9b1796f9a32ad8b55016fb78eb9cbbc76bc  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/silver.ram.json
+out ad591e5248854df78c9dec753a5ab57e9789ed465a2b9837db850e51b5472edd  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.ram.json
+out fcf9adb50b217d343e594cce52c3969a654cff7f9b9ca118d6615b8d2630bf0e  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/gold.ram.json
+out 730283ca2ff0d15c31a5a9be66923df58d04f84c9276155ff743459275f8777b  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/silver.ram.json
 
 [pret]
 commit pokecrystal 3c813b0b4d82b39bf62185aceffb76fd6026c70b symbols 3b13ca4fa74171364afd6bba61a6e8560212860b
@@ -39,5 +40,5 @@ in  46e4d07fc0d2af1c5a1d61772f7e849137d2e5607cd2a38ba66932713cf12fe8  pokegold c
 in  d5741b6b16d8e7803ba37a394ae508620eff7982cebce4f6e27bc6c7f5bdd76b  pokegold roms.sha1
 in  06e1c0361fd9a4979ea6f2e86442fc119d7bf66fe0e922bd99ecdce00398af1b  pokegold symbols:pokegold.sym
 in  1aa458eaa3d36619da5d368942e3f10d9c06a49cf5e9717d14e40f475c480a61  pokegold symbols:pokesilver.sym
-in  c4b769dac02fbb3c4c755e62147131ad52493aaec198b63caf2e544047a9fb04  kiwami/tools/gbpk-symbols.txt
-out c824c1084a09b1a7568ba5634a4acb6de603bd3e2205c2f8a49737398834526e  kiwami/tools/gbpk-extra.json
+in  d374c68d9ae80fafb4f42c452a9e6bdcc4937f9ae42bd423056ac833f3eb12ab  kiwami/tools/gbpk-symbols.txt
+out b842df70d7fce1729b3a8a818ff91b01c2daf398deb1466a26b57817eef9584e  kiwami/tools/gbpk-extra.json

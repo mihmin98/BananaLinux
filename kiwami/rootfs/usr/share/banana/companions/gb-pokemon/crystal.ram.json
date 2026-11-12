@@ -319,6 +319,11 @@
       "bank": 10,
       "src": "pret (JohtoGrassWildMons)"
     },
+    "johtoMap": {
+      "addr": "0x5FFF",
+      "bank": 36,
+      "src": "pokedaisy pret (JohtoMap)"
+    },
     "johtoWater": {
       "addr": "0x711D",
       "bank": 10,
@@ -328,6 +333,11 @@
       "addr": "0x7274",
       "bank": 10,
       "src": "pret (KantoGrassWildMons)"
+    },
+    "kantoMap": {
+      "addr": "0x6168",
+      "bank": 36,
+      "src": "pokedaisy pret (KantoMap)"
     },
     "kantoWater": {
       "addr": "0x77F7",
@@ -349,6 +359,11 @@
       "bank": 37,
       "src": "pret (NewBarkTown_MapAttributes)"
     },
+    "monPalettes": {
+      "addr": "0x68CE",
+      "bank": 2,
+      "src": "pokedaisy pret (PokemonPalettes)"
+    },
     "moveDescriptions": {
       "addr": "0x4B52",
       "bank": 11,
@@ -368,6 +383,21 @@
       "addr": "0x5AFB",
       "bank": 16,
       "src": "pret (Moves)"
+    },
+    "picPointers": {
+      "addr": "0x4000",
+      "bank": 72,
+      "src": "pokedaisy pret (PokemonPicPointers)"
+    },
+    "picsBanks": {
+      "addr": "0x51D4",
+      "bank": 20,
+      "src": "pokedaisy pret (FixPicBank.PicsBanks)"
+    },
+    "pokegearPals": {
+      "addr": "0x7729",
+      "bank": 2,
+      "src": "pokedaisy pret (MalePokegearPals)"
     },
     "pokemonNames": {
       "addr": "0x7384",
@@ -389,6 +419,16 @@
       "bank": 4,
       "src": "pokedaisy pret (TMHMMoves)"
     },
+    "townMapGfx": {
+      "addr": "0x4BA0",
+      "bank": 62,
+      "src": "pokedaisy pret (TownMapGFX)"
+    },
+    "townMapPalMap": {
+      "addr": "0x5F4B",
+      "bank": 36,
+      "src": "pokedaisy pret (TownMapPals.PalMap)"
+    },
     "trainerClassNames": {
       "addr": "0x41EF",
       "bank": 11,
@@ -409,6 +449,11 @@
       "bank": 46,
       "src": "pret (TreeMons)"
     },
+    "unownPicPointers": {
+      "addr": "0x4000",
+      "bank": 73,
+      "src": "pokedaisy pret (UnownPicPointers)"
+    },
     "waterProbs": {
       "addr": "0x61D9",
       "bank": 10,
@@ -419,8 +464,10 @@
   "sizes": {
     "ballsMax": 12,
     "eventFlagBytes": 256,
+    "fastShipLandmark": 95,
     "firstTm": 191,
     "itemsMax": 20,
+    "kantoLandmark": 47,
     "keyItemsMax": 25,
     "numLandmarks": 96,
     "numMoves": 251,

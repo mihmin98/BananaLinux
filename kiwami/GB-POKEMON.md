@@ -208,12 +208,39 @@ on a PC. Where each table is comes from the data file's `rom` section; its layou
   learned by the Pokémon's level).
 
 Names are written as the pages write them ("CHIKORITA" to "Chikorita", "HP UP" to "HP Up", "NEW BARK TOWN" to "New
-Bark Town"); the descriptions and the Pokédex's text as the games write them, their line breaks as spaces. The
-sprites and the Pokégear's maps come with the next step.
+Bark Town"); the descriptions and the Pokédex's text as the games write them, their line breaks as spaces.
+
+### The pictures and the maps
+
+`ui/src/kiwami/gbpk/pics.cpp` and `maps.cpp`, as pret's code draws them:
+
+- **Gen II's LZ** (`home/decompress.asm`): literal, iterate, alternate, zero fill, and the three copies from what is
+  already written (repeat, bit-flipped, reversed; a negative offset back from the end, or a positive one from the
+  start), each in its short form or the long one, whose own command 7 copies as a repeat (the code falls through). A
+  stream that runs past its bank, a copy that reaches outside what is written, or more than the game's buffer
+  (`wDecompressEnemyFrontpic`, 0x800 bytes) is refused.
+- **A species' front picture**, decoded when a page first draws it (upstream's pages decode on their own thread):
+  `PokemonPicPointers`' bank and pointer (`UnownPicPointers`' first, letter A, for Unown), the bank fixed as
+  `FixPicBank` does (Crystal: an index into `PicsBanks` less `PICS_FIX`, $36, a constant of pret's code kept in
+  `pics.cpp`; Gold and Silver: a list of pairs), its 5, 6 or 7 tiles square (`BaseData`'s picture size; any other
+  as 7, `PadFrontpic`) in columns, at that size, not padded: the pages crop a picture to what is drawn. Its palettes
+  are the game's: white, the species' two colours from `PokemonPalettes`, black, and the shiny's two after them.
+  Pixel 0 (white) is left clear, as the games' background. Crystal's animation frames, which follow the first in the
+  same stream, aren't read: the pages show a still picture.
+- **The Pokégear's Johto and Kanto maps** (`engine/pokegear/pokegear.asm`): the screen's 20 x 18 tiles
+  (`JohtoMap`, `KantoMap`) over `TownMapGFX`'s 48 tiles (LZ), each tile in the palette `TownMapPals`' map gives its id,
+  from Chris's Pokégear palettes (Kris's differ only in the cities' colour, and the map is read once, not by the save:
+  hers show orange cities). A place's spot is the game's 16 x 16 player icon around its landmark's point
+  (`Landmarks`), on the map the Pokégear picks (from `KANTO_LANDMARK` Kanto's, the Fast Ship's Johto's); a place with
+  the special landmark (rooms the game puts on no map) is on none, and the Map page says the player is inside. A tap
+  on the map names the landmark of that map nearest the cell's middle, a cell away at most. A map whose picture
+  doesn't decode keeps its cells, which the pages draw as squares.
 
 `kiwami/tests/gbpk-units.cpp` reads a made-up 64 KB ROM with every table and checks each field read back, and that a
-ROM whose first species isn't Bulbasaur or a data file without a table gives none. `kiwami/tests/gbpk-roms.sh` reads
-the player's own ROMs (*The ROMs for the tests*).
+ROM whose first species isn't Bulbasaur, whose palettes' first entry isn't the games' or whose Bulbasaur doesn't
+decode, or a data file without a table, gives none. It checks the LZ command by command against bytes worked from
+pret's code, a made-up picture's pixels and palettes, Gold's bank pairs, and the made-up maps' pictures, cells and
+spots. `kiwami/tests/gbpk-roms.sh` reads the player's own ROMs (*The ROMs for the tests*).
 
 ## The data files
 
@@ -236,12 +263,15 @@ step 12), JSON with sorted keys:
 - A `ram` address's `bank` is 0 for C000-CFFF and HRAM, 1 for the D000 bank the cores map there, and from 2 up
   another WRAM bank, read at `0x10000 + (bank - 2) * 0x1000 + (addr - 0xD000)` through `READ_CORE_MEMORY`.
 - `sizes` are counts and ids: the pockets' capacities, the species, the bytes of event flags (pret's `NUM_EVENTS` /
-  8), the species, moves, trainer classes and landmarks (pret's constants), Vital Throw's move id, and TM01's item id
-  (PokeDaisy's `firstTm`).
+  8), the species, moves, trainer classes and landmarks (pret's constants), Vital Throw's move id, Kanto's first
+  landmark and the Fast Ship's (`kantoLandmark`, `fastShipLandmark`: which Pokégear map a place is on), and TM01's
+  item id (PokeDaisy's `firstTm`).
 - `rom` is where each ROM table is: its bank and its address in the bank's window (bank 0 at 0000-3FFF, the others at
   4000-7FFF), from pret's symbols, and where PokeDaisy's `Gen2Dex.kt` gives the same table, checked equal to its
-  value (`src` says which). Crystal looks a Pokédex entry's bank up in a table (`dexEntryBanks`); Gold and Silver
-  count it from the first entry's (`dexEntryFirst`, checked against PokeDaisy's `dexEntryFirstBank`).
+  value (`src` says which), and `Gen2Art.kt` the Pokégear's map tables (its `townMaps` are `johtoMap` and
+  `kantoMap`). Crystal looks a Pokédex entry's bank up in a table (`dexEntryBanks`); Gold and Silver count it from the
+  first entry's (`dexEntryFirst`, checked against PokeDaisy's `dexEntryFirstBank`). Crystal fixes a picture's bank by
+  `picsBanks`, Gold and Silver by `picBankFixes`.
 - `flags` (the flag banks the guides read) is filled by a later step.
 
 ## The ROMs for the tests
@@ -308,5 +338,9 @@ each file and how long the read took. For Gold, Silver and Crystal it checks tha
 named; Chikorita's base stats, types, evolution, first move, Pokédex category, height and weight; the priorities of
 Quick Attack, Vital Throw and Protect; TM01 and HM01's moves; item names and prices; Route 29's morning grass with
 Pidgey and Sentret; fishing at New Bark Town and none on Route 29; Falkner's Pidgey Lv 7 and Pidgeotto Lv 9; every
-place with wild Pokémon named. Given PokeDaisy's checkout, every species' gender ratio and growth rate is compared with
-its `Gen2SpeciesCrystal.kt`.
+place with wild Pokémon named; every species' front picture drawn, at its base data's size, Chikorita's 5 x 5 tiles;
+both Pokégear maps drawn, New Bark Town on Johto's with its cell naming it, Pallet Town on Kanto's, and every named
+place but the special landmark's rooms on a map. Given PokeDaisy's checkout, every species' gender ratio and growth
+rate is compared with its `Gen2SpeciesCrystal.kt`. The pictures and maps go to `GBPK_ROMS_OUT` (by default
+`ui/tests/out/gbpk-roms/`) as PNGs for looking at: a sheet of every species' picture, normal and shiny, in the box the
+game draws it in, and each map.

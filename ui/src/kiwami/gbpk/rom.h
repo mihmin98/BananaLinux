@@ -65,10 +65,23 @@ namespace banana::kiwami::gbpk
 		size_t skip(size_t o, size_t max = 64) const;
 	};
 
-	// what readRom gives (its sprite() is the sprites' decoder, from step 7 of the plan)
+	// where Gen II's front pictures are (file offsets; readGen2 fills it, pics.cpp decodes them): PokemonPicPointers and
+	// UnownPicPointers (a bank and a pointer each, the front's then the back's), the bank fix's table (Crystal's
+	// PicsBanks, or Gold's and Silver's list of pairs), PokemonPalettes, and BaseData for the picture's size
+	struct Gen2Pics
+	{
+		size_t pointers = RomView::NONE, unown = RomView::NONE, banks = RomView::NONE, palettes = RomView::NONE,
+			baseData = RomView::NONE;
+		bool bankPairs = false;
+		int count = 0;
+	};
+
+	// what readRom gives; sprite() decodes a picture on demand (pics.cpp)
 	struct GbRomData : nds::RomData
 	{
 		std::shared_ptr<const std::vector<uint8_t>> rom;
+		int gen = 0;
+		Gen2Pics pics;
 		std::shared_ptr<const nds::Sprite> sprite(uint16_t species, bool female = false, uint8_t form = 0) const override;
 	};
 	// Gen II's tables into out (rom2.cpp)

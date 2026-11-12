@@ -25,6 +25,7 @@ from typing import NoReturn
 PIN = '135ac809a597230c1fe3ad6359ae0fe81e233583'      # 1.5.0.1
 DATA = 'app/src/main/kotlin/com/pokedaisy/app/companion/data'
 GEN1 = DATA + '/Gen1Reader.kt'
+GEN1_DEX = DATA + '/Gen1Dex.kt'
 GEN2 = DATA + '/Gen2Reader.kt'
 GEN2_DEX = DATA + '/Gen2Dex.kt'
 GEN2_ART = DATA + '/Gen2Art.kt'
@@ -42,15 +43,15 @@ REPO, SOURCES, EXTRA = pe.REPO, pe.SOURCES, pe.OUT
 FOLDER = os.path.dirname(SOURCES)
 SECTION = 'pokedaisy'
 
-# The games: their key, generation, title, PokeDaisy's config, its ROM tables' config (Gen2Dex.kt), its art's
-# (Gen2Art.kt) and the title GameTitles.kt gives their releases (Gen I's tables and art come with later steps)
+# The games: their key, generation, title, PokeDaisy's config, its ROM tables' config (Gen2Dex.kt, Gen1Dex.kt), its
+# art's (Gen2Art.kt) and the title GameTitles.kt gives their releases (Gen I's art comes with a later step)
 GAMES = [
     ('crystal', 2, 'Crystal', 'GEN2_CRYSTAL', 'GEN2_DEX_CRYSTAL', 'CRYSTAL', 'Pokémon Crystal'),
     ('gold', 2, 'Gold', 'GEN2_GOLD', 'GEN2_DEX_GOLD_SILVER', 'GOLD', 'Pokémon Gold'),
     ('silver', 2, 'Silver', 'GEN2_SILVER', 'GEN2_DEX_GOLD_SILVER', 'SILVER', 'Pokémon Silver'),
-    ('red', 1, 'Red', 'GEN1_RED', None, None, 'Pokémon Red'),
-    ('blue', 1, 'Blue', 'GEN1_BLUE', None, None, 'Pokémon Blue'),
-    ('yellow', 1, 'Yellow', 'GEN1_YELLOW', None, None, 'Pokémon Yellow'),
+    ('red', 1, 'Red', 'GEN1_RED', 'GEN1_DEX_RED', None, 'Pokémon Red'),
+    ('blue', 1, 'Blue', 'GEN1_BLUE', 'GEN1_DEX_RED', None, 'Pokémon Blue'),
+    ('yellow', 1, 'Yellow', 'GEN1_YELLOW', 'GEN1_DEX_YELLOW', None, 'Pokémon Yellow'),
 ]
 
 # Gen2Config's fields that are the games' own tables, or PokeDaisy's features outside the companion: left out
@@ -93,6 +94,16 @@ DEX_SKIP = {
 # (Gold's and Silver's dexEntryBanks and picsBanks are PokeDaisy's placeholders: their entries' bank is counted from
 # the first's, and their pictures' banks are fixed by picBankFixes' pairs)
 DEX_UNUSED = {('GEN2_DEX_GOLD_SILVER', 'dexEntryBanks'), ('GEN2_DEX_GOLD_SILVER', 'picsBanks')}
+
+# Gen1DexTables' fields: the ROM tables the data files' rom section takes (by its key), the Pokédex's RAM, which
+# pret's must agree with, the fields whose default is the English retail games' (checked), and what is left out
+DEX1_ROM = {'baseStats': 'baseData', 'dexEntryPointers': 'dexEntryPointers', 'mewBaseStats': 'mewBaseData'}
+DEX1_RAM = {'owned': 'dexCaught', 'seen': 'dexSeen'}
+DEX1_DEFAULT = ('metric', 'charset', 'baseStatsSize', 'picBankOffset', 'dexEntryData', 'categoryMapping',
+                'categoryStrings', 'textFar')
+DEX1_SKIP = {'internalToDex': 'a table of the game\'s (its species\' internal order), read from the ROM instead'}
+DEX1_SKIP.update({k: 'the front pictures\' tables, not read yet' for k in (
+    'monsterPalettes', 'cgbPalettes', 'picsBank', 'picsBankBreaks', 'fossilKabutops', 'fossilKabutopsBank', 'mewPicsBank')})
 
 # Gen2ArtTables' fields: the Pokégear's maps the rom section takes (townMaps: Johto's, then Kanto's), and what is left
 # out (PokeDaisy's own art: the font, the party icons, the player on the map)
@@ -308,6 +319,26 @@ def read_dex(src, name):
         pm = re.fullmatch(r'(0x[0-9A-Fa-f]+|\d+)\s+to\s+(0x[0-9A-Fa-f]+|\d+)', v)
         out[am.group(1)] = (int(pm.group(1), 0), int(pm.group(2), 0)) if pm else evaluate(v) if evaluate(v) is not None else v
     return out
+
+
+def gen1_dex(name, fields, configs):
+    """A Gen1DexTables config's ROM tables (rom key -> (bank, address)), its RAM (ram key -> (bank, address)) and what
+    it couldn't read: a field it doesn't know, or a default of the English retail games' that the config changes."""
+    rom, ram, unread = {}, {}, []
+    for k, text in resolve(name, fields, configs).items():
+        if k in DEX1_SKIP or (k in DEX1_ROM and text == 'null'):
+            continue
+        pm = re.fullmatch(r'(0x[0-9A-Fa-f]+|\d+)\s+to\s+(0x[0-9A-Fa-f]+|\d+)', text or '')
+        v = evaluate(text or '')
+        if k in DEX1_ROM and pm:
+            rom[DEX1_ROM[k]] = (int(pm.group(1), 0), int(pm.group(2), 0))
+        elif k in DEX1_RAM and isinstance(v, int) and not isinstance(v, bool):
+            ram[DEX1_RAM[k]] = addr_value(v)
+        elif k in DEX1_DEFAULT and text == fields[k][1]:
+            continue
+        else:
+            unread.append('%s.%s = %s' % (name, k, text))
+    return rom, ram, unread
 
 
 def read_art(src, name):
@@ -542,6 +573,7 @@ def build(checkout):
 
     fields, configs = read_configs(read(GEN2))
     fields1, configs1 = read_configs(read(GEN1), 'Gen1Config', GEN1)
+    dex1_fields, dex1_configs = read_configs(read(GEN1_DEX), 'Gen1DexTables', GEN1_DEX)
     dex_src = read(GEN2_DEX)
     art_src = read(GEN2_ART)
     guide_src = read(CRYSTAL_GUIDE)
@@ -561,7 +593,13 @@ def build(checkout):
             ram, sizes, u = config_values(cfg, fields, configs)
         unread += u
         rom, rom_src = {}, {}
-        dex = read_dex(dex_src, dex_cfg) if dex_cfg else {}
+        if gen == 1:
+            dex_rom, dex_ram, u = gen1_dex(dex_cfg, dex1_fields, dex1_configs)
+            unread += u
+            rom.update(dex_rom)
+            rom_src.update({k: 'pokedaisy' for k in dex_rom})
+            ram.update(dex_ram)
+        dex = read_dex(dex_src, dex_cfg) if gen == 2 else {}
         for k, v in dex.items():
             if (dex_cfg, k) in DEX_UNUSED or k in DEX_SKIP:
                 continue

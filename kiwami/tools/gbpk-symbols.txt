@@ -223,3 +223,60 @@ red,blue,yellow ram.trainerNo wTrainerNo
 # to tell the starter, engine/pikachu/pikachu_status.asm IsThisPartyMonStarterPikachu)
 yellow ram.pikachuHappiness wPikachuHappiness
 yellow const.starterPikachu constants/pokemon_constants.asm STARTER
+
+# Gen I's ROM tables (ui/src/kiwami/gbpk/rom1.cpp reads them; their layouts are named there), under Gen II's keys where
+# a table plays the same part. PokeDaisy's Gen1Dex.kt gives some of them too (GEN1_DEX_RED, GEN1_DEX_YELLOW): pret's
+# value must agree with it. Red and Blue keep Mew's base data apart, in bank 1
+red,blue,yellow rom.baseData BaseStats
+red,blue rom.mewBaseData MewBaseStats
+red,blue,yellow rom.dexOrder PokedexOrder
+red,blue,yellow rom.pokemonNames MonsterNames
+red,blue,yellow rom.dexEntryPointers PokedexEntryPointers
+red,blue,yellow rom.evosAttacksPointers EvosMovesPointerTable
+red,blue,yellow rom.moves Moves
+red,blue,yellow rom.moveNames MoveNames
+red,blue,yellow rom.itemNames ItemNames
+red,blue,yellow rom.itemPrices ItemPrices
+red,blue,yellow rom.tmHmMoves TechnicalMachines
+# (the places' names, as the town map gives them: a map's own entry outdoors, its group's indoors)
+red,blue,yellow rom.externalMapEntries ExternalMapEntries
+red,blue,yellow rom.internalMapEntries InternalMapEntries
+red,blue,yellow rom.wildData WildDataPointers
+red,blue,yellow rom.wildSlots WildMonEncounterSlotChances
+# (the Old Rod's one Pokémon is in its code, lb bc, 5, MAGIKARP; the Super Rod's tables are Red's and Blue's groups,
+# Yellow's four slots a map)
+red,blue,yellow rom.oldRod ItemUseOldRod
+red,blue,yellow rom.goodRodMons GoodRodMons
+red,blue rom.superRod SuperRodData
+yellow rom.superRodSlots SuperRodFishingSlots
+# (the last class's trainers end where the trainers' AI begins)
+red,blue,yellow rom.trainerGroups TrainerDataPointers
+red,blue,yellow rom.trainerGroupsEnd TrainerAI
+red,blue,yellow rom.trainerClassNames TrainerNames
+# (the moves some bosses are given over their level's: Red's and Blue's gym leaders' and Elite Four's, Yellow's table)
+red,blue rom.loneMoves LoneMoves
+red,blue rom.teamMoves TeamMoves
+yellow rom.specialTrainerMoves SpecialTrainerMoves
+
+# Gen I's counts, its first TM and HM items, and the moves its priorities name
+red,blue,yellow const.numPokemon constants/pokedex_constants.asm NUM_POKEMON
+red,blue,yellow const.numPokemonIndexes constants/pokemon_constants.asm NUM_POKEMON_INDEXES
+red,blue,yellow const.numMoves constants/move_constants.asm NUM_ATTACKS
+red,blue,yellow const.numItems constants/item_constants.asm NUM_ITEMS
+red,blue,yellow const.hm01 constants/item_constants.asm HM01
+red,blue,yellow const.tm01 constants/item_constants.asm TM01
+red,blue,yellow const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINERS
+red,blue,yellow const.numMaps constants/map_constants.asm NUM_MAPS
+red,blue,yellow const.firstIndoorMap constants/map_constants.asm FIRST_INDOOR_MAP
+red,blue,yellow const.quickAttack constants/move_constants.asm QUICK_ATTACK
+red,blue,yellow const.counter constants/move_constants.asm COUNTER
+# (Red's and Blue's gym leaders by their gym's number, which each gym's script gives the battle for LoneMoves:
+# scripts/PewterGym.asm 1 .. scripts/ViridianGym.asm 8)
+red,blue const.leaderBrock constants/trainer_constants.asm BROCK
+red,blue const.leaderMisty constants/trainer_constants.asm MISTY
+red,blue const.leaderLtSurge constants/trainer_constants.asm LT_SURGE
+red,blue const.leaderErika constants/trainer_constants.asm ERIKA
+red,blue const.leaderKoga constants/trainer_constants.asm KOGA
+red,blue const.leaderSabrina constants/trainer_constants.asm SABRINA
+red,blue const.leaderBlaine constants/trainer_constants.asm BLAINE
+red,blue const.leaderGiovanni constants/trainer_constants.asm GIOVANNI

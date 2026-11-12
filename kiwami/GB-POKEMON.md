@@ -45,18 +45,22 @@ Two sources, each read by its own script into files that are committed, so a bui
 - **PokeDaisy**, by `kiwami/tools/pokedaisy-extract.py`: the RAM addresses in its readers' configs (`Gen2Reader.kt`'s
   `Gen2Config` and `Gen1Reader.kt`'s `Gen1Config`, read by a small evaluator of their named arguments,
   `wramx(bank, addr)` and `.copy(...)`; Gen I's English configs only, checked by their `language`), Crystal's
-  guide RAM (`GuideCrystalGen.kt`), Crystal's guide (*The guides*), and the releases' SHA-1s (`GameTitles.kt`). The configs' fields that are the
-  games' tables (landmarks, gender ratios, TM items, the Pokédex pages' ROM tables, Gen I's internal species order)
-  or PokeDaisy's own features (its battle buttons' cursor columns) are left out by name; a field it
-  can't read fails the run, listed under `unread:`.
+  guide RAM (`GuideCrystalGen.kt`), Crystal's guide (*The guides*), the ROM tables its Pokédex reads (`Gen2Dex.kt`,
+  `Gen2Art.kt`, and `Gen1Dex.kt`'s English `GEN1_DEX_RED` and `GEN1_DEX_YELLOW`: the base stats, Mew's apart in Red
+  and Blue, the pages, and the Pokédex's RAM; the fields its other releases change checked to be their defaults), and
+  the releases' SHA-1s (`GameTitles.kt`). The configs' fields that are the
+  games' tables (landmarks, gender ratios, TM items, Gen I's internal species order)
+  or PokeDaisy's own features (its battle buttons' cursor columns) are left out by name, and so are Gen I's front
+  pictures' tables, not read yet; a field it can't read fails the run, listed under `unread:`.
 - **pret's disassemblies** (`pret/pokecrystal`, `pret/pokegold`, and for Red, Blue and Yellow `pret/pokered` and
   `pret/pokeyellow`), by `kiwami/tools/pret-extract.py`, into `kiwami/tools/gbpk-extra.json`: what PokeDaisy doesn't
-  have (Gen II's badges, the daycare, the roamers, the stat stages, the event flags; later the ROM tables' offsets),
+  have (Gen II's badges, the daycare, the roamers, the stat stages, the event flags, the ROM tables' offsets),
   and each release's SHA-1 (`roms.sha1`) and ROM header (the title and game code its Makefile gives `rgbfix`).
   `kiwami/tools/gbpk-symbols.txt` lists every value taken: an address is looked up in the release's `.sym` on the
-  repository's `symbols` branch, a constant evaluated from its `constants/*.asm` file (rgbds' `const` macros and the
-  file's own `MACRO`s; a `DEF` naming a symbol the file doesn't define, one from `hardware.inc`, is set aside, and
-  stops the run only when it is the one asked for). pret publishes no licence; only these facts about the retail ROMs are taken, none of its code
+  repository's `symbols` branch, a constant evaluated from its `constants/*.asm` file (rgbds' `const` macros, `DEF`
+  and `REDEF`, a name made with a number, `HM{02d:HM_VALUE}_MOVE`, and the file's own `MACRO`s; an `ASSERT` is passed
+  over; a `DEF` naming a symbol the file doesn't define, one from `hardware.inc` or a move in an item's alias, is set
+  aside, and stops the run only when it is the one asked for). pret publishes no licence; only these facts about the retail ROMs are taken, none of its code
   or tables, as PokeDaisy's own `NOTICE` describes its use of them.
 
 What the two agree on is checked: every address PokeDaisy gives is also looked up in pret's symbols and must be the
@@ -238,8 +242,8 @@ for Generations III to V. For Gen I and II, four hook lines in `ui/src/nds/logic
 
 What the pages show of the games themselves (names, base stats, moves, items, learnsets, evolutions, the Pokédex,
 wild Pokémon, trainers, place names) is read from the player's own ROM when the game starts, by
-`ui/src/kiwami/gbpk/rom.cpp` and, for Gold, Silver and Crystal, `rom2.cpp`, into upstream's `nds::RomData` in the DS
-companion's conventions, as upstream's `ui/src/gba/gen3rom.cpp` does for the GBA games. It takes under a millisecond
+`ui/src/kiwami/gbpk/rom.cpp` and, for Red, Blue and Yellow, `rom1.cpp` (*Red, Blue and Yellow's tables* below), for
+Gold, Silver and Crystal, `rom2.cpp`, into upstream's `nds::RomData` in the DS companion's conventions, as upstream's `ui/src/gba/gen3rom.cpp` does for the GBA games. It takes under a millisecond
 on a PC. Where each table is comes from the data file's `rom` section; its layout is pret's, named where it is read.
 
 - **Each table is checked as it is read**: every base data record names its own species and the first is Bulbasaur's,
@@ -279,6 +283,37 @@ on a PC. Where each table is comes from the data file's `rom` section; its layou
 
 Names are written as the pages write them ("CHIKORITA" to "Chikorita", "HP UP" to "HP Up", "NEW BARK TOWN" to "New
 Bark Town"); the descriptions and the Pokédex's text as the games write them, their line breaks as spaces.
+
+### Red, Blue and Yellow's tables
+
+`rom1.cpp`, from pokered's and pokeyellow's layouts, the same way where the games are alike; it takes under half a
+millisecond on a PC.
+
+- **The species' internal order** (`PokedexOrder`), each of the 151 at one internal index, checked, is kept in the
+  tables (`GbRomData::national`) for the memory reader, which reads the party's species by it.
+- **Species**, by national number: as Gen II's, but for Special as both special stats, no gender (the pages draw no
+  sign) and no friendship; the four moves `BaseStats` gives it as learned at level 1, before those learned by level;
+  the evolutions by level, stone and trade; Mew's base data apart in Red and Blue (`MewBaseStats`); the Pokédex entry's
+  height and weight (feet and inches, 0.1 lb) to 0.1 m and 0.1 kg, its text through its `text_far` to `<DEXEND>`, its
+  full stop.
+- **Moves**: as Gen II's, but with no effect chance or description (the games have none), and Quick Attack's +1 and
+  Counter's -1 by their ids, as `MainInBattleLoop` gives them.
+- **Items** up to the elevators' floors: name and price (`ItemPrices`, three bytes of decimal), at the Gen IV id
+  `items.inc` gives or 1000 + the Gen I id, in the pocket the pages give it; the TMs and HMs as Gen IV numbers them.
+- **Places**: every map by its number, named as the town map names it (`LoadTownMapEntry`: an outdoor map its own
+  `ExternalMapEntries` entry, an indoor one its group's in `InternalMapEntries`), with its grass and water at the
+  chances of `WildMonEncounterSlotChances`, and fishing: the Old Rod's Magikarp Lv 5 (in `ItemUseOldRod`'s code, read
+  when its bytes are the call, jump and load the game has), the Good Rod's Goldeen and Poliwag at even chances
+  (`GoodRodMons`), and the Super Rod's by the map (Red's and Blue's `SuperRodData` groups at even chances, Yellow's
+  `SuperRodFishingSlots` at 40, 30, 20 and 10 %). The Old and Good Rods fish any water, so they are listed where the
+  Super Rod is or the map has water. A chance is the one when something bites.
+- **Trainers** by class << 8 | number, named by the class (the games' trainers have no names of their own: Brock is
+  his class), each class's parties up to the next class's (the last up to `TrainerAI`): a level for the party or one
+  each, the moves the game gives at that level (the level 1 moves, then the last learned), and the moves some bosses
+  get over them (`ReadTrainer`): in Red and Blue a gym leader's `LoneMoves` entry by the gym's number (Brock's Onix's
+  Bide, Giovanni's Rhydon's Fissure in his gym) and each Elite Four member's `TeamMoves` (the fifth Pokémon's third
+  move), on a party with a level each; in Yellow its `SpecialTrainerMoves`, on any party. The Champion's, which the
+  code gives by his starter, aren't read: his team shows the moves of its level.
 
 ### The pictures and the maps
 
@@ -342,7 +377,13 @@ JSON with sorted keys:
 - `sizes` are counts and ids: the pockets' capacities, the species, the bytes of event flags (pret's `NUM_EVENTS` /
   8), the species, moves, trainer classes and landmarks (pret's constants), Vital Throw's move id, Kanto's first
   landmark and the Fast Ship's (`kantoLandmark`, `fastShipLandmark`: which Pokégear map a place is on), and TM01's
-  item id (PokeDaisy's `firstTm`).
+  item id (PokeDaisy's `firstTm`). Gen I's: the species and their internal indexes, the moves, the items, the trainer
+  classes and the maps (`numPokemonIndexes`, `numMaps`, ...), the first indoor map, the first TM and HM items
+  (`tm01`, `hm01`, checked against `items.inc`'s), Quick Attack's and Counter's ids, and in Red and Blue each gym
+  leader's class (`leaderBrock` .. `leaderGiovanni`), by pret's constants.
+- `rom` keys are a table's start; Gen I's are Gen II's names where the table plays the same part (`baseData`,
+  `pokemonNames`, `moves`, `trainerGroups`, ...), and their own for the rest (`dexOrder`, `wildData`, `oldRod`,
+  `trainerGroupsEnd`, ...), each with pret's symbol in `src`.
 - `rom` is where each ROM table is: its bank and its address in the bank's window (bank 0 at 0000-3FFF, the others at
   4000-7FFF), from pret's symbols, and where PokeDaisy's `Gen2Dex.kt` gives the same table, checked equal to its
   value (`src` says which), and `Gen2Art.kt` the Pokégear's map tables (its `townMaps` are `johtoMap` and
@@ -489,7 +530,12 @@ place but the special landmark's rooms on a map; every hidden item on a named ma
 50; the game's guide file (Crystal's) loaded with every place found by name and every boss's team the ROM's, at
 its level cap; and Gold's and Silver's guide from the ROM's trainers, its 21 milestones in the order above, each gym
 done by a badge (Falkner's `badge:1`, Jasmine's 5, Chuck's 6, Pryce's 7, Clair's 8, Brock's 9, Blue's 16) and Will
-and Lance by `later`. Given PokeDaisy's checkout, every species' gender ratio and growth rate is compared with its
+and Lance by `later`. For Red, Blue and Yellow (Fast Red and Fast Blue as Red and Blue): all 151 species named with a
+learnset and a Pokédex text, all 165 moves; Bulbasaur's base stats, types, level 1 moves, evolution, Pokédex entry
+and height and weight; Mew; Clefairy's Moon Stone and Kadabra's trade; Quick Attack's and Counter's priorities;
+TM01 and HM01's moves; item names and prices; Route 1's grass with Pidgey and Rattata; the three rods at Pallet Town
+and none on Route 1; Brock's Geodude and Onix at Lv 12 and 14 (Yellow's 10 and 12), his Onix with Bide (Yellow's
+with Bind and Bide); Lorelei's Lapras with Blizzard; every place with wild Pokémon named. Given PokeDaisy's checkout, every species' gender ratio and growth rate is compared with its
 `Gen2SpeciesCrystal.kt`, and Crystal's hidden items with its `GuideCrystalGen.kt`'s 85, by flag and item. The pictures and maps go to `GBPK_ROMS_OUT` (by default
 `ui/tests/out/gbpk-roms/`) as PNGs for looking at: a sheet of every species' picture, normal and shiny, in the box the
 game draws it in, and each map.

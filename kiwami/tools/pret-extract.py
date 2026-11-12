@@ -86,11 +86,12 @@ def parse_sym(text):
 
 
 class Consts:
-    """Enough of rgbds' assembler to evaluate a constants file: DEF (EQU, =, +=, -=), the const macros of
-    macros/const.asm (const_def, const, const_skip, const_next, shift_const) and the file's own MACROs. Anything
-    else stops the run, so a value is never computed from a line that wasn't understood. A DEF whose expression names
-    a symbol the file doesn't define (one from hardware.inc, which it doesn't read) is set aside: asking for that
-    name stops the run with the reason, any other line using it too."""
+    """Enough of rgbds' assembler to evaluate a constants file: DEF and REDEF (EQU, =, +=, -=), a name with a number
+    in it ({02d:NAME}), the const macros of macros/const.asm (const_def, const, const_skip, const_next, shift_const)
+    and the file's own MACROs. An ASSERT, which defines nothing, is passed over. Anything else stops the run, so a
+    value is never computed from a line that wasn't understood. A DEF whose expression names a symbol the file
+    doesn't define (one from hardware.inc, which it doesn't read, or a move's id in an item's alias) is set aside:
+    asking for that name stops the run with the reason, any other line using it too."""
 
     TOKEN = re.compile(r'\s*(?:(\$[0-9A-Fa-f]+)|(%[01]+)|(\d+)|([A-Za-z_][A-Za-z0-9_@#.]*)|(<<|>>|[-+*/%&|^~()]))')
 
@@ -152,7 +153,11 @@ class Consts:
                 i += 1
                 self.macros[m.group(1)] = '\n'.join(body)
                 continue
-            m = re.match(r'DEF\s+(\w+)\s*(EQU|=|\+=|-=)\s*(.+)$', line)
+            if re.match(r'ASSERT\b', line):
+                continue
+            # (a symbol's name made with a number: {02d:HM_VALUE} is HM_VALUE's, two digits)
+            line = re.sub(r'\{(?:0?(\d*)d:)?(\w+)\}', lambda x: '%0*d' % (int(x.group(1) or 0), self.expr(x.group(2), where)), line)
+            m = re.match(r'(?:RE)?DEF\s+(\w+)\s*(EQU|=|\+=|-=)\s*(.+)$', line)
             if m and m.group(2) in ('EQU', '='):
                 try:
                     self.expr(m.group(3), where)

@@ -28,12 +28,12 @@
     "dexCaught": {
       "addr": "0xD2F6",
       "bank": 1,
-      "src": "pret (wPokedexOwned)"
+      "src": "pokedaisy pret (wPokedexOwned)"
     },
     "dexSeen": {
       "addr": "0xD309",
       "bank": 1,
-      "src": "pret (wPokedexSeen)"
+      "src": "pokedaisy pret (wPokedexSeen)"
     },
     "enemyMon": {
       "addr": "0xCFE4",
@@ -167,11 +167,128 @@
       "sha1": "cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1"
     }
   ],
-  "rom": {},
+  "rom": {
+    "baseData": {
+      "addr": "0x43DE",
+      "bank": 14,
+      "src": "pokedaisy pret (BaseStats)"
+    },
+    "dexEntryPointers": {
+      "addr": "0x450B",
+      "bank": 16,
+      "src": "pokedaisy pret (PokedexEntryPointers)"
+    },
+    "dexOrder": {
+      "addr": "0x50B1",
+      "bank": 16,
+      "src": "pret (PokedexOrder)"
+    },
+    "evosAttacksPointers": {
+      "addr": "0x71E5",
+      "bank": 14,
+      "src": "pret (EvosMovesPointerTable)"
+    },
+    "externalMapEntries": {
+      "addr": "0x539C",
+      "bank": 28,
+      "src": "pret (ExternalMapEntries)"
+    },
+    "goodRodMons": {
+      "addr": "0x612C",
+      "bank": 3,
+      "src": "pret (GoodRodMons)"
+    },
+    "internalMapEntries": {
+      "addr": "0x540B",
+      "bank": 28,
+      "src": "pret (InternalMapEntries)"
+    },
+    "itemNames": {
+      "addr": "0x45B7",
+      "bank": 1,
+      "src": "pret (ItemNames)"
+    },
+    "itemPrices": {
+      "addr": "0x4494",
+      "bank": 1,
+      "src": "pret (ItemPrices)"
+    },
+    "moveNames": {
+      "addr": "0x4000",
+      "bank": 47,
+      "src": "pret (MoveNames)"
+    },
+    "moves": {
+      "addr": "0x4000",
+      "bank": 14,
+      "src": "pret (Moves)"
+    },
+    "oldRod": {
+      "addr": "0x60F9",
+      "bank": 3,
+      "src": "pret (ItemUseOldRod)"
+    },
+    "pokemonNames": {
+      "addr": "0x4000",
+      "bank": 58,
+      "src": "pret (MonsterNames)"
+    },
+    "specialTrainerMoves": {
+      "addr": "0x5C6B",
+      "bank": 14,
+      "src": "pret (SpecialTrainerMoves)"
+    },
+    "superRodSlots": {
+      "addr": "0x5EDA",
+      "bank": 61,
+      "src": "pret (SuperRodFishingSlots)"
+    },
+    "tmHmMoves": {
+      "addr": "0x632D",
+      "bank": 4,
+      "src": "pret (TechnicalMachines)"
+    },
+    "trainerClassNames": {
+      "addr": "0x597E",
+      "bank": 14,
+      "src": "pret (TrainerNames)"
+    },
+    "trainerGroups": {
+      "addr": "0x5DD1",
+      "bank": 14,
+      "src": "pret (TrainerDataPointers)"
+    },
+    "trainerGroupsEnd": {
+      "addr": "0x65B2",
+      "bank": 14,
+      "src": "pret (TrainerAI)"
+    },
+    "wildData": {
+      "addr": "0x4B95",
+      "bank": 3,
+      "src": "pret (WildDataPointers)"
+    },
+    "wildSlots": {
+      "addr": "0x78E2",
+      "bank": 4,
+      "src": "pret (WildMonEncounterSlotChances)"
+    }
+  },
   "schema": 1,
   "sizes": {
     "bagSlots": 20,
-    "starterPikachu": 84
+    "counter": 68,
+    "firstIndoorMap": 37,
+    "hm01": 196,
+    "numItems": 83,
+    "numMaps": 249,
+    "numMoves": 165,
+    "numPokemon": 151,
+    "numPokemonIndexes": 190,
+    "numTrainerClasses": 47,
+    "quickAttack": 98,
+    "starterPikachu": 84,
+    "tm01": 201
   },
   "title": "Yellow"
 }

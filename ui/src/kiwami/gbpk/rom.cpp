@@ -1,11 +1,12 @@
 // banana-ui (kiwami): the Game Boy Pokémon companion's ROM reader (rom.h): what both generations share, and the
-// generation's own reader (rom2.cpp for Gold, Silver and Crystal).
+// generation's own reader (rom1.cpp for Red, Blue and Yellow, rom2.cpp for Gold, Silver and Crystal).
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "rom.h"
 #include "pics.h"
 #include "text.h"
+#include "../../nds/rom.h"
 #include <algorithm>
 
 namespace banana::kiwami::gbpk
@@ -53,7 +54,7 @@ namespace banana::kiwami::gbpk
 	std::string RomView::text(size_t o, size_t max) const
 	{
 		if (o == NONE || o >= b.size()) return "";
-		return decode(2, b.data() + o, std::min(max, b.size() - o));
+		return decode(gen, b.data() + o, std::min(max, b.size() - o));
 	}
 
 	size_t RomView::skip(size_t o, size_t max) const
@@ -61,6 +62,41 @@ namespace banana::kiwami::gbpk
 		for (size_t i = 0; o != NONE && i < max && o + i < b.size(); i++)
 			if (b[o + i] == 0x50) return o + i + 1;
 		return NONE;
+	}
+
+	uint8_t percent(uint8_t raw) { return (uint8_t)((raw * 100 + 127) / 255); }
+
+	void defaultMoves(const nds::RomData& r, nds::TrainerMon& m)
+	{
+		if (m.species >= r.species.size()) return;
+		std::vector<uint16_t> known;
+		for (const auto& lm : r.species[m.species].learnset)
+		{
+			if (lm.level > m.level) break;
+			if (std::find(known.begin(), known.end(), lm.move) == known.end()) known.push_back(lm.move);
+		}
+		size_t from = known.size() > 4 ? known.size() - 4 : 0;
+		for (size_t j = from; j < known.size(); j++) m.moves[j - from] = known[j];
+	}
+
+	std::string evoHow(const nds::RomData& r, uint16_t method, uint16_t param)
+	{
+		auto item = [&](uint16_t i) { return i < r.items.size() && !r.items[i].name.empty() ? r.items[i].name : std::string("an item"); };
+		const std::string lv = "Level " + std::to_string(param);
+		switch (method)
+		{
+		case nds::evo::LEVEL: return lv;
+		case nds::evo::USE_ITEM: return "Use " + item(param);
+		case nds::evo::TRADE: return "Trade";
+		case nds::evo::TRADE_ITEM: return "Trade holding " + item(param);
+		case nds::evo::FRIENDSHIP: return "Level up with high friendship";
+		case nds::evo::FRIENDSHIP_DAY: return "Level up with high friendship by day";
+		case nds::evo::FRIENDSHIP_NIGHT: return "Level up with high friendship at night";
+		case nds::evo::LEVEL_ATK_GT_DEF: return lv + " with Attack higher than Defense";
+		case nds::evo::LEVEL_ATK_EQ_DEF: return lv + " with Attack equal to Defense";
+		case nds::evo::LEVEL_ATK_LT_DEF: return lv + " with Defense higher than Attack";
+		default: return "";
+		}
 	}
 
 	// (no picture by gender or form in these games: one a species)
@@ -79,13 +115,10 @@ namespace banana::kiwami::gbpk
 		out->rom = rom;
 		out->game = d.game;
 		out->gen = d.gen;
-		RomView r{ *rom };
+		RomView r{ *rom, d.gen };
 		std::string w;
-		if (d.gen == 2)
-		{
-			if (!readGen2(r, d, *out, &w)) return no(d.game.title + "'s ROM: " + w);
-			return out;
-		}
-		return no(d.game.title + "'s ROM: Generation I's tables aren't read yet");
+		if (d.gen != 1 && d.gen != 2) return no(d.game.title + ": not a Game Boy game's data file");
+		if (!(d.gen == 1 ? readGen1(r, d, *out, &w) : readGen2(r, d, *out, &w))) return no(d.game.title + "'s ROM: " + w);
+		return out;
 	}
 }

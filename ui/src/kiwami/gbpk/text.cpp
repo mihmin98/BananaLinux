@@ -41,8 +41,9 @@ namespace banana::kiwami::gbpk
 			default: return "";
 			}
 		}
-		// Gen I's own: é and the contractions 'd 'l 's 't 'v at BA-BF, 'r and 'm at E4-E5, the single quotes at 70-71;
-		// no umlauts, no ← & → and no breakable spaces; nullptr where it's Gen II's
+		// Gen I's own: é and the contractions 'd 'l 's 't 'v at BA-BF, 'r and 'm at E4-E5, the single quotes at 70-71,
+		// a Pokédex page's break (<PAGE>, 49) as a space; no umlauts, no ← & → and no breakable spaces; nullptr where
+		// it's Gen II's
 		const char* gen1(uint8_t b)
 		{
 			static const char* const BA[6] = { "é", "'d", "'l", "'s", "'t", "'v" };
@@ -53,6 +54,7 @@ namespace banana::kiwami::gbpk
 			if (b == 0x70) return "‘";
 			if (b == 0x71) return "’";
 			if (b == 0x1F || b == 0x22) return "";
+			if (b == 0x49) return " ";
 			return nullptr;
 		}
 	}

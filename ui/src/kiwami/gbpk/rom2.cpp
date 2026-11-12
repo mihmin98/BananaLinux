@@ -57,24 +57,6 @@ namespace banana::kiwami::gbpk
 		enum { TRAINERTYPE_MOVES = 1, TRAINERTYPE_ITEM = 2 };
 		enum { ITEM = 1, KEY_ITEM, BALL, TM_HM };
 
-		// the games' "n percent" (n * 255 / 100) as n
-		uint8_t percent(uint8_t raw) { return (uint8_t)((raw * 100 + 127) / 255); }
-
-		// the four moves a Pokémon knows at its level without a trainer's own (the game's FillMoves: the last four
-		// learned by level up)
-		void defaultMoves(const nds::RomData& r, nds::TrainerMon& m)
-		{
-			if (m.species >= r.species.size()) return;
-			std::vector<uint16_t> known;
-			for (const auto& lm : r.species[m.species].learnset)
-			{
-				if (lm.level > m.level) break;
-				if (std::find(known.begin(), known.end(), lm.move) == known.end()) known.push_back(lm.move);
-			}
-			size_t from = known.size() > 4 ? known.size() - 4 : 0;
-			for (size_t j = from; j < known.size(); j++) m.moves[j - from] = known[j];
-		}
-
 		// a map's hidden items: the events its attributes point to (in the scripts' bank: two filler bytes, then the
 		// warps, the coord events and the bg events, each a count and its records), the bg events of the item kind, and
 		// the hiddenitem each points to (macros/scripts/maps.asm: the flag, dw, then the item). A map whose events
@@ -99,26 +81,6 @@ namespace banana::kiwami::gbpk
 				if (r.u8(e + 2) != BGEVENT_ITEM) continue;
 				const size_t s = r.at(bank, r.le16(e + 3));
 				if (r.has(s, 3)) out.hidden.push_back({ zone, r.u8(e + 1), r.u8(e), gen2Item(r.u8(s + 2)), r.le16(s) });
-			}
-		}
-
-		std::string evoHow(const nds::RomData& r, uint16_t method, uint16_t param)
-		{
-			auto item = [&](uint16_t i) { return i < r.items.size() && !r.items[i].name.empty() ? r.items[i].name : std::string("an item"); };
-			const std::string lv = "Level " + std::to_string(param);
-			switch (method)
-			{
-			case nds::evo::LEVEL: return lv;
-			case nds::evo::USE_ITEM: return "Use " + item(param);
-			case nds::evo::TRADE: return "Trade";
-			case nds::evo::TRADE_ITEM: return "Trade holding " + item(param);
-			case nds::evo::FRIENDSHIP: return "Level up with high friendship";
-			case nds::evo::FRIENDSHIP_DAY: return "Level up with high friendship by day";
-			case nds::evo::FRIENDSHIP_NIGHT: return "Level up with high friendship at night";
-			case nds::evo::LEVEL_ATK_GT_DEF: return lv + " with Attack higher than Defense";
-			case nds::evo::LEVEL_ATK_EQ_DEF: return lv + " with Attack equal to Defense";
-			case nds::evo::LEVEL_ATK_LT_DEF: return lv + " with Defense higher than Attack";
-			default: return "";
 			}
 		}
 	}

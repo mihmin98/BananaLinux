@@ -892,6 +892,8 @@ derived bits, the gyms by their leaders' flags, no `opens`.)
   test), and a truncated one refused; a made-up run-length tile map gives the expected cells. `gbpk-roms` (with
   `GB_ROMS`): all 151 sprites decode and are written as PNGs with the map; Pallet Town's cell names it.
 - **Commit**: `GB Pokémon companion: Gen I's sprites and town map, decoded from the ROM`
+- (*Deviations* 2026-11-12, step 13: `pokedaisy-extract.py` leaves `Gen1Dex.kt`'s picture fields out by name,
+  `DEX1_SKIP`, which this step takes; `locationNames` are the town map's names in its order, for the cells.)
 
 ### 15. Red, Blue and Yellow's guides
 
@@ -909,6 +911,8 @@ derived bits, the gyms by their leaders' flags, no `opens`.)
 - **Tests**: `gbpk-units`: the three files load with `why` empty; eight badge milestones each; a rival fight's flag
   set in its bank marks its milestone done; the highest `flag:N` in each file is inside the banks' total length.
 - **Commit**: `GB Pokémon companion: Red, Blue and Yellow's guides, converted from PokeDaisy's tables`
+- (*Deviations* 2026-11-12, step 13: a Gen I trainer's `name` is its class's, `Brock`; the rivals' classes are the
+  ROM's `Rival1`, `Rival2` and `Rival3`.)
 
 ### 16. PokeDaisy's reference data for every mainline game
 
@@ -1256,6 +1260,36 @@ Where the implementation turned out different from this plan, why, and what chan
   - **No Gen I capture is a trainer battle**, so the test makes one from `red_battle`. The captures' play time is the
     save's 24:18 or a minute on (the faint captures). The party is kept only when every member is read, so an invalid
     set leaves none.
+- **2026-11-12, step 13: Gen I's tables as pret's code has them, with what the plan missed** (agreed with the user).
+  - **More files than planned.** `gbpk-symbols.txt` gets Gen I's ROM tables and constants (as step 6's had Gen II's),
+    under Gen II's keys where a table plays the same part (`baseData`, `pokemonNames`, `moves`, `trainerGroups`, ...).
+    `pret-extract.py`'s evaluator reads `REDEF`, a name made with a number (`HM{02d:HM_VALUE}_MOVE`) and passes over
+    `ASSERT` lines, which pokered's `item_constants.asm` and `map_constants.asm` need (`NUM_ITEMS`, `NUM_MAPS`,
+    `FIRST_INDOOR_MAP`); its other outputs are unchanged. `pokedaisy-extract.py` reads `Gen1Dex.kt`'s English
+    `GEN1_DEX_RED` and `GEN1_DEX_YELLOW` (base stats, Mew's apart, the pages, checked equal to pret's; the Pokédex's RAM
+    checked equal to `dexCaught` and `dexSeen`; the other releases' fields checked to be their defaults) and leaves its
+    front pictures' tables out by name until step 14. `rom.h` declares `readGen1` and gives `RomView` the text's
+    generation; `rom2.cpp`'s `percent`, `defaultMoves` and `evoHow` move to `rom.cpp`, shared (`rom2.cpp` only loses
+    them). `text.cpp`: Gen I's `<PAGE>` ($49) decodes as a space; `rom1.cpp` ends a Pokédex text at `<DEXEND>` ($5F)
+    with the full stop the game prints. `GB-POKEMON.md` documents it all.
+  - **Bosses' moves are read** (the user's choice): Red's and Blue's `LoneMoves` (a gym leader's by the gym's number,
+    which each gym's script sets; the leaders' classes from pret's constants, Giovanni's gym team his third) and
+    `TeamMoves` (each Elite Four member's fifth Pokémon), on a party with a level each, as `ReadTrainer` does; Yellow's
+    `SpecialTrainerMoves`, on any party (its `.LoopTrainerData` reaches it too). The Champion's, set in code by his
+    starter, aren't read.
+  - **The rods** (the user's choice): the Old Rod's Magikarp Lv 5 from `ItemUseOldRod`'s code, read only when its bytes
+    are the call, `jp c` and `ld bc` the game has; the Good Rod's `GoodRodMons` at even chances; the Super Rod's
+    `SuperRodData` groups (Red, Blue: even chances) or `SuperRodFishingSlots` (Yellow: 40, 30, 20, 10 %). The Old and
+    Good Rods fish any water, so all three are listed where the Super Rod is or the map has a water table.
+  - **Trainers are named by their class** (`Brock`), Gen I's trainers having no names of their own, so the guide's
+    resolver finds a leader by name (step 15). The last class's parties end at pret's `TrainerAI`
+    (`rom.trainerGroupsEnd`), and an empty class (`ChiefData`) ends where the next class begins.
+  - **Also read**: the weight's true factor (0.4536 kg a pound; no Heavy Ball in Gen I), the item prices
+    (`ItemPrices`' three bytes of decimal), Quick Attack's +1 and Counter's -1 by their ids (`MainInBattleLoop`), the
+    places' names in the town map's order as `locationNames`, and the data file's `tm01` and `hm01` checked against
+    `items.inc`. `gbpk-units`' made-up ROM also has Red's Mew apart, a Moon Stone and a trade evolution, an empty class
+    and a special move; its `live()` check replays the `red` capture cut to its first member (the captures' six
+    species can't all be among three made-up ones).
 
 ## Progress
 
@@ -1276,7 +1310,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 10. Crystal's guide | done | `GB Pokémon companion: Crystal's guide, converted from PokeDaisy's tables` |
 | 11. Gold and Silver's guide, built from the ROM | done | `GB Pokémon companion: Gold and Silver's gyms, Elite Four and Champion as a guide from the ROM's trainers` |
 | 12. Gen I's memory: Red, Blue and Yellow | done | `GB Pokémon companion: Red, Blue and Yellow's memory read into the pages' Live` |
-| 13. Gen I's ROM: the tables | todo | |
+| 13. Gen I's ROM: the tables | done | `GB Pokémon companion: Red, Blue and Yellow's species, moves, items, encounters and trainers from the ROM` |
 | 14. Gen I's ROM: the sprites and the town map | todo | |
 | 15. Red, Blue and Yellow's guides | todo | |
 | 16. PokeDaisy's reference data for every mainline game | todo | |

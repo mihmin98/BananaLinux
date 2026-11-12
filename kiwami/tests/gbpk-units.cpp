@@ -1262,6 +1262,256 @@ static void testGen1Captures()
 	}
 }
 
+// a made-up Gen I ROM, 64 KB, laid out by a made-up data file (every table in bank 1): three species out of national
+// order (internal 1 is species 2, 3 is 3 and $54 is 1, Bulbasaur, as Pikachu's index in the captures; 2 is none),
+// the third's base data apart as Red's Mew; three moves, ten items, three maps under two town map names with grass,
+// water and the three rods, three trainer classes (one empty) and a special move. The layouts are pret's (rom1.cpp
+// names each).
+static std::shared_ptr<const std::vector<uint8_t>> madeUpGen1(GameData& d, int bad = 0)
+{
+	MadeUpRom m;
+	using R = MadeUpRom;
+	m.d.key = "red";
+	m.d.gen = 1;
+	m.d.game.id = RED;
+	m.d.game.gen = GEN_I;
+	m.d.game.title = "Made-up";
+	const int IDX = 0x54;
+	m.d.sizes = { { "numPokemon", 3 }, { "numPokemonIndexes", IDX }, { "numMoves", 3 }, { "numItems", 10 }, { "hm01", 0xC4 },
+		{ "tm01", 0xC9 }, { "numTrainerClasses", 3 }, { "numMaps", 3 }, { "firstIndoorMap", 1 }, { "quickAttack", 2 }, { "counter", 3 } };
+	// PokedexOrder: internal 1 species 2, 3 species 3, $54 species 1 (or 2 again, for a refusal)
+	std::vector<int> order(IDX, 0);
+	order[0] = 2;
+	order[2] = 3;
+	order[IDX - 1] = bad == 1 ? 2 : 1;
+	m.key("dexOrder", m.put(order));
+	// base data: species, HP, Attack, Defense, Speed, Special, types (Grass 22, Poison 3), catch rate, base exp, picture
+	// size and pointers, level 1 moves (move 1), growth, TM/HM bits (TM01, HM01: bit 50), pad; species 3's apart
+	std::vector<int> b1 = { 1, bad == 2 ? 44 : 45, 49, 49, 45, 65, 22, 3, 45, 64, 0x55, 0, 0, 0, 0, 1, 0, 0, 0, 3, 0x01, 0, 0, 0, 0, 0, 0x04, 0 };
+	std::vector<int> b2 = { 2, 60, 62, 63, 60, 80, 22, 22, 45, 141, 0x66, 0, 0, 0, 0, 1, 2, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
+	std::vector<int> b3 = { 3, 100, 100, 100, 100, 100, 24, 24, 45, 64, 0x55, 0, 0, 0, 0, 1, 0, 0, 0, 3, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0 };
+	m.key("baseData", m.put(R::cat(b1, b2)));
+	m.key("mewBaseData", m.put(b3));
+	// MonsterNames by internal index, 10 bytes each
+	std::vector<int> names((size_t)IDX * 10, 0x50);
+	auto name = [&](int idx, const char* t) { std::vector<int> v = R::str(t); for (size_t i = 0; i < v.size() && i < 10; i++) names[(idx - 1) * 10 + i] = v[i]; };
+	name(1, "IVYSAUR");
+	name(3, "MEW");
+	name(IDX, "BULBASAUR");
+	m.key("pokemonNames", m.put(names));
+	// the Pokédex: category, feet and inches (2'04"), pounds * 10 (15.0), text_far to the text: TX_START, a line, <NEXT>,
+	// <PAGE>, <DEXEND>
+	std::vector<int> text = R::cat({ 0 }, R::str("A STRANGE|SEED"));
+	text.back() = 0x49;
+	text = R::cat(text, R::str("PAGE TWO"));
+	text.back() = 0x5F;
+	text.push_back(0x50);
+	const int t1 = m.put(text);
+	const int x1 = m.put(R::cat(R::str("SEED"), { 2, 4, 150, 0, 0x17, t1 & 0xFF, t1 >> 8, 1, 0x50 }));
+	std::vector<int> dex((size_t)IDX * 2, 0);
+	dex[(IDX - 1) * 2] = x1 & 0xFF;
+	dex[(IDX - 1) * 2 + 1] = x1 >> 8;
+	m.key("dexEntryPointers", m.put(dex));
+	// evolutions then learnsets, by internal index: Bulbasaur at 16 into internal 1 (species 2), learns move 2 at 7;
+	// species 2 by item $0A (a Moon Stone) into internal 3 (species 3); species 3 by trade into $54
+	const int e1 = m.put({ 1, 16, 1, 0, 7, 2, 0 }), e2 = m.put({ 2, 0x0A, 1, 3, 0, 0 }), e3 = m.put({ 3, 1, IDX, 0, 0 });
+	std::vector<int> evos((size_t)IDX * 2, 0);
+	for (auto [idx, p] : { std::pair<int, int>{ IDX, e1 }, { 1, e2 }, { 3, e3 } }) { evos[(idx - 1) * 2] = p & 0xFF; evos[(idx - 1) * 2 + 1] = p >> 8; }
+	m.key("evosAttacksPointers", m.put(evos));
+	// moves: animation (the id), effect, power, type, accuracy, PP: Pound, Quick Attack (its id), Ember (Fire, 20; the
+	// data file's counter, for its -1)
+	m.key("moves", m.put({ 1, 0, 40, 0, 255, 35, 2, 0, 40, 0, 255, 30, 3, 4, 40, 20, 255, 25 }));
+	m.key("moveNames", m.put(R::cat(R::cat(R::str("POUND"), R::str("QUICK ATTACK")), R::str("EMBER"))));
+	// items 1-10: names and prices (bcd3: the Ultra Ball 1200, the Poké Ball 200)
+	std::vector<int> in;
+	for (const char* n : { "MASTER BALL", "ULTRA BALL", "GREAT BALL", "POKE BALL", "TOWN MAP", "BICYCLE", "SURFBOARD", "SAFARI BALL",
+		"POKEDEX", "MOON STONE" })
+		in = R::cat(in, R::str(n));
+	m.key("itemNames", m.put(in));
+	std::vector<int> prices(30, 0);
+	prices[4] = 0x12;
+	prices[10] = 0x02;
+	m.key("itemPrices", m.put(prices));
+	std::vector<int> tm(55, 0);
+	tm[0] = 1;
+	tm[50] = 2;
+	m.key("tmHmMoves", m.put(tm));
+	// the town map: map 0 outdoors (Pallet Town); maps 1 and 2 an indoor group below 3 (Viridian Forest), to -1
+	const int n1 = m.put(R::str("PALLET TOWN")), n2 = m.put(R::str("VIRIDIAN FOREST"));
+	m.key("externalMapEntries", m.put({ 0xB2, n1 & 0xFF, n1 >> 8 }));
+	m.key("internalMapEntries", m.put({ 3, 0x42, n2 & 0xFF, n2 >> 8, 0xFF }));
+	// wild Pokémon: map 0 none; map 1 grass (Bulbasaur Lv 3 first, then internal 1, Lv 3 + slot), no water; map 2 no
+	// grass, water (species 3, Lv 20)
+	const int w0 = m.put({ 0, 0 });
+	std::vector<int> g = { 25 };
+	for (int j = 0; j < 10; j++) { g.push_back(3 + j); g.push_back(j == 0 ? IDX : 1); }
+	g.push_back(0);
+	const int w1 = m.put(g);
+	std::vector<int> w = { 0, 5 };
+	for (int j = 0; j < 10; j++) { w.push_back(20); w.push_back(3); }
+	const int w2 = m.put(w);
+	m.key("wildData", m.put(R::words({ w0, w1, w2, 0xFFFF })));
+	m.key("wildSlots", m.put({ 50, 0, 101, 2, 140, 4, 165, 6, 190, 8, 215, 10, 228, 12, 241, 14, 252, 16, 255, 18 }));
+	// the rods: the Old Rod's code (call, jp c, lb bc, 5, Bulbasaur), the Good Rod's internal 1 and 3 at Lv 10, the
+	// Super Rod's group at map 0: species 3 Lv 15 and Bulbasaur Lv 20
+	m.key("oldRod", m.put({ 0xCD, 0, 0, 0xDA, 0, 0, 0x01, IDX, 5 }));
+	m.key("goodRodMons", m.put({ 10, 1, 10, 3 }));
+	const int group = m.put({ 2, 15, 3, 20, IDX });
+	m.key("superRod", m.put({ 0, group & 0xFF, group >> 8, 0xFF }));
+	// trainers: class 1 a party of one level (Lv 8: Bulbasaur, species 2) and one with its own (Bulbasaur Lv 10,
+	// species 3 Lv 12); class 2 none (its pointer the next class's); class 3 species 2 Lv 20 (or internal 2, none, for a
+	// refusal); then the end
+	m.key("trainerClassNames", m.put(R::cat(R::cat(R::str("YOUNGSTER"), R::str("CHIEF")), R::str("BROCK"))));
+	const int c1 = m.put({ 8, IDX, 1, 0, 0xFF, 10, IDX, 12, 3, 0 }), c3 = m.put({ 0xFF, 20, bad == 3 ? 2 : 1, 0 });
+	m.key("trainerGroupsEnd", m.next);
+	m.key("trainerGroups", m.put(R::words({ c1, c3, c3 })));
+	// Yellow's table: class 1's second trainer, its second member's fourth move Ember; the list to -1
+	m.key("specialTrainerMoves", m.put({ 1, 2, 2, 4, 3, 0, 0xFF }));
+	d = m.d;
+	return std::make_shared<std::vector<uint8_t>>(m.b);
+}
+
+static void testGen1RomTables()
+{
+	GameData d;
+	std::string why;
+	auto rom = madeUpGen1(d);
+	auto r = readRom(rom, d, &why);
+	CHECK(r);
+	EQ(why, "");
+	if (!r) return;
+	// the internal order, and the species by national number
+	const std::vector<uint16_t>& nat = static_cast<const GbRomData&>(*r).national;
+	CHECK(nat.size() == 256 && nat[1] == 2 && nat[2] == 0 && nat[3] == 3 && nat[0x54] == 1 && nat[0x55] == 0);
+	CHECK(r->species.size() == 4);
+	const nds::Species& b = r->species[1];
+	EQ(b.name, "Bulbasaur");
+	EQ(r->species[2].name, "Ivysaur");
+	EQ(r->species[3].name, "Mew");
+	CHECK((b.base[0] == 45 && b.base[1] == 49 && b.base[2] == 49 && b.base[3] == 45 && b.base[4] == 65 && b.base[5] == 65));
+	CHECK(b.types[0] == nds::GRASS && b.types[1] == nds::POISON && b.catchRate == 45 && b.baseExp == 64 && b.genderRatio == 255 &&
+		b.growth == 3 && b.baseFriendship == 0);
+	CHECK((b.tms == std::vector<uint16_t>{ 1, 93 }));
+	CHECK(r->species[3].base[0] == 100 && r->species[3].types[0] == nds::PSYCHIC && r->species[3].tms.size() == 55);
+	EQ(b.category, "Seed");
+	CHECK(b.height == 7 && b.weight == 68);		// 28 in: 0.71 m; 15.0 lb: 6.80 kg
+	EQ(b.dexText, "A STRANGE SEED PAGE TWO.");
+	// the level 1 moves, then the level-up ones; the evolutions into national numbers, their words by the items' names
+	CHECK(b.learnset.size() == 2 && b.learnset[0].level == 1 && b.learnset[0].move == 1 && b.learnset[1].level == 7 && b.learnset[1].move == 2);
+	CHECK(r->species[2].learnset.size() == 2 && r->species[2].learnset[1].move == 2 && r->species[2].learnset[1].level == 1);
+	CHECK(b.evolutions.size() == 1 && b.evolutions[0].method == nds::evo::LEVEL && b.evolutions[0].param == 16 && b.evolutions[0].into == 2);
+	const nds::Species& v = r->species[2];
+	CHECK(v.evolutions.size() == 1 && v.evolutions[0].method == nds::evo::USE_ITEM && v.evolutions[0].param == 81 && v.evolutions[0].into == 3);
+	EQ(v.evolutions.empty() ? "" : v.evolutions[0].how, "Use Moon Stone");
+	CHECK(r->species[3].evolutions.size() == 1 && r->species[3].evolutions[0].method == nds::evo::TRADE && r->species[3].evolutions[0].into == 1);
+	// moves: Quick Attack's +1 and the counter's -1 by their ids, the category by the type
+	CHECK(r->moves.size() == 4);
+	EQ(r->moves[2].name, "Quick Attack");
+	CHECK(r->moves[1].power == 40 && r->moves[1].accuracy == 100 && r->moves[1].pp == 35 && r->moves[1].cat == nds::MoveCategory::PHYSICAL &&
+		r->moves[1].priority == 0);
+	CHECK((int8_t)r->moves[2].priority == 1 && (int8_t)r->moves[3].priority == -1);
+	CHECK(r->moves[3].type == nds::FIRE && r->moves[3].cat == nds::MoveCategory::SPECIAL && r->moves[3].effect == 4);
+	// items at their Gen IV ids (the balls, the Moon Stone) or GEN1_ONLY + theirs, their prices and pockets; the TMs and
+	// HMs as Gen IV's
+	EQ(r->items[1].name, "Master Ball");
+	CHECK(r->items[2].price == 1200 && r->items[4].price == 200 && r->items[1].pocket == nds::POCKET_BALLS);
+	EQ(r->items[81].name, "Moon Stone");
+	EQ(r->items[GEN1_ONLY + 6].name, "Bicycle");
+	CHECK(r->items[GEN1_ONLY + 6].pocket == nds::POCKET_KEY && r->items[5].pocket == nds::POCKET_BALLS);
+	EQ(r->items[328].name, "TM01");
+	EQ(r->items[424].name, "HM05");
+	CHECK(r->tmMoves.size() == 100 && r->tmMoves[0] == 1 && r->tmMoves[92] == 2);
+	// places: each map named by the town map; the names once each
+	CHECK(r->zones.size() == 3);
+	CHECK((r->locationNames == std::vector<std::string>{ "Pallet Town", "Viridian Forest" }));
+	if (r->zones.size() != 3) return;
+	EQ(r->zones.at(0).name, "Pallet Town");
+	EQ(r->zones.at(1).name, "Viridian Forest");
+	EQ(r->zones.at(2).name, "Viridian Forest");
+	auto find = [&](uint16_t z, nds::EncounterKind k, int species, int level = 0) -> const nds::Encounter* {
+		for (const auto& e : r->zones.at(z).encounters) if (e.kind == k && e.species == species && (!level || e.minLevel == level)) return &e;
+		return nullptr;
+	};
+	auto count = [&](uint16_t z, nds::EncounterKind k) { int n = 0; for (const auto& e : r->zones.at(z).encounters) n += e.kind == k; return n; };
+	// grass: the slots' 20, 20, 15, 10, 10, 10, 5, 5, 4 and 1 percent
+	CHECK(count(1, nds::EncounterKind::GRASS) == 10 && count(1, nds::EncounterKind::SURF) == 0 && count(1, nds::EncounterKind::OLD_ROD) == 0);
+	const nds::Encounter* e = find(1, nds::EncounterKind::GRASS, 1);
+	CHECK(e && e->minLevel == 3 && e->maxLevel == 3 && e->percent == 20 && e->time == nds::TimeOfDay::ANY);
+	int pct = 0;
+	for (const auto& x : r->zones.at(1).encounters) pct += x.percent;
+	CHECK(pct == 100);
+	e = find(1, nds::EncounterKind::GRASS, 2, 12);
+	CHECK(e && e->percent == 1);
+	// water, and the Old and Good Rods with it; the Super Rod's map has those too, with its group at even chances
+	CHECK(count(2, nds::EncounterKind::SURF) == 10 && find(2, nds::EncounterKind::SURF, 3, 20));
+	e = find(2, nds::EncounterKind::OLD_ROD, 1, 5);
+	CHECK(e && e->percent == 100);
+	e = find(2, nds::EncounterKind::GOOD_ROD, 3, 10);
+	CHECK(e && e->percent == 50 && find(2, nds::EncounterKind::GOOD_ROD, 2, 10) && count(2, nds::EncounterKind::SUPER_ROD) == 0);
+	CHECK(count(0, nds::EncounterKind::GRASS) == 0 && count(0, nds::EncounterKind::OLD_ROD) == 1 && count(0, nds::EncounterKind::GOOD_ROD) == 2);
+	e = find(0, nds::EncounterKind::SUPER_ROD, 3, 15);
+	CHECK(e && e->percent == 50 && find(0, nds::EncounterKind::SUPER_ROD, 1, 20));
+	// trainers by class << 8 | number, named by the class; moves from the learnset at the level, and Yellow's special
+	// move; the empty class has none
+	CHECK(r->trainers.size() == 3 && r->trainers.count(0x0101) && r->trainers.count(0x0102) && r->trainers.count(0x0301));
+	if (r->trainers.size() == 3)
+	{
+		const nds::Trainer& y = r->trainers.at(0x0101);
+		EQ(y.cls, "Youngster");
+		EQ(y.name, "Youngster");
+		CHECK(y.team.size() == 2 && y.team[0].species == 1 && y.team[0].level == 8 && y.team[1].species == 2 && y.team[1].level == 8 &&
+			y.team[0].moves[0] == 1 && y.team[0].moves[1] == 2 && y.team[0].moves[2] == 0);
+		const nds::Trainer& y2 = r->trainers.at(0x0102);
+		CHECK(y2.team.size() == 2 && y2.team[0].level == 10 && y2.team[1].species == 3 && y2.team[1].level == 12 &&
+			y2.team[1].moves[0] == 1 && y2.team[1].moves[3] == 3);
+		const nds::Trainer& brock = r->trainers.at(0x0301);
+		EQ(brock.name, "Brock");
+		CHECK(brock.team.size() == 1 && brock.team[0].species == 2 && brock.team[0].level == 20);
+	}
+	CHECK(!r->sprite(1));
+
+	// the reader's live() through the ROM's internal order: the red capture's party cut to its first, Pikachu's index
+	// $54, here species 1; without the ROM the index as it is
+	{
+		Dump dump;
+		if (dump.load("red"))
+		{
+			const GameData red = game("red");
+			const uint16_t pc = red.at("partyCount").addr;
+			dump.d(pc) = 1;
+			dump.d((uint16_t)(pc + 2)) = 0xFF;
+			for (const nds::RomData* with : { r.get(), (const nds::RomData*)nullptr })
+			{
+				Reader rd;
+				rd.open(red);
+				double now = 0;
+				auto l = replay(rd, dump, now, with);
+				CHECK(l->party.size() == 1 && l->party[0].species == (with ? 1 : 0x54));
+			}
+		}
+		else failed++;
+	}
+
+	// refusals: a species twice in PokedexOrder, a first record that isn't Bulbasaur's, a trainer whose species isn't
+	// one, a table the data file doesn't give, no Super Rod table (or both)
+	rom = madeUpGen1(d, 1);
+	CHECK(!readRom(rom, d, &why) && why.find("PokedexOrder") != std::string::npos);
+	rom = madeUpGen1(d, 2);
+	CHECK(!readRom(rom, d, &why) && why.find("Bulbasaur") != std::string::npos);
+	rom = madeUpGen1(d, 3);
+	CHECK(!readRom(rom, d, &why) && why.find("class 3") != std::string::npos);
+	rom = madeUpGen1(d);
+	GameData d2 = d;
+	d2.rom.erase("wildData");
+	CHECK(!readRom(rom, d2, &why) && why.find("rom.wildData") != std::string::npos);
+	d2 = d;
+	d2.rom["superRodSlots"] = d2.rom["superRod"];
+	CHECK(!readRom(rom, d2, &why) && why.find("superRod") != std::string::npos);
+	d2 = d;
+	d2.sizes["tm01"] = 0xC8;
+	CHECK(!readRom(rom, d2, &why) && why.find("tm01") != std::string::npos);
+}
+
 static void testCaptures()
 {
 	checkCrystal("crystal", "crystal");
@@ -1670,6 +1920,7 @@ int main(int argc, char** argv)
 	testPictureFormats();
 	testCaptures();
 	testGen1Captures();
+	testGen1RomTables();
 	testDerivedFlags();
 	testGuide();
 	testRomGuide();

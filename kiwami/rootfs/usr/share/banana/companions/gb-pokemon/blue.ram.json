@@ -28,12 +28,12 @@
     "dexCaught": {
       "addr": "0xD2F7",
       "bank": 1,
-      "src": "pret (wPokedexOwned)"
+      "src": "pokedaisy pret (wPokedexOwned)"
     },
     "dexSeen": {
       "addr": "0xD30A",
       "bank": 1,
-      "src": "pret (wPokedexSeen)"
+      "src": "pokedaisy pret (wPokedexSeen)"
     },
     "enemyMon": {
       "addr": "0xCFE5",
@@ -167,10 +167,145 @@
       "sha1": "5030c1114554207191f2e6ffb1f2920cf3d7c668"
     }
   ],
-  "rom": {},
+  "rom": {
+    "baseData": {
+      "addr": "0x43DE",
+      "bank": 14,
+      "src": "pokedaisy pret (BaseStats)"
+    },
+    "dexEntryPointers": {
+      "addr": "0x447E",
+      "bank": 16,
+      "src": "pokedaisy pret (PokedexEntryPointers)"
+    },
+    "dexOrder": {
+      "addr": "0x5024",
+      "bank": 16,
+      "src": "pret (PokedexOrder)"
+    },
+    "evosAttacksPointers": {
+      "addr": "0x705C",
+      "bank": 14,
+      "src": "pret (EvosMovesPointerTable)"
+    },
+    "externalMapEntries": {
+      "addr": "0x5313",
+      "bank": 28,
+      "src": "pret (ExternalMapEntries)"
+    },
+    "goodRodMons": {
+      "addr": "0x627F",
+      "bank": 3,
+      "src": "pret (GoodRodMons)"
+    },
+    "internalMapEntries": {
+      "addr": "0x5382",
+      "bank": 28,
+      "src": "pret (InternalMapEntries)"
+    },
+    "itemNames": {
+      "addr": "0x472B",
+      "bank": 1,
+      "src": "pret (ItemNames)"
+    },
+    "itemPrices": {
+      "addr": "0x4608",
+      "bank": 1,
+      "src": "pret (ItemPrices)"
+    },
+    "loneMoves": {
+      "addr": "0x5D22",
+      "bank": 14,
+      "src": "pret (LoneMoves)"
+    },
+    "mewBaseData": {
+      "addr": "0x425B",
+      "bank": 1,
+      "src": "pokedaisy pret (MewBaseStats)"
+    },
+    "moveNames": {
+      "addr": "0x4000",
+      "bank": 44,
+      "src": "pret (MoveNames)"
+    },
+    "moves": {
+      "addr": "0x4000",
+      "bank": 14,
+      "src": "pret (Moves)"
+    },
+    "oldRod": {
+      "addr": "0x624C",
+      "bank": 3,
+      "src": "pret (ItemUseOldRod)"
+    },
+    "pokemonNames": {
+      "addr": "0x421E",
+      "bank": 7,
+      "src": "pret (MonsterNames)"
+    },
+    "superRod": {
+      "addr": "0x6919",
+      "bank": 3,
+      "src": "pret (SuperRodData)"
+    },
+    "teamMoves": {
+      "addr": "0x5D32",
+      "bank": 14,
+      "src": "pret (TeamMoves)"
+    },
+    "tmHmMoves": {
+      "addr": "0x7773",
+      "bank": 4,
+      "src": "pret (TechnicalMachines)"
+    },
+    "trainerClassNames": {
+      "addr": "0x59FF",
+      "bank": 14,
+      "src": "pret (TrainerNames)"
+    },
+    "trainerGroups": {
+      "addr": "0x5D3B",
+      "bank": 14,
+      "src": "pret (TrainerDataPointers)"
+    },
+    "trainerGroupsEnd": {
+      "addr": "0x652E",
+      "bank": 14,
+      "src": "pret (TrainerAI)"
+    },
+    "wildData": {
+      "addr": "0x4EEB",
+      "bank": 3,
+      "src": "pret (WildDataPointers)"
+    },
+    "wildSlots": {
+      "addr": "0x7918",
+      "bank": 4,
+      "src": "pret (WildMonEncounterSlotChances)"
+    }
+  },
   "schema": 1,
   "sizes": {
-    "bagSlots": 20
+    "bagSlots": 20,
+    "counter": 68,
+    "firstIndoorMap": 37,
+    "hm01": 196,
+    "leaderBlaine": 39,
+    "leaderBrock": 34,
+    "leaderErika": 37,
+    "leaderGiovanni": 29,
+    "leaderKoga": 38,
+    "leaderLtSurge": 36,
+    "leaderMisty": 35,
+    "leaderSabrina": 40,
+    "numItems": 83,
+    "numMaps": 248,
+    "numMoves": 165,
+    "numPokemon": 151,
+    "numPokemonIndexes": 190,
+    "numTrainerClasses": 47,
+    "quickAttack": 98,
+    "tm01": 201
   },
   "title": "Blue"
 }

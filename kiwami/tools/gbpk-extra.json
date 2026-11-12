@@ -6,6 +6,101 @@
           "file": "constants/menu_constants.asm",
           "symbol": "BAG_ITEM_CAPACITY",
           "value": 20
+        },
+        "counter": {
+          "file": "constants/move_constants.asm",
+          "symbol": "COUNTER",
+          "value": 68
+        },
+        "firstIndoorMap": {
+          "file": "constants/map_constants.asm",
+          "symbol": "FIRST_INDOOR_MAP",
+          "value": 37
+        },
+        "hm01": {
+          "file": "constants/item_constants.asm",
+          "symbol": "HM01",
+          "value": 196
+        },
+        "leaderBlaine": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BLAINE",
+          "value": 39
+        },
+        "leaderBrock": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BROCK",
+          "value": 34
+        },
+        "leaderErika": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "ERIKA",
+          "value": 37
+        },
+        "leaderGiovanni": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "GIOVANNI",
+          "value": 29
+        },
+        "leaderKoga": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "KOGA",
+          "value": 38
+        },
+        "leaderLtSurge": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "LT_SURGE",
+          "value": 36
+        },
+        "leaderMisty": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "MISTY",
+          "value": 35
+        },
+        "leaderSabrina": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "SABRINA",
+          "value": 40
+        },
+        "numItems": {
+          "file": "constants/item_constants.asm",
+          "symbol": "NUM_ITEMS",
+          "value": 83
+        },
+        "numMaps": {
+          "file": "constants/map_constants.asm",
+          "symbol": "NUM_MAPS",
+          "value": 248
+        },
+        "numMoves": {
+          "file": "constants/move_constants.asm",
+          "symbol": "NUM_ATTACKS",
+          "value": 165
+        },
+        "numPokemon": {
+          "file": "constants/pokedex_constants.asm",
+          "symbol": "NUM_POKEMON",
+          "value": 151
+        },
+        "numPokemonIndexes": {
+          "file": "constants/pokemon_constants.asm",
+          "symbol": "NUM_POKEMON_INDEXES",
+          "value": 190
+        },
+        "numTrainerClasses": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "NUM_TRAINERS",
+          "value": 47
+        },
+        "quickAttack": {
+          "file": "constants/move_constants.asm",
+          "symbol": "QUICK_ATTACK",
+          "value": 98
+        },
+        "tm01": {
+          "file": "constants/item_constants.asm",
+          "symbol": "TM01",
+          "value": 201
         }
       },
       "header_title": "POKEMON BLUE",
@@ -174,7 +269,123 @@
         }
       ],
       "repo": "pokered",
-      "rom": {}
+      "rom": {
+        "baseData": {
+          "addr": "0x43DE",
+          "bank": 14,
+          "symbol": "BaseStats"
+        },
+        "dexEntryPointers": {
+          "addr": "0x447E",
+          "bank": 16,
+          "symbol": "PokedexEntryPointers"
+        },
+        "dexOrder": {
+          "addr": "0x5024",
+          "bank": 16,
+          "symbol": "PokedexOrder"
+        },
+        "evosAttacksPointers": {
+          "addr": "0x705C",
+          "bank": 14,
+          "symbol": "EvosMovesPointerTable"
+        },
+        "externalMapEntries": {
+          "addr": "0x5313",
+          "bank": 28,
+          "symbol": "ExternalMapEntries"
+        },
+        "goodRodMons": {
+          "addr": "0x627F",
+          "bank": 3,
+          "symbol": "GoodRodMons"
+        },
+        "internalMapEntries": {
+          "addr": "0x5382",
+          "bank": 28,
+          "symbol": "InternalMapEntries"
+        },
+        "itemNames": {
+          "addr": "0x472B",
+          "bank": 1,
+          "symbol": "ItemNames"
+        },
+        "itemPrices": {
+          "addr": "0x4608",
+          "bank": 1,
+          "symbol": "ItemPrices"
+        },
+        "loneMoves": {
+          "addr": "0x5D22",
+          "bank": 14,
+          "symbol": "LoneMoves"
+        },
+        "mewBaseData": {
+          "addr": "0x425B",
+          "bank": 1,
+          "symbol": "MewBaseStats"
+        },
+        "moveNames": {
+          "addr": "0x4000",
+          "bank": 44,
+          "symbol": "MoveNames"
+        },
+        "moves": {
+          "addr": "0x4000",
+          "bank": 14,
+          "symbol": "Moves"
+        },
+        "oldRod": {
+          "addr": "0x624C",
+          "bank": 3,
+          "symbol": "ItemUseOldRod"
+        },
+        "pokemonNames": {
+          "addr": "0x421E",
+          "bank": 7,
+          "symbol": "MonsterNames"
+        },
+        "superRod": {
+          "addr": "0x6919",
+          "bank": 3,
+          "symbol": "SuperRodData"
+        },
+        "teamMoves": {
+          "addr": "0x5D32",
+          "bank": 14,
+          "symbol": "TeamMoves"
+        },
+        "tmHmMoves": {
+          "addr": "0x7773",
+          "bank": 4,
+          "symbol": "TechnicalMachines"
+        },
+        "trainerClassNames": {
+          "addr": "0x59FF",
+          "bank": 14,
+          "symbol": "TrainerNames"
+        },
+        "trainerGroups": {
+          "addr": "0x5D3B",
+          "bank": 14,
+          "symbol": "TrainerDataPointers"
+        },
+        "trainerGroupsEnd": {
+          "addr": "0x652E",
+          "bank": 14,
+          "symbol": "TrainerAI"
+        },
+        "wildData": {
+          "addr": "0x4EEB",
+          "bank": 3,
+          "symbol": "WildDataPointers"
+        },
+        "wildSlots": {
+          "addr": "0x7918",
+          "bank": 4,
+          "symbol": "WildMonEncounterSlotChances"
+        }
+      }
     },
     "crystal": {
       "const": {
@@ -1335,6 +1546,101 @@
           "file": "constants/menu_constants.asm",
           "symbol": "BAG_ITEM_CAPACITY",
           "value": 20
+        },
+        "counter": {
+          "file": "constants/move_constants.asm",
+          "symbol": "COUNTER",
+          "value": 68
+        },
+        "firstIndoorMap": {
+          "file": "constants/map_constants.asm",
+          "symbol": "FIRST_INDOOR_MAP",
+          "value": 37
+        },
+        "hm01": {
+          "file": "constants/item_constants.asm",
+          "symbol": "HM01",
+          "value": 196
+        },
+        "leaderBlaine": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BLAINE",
+          "value": 39
+        },
+        "leaderBrock": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BROCK",
+          "value": 34
+        },
+        "leaderErika": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "ERIKA",
+          "value": 37
+        },
+        "leaderGiovanni": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "GIOVANNI",
+          "value": 29
+        },
+        "leaderKoga": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "KOGA",
+          "value": 38
+        },
+        "leaderLtSurge": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "LT_SURGE",
+          "value": 36
+        },
+        "leaderMisty": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "MISTY",
+          "value": 35
+        },
+        "leaderSabrina": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "SABRINA",
+          "value": 40
+        },
+        "numItems": {
+          "file": "constants/item_constants.asm",
+          "symbol": "NUM_ITEMS",
+          "value": 83
+        },
+        "numMaps": {
+          "file": "constants/map_constants.asm",
+          "symbol": "NUM_MAPS",
+          "value": 248
+        },
+        "numMoves": {
+          "file": "constants/move_constants.asm",
+          "symbol": "NUM_ATTACKS",
+          "value": 165
+        },
+        "numPokemon": {
+          "file": "constants/pokedex_constants.asm",
+          "symbol": "NUM_POKEMON",
+          "value": 151
+        },
+        "numPokemonIndexes": {
+          "file": "constants/pokemon_constants.asm",
+          "symbol": "NUM_POKEMON_INDEXES",
+          "value": 190
+        },
+        "numTrainerClasses": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "NUM_TRAINERS",
+          "value": 47
+        },
+        "quickAttack": {
+          "file": "constants/move_constants.asm",
+          "symbol": "QUICK_ATTACK",
+          "value": 98
+        },
+        "tm01": {
+          "file": "constants/item_constants.asm",
+          "symbol": "TM01",
+          "value": 201
         }
       },
       "header_title": "POKEMON RED",
@@ -1503,7 +1809,123 @@
         }
       ],
       "repo": "pokered",
-      "rom": {}
+      "rom": {
+        "baseData": {
+          "addr": "0x43DE",
+          "bank": 14,
+          "symbol": "BaseStats"
+        },
+        "dexEntryPointers": {
+          "addr": "0x447E",
+          "bank": 16,
+          "symbol": "PokedexEntryPointers"
+        },
+        "dexOrder": {
+          "addr": "0x5024",
+          "bank": 16,
+          "symbol": "PokedexOrder"
+        },
+        "evosAttacksPointers": {
+          "addr": "0x705C",
+          "bank": 14,
+          "symbol": "EvosMovesPointerTable"
+        },
+        "externalMapEntries": {
+          "addr": "0x5313",
+          "bank": 28,
+          "symbol": "ExternalMapEntries"
+        },
+        "goodRodMons": {
+          "addr": "0x627F",
+          "bank": 3,
+          "symbol": "GoodRodMons"
+        },
+        "internalMapEntries": {
+          "addr": "0x5382",
+          "bank": 28,
+          "symbol": "InternalMapEntries"
+        },
+        "itemNames": {
+          "addr": "0x472B",
+          "bank": 1,
+          "symbol": "ItemNames"
+        },
+        "itemPrices": {
+          "addr": "0x4608",
+          "bank": 1,
+          "symbol": "ItemPrices"
+        },
+        "loneMoves": {
+          "addr": "0x5D22",
+          "bank": 14,
+          "symbol": "LoneMoves"
+        },
+        "mewBaseData": {
+          "addr": "0x425B",
+          "bank": 1,
+          "symbol": "MewBaseStats"
+        },
+        "moveNames": {
+          "addr": "0x4000",
+          "bank": 44,
+          "symbol": "MoveNames"
+        },
+        "moves": {
+          "addr": "0x4000",
+          "bank": 14,
+          "symbol": "Moves"
+        },
+        "oldRod": {
+          "addr": "0x624C",
+          "bank": 3,
+          "symbol": "ItemUseOldRod"
+        },
+        "pokemonNames": {
+          "addr": "0x421E",
+          "bank": 7,
+          "symbol": "MonsterNames"
+        },
+        "superRod": {
+          "addr": "0x6919",
+          "bank": 3,
+          "symbol": "SuperRodData"
+        },
+        "teamMoves": {
+          "addr": "0x5D32",
+          "bank": 14,
+          "symbol": "TeamMoves"
+        },
+        "tmHmMoves": {
+          "addr": "0x7773",
+          "bank": 4,
+          "symbol": "TechnicalMachines"
+        },
+        "trainerClassNames": {
+          "addr": "0x59FF",
+          "bank": 14,
+          "symbol": "TrainerNames"
+        },
+        "trainerGroups": {
+          "addr": "0x5D3B",
+          "bank": 14,
+          "symbol": "TrainerDataPointers"
+        },
+        "trainerGroupsEnd": {
+          "addr": "0x652E",
+          "bank": 14,
+          "symbol": "TrainerAI"
+        },
+        "wildData": {
+          "addr": "0x4EEB",
+          "bank": 3,
+          "symbol": "WildDataPointers"
+        },
+        "wildSlots": {
+          "addr": "0x7918",
+          "bank": 4,
+          "symbol": "WildMonEncounterSlotChances"
+        }
+      }
     },
     "silver": {
       "const": {
@@ -2160,10 +2582,65 @@
           "symbol": "BAG_ITEM_CAPACITY",
           "value": 20
         },
+        "counter": {
+          "file": "constants/move_constants.asm",
+          "symbol": "COUNTER",
+          "value": 68
+        },
+        "firstIndoorMap": {
+          "file": "constants/map_constants.asm",
+          "symbol": "FIRST_INDOOR_MAP",
+          "value": 37
+        },
+        "hm01": {
+          "file": "constants/item_constants.asm",
+          "symbol": "HM01",
+          "value": 196
+        },
+        "numItems": {
+          "file": "constants/item_constants.asm",
+          "symbol": "NUM_ITEMS",
+          "value": 83
+        },
+        "numMaps": {
+          "file": "constants/map_constants.asm",
+          "symbol": "NUM_MAPS",
+          "value": 249
+        },
+        "numMoves": {
+          "file": "constants/move_constants.asm",
+          "symbol": "NUM_ATTACKS",
+          "value": 165
+        },
+        "numPokemon": {
+          "file": "constants/pokedex_constants.asm",
+          "symbol": "NUM_POKEMON",
+          "value": 151
+        },
+        "numPokemonIndexes": {
+          "file": "constants/pokemon_constants.asm",
+          "symbol": "NUM_POKEMON_INDEXES",
+          "value": 190
+        },
+        "numTrainerClasses": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "NUM_TRAINERS",
+          "value": 47
+        },
+        "quickAttack": {
+          "file": "constants/move_constants.asm",
+          "symbol": "QUICK_ATTACK",
+          "value": 98
+        },
         "starterPikachu": {
           "file": "constants/pokemon_constants.asm",
           "symbol": "STARTER",
           "value": 84
+        },
+        "tm01": {
+          "file": "constants/item_constants.asm",
+          "symbol": "TM01",
+          "value": 201
         }
       },
       "header_title": "POKEMON YELLOW",
@@ -2332,7 +2809,113 @@
         }
       ],
       "repo": "pokeyellow",
-      "rom": {}
+      "rom": {
+        "baseData": {
+          "addr": "0x43DE",
+          "bank": 14,
+          "symbol": "BaseStats"
+        },
+        "dexEntryPointers": {
+          "addr": "0x450B",
+          "bank": 16,
+          "symbol": "PokedexEntryPointers"
+        },
+        "dexOrder": {
+          "addr": "0x50B1",
+          "bank": 16,
+          "symbol": "PokedexOrder"
+        },
+        "evosAttacksPointers": {
+          "addr": "0x71E5",
+          "bank": 14,
+          "symbol": "EvosMovesPointerTable"
+        },
+        "externalMapEntries": {
+          "addr": "0x539C",
+          "bank": 28,
+          "symbol": "ExternalMapEntries"
+        },
+        "goodRodMons": {
+          "addr": "0x612C",
+          "bank": 3,
+          "symbol": "GoodRodMons"
+        },
+        "internalMapEntries": {
+          "addr": "0x540B",
+          "bank": 28,
+          "symbol": "InternalMapEntries"
+        },
+        "itemNames": {
+          "addr": "0x45B7",
+          "bank": 1,
+          "symbol": "ItemNames"
+        },
+        "itemPrices": {
+          "addr": "0x4494",
+          "bank": 1,
+          "symbol": "ItemPrices"
+        },
+        "moveNames": {
+          "addr": "0x4000",
+          "bank": 47,
+          "symbol": "MoveNames"
+        },
+        "moves": {
+          "addr": "0x4000",
+          "bank": 14,
+          "symbol": "Moves"
+        },
+        "oldRod": {
+          "addr": "0x60F9",
+          "bank": 3,
+          "symbol": "ItemUseOldRod"
+        },
+        "pokemonNames": {
+          "addr": "0x4000",
+          "bank": 58,
+          "symbol": "MonsterNames"
+        },
+        "specialTrainerMoves": {
+          "addr": "0x5C6B",
+          "bank": 14,
+          "symbol": "SpecialTrainerMoves"
+        },
+        "superRodSlots": {
+          "addr": "0x5EDA",
+          "bank": 61,
+          "symbol": "SuperRodFishingSlots"
+        },
+        "tmHmMoves": {
+          "addr": "0x632D",
+          "bank": 4,
+          "symbol": "TechnicalMachines"
+        },
+        "trainerClassNames": {
+          "addr": "0x597E",
+          "bank": 14,
+          "symbol": "TrainerNames"
+        },
+        "trainerGroups": {
+          "addr": "0x5DD1",
+          "bank": 14,
+          "symbol": "TrainerDataPointers"
+        },
+        "trainerGroupsEnd": {
+          "addr": "0x65B2",
+          "bank": 14,
+          "symbol": "TrainerAI"
+        },
+        "wildData": {
+          "addr": "0x4B95",
+          "bank": 3,
+          "symbol": "WildDataPointers"
+        },
+        "wildSlots": {
+          "addr": "0x78E2",
+          "bank": 4,
+          "symbol": "WildMonEncounterSlotChances"
+        }
+      }
     }
   },
   "kind": "gb-pokemon-pret",

@@ -3,11 +3,11 @@
 // nds::RomData, in the conventions the DS companion's pages and logic work with, as ui/src/gba/gen3rom.h does for
 // the GBA games: species by national number, types in nds::Type's order, items in Gen IV's numbering (items.inc;
 // GEN2_ONLY + the game's own id for the rest), TMs as Gen IV numbers them (TM01-50 = 1-50, HM01-07 = 93-99),
-// evolution methods in ui/src/nds/rom.h's nds::evo numbering, places by zone = map group << 8 | map number, trainers
-// by class << 8 | number (the battle's Battle::trainerId).
-// Where the tables are is the data file's rom section (pret's symbols, PokeDaisy's Gen2Dex.kt where it has them);
-// their layouts are pret's source, named where each is read (rom2.cpp). Nothing of the games is in the image: every
-// name, number and text comes from the ROM at run time.
+// evolution methods in ui/src/nds/rom.h's nds::evo numbering, places by zone = map group << 8 | map number (Gen I: the
+// map number), trainers by class << 8 | number (the battle's Battle::trainerId).
+// Where the tables are is the data file's rom section (pret's symbols, PokeDaisy's Gen1Dex.kt and Gen2Dex.kt where
+// they have them); their layouts are pret's source, named where each is read (rom1.cpp, rom2.cpp). Nothing of the
+// games is in the image: every name, number and text comes from the ROM at run time.
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
@@ -39,13 +39,15 @@ namespace banana::kiwami::gbpk
 	std::shared_ptr<const nds::RomData> readRom(std::shared_ptr<const std::vector<uint8_t>> rom, const GameData& d,
 		std::string* why = nullptr);
 
-	// ---- for rom.cpp and rom2.cpp ----
+	// ---- for rom.cpp, rom1.cpp and rom2.cpp ----
 
-	// the ROM's bytes by bank and address: bank 0 at 0000-3FFF, bank n at its 4000-7FFF window
+	// the ROM's bytes by bank and address: bank 0 at 0000-3FFF, bank n at its 4000-7FFF window; its text in the
+	// generation's character set
 	struct RomView
 	{
 		static constexpr size_t NONE = (size_t)-1;
 		const std::vector<uint8_t>& b;
+		int gen = 2;
 		// the file offset of bank:addr; NONE outside the ROM
 		size_t at(int bank, uint32_t addr) const
 		{
@@ -95,6 +97,16 @@ namespace banana::kiwami::gbpk
 		std::vector<uint16_t> national;		// Gen I: a species' national number by its internal index (0: none)
 		std::shared_ptr<const nds::Sprite> sprite(uint16_t species, bool female = false, uint8_t form = 0) const override;
 	};
+	// the games' "n percent" (n * 255 / 100) as n
+	uint8_t percent(uint8_t raw);
+	// the four moves a Pokémon knows at its level without a trainer's own (the games' FillMoves and WriteMonMoves: the
+	// last four of its learnset up to its level, none twice)
+	void defaultMoves(const nds::RomData& r, nds::TrainerMon& m);
+	// an evolution's words ("Level 16", "Use Moon Stone"), the items by r's names
+	std::string evoHow(const nds::RomData& r, uint16_t method, uint16_t param);
+
+	// Gen I's tables into out (rom1.cpp)
+	bool readGen1(const RomView& r, const GameData& d, GbRomData& out, std::string* why);
 	// Gen II's tables into out (rom2.cpp)
 	bool readGen2(const RomView& r, const GameData& d, GbRomData& out, std::string* why);
 }

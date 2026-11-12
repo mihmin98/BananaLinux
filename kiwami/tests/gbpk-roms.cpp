@@ -226,6 +226,103 @@ static void checkGen2(const nds::RomData& r, const std::string& key, const std::
 	}
 }
 
+// Red's, Blue's and Yellow's tables (Fast Red and Fast Blue as Red and Blue): pret's pokered and pokeyellow say what
+// each holds (data/pokemon/base_stats/bulbasaur.asm, dex_entries.asm, evos_moves.asm, data/wild/maps/Route1.asm,
+// data/trainers/parties.asm and special_moves.asm, engine/items/item_effects.asm)
+static void checkGen1(const nds::RomData& r, const GameData& d)
+{
+	const bool yellow = d.game.id == YELLOW;
+	CHECK(r.species.size() == 152 && r.moves.size() == 166);
+	int named = 0;
+	for (size_t s = 1; s < r.species.size(); s++) named += !r.species[s].name.empty() && !r.species[s].learnset.empty() && !r.species[s].dexText.empty();
+	CHECK(named == 151);
+	named = 0;
+	for (size_t m = 1; m < r.moves.size(); m++) named += !r.moves[m].name.empty();
+	CHECK(named == 165);
+	// Bulbasaur: Special as both special stats, no gender, Tackle and Growl from level 1, Ivysaur at 16
+	const nds::Species& b = r.species[1];
+	EQ(b.name, "Bulbasaur");
+	CHECK((b.base[0] == 45 && b.base[1] == 49 && b.base[2] == 49 && b.base[3] == 45 && b.base[4] == 65 && b.base[5] == 65));
+	CHECK(b.types[0] == nds::GRASS && b.types[1] == nds::POISON && b.catchRate == 45 && b.baseExp == 64 && b.genderRatio == 255 &&
+		b.growth == 3);
+	CHECK(b.learnset.size() >= 2 && b.learnset[0].level == 1 && b.learnset[0].move == 33 && b.learnset[1].level == 1 && b.learnset[1].move == 45);
+	CHECK(b.evolutions.size() == 1 && b.evolutions[0].into == 2 && b.evolutions[0].method == nds::evo::LEVEL && b.evolutions[0].param == 16);
+	EQ(b.category, "Seed");
+	CHECK(b.height == 7 && b.weight == 68);	// 2'04" and 15.0 lb: 0.7 m, 6.8 kg
+	CHECK(b.dexText.size() > 40 && b.dexText.back() == '.' && b.dexText.find("  ") == std::string::npos);
+	CHECK(!b.tms.empty() && b.tms.back() == 93);	// (Cut: HM01)
+	EQ(r.species[151].name, "Mew");
+	CHECK(r.species[151].base[0] == 100 && r.species[151].base[4] == 100 && r.species[151].tms.size() == 55);
+	EQ(r.species[29].name, "Nidoran♀");
+	// Clefairy by a Moon Stone, Kadabra by trade
+	CHECK(r.species[35].evolutions.size() == 1 && r.species[35].evolutions[0].into == 36);
+	EQ(r.species[35].evolutions.empty() ? "" : r.species[35].evolutions[0].how, "Use Moon Stone");
+	CHECK(r.species[64].evolutions.size() == 1 && r.species[64].evolutions[0].method == nds::evo::TRADE && r.species[64].evolutions[0].into == 65);
+	// the moves: Pound, Quick Attack's and Counter's priorities, a special one, TM01 and HM01
+	EQ(r.moves[1].name, "Pound");
+	CHECK(r.moves[1].power == 40 && r.moves[1].accuracy == 100 && r.moves[1].pp == 35 && r.moves[1].cat == nds::MoveCategory::PHYSICAL);
+	CHECK((int8_t)r.moves[98].priority == 1 && (int8_t)r.moves[68].priority == -1 && r.moves[33].priority == 0);
+	EQ(r.moves[98].name, "Quick Attack");
+	CHECK(r.moves[53].type == nds::FIRE && r.moves[53].cat == nds::MoveCategory::SPECIAL);	// Flamethrower
+	CHECK(r.tmMoves[0] == 5 && r.tmMoves[92] == 15);	// TM01 Mega Punch, HM01 Cut
+	// items
+	EQ(r.items[1].name, "Master Ball");
+	CHECK(r.items[1].pocket == nds::POCKET_BALLS && r.items[2].price == 1200);
+	EQ(r.items[81].name, "Moon Stone");
+	EQ(r.items[328].name, "TM01");
+	EQ(r.items[424].name, "HM05");
+	CHECK(r.items[GEN1_ONLY + 0x28].name == "Rare Candy" && r.items[GEN1_ONLY + 0x28].price == 4800);
+	// Route 1's grass; fishing at Pallet Town: the Old Rod's Magikarp, the Good Rod's Goldeen and Poliwag, the Super
+	// Rod's; none on Route 1
+	const nds::Location* route1 = place(r, "Route 1");
+	bool pidgey = false, rattata = false;
+	for (const auto& e : route1 ? route1->encounters : std::vector<nds::Encounter>{})
+		if (e.kind == nds::EncounterKind::GRASS) { pidgey |= e.species == 16; rattata |= e.species == 19; }
+	CHECK(pidgey && rattata);
+	const nds::Location* pallet = r.zones.count(0) ? &r.zones.at(0) : nullptr;
+	EQ(pallet ? pallet->name : "", "Pallet Town");
+	auto has = [](const nds::Location* l, nds::EncounterKind k, int species, int level) {
+		for (const auto& e : l ? l->encounters : std::vector<nds::Encounter>{})
+			if (e.kind == k && e.species == species && (!level || e.minLevel == level)) return true;
+		return false;
+	};
+	CHECK(has(pallet, nds::EncounterKind::OLD_ROD, 129, 5) && has(pallet, nds::EncounterKind::GOOD_ROD, 118, 10) &&
+		has(pallet, nds::EncounterKind::GOOD_ROD, 60, 10));
+	int superRod = 0;
+	for (const auto& e : pallet ? pallet->encounters : std::vector<nds::Encounter>{}) superRod += e.kind == nds::EncounterKind::SUPER_ROD;
+	CHECK(superRod >= 1 && superRod <= 4 && !has(route1, nds::EncounterKind::OLD_ROD, 129, 0));
+	// Brock: Geodude and Onix, Lv 12 and 14 (Yellow's 10 and 12), Onix with Bide (Yellow's: Bind and Bide); Lorelei's
+	// Lapras with Blizzard (Red's and Blue's TeamMoves; Yellow's table gives it too)
+	const nds::Trainer* brock = nullptr;
+	const nds::Trainer* lorelei = nullptr;
+	for (const auto& [id, t] : r.trainers)
+	{
+		if (t.name == "Brock" && !brock) brock = &t;
+		if (t.name == "Lorelei" && !lorelei) lorelei = &t;
+	}
+	CHECK(brock && brock->cls == "Brock" && (brock->id & 0xFF) == 1);
+	CHECK(brock && brock->team.size() == 2 && brock->team[0].species == 74 && brock->team[1].species == 95 &&
+		brock->team[0].level == (yellow ? 10 : 12) && brock->team[1].level == (yellow ? 12 : 14));
+	CHECK(brock && brock->team.size() == 2 && brock->team[1].moves[yellow ? 3 : 2] == 117 && (!yellow || brock->team[1].moves[2] == 20));
+	CHECK(lorelei && lorelei->team.size() == 5 && lorelei->team[4].species == 131 && lorelei->team[4].moves[2] == 59);
+	// every place with wild Pokémon is named
+	std::set<nds::EncounterKind> kinds;
+	int places = 0, unnamed = 0;
+	for (const auto& [z, l] : r.zones)
+		if (!l.encounters.empty())
+		{
+			places++;
+			unnamed += l.name.empty();
+			for (const auto& e : l.encounters) kinds.insert(e.kind);
+		}
+	CHECK(unnamed == 0 && places > 50);
+	CHECK(kinds.count(nds::EncounterKind::GRASS) && kinds.count(nds::EncounterKind::SURF) && kinds.count(nds::EncounterKind::OLD_ROD) &&
+		kinds.count(nds::EncounterKind::GOOD_ROD) && kinds.count(nds::EncounterKind::SUPER_ROD));
+	CHECK(r.trainers.size() > 350);
+	fprintf(stderr, "gbpk-roms: %s: %zu places, %d with wild Pokémon, %zu trainers, %zu place names\n", current.c_str(),
+		r.zones.size(), places, r.trainers.size(), r.locationNames.size());
+}
+
 // the hidden items from the maps' events, and the game's guide file over this ROM: every place found by its name,
 // every boss's team the ROM's with its top level. Crystal's hidden items are PokeDaisy's, by flag and item (its
 // GuideCrystalGen.kt's HIDDEN lines: landmark|HIDDEN|item|flag|...).
@@ -347,11 +444,6 @@ int main(int argc, char** argv)
 			continue;
 		}
 		CHECK(listed.count(d.game.romHash));
-		if (d.gen != 2)
-		{
-			fprintf(stderr, "gbpk-roms: %s: %s, Generation I's tables aren't read yet\n", n.c_str(), d.game.title.c_str());
-			continue;
-		}
 		auto t0 = std::chrono::steady_clock::now();
 		auto r = readRom(rom, d, &why);
 		double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
@@ -359,12 +451,17 @@ int main(int argc, char** argv)
 			ms, r ? "" : ": ", r ? "" : why.c_str());
 		CHECK(r);
 		if (!r) continue;
+		read++;
+		if (d.gen == 1)
+		{
+			checkGen1(*r, d);
+			continue;
+		}
 		checkGen2(*r, key, pokedaisy);
 		checkGuide(*r, d, pokedaisy);
 		const char* out = getenv("GBPK_ROMS_OUT");
 		checkPics(*r, *rom, out ? out : "", key);
 		checkMaps(*r, out ? out : "", key);
-		read++;
 	}
 	if (failed)
 	{

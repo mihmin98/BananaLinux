@@ -1,0 +1,176 @@
+{
+  "flags": [],
+  "game": "blue",
+  "gen": 1,
+  "header_title": "POKEMON BLUE",
+  "kind": "gb-pokemon-ram",
+  "ram": {
+    "badges": {
+      "addr": "0xD356",
+      "bank": 1,
+      "src": "pokedaisy pret (wObtainedBadges)"
+    },
+    "bagCount": {
+      "addr": "0xD31D",
+      "bank": 1,
+      "src": "pokedaisy pret (wNumBagItems)"
+    },
+    "battleMon": {
+      "addr": "0xD014",
+      "bank": 1,
+      "src": "pokedaisy pret (wBattleMon)"
+    },
+    "curMap": {
+      "addr": "0xD35E",
+      "bank": 1,
+      "src": "pokedaisy pret (wCurMap)"
+    },
+    "dexCaught": {
+      "addr": "0xD2F7",
+      "bank": 1,
+      "src": "pret (wPokedexOwned)"
+    },
+    "dexSeen": {
+      "addr": "0xD30A",
+      "bank": 1,
+      "src": "pret (wPokedexSeen)"
+    },
+    "enemyMon": {
+      "addr": "0xCFE5",
+      "bank": 0,
+      "src": "pokedaisy pret (wEnemyMon)"
+    },
+    "enemyMonPartyPos": {
+      "addr": "0xCFE8",
+      "bank": 0,
+      "src": "pokedaisy pret (wEnemyMonPartyPos)"
+    },
+    "enemyMons": {
+      "addr": "0xD8A4",
+      "bank": 1,
+      "src": "pokedaisy pret (wEnemyMons)"
+    },
+    "enemyPartyCount": {
+      "addr": "0xD89C",
+      "bank": 1,
+      "src": "pokedaisy pret (wEnemyPartyCount)"
+    },
+    "enemyStatMods": {
+      "addr": "0xCD2E",
+      "bank": 0,
+      "src": "pret (wEnemyMonStatMods)"
+    },
+    "isInBattle": {
+      "addr": "0xD057",
+      "bank": 1,
+      "src": "pokedaisy pret (wIsInBattle)"
+    },
+    "money": {
+      "addr": "0xD347",
+      "bank": 1,
+      "src": "pokedaisy pret (wPlayerMoney)"
+    },
+    "moveMenuType": {
+      "addr": "0xCCDB",
+      "bank": 0,
+      "src": "pokedaisy pret (wMoveMenuType)"
+    },
+    "partyCount": {
+      "addr": "0xD163",
+      "bank": 1,
+      "src": "pokedaisy pret (wPartyCount)"
+    },
+    "partyMenuType": {
+      "addr": "0xD07D",
+      "bank": 1,
+      "src": "pokedaisy pret (wPartyMenuTypeOrMessageID)"
+    },
+    "partyMonNicknames": {
+      "addr": "0xD2B5",
+      "bank": 1,
+      "src": "pret (wPartyMonNicks)"
+    },
+    "partyMonOTs": {
+      "addr": "0xD273",
+      "bank": 1,
+      "src": "pret (wPartyMonOT)"
+    },
+    "partyMons": {
+      "addr": "0xD16B",
+      "bank": 1,
+      "src": "pokedaisy pret (wPartyMons)"
+    },
+    "playTime": {
+      "addr": "0xDA41",
+      "bank": 1,
+      "src": "pokedaisy pret (wPlayTimeHours)"
+    },
+    "playerID": {
+      "addr": "0xD359",
+      "bank": 1,
+      "src": "pret (wPlayerID)"
+    },
+    "playerMonNumber": {
+      "addr": "0xCC2F",
+      "bank": 0,
+      "src": "pokedaisy pret (wPlayerMonNumber)"
+    },
+    "playerName": {
+      "addr": "0xD158",
+      "bank": 1,
+      "src": "pret (wPlayerName)"
+    },
+    "playerStatMods": {
+      "addr": "0xCD1A",
+      "bank": 0,
+      "src": "pret (wPlayerMonStatMods)"
+    },
+    "tileMap": {
+      "addr": "0xC3A0",
+      "bank": 0,
+      "src": "pokedaisy pret (wTileMap)"
+    },
+    "topMenuItemY": {
+      "addr": "0xCC24",
+      "bank": 0,
+      "src": "pokedaisy pret (wTopMenuItemY)"
+    },
+    "trainerClass": {
+      "addr": "0xD031",
+      "bank": 1,
+      "src": "pret (wTrainerClass)"
+    },
+    "trainerNo": {
+      "addr": "0xD05D",
+      "bank": 1,
+      "src": "pret (wTrainerNo)"
+    },
+    "xCoord": {
+      "addr": "0xD362",
+      "bank": 1,
+      "src": "pokedaisy pret (wXCoord)"
+    },
+    "yCoord": {
+      "addr": "0xD361",
+      "bank": 1,
+      "src": "pokedaisy pret (wYCoord)"
+    }
+  },
+  "releases": [
+    {
+      "name": "USA, Europe",
+      "sha1": "d7037c83e1ae5b39bde3c30787637ba1d4c48ce2"
+    },
+    {
+      "hack": true,
+      "name": "Fast Blue (v1.0)",
+      "sha1": "5030c1114554207191f2e6ffb1f2920cf3d7c668"
+    }
+  ],
+  "rom": {},
+  "schema": 1,
+  "sizes": {
+    "bagSlots": 20
+  },
+  "title": "Blue"
+}

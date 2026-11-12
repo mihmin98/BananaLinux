@@ -1,0 +1,177 @@
+{
+  "flags": [],
+  "game": "yellow",
+  "gen": 1,
+  "header_title": "POKEMON YELLOW",
+  "kind": "gb-pokemon-ram",
+  "ram": {
+    "badges": {
+      "addr": "0xD355",
+      "bank": 1,
+      "src": "pokedaisy pret (wObtainedBadges)"
+    },
+    "bagCount": {
+      "addr": "0xD31C",
+      "bank": 1,
+      "src": "pokedaisy pret (wNumBagItems)"
+    },
+    "battleMon": {
+      "addr": "0xD013",
+      "bank": 1,
+      "src": "pokedaisy pret (wBattleMon)"
+    },
+    "curMap": {
+      "addr": "0xD35D",
+      "bank": 1,
+      "src": "pokedaisy pret (wCurMap)"
+    },
+    "dexCaught": {
+      "addr": "0xD2F6",
+      "bank": 1,
+      "src": "pret (wPokedexOwned)"
+    },
+    "dexSeen": {
+      "addr": "0xD309",
+      "bank": 1,
+      "src": "pret (wPokedexSeen)"
+    },
+    "enemyMon": {
+      "addr": "0xCFE4",
+      "bank": 0,
+      "src": "pokedaisy pret (wEnemyMon)"
+    },
+    "enemyMonPartyPos": {
+      "addr": "0xCFE7",
+      "bank": 0,
+      "src": "pokedaisy pret (wEnemyMonPartyPos)"
+    },
+    "enemyMons": {
+      "addr": "0xD8A3",
+      "bank": 1,
+      "src": "pokedaisy pret (wEnemyMons)"
+    },
+    "enemyPartyCount": {
+      "addr": "0xD89B",
+      "bank": 1,
+      "src": "pokedaisy pret (wEnemyPartyCount)"
+    },
+    "enemyStatMods": {
+      "addr": "0xCD2E",
+      "bank": 0,
+      "src": "pret (wEnemyMonStatMods)"
+    },
+    "isInBattle": {
+      "addr": "0xD056",
+      "bank": 1,
+      "src": "pokedaisy pret (wIsInBattle)"
+    },
+    "money": {
+      "addr": "0xD346",
+      "bank": 1,
+      "src": "pokedaisy pret (wPlayerMoney)"
+    },
+    "moveMenuType": {
+      "addr": "0xCCDB",
+      "bank": 0,
+      "src": "pokedaisy pret (wMoveMenuType)"
+    },
+    "partyCount": {
+      "addr": "0xD162",
+      "bank": 1,
+      "src": "pokedaisy pret (wPartyCount)"
+    },
+    "partyMenuType": {
+      "addr": "0xD07C",
+      "bank": 1,
+      "src": "pokedaisy pret (wPartyMenuTypeOrMessageID)"
+    },
+    "partyMonNicknames": {
+      "addr": "0xD2B4",
+      "bank": 1,
+      "src": "pret (wPartyMonNicks)"
+    },
+    "partyMonOTs": {
+      "addr": "0xD272",
+      "bank": 1,
+      "src": "pret (wPartyMonOT)"
+    },
+    "partyMons": {
+      "addr": "0xD16A",
+      "bank": 1,
+      "src": "pokedaisy pret (wPartyMons)"
+    },
+    "pikachuHappiness": {
+      "addr": "0xD46F",
+      "bank": 1,
+      "src": "pret (wPikachuHappiness)"
+    },
+    "playTime": {
+      "addr": "0xDA40",
+      "bank": 1,
+      "src": "pokedaisy pret (wPlayTimeHours)"
+    },
+    "playerID": {
+      "addr": "0xD358",
+      "bank": 1,
+      "src": "pret (wPlayerID)"
+    },
+    "playerMonNumber": {
+      "addr": "0xCC2F",
+      "bank": 0,
+      "src": "pokedaisy pret (wPlayerMonNumber)"
+    },
+    "playerName": {
+      "addr": "0xD157",
+      "bank": 1,
+      "src": "pret (wPlayerName)"
+    },
+    "playerStatMods": {
+      "addr": "0xCD1A",
+      "bank": 0,
+      "src": "pret (wPlayerMonStatMods)"
+    },
+    "tileMap": {
+      "addr": "0xC3A0",
+      "bank": 0,
+      "src": "pokedaisy pret (wTileMap)"
+    },
+    "topMenuItemY": {
+      "addr": "0xCC24",
+      "bank": 0,
+      "src": "pokedaisy pret (wTopMenuItemY)"
+    },
+    "trainerClass": {
+      "addr": "0xD030",
+      "bank": 1,
+      "src": "pret (wTrainerClass)"
+    },
+    "trainerNo": {
+      "addr": "0xD05C",
+      "bank": 1,
+      "src": "pret (wTrainerNo)"
+    },
+    "xCoord": {
+      "addr": "0xD361",
+      "bank": 1,
+      "src": "pokedaisy pret (wXCoord)"
+    },
+    "yCoord": {
+      "addr": "0xD360",
+      "bank": 1,
+      "src": "pokedaisy pret (wYCoord)"
+    }
+  },
+  "releases": [
+    {
+      "name": "USA, Europe",
+      "sha1": "cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1"
+    }
+  ],
+  "rom": {},
+  "schema": 1,
+  "sizes": {
+    "bagSlots": 20,
+    "starterPikachu": 84
+  },
+  "title": "Yellow"
+}

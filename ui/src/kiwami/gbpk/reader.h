@@ -6,8 +6,8 @@
 // make a snapshot of the game's memory, and live() turns it into upstream's nds::Live, in the DS companion's
 // conventions (species by national number, items by Gen IV number, TMs as Gen IV numbers them), so upstream's
 // session, logic and pages take it.
-// Generation II for now (Gold, Silver, Crystal); the addresses are the data file's (games.h), with the flag banks its
-// guide reads (Live::flags).
+// Generation I (Red, Blue, Yellow) and II (Gold, Silver, Crystal); the addresses are the data file's (games.h), with
+// the flag banks its guide reads (Live::flags).
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
@@ -39,8 +39,9 @@ namespace banana::kiwami::gbpk
 		// the emulator's reply when it had no data ("no memory map defined"), from the last set that had one; cleared by
 		// a set answered in full
 		const std::string& error() const { return err_; }
-		// the last complete set as the pages' live state; rom (may be null) gives the species' gender ratios and names.
-		// valid is false until a set with a party of 1-6 whose species list matches it was read.
+		// the last complete set as the pages' live state; rom (may be null) gives the species' gender ratios and names,
+		// and Gen I's national numbers (GbRomData::national; without it a species is its internal index). valid is
+		// false until a set with a party of 1-6 whose species list matches it was read.
 		std::shared_ptr<nds::Live> live(const nds::RomData* rom) const;
 
 	private:
@@ -54,6 +55,8 @@ namespace banana::kiwami::gbpk
 		std::string part_, err_, setErr_;
 		uint64_t serial_ = 0;
 		void finish();
+		void flagsInto(nds::Live& l) const;
+		std::shared_ptr<nds::Live> live1(const nds::RomData* rom) const;
 		// the last set's bytes at a key's address (+off), len of them; null when the key or the bytes aren't there
 		const uint8_t* at(const std::string& key, int off, int len) const;
 	};

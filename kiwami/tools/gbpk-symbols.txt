@@ -9,6 +9,9 @@
 #                                           and its symbols from <build>.sym on the repo's symbols branch. <name> is
 #                                           No-Intro's region and revision. A game's releases must agree on every
 #                                           value below, or the run fails.
+#   <game> hack <sha1> <name>               a ROM hack read as the game it patches: kiwami/tests/gbpk/roms.patches
+#                                           must list <sha1> as a patch of one of the game's releases; its symbols
+#                                           are the release's, and it isn't one of PokeDaisy's set
 #   <games> ram.<key> <symbol>              a WRAM or HRAM address (bank 0 is C000-CFFF and HRAM, 1 the D000 bank)
 #   <games> rom.<key> <symbol>              a ROM address (its bank and address in the bank's window)
 #   <games> const.<key> <file> <name>       a constant from the repo's <file> (rgbds' const macros evaluated)
@@ -19,6 +22,12 @@ crystal release pokecrystal pokecrystal11 USA, Europe (Rev 1)
 crystal release pokecrystal pokecrystal_au Australia
 gold release pokegold pokegold USA, Europe
 silver release pokegold pokesilver USA, Europe
+red release pokered pokered USA, Europe
+blue release pokered pokeblue USA, Europe
+yellow release pokeyellow pokeyellow USA, Europe
+# (Fast Red and Fast Blue v1.0: running with B and a faster bike, a patch that moves nothing read here)
+red hack e7bfd2c2245597da5016e682fca8f19665c6cfd0 Fast Red (v1.0)
+blue hack 5030c1114554207191f2e6ffb1f2920cf3d7c668 Fast Blue (v1.0)
 
 # Gen II's WRAM that PokeDaisy reads too (Gen2Reader.kt's Gen2Config): pret's value must agree with it
 crystal,gold,silver ram.partyCount wPartyCount
@@ -174,3 +183,43 @@ gold,silver const.badgeSoul constants/ram_constants.asm SOULBADGE
 gold,silver const.badgeMarsh constants/ram_constants.asm MARSHBADGE
 gold,silver const.badgeVolcano constants/ram_constants.asm VOLCANOBADGE
 gold,silver const.badgeEarth constants/ram_constants.asm EARTHBADGE
+
+# Gen I's WRAM that PokeDaisy reads too (Gen1Reader.kt's Gen1Config): pret's value must agree with it. The Game Boy
+# has no WRAM banks: D000-DFFF is the data files' bank 1, as the Game Boy Color games'
+red,blue,yellow ram.partyCount wPartyCount
+red,blue,yellow ram.partyMons wPartyMons
+red,blue,yellow ram.bagCount wNumBagItems
+red,blue,yellow ram.money wPlayerMoney
+red,blue,yellow ram.badges wObtainedBadges
+red,blue,yellow ram.curMap wCurMap
+red,blue,yellow ram.yCoord wYCoord
+red,blue,yellow ram.xCoord wXCoord
+red,blue,yellow ram.isInBattle wIsInBattle
+red,blue,yellow ram.battleMon wBattleMon
+red,blue,yellow ram.enemyMon wEnemyMon
+red,blue,yellow ram.enemyMonPartyPos wEnemyMonPartyPos
+red,blue,yellow ram.enemyPartyCount wEnemyPartyCount
+red,blue,yellow ram.enemyMons wEnemyMons
+red,blue,yellow ram.topMenuItemY wTopMenuItemY
+red,blue,yellow ram.moveMenuType wMoveMenuType
+red,blue,yellow ram.tileMap wTileMap
+red,blue,yellow ram.playTime wPlayTimeHours
+red,blue,yellow ram.partyMenuType wPartyMenuTypeOrMessageID
+red,blue,yellow ram.playerMonNumber wPlayerMonNumber
+red,blue,yellow const.bagSlots constants/menu_constants.asm BAG_ITEM_CAPACITY
+
+# Gen I's WRAM that PokeDaisy doesn't read
+red,blue,yellow ram.partyMonOTs wPartyMonOT
+red,blue,yellow ram.partyMonNicknames wPartyMonNicks
+red,blue,yellow ram.playerName wPlayerName
+red,blue,yellow ram.playerID wPlayerID
+red,blue,yellow ram.dexCaught wPokedexOwned
+red,blue,yellow ram.dexSeen wPokedexSeen
+red,blue,yellow ram.playerStatMods wPlayerMonStatMods
+red,blue,yellow ram.enemyStatMods wEnemyMonStatMods
+red,blue,yellow ram.trainerClass wTrainerClass
+red,blue,yellow ram.trainerNo wTrainerNo
+# (Yellow's Pikachu: its happiness, and the species the game checks a party member's against, with its OT's id and name,
+# to tell the starter, engine/pikachu/pikachu_status.asm IsThisPartyMonStarterPikachu)
+yellow ram.pikachuHappiness wPikachuHappiness
+yellow const.starterPikachu constants/pokemon_constants.asm STARTER

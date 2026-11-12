@@ -873,6 +873,8 @@ derived bits, the gyms by their leaders' flags, no `opens`.)
   Yellow (and Fast Red and Fast Blue when there, as Red and Blue) each name 151 species and 165 moves; Bulbasaur's base stats and types; Route 1's grass has Pidgey and
   Rattata; Brock's team is Geodude Lv 12 and Onix Lv 14 (Yellow: Lv 10 and Lv 12).
 - **Commit**: `GB Pokémon companion: Red, Blue and Yellow's species, moves, items, encounters and trainers from the ROM`
+- (*Deviations* 2026-11-12, step 12: the reader's table is `GbRomData::national`, by internal index, which `readRom`
+  fills; every Gen I species' `genderRatio` is 255, none, or the pages draw a gender sign.)
 
 ### 14. Gen I's ROM: the sprites and the town map
 
@@ -1226,6 +1228,34 @@ Where the implementation turned out different from this plan, why, and what chan
     (every trainer of it in `trainer_ids`), as upstream's grouped by name. Its ids and names are `crystal.json`'s
     (`gym-4-jasmine`, `Gym 4: Jasmine`, `e4-will`, `Champion: Lance`).
   - Also changed: `kiwami/GB-POKEMON.md`'s *On the game panel* no longer says the Guide page is empty.
+- **2026-11-12, step 12: Gen I's memory, with what the plan missed** (agreed with the user).
+  - **More files than planned.** `pret-extract.py` gets the `hack` line type the step names, checked against
+    `kiwami/tests/gbpk/roms.patches` (its hash an input in `SOURCES`), and gives D000-DFFF bank 1 where Gen I's
+    `.sym` files say bank 0 (the Game Boy has no WRAM banks), so PokeDaisy's and pret's values compare. `rom.h` and
+    `rom.cpp` hold `gen1Item` and `gen1Pocket` beside `gen2Item` (as step 6 moved Gen II's there), and
+    `GbRomData::national`, the internal index's national number, which step 13 fills and the reader reads (tests give
+    the captures' seven species by pret's constants). `reader.h` names the Gen I half. `games.cpp`: see below.
+    `game.cpp` and `gbpk-ui.sh`: the Gen I run steps 8 and 9 left to this step (Red's captures on the stand-in, Gen
+    I's rules on and off, Gen I's blocks traced, none of Gen II's), the headless capture loader taking a Game Boy
+    capture (C000-DFFF, no `wramx.bin`), and the stand-in's Gen I species genderless and by internal index (255 of
+    them). `GB-POKEMON.md` documents it.
+  - **`detect` needs the 0 after a title whose game has no code.** An 11-letter title was taken as whole, as the Game
+    Boy Color games put their code after it, so `POKEMON REDX` (another title) was Red and would show "Not supported";
+    A4 says another title gets no companion. The index now knows which games' releases have a code.
+  - **The data files' Gen I keys are PokeDaisy's `Gen1Config` names** (`bagCount`, `badges`, `curMap`, `isInBattle`,
+    `playTime`, ...), and pret's lines use them, so the two are compared. Left out by name: the internal species
+    table, the Pokédex tables, PokeDaisy's battle buttons and switch menu; `language` must be English's. Added from
+    pret: the OT and nickname lists, the player's name and id, the Pokédex, both sides' stat mods, the trainer's class
+    and number, Yellow's `wPikachuHappiness` and `STARTER` (the starter Pikachu's internal index), and
+    `BAG_ITEM_CAPACITY`, checked equal to PokeDaisy's `bagSlots` (a size both give must now agree, Gen II's too: none
+    differs).
+  - **Yellow's Pikachu is the game's own test**, `IsThisPartyMonStarterPikachu`: the starter's species, the player's
+    OT id and the OT name's first five letters; any other Pikachu has no friendship.
+  - **Gen I's key items are pret's `KeyItemFlags`** in `items.inc`, the Safari Ball among the balls; TM01-50 and
+    HM01-05 are counted from $C9 and $C4, not listed. `text.cpp`'s Gen I differences are pret's two charmaps compared.
+  - **No Gen I capture is a trainer battle**, so the test makes one from `red_battle`. The captures' play time is the
+    save's 24:18 or a minute on (the faint captures). The party is kept only when every member is read, so an invalid
+    set leaves none.
 
 ## Progress
 
@@ -1245,7 +1275,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 9. Gen-aware pages | done | `GB Pokémon companion: the pages show DVs, stat experience and Special, and no natures or abilities` |
 | 10. Crystal's guide | done | `GB Pokémon companion: Crystal's guide, converted from PokeDaisy's tables` |
 | 11. Gold and Silver's guide, built from the ROM | done | `GB Pokémon companion: Gold and Silver's gyms, Elite Four and Champion as a guide from the ROM's trainers` |
-| 12. Gen I's memory: Red, Blue and Yellow | todo | |
+| 12. Gen I's memory: Red, Blue and Yellow | done | `GB Pokémon companion: Red, Blue and Yellow's memory read into the pages' Live` |
 | 13. Gen I's ROM: the tables | todo | |
 | 14. Gen I's ROM: the sprites and the town map | todo | |
 | 15. Red, Blue and Yellow's guides | todo | |

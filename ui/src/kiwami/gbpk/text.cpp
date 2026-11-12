@@ -1,6 +1,6 @@
 // banana-ui (kiwami): the Game Boy Pokémon games' English character set (text.h). Generation II's, as pret's
-// pokecrystal and pokegold define it (constants/charmap.asm: the games' own table); Gen I's differences come with Red,
-// Blue and Yellow.
+// pokecrystal and pokegold define it (constants/charmap.asm: the games' own table), and where Generation I's differs,
+// as pokered and pokeyellow define it.
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
@@ -41,13 +41,30 @@ namespace banana::kiwami::gbpk
 			default: return "";
 			}
 		}
+		// Gen I's own: é and the contractions 'd 'l 's 't 'v at BA-BF, 'r and 'm at E4-E5, the single quotes at 70-71;
+		// no umlauts, no ← & → and no breakable spaces; nullptr where it's Gen II's
+		const char* gen1(uint8_t b)
+		{
+			static const char* const BA[6] = { "é", "'d", "'l", "'s", "'t", "'v" };
+			if (b >= 0xBA && b <= 0xBF) return BA[b - 0xBA];
+			if ((b >= 0xC0 && b <= 0xC5) || (b >= 0xD0 && b <= 0xD6) || b == 0xDF || (b >= 0xE9 && b <= 0xEB)) return "";
+			if (b == 0xE4) return "'r";
+			if (b == 0xE5) return "'m";
+			if (b == 0x70) return "‘";
+			if (b == 0x71) return "’";
+			if (b == 0x1F || b == 0x22) return "";
+			return nullptr;
+		}
 	}
 
 	std::string decode(int gen, const uint8_t* p, size_t max)
 	{
-		(void)gen;
 		std::string out;
-		for (size_t i = 0; p && i < max && p[i] != 0x50; i++) out += p[i] >= 0x80 ? HIGH[p[i] - 0x80] : low(p[i]);
+		for (size_t i = 0; p && i < max && p[i] != 0x50; i++)
+		{
+			const char* g1 = gen == 1 ? gen1(p[i]) : nullptr;
+			out += g1 ? g1 : p[i] >= 0x80 ? HIGH[p[i] - 0x80] : low(p[i]);
+		}
 		return out;
 	}
 

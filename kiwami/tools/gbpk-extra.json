@@ -1,5 +1,181 @@
 {
   "games": {
+    "blue": {
+      "const": {
+        "bagSlots": {
+          "file": "constants/menu_constants.asm",
+          "symbol": "BAG_ITEM_CAPACITY",
+          "value": 20
+        }
+      },
+      "header_title": "POKEMON BLUE",
+      "ram": {
+        "badges": {
+          "addr": "0xD356",
+          "bank": 1,
+          "symbol": "wObtainedBadges"
+        },
+        "bagCount": {
+          "addr": "0xD31D",
+          "bank": 1,
+          "symbol": "wNumBagItems"
+        },
+        "battleMon": {
+          "addr": "0xD014",
+          "bank": 1,
+          "symbol": "wBattleMon"
+        },
+        "curMap": {
+          "addr": "0xD35E",
+          "bank": 1,
+          "symbol": "wCurMap"
+        },
+        "dexCaught": {
+          "addr": "0xD2F7",
+          "bank": 1,
+          "symbol": "wPokedexOwned"
+        },
+        "dexSeen": {
+          "addr": "0xD30A",
+          "bank": 1,
+          "symbol": "wPokedexSeen"
+        },
+        "enemyMon": {
+          "addr": "0xCFE5",
+          "bank": 0,
+          "symbol": "wEnemyMon"
+        },
+        "enemyMonPartyPos": {
+          "addr": "0xCFE8",
+          "bank": 0,
+          "symbol": "wEnemyMonPartyPos"
+        },
+        "enemyMons": {
+          "addr": "0xD8A4",
+          "bank": 1,
+          "symbol": "wEnemyMons"
+        },
+        "enemyPartyCount": {
+          "addr": "0xD89C",
+          "bank": 1,
+          "symbol": "wEnemyPartyCount"
+        },
+        "enemyStatMods": {
+          "addr": "0xCD2E",
+          "bank": 0,
+          "symbol": "wEnemyMonStatMods"
+        },
+        "isInBattle": {
+          "addr": "0xD057",
+          "bank": 1,
+          "symbol": "wIsInBattle"
+        },
+        "money": {
+          "addr": "0xD347",
+          "bank": 1,
+          "symbol": "wPlayerMoney"
+        },
+        "moveMenuType": {
+          "addr": "0xCCDB",
+          "bank": 0,
+          "symbol": "wMoveMenuType"
+        },
+        "partyCount": {
+          "addr": "0xD163",
+          "bank": 1,
+          "symbol": "wPartyCount"
+        },
+        "partyMenuType": {
+          "addr": "0xD07D",
+          "bank": 1,
+          "symbol": "wPartyMenuTypeOrMessageID"
+        },
+        "partyMonNicknames": {
+          "addr": "0xD2B5",
+          "bank": 1,
+          "symbol": "wPartyMonNicks"
+        },
+        "partyMonOTs": {
+          "addr": "0xD273",
+          "bank": 1,
+          "symbol": "wPartyMonOT"
+        },
+        "partyMons": {
+          "addr": "0xD16B",
+          "bank": 1,
+          "symbol": "wPartyMons"
+        },
+        "playTime": {
+          "addr": "0xDA41",
+          "bank": 1,
+          "symbol": "wPlayTimeHours"
+        },
+        "playerID": {
+          "addr": "0xD359",
+          "bank": 1,
+          "symbol": "wPlayerID"
+        },
+        "playerMonNumber": {
+          "addr": "0xCC2F",
+          "bank": 0,
+          "symbol": "wPlayerMonNumber"
+        },
+        "playerName": {
+          "addr": "0xD158",
+          "bank": 1,
+          "symbol": "wPlayerName"
+        },
+        "playerStatMods": {
+          "addr": "0xCD1A",
+          "bank": 0,
+          "symbol": "wPlayerMonStatMods"
+        },
+        "tileMap": {
+          "addr": "0xC3A0",
+          "bank": 0,
+          "symbol": "wTileMap"
+        },
+        "topMenuItemY": {
+          "addr": "0xCC24",
+          "bank": 0,
+          "symbol": "wTopMenuItemY"
+        },
+        "trainerClass": {
+          "addr": "0xD031",
+          "bank": 1,
+          "symbol": "wTrainerClass"
+        },
+        "trainerNo": {
+          "addr": "0xD05D",
+          "bank": 1,
+          "symbol": "wTrainerNo"
+        },
+        "xCoord": {
+          "addr": "0xD362",
+          "bank": 1,
+          "symbol": "wXCoord"
+        },
+        "yCoord": {
+          "addr": "0xD361",
+          "bank": 1,
+          "symbol": "wYCoord"
+        }
+      },
+      "releases": [
+        {
+          "build": "pokeblue",
+          "name": "USA, Europe",
+          "sha1": "d7037c83e1ae5b39bde3c30787637ba1d4c48ce2"
+        },
+        {
+          "hack": true,
+          "name": "Fast Blue (v1.0)",
+          "sha1": "5030c1114554207191f2e6ffb1f2920cf3d7c668"
+        }
+      ],
+      "repo": "pokered",
+      "rom": {}
+    },
     "crystal": {
       "const": {
         "fastShipLandmark": {
@@ -1153,6 +1329,182 @@
         }
       }
     },
+    "red": {
+      "const": {
+        "bagSlots": {
+          "file": "constants/menu_constants.asm",
+          "symbol": "BAG_ITEM_CAPACITY",
+          "value": 20
+        }
+      },
+      "header_title": "POKEMON RED",
+      "ram": {
+        "badges": {
+          "addr": "0xD356",
+          "bank": 1,
+          "symbol": "wObtainedBadges"
+        },
+        "bagCount": {
+          "addr": "0xD31D",
+          "bank": 1,
+          "symbol": "wNumBagItems"
+        },
+        "battleMon": {
+          "addr": "0xD014",
+          "bank": 1,
+          "symbol": "wBattleMon"
+        },
+        "curMap": {
+          "addr": "0xD35E",
+          "bank": 1,
+          "symbol": "wCurMap"
+        },
+        "dexCaught": {
+          "addr": "0xD2F7",
+          "bank": 1,
+          "symbol": "wPokedexOwned"
+        },
+        "dexSeen": {
+          "addr": "0xD30A",
+          "bank": 1,
+          "symbol": "wPokedexSeen"
+        },
+        "enemyMon": {
+          "addr": "0xCFE5",
+          "bank": 0,
+          "symbol": "wEnemyMon"
+        },
+        "enemyMonPartyPos": {
+          "addr": "0xCFE8",
+          "bank": 0,
+          "symbol": "wEnemyMonPartyPos"
+        },
+        "enemyMons": {
+          "addr": "0xD8A4",
+          "bank": 1,
+          "symbol": "wEnemyMons"
+        },
+        "enemyPartyCount": {
+          "addr": "0xD89C",
+          "bank": 1,
+          "symbol": "wEnemyPartyCount"
+        },
+        "enemyStatMods": {
+          "addr": "0xCD2E",
+          "bank": 0,
+          "symbol": "wEnemyMonStatMods"
+        },
+        "isInBattle": {
+          "addr": "0xD057",
+          "bank": 1,
+          "symbol": "wIsInBattle"
+        },
+        "money": {
+          "addr": "0xD347",
+          "bank": 1,
+          "symbol": "wPlayerMoney"
+        },
+        "moveMenuType": {
+          "addr": "0xCCDB",
+          "bank": 0,
+          "symbol": "wMoveMenuType"
+        },
+        "partyCount": {
+          "addr": "0xD163",
+          "bank": 1,
+          "symbol": "wPartyCount"
+        },
+        "partyMenuType": {
+          "addr": "0xD07D",
+          "bank": 1,
+          "symbol": "wPartyMenuTypeOrMessageID"
+        },
+        "partyMonNicknames": {
+          "addr": "0xD2B5",
+          "bank": 1,
+          "symbol": "wPartyMonNicks"
+        },
+        "partyMonOTs": {
+          "addr": "0xD273",
+          "bank": 1,
+          "symbol": "wPartyMonOT"
+        },
+        "partyMons": {
+          "addr": "0xD16B",
+          "bank": 1,
+          "symbol": "wPartyMons"
+        },
+        "playTime": {
+          "addr": "0xDA41",
+          "bank": 1,
+          "symbol": "wPlayTimeHours"
+        },
+        "playerID": {
+          "addr": "0xD359",
+          "bank": 1,
+          "symbol": "wPlayerID"
+        },
+        "playerMonNumber": {
+          "addr": "0xCC2F",
+          "bank": 0,
+          "symbol": "wPlayerMonNumber"
+        },
+        "playerName": {
+          "addr": "0xD158",
+          "bank": 1,
+          "symbol": "wPlayerName"
+        },
+        "playerStatMods": {
+          "addr": "0xCD1A",
+          "bank": 0,
+          "symbol": "wPlayerMonStatMods"
+        },
+        "tileMap": {
+          "addr": "0xC3A0",
+          "bank": 0,
+          "symbol": "wTileMap"
+        },
+        "topMenuItemY": {
+          "addr": "0xCC24",
+          "bank": 0,
+          "symbol": "wTopMenuItemY"
+        },
+        "trainerClass": {
+          "addr": "0xD031",
+          "bank": 1,
+          "symbol": "wTrainerClass"
+        },
+        "trainerNo": {
+          "addr": "0xD05D",
+          "bank": 1,
+          "symbol": "wTrainerNo"
+        },
+        "xCoord": {
+          "addr": "0xD362",
+          "bank": 1,
+          "symbol": "wXCoord"
+        },
+        "yCoord": {
+          "addr": "0xD361",
+          "bank": 1,
+          "symbol": "wYCoord"
+        }
+      },
+      "releases": [
+        {
+          "build": "pokered",
+          "name": "USA, Europe",
+          "sha1": "ea9bcae617fdf159b045185467ae58b2e4a48b9a"
+        },
+        {
+          "hack": true,
+          "name": "Fast Red (v1.0)",
+          "sha1": "e7bfd2c2245597da5016e682fca8f19665c6cfd0"
+        }
+      ],
+      "repo": "pokered",
+      "rom": {}
+    },
     "silver": {
       "const": {
         "badgeBoulder": {
@@ -1800,6 +2152,187 @@
           "symbol": "WaterMonProbTable"
         }
       }
+    },
+    "yellow": {
+      "const": {
+        "bagSlots": {
+          "file": "constants/menu_constants.asm",
+          "symbol": "BAG_ITEM_CAPACITY",
+          "value": 20
+        },
+        "starterPikachu": {
+          "file": "constants/pokemon_constants.asm",
+          "symbol": "STARTER",
+          "value": 84
+        }
+      },
+      "header_title": "POKEMON YELLOW",
+      "ram": {
+        "badges": {
+          "addr": "0xD355",
+          "bank": 1,
+          "symbol": "wObtainedBadges"
+        },
+        "bagCount": {
+          "addr": "0xD31C",
+          "bank": 1,
+          "symbol": "wNumBagItems"
+        },
+        "battleMon": {
+          "addr": "0xD013",
+          "bank": 1,
+          "symbol": "wBattleMon"
+        },
+        "curMap": {
+          "addr": "0xD35D",
+          "bank": 1,
+          "symbol": "wCurMap"
+        },
+        "dexCaught": {
+          "addr": "0xD2F6",
+          "bank": 1,
+          "symbol": "wPokedexOwned"
+        },
+        "dexSeen": {
+          "addr": "0xD309",
+          "bank": 1,
+          "symbol": "wPokedexSeen"
+        },
+        "enemyMon": {
+          "addr": "0xCFE4",
+          "bank": 0,
+          "symbol": "wEnemyMon"
+        },
+        "enemyMonPartyPos": {
+          "addr": "0xCFE7",
+          "bank": 0,
+          "symbol": "wEnemyMonPartyPos"
+        },
+        "enemyMons": {
+          "addr": "0xD8A3",
+          "bank": 1,
+          "symbol": "wEnemyMons"
+        },
+        "enemyPartyCount": {
+          "addr": "0xD89B",
+          "bank": 1,
+          "symbol": "wEnemyPartyCount"
+        },
+        "enemyStatMods": {
+          "addr": "0xCD2E",
+          "bank": 0,
+          "symbol": "wEnemyMonStatMods"
+        },
+        "isInBattle": {
+          "addr": "0xD056",
+          "bank": 1,
+          "symbol": "wIsInBattle"
+        },
+        "money": {
+          "addr": "0xD346",
+          "bank": 1,
+          "symbol": "wPlayerMoney"
+        },
+        "moveMenuType": {
+          "addr": "0xCCDB",
+          "bank": 0,
+          "symbol": "wMoveMenuType"
+        },
+        "partyCount": {
+          "addr": "0xD162",
+          "bank": 1,
+          "symbol": "wPartyCount"
+        },
+        "partyMenuType": {
+          "addr": "0xD07C",
+          "bank": 1,
+          "symbol": "wPartyMenuTypeOrMessageID"
+        },
+        "partyMonNicknames": {
+          "addr": "0xD2B4",
+          "bank": 1,
+          "symbol": "wPartyMonNicks"
+        },
+        "partyMonOTs": {
+          "addr": "0xD272",
+          "bank": 1,
+          "symbol": "wPartyMonOT"
+        },
+        "partyMons": {
+          "addr": "0xD16A",
+          "bank": 1,
+          "symbol": "wPartyMons"
+        },
+        "pikachuHappiness": {
+          "addr": "0xD46F",
+          "bank": 1,
+          "symbol": "wPikachuHappiness"
+        },
+        "playTime": {
+          "addr": "0xDA40",
+          "bank": 1,
+          "symbol": "wPlayTimeHours"
+        },
+        "playerID": {
+          "addr": "0xD358",
+          "bank": 1,
+          "symbol": "wPlayerID"
+        },
+        "playerMonNumber": {
+          "addr": "0xCC2F",
+          "bank": 0,
+          "symbol": "wPlayerMonNumber"
+        },
+        "playerName": {
+          "addr": "0xD157",
+          "bank": 1,
+          "symbol": "wPlayerName"
+        },
+        "playerStatMods": {
+          "addr": "0xCD1A",
+          "bank": 0,
+          "symbol": "wPlayerMonStatMods"
+        },
+        "tileMap": {
+          "addr": "0xC3A0",
+          "bank": 0,
+          "symbol": "wTileMap"
+        },
+        "topMenuItemY": {
+          "addr": "0xCC24",
+          "bank": 0,
+          "symbol": "wTopMenuItemY"
+        },
+        "trainerClass": {
+          "addr": "0xD030",
+          "bank": 1,
+          "symbol": "wTrainerClass"
+        },
+        "trainerNo": {
+          "addr": "0xD05C",
+          "bank": 1,
+          "symbol": "wTrainerNo"
+        },
+        "xCoord": {
+          "addr": "0xD361",
+          "bank": 1,
+          "symbol": "wXCoord"
+        },
+        "yCoord": {
+          "addr": "0xD360",
+          "bank": 1,
+          "symbol": "wYCoord"
+        }
+      },
+      "releases": [
+        {
+          "build": "pokeyellow",
+          "name": "USA, Europe",
+          "sha1": "cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1"
+        }
+      ],
+      "repo": "pokeyellow",
+      "rom": {}
     }
   },
   "kind": "gb-pokemon-pret",
@@ -1811,6 +2344,14 @@
     "pokegold": {
       "commit": "f2cde36f49b994c143bfd18582182302fdc76492",
       "symbols": "4b57c3aa3169d7a077f9044d4bbdd1caabc10cc7"
+    },
+    "pokered": {
+      "commit": "0dbf95cd12f5b1511c62ce69efe283000f780a8f",
+      "symbols": "bd77855a9f6407f47d61d94c5eefff7ac83c05a5"
+    },
+    "pokeyellow": {
+      "commit": "b452f2ab07185075140061c5084ab866d5e4a794",
+      "symbols": "2dcc4b8f9b3819a898ddaa8e03c70321e7fac446"
     }
   },
   "schema": 1

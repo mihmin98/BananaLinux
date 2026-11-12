@@ -80,8 +80,10 @@ namespace banana::kiwami::gbpk
 			return true;
 		}
 
-		// the six games' header titles, from the data files there are (read once a folder; a copy, for any thread)
-		struct Index { std::string dir; std::vector<std::pair<std::string, std::string>> titles; };	// (title, key)
+		// the six games' header titles, from the data files there are (read once a folder; a copy, for any thread),
+		// and whether a game code follows the title (the Game Boy Color games' releases have one)
+		struct Title { std::string title, key; bool coded = false; };
+		struct Index { std::string dir; std::vector<Title> titles; };
 		Index index()
 		{
 			static std::mutex m;
@@ -94,7 +96,10 @@ namespace banana::kiwami::gbpk
 				for (const auto& g : GAMES)
 				{
 					GameData d;
-					if (loadData(g.key, d, nullptr)) idx.titles.push_back({ d.headerTitle, g.key });
+					if (!loadData(g.key, d, nullptr)) continue;
+					bool coded = false;
+					for (const Release& r : d.releases) coded = coded || !r.code.empty();
+					idx.titles.push_back({ d.headerTitle, g.key, coded });
 				}
 			}
 			return idx;
@@ -209,8 +214,8 @@ namespace banana::kiwami::gbpk
 		// the title at 0x134: 16 bytes in the first cartridges, 11 when a game code follows at 0x13F (the Color
 		// games'); a shorter title ends with a 0
 		const char* t = (const char*)header + 0x134;
-		for (const auto& [title, k] : index().titles)
-			if (memcmp(t, title.data(), title.size()) == 0 && (title.size() >= 11 || t[title.size()] == 0))
+		for (const auto& [title, k, coded] : index().titles)
+			if (memcmp(t, title.data(), title.size()) == 0 && ((coded && title.size() >= 11) || title.size() >= 16 || t[title.size()] == 0))
 			{
 				key = k;
 				return Match::KNOWN;

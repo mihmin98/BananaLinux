@@ -9,8 +9,7 @@ off by default. Its investigation and plan are in `.workspace/0028-gb-pokemon/`.
 
 The games are the English retail releases: Red, Blue and Yellow (USA, Europe), Gold and Silver (USA, Europe), Crystal
 (USA, USA and Europe rev 1, Australia); and two ROM hacks read as the games they patch, Fast Red and Fast Blue (v1.0),
-whose patch moves nothing the companion reads (from Red, Blue and Yellow's data files on). A release is told by the
-whole file's SHA-1.
+whose patch moves nothing the companion reads. A release is told by the whole file's SHA-1.
 
 ## PokeDaisy, and the licence
 
@@ -44,9 +43,11 @@ Where the attribution is:
 Two sources, each read by its own script into files that are committed, so a build needs neither:
 
 - **PokeDaisy**, by `kiwami/tools/pokedaisy-extract.py`: the RAM addresses in its readers' configs (`Gen2Reader.kt`'s
-  `Gen2Config`, read by a small evaluator of its named arguments, `wramx(bank, addr)` and `.copy(...)`), Crystal's
+  `Gen2Config` and `Gen1Reader.kt`'s `Gen1Config`, read by a small evaluator of their named arguments,
+  `wramx(bank, addr)` and `.copy(...)`; Gen I's English configs only, checked by their `language`), Crystal's
   guide RAM (`GuideCrystalGen.kt`), Crystal's guide (*The guides*), and the releases' SHA-1s (`GameTitles.kt`). The configs' fields that are the
-  games' tables (landmarks, gender ratios, TM items, the Pokédex pages' ROM tables) are left out by name; a field it
+  games' tables (landmarks, gender ratios, TM items, the Pokédex pages' ROM tables, Gen I's internal species order)
+  or PokeDaisy's own features (its battle buttons' cursor columns) are left out by name; a field it
   can't read fails the run, listed under `unread:`.
 - **pret's disassemblies** (`pret/pokecrystal`, `pret/pokegold`, and for Red, Blue and Yellow `pret/pokered` and
   `pret/pokeyellow`), by `kiwami/tools/pret-extract.py`, into `kiwami/tools/gbpk-extra.json`: what PokeDaisy doesn't
@@ -90,8 +91,9 @@ them) it verifies the committed files against `SOURCES`' hashes, and `pret-extra
 1. The ROM's first 0x150 bytes are read: the file, or the first `.gb`/`.gbc` in a `.zip` or `.7z` in name order (as
    RetroArch takes it; a `.7z` through the fork's LZMA SDK reader, `ra7z.cpp`, not `7zz`).
 2. Its header's title (0x134) is matched against each data file's `header_title`. Another title: no companion, nothing
-   else read. The title fills 16 bytes on the first cartridges and 11 when a game code follows; a shorter one ends
-   with a 0, so `PM_CRYSTALX` isn't Crystal.
+   else read. The title fills 16 bytes on the first cartridges and 11 when a game code follows (the Game Boy Color
+   games', whose releases have a `code`); a shorter one, or one of a game without a code, ends with a 0, so
+   `PM_CRYSTALX` isn't Crystal and `POKEMON REDX` isn't Red.
 3. The whole file's SHA-1 must be one of the file's `releases`. Another SHA-1, a known title (a European Yellow, a ROM
    hack other than Fast Red and Fast Blue, a bad dump): "Not supported", and nothing is read from the game's memory.
 
@@ -138,11 +140,12 @@ opening no Game Boy panel.
 `ui/src/kiwami/gbpk/reader.cpp` asks the emulator for the game's WRAM as upstream's GBA companion does: a set of
 `READ_CORE_MEMORY` lines every 250 ms, the next only once the last was answered, asked again after 10 s without an
 answer, sent on RetroArch's stdin or through BananaFront's shared memory. The data file's addresses are read in one
-set, neighbours merged into one read: Gen II is 10 or 11 reads, about 1.3 KB. A set whose replies are all there makes
-a snapshot; an emulator that answers with no data (`-1 no memory map defined`) is reported, and nothing is shown.
+set, neighbours merged into one read: Gen II is 10 or 11 reads, about 1.3 KB; Gen I 8 reads, about 1.2 KB. A set
+whose replies are all there makes a snapshot; an emulator that answers with no data (`-1 no memory map defined`) is
+reported, and nothing is shown.
 
 The snapshot becomes upstream's `nds::Live`, in the DS companion's conventions, so upstream's session, logic and pages
-take it:
+take it. Gold, Silver and Crystal (pret's `macros/ram.asm`: `party_struct` 48 bytes, `battle_struct` 32):
 
 - species are national numbers already; an egg is the species list's EGG (0xFD);
 - items are their Gen IV numbers where upstream's logic knows them by number (`items.inc`: the balls, the Apricorn
@@ -164,17 +167,42 @@ take it:
   first bit (Crystal's event flags, 256 bytes from bit 0, so a flag's number is pret's), then the derived bits worked
   out from them (*The data files*). A bank not answered whole gives no flags, and no milestone is marked done by it.
 
+Red, Blue and Yellow (pokered's and pokeyellow's `party_struct` 44 bytes, `battle_struct` 29), the same way where the
+games agree, and otherwise:
+
+- a species is the game's internal index, turned into its national number by the ROM's table
+  (`GbRomData::national`, read with the ROM's tables); an index the table has no species for leaves the party unread,
+  and without a ROM read (the headless tests' stand-in) the index is kept as it is;
+- the stats are Attack, Defense, Speed and Special, Special in both special stats' places, as the DVs are; no held
+  items, no gender, never shiny; no friendship, but Yellow's starter Pikachu has the game's happiness
+  (`wPikachuHappiness`), told as the game tells it (`IsThisPartyMonStarterPikachu`: the starter's species, the
+  player's OT id, and the OT name's first five letters the player's);
+- the bag is one list, split into the pages' pockets by `items.inc`: the balls (the Safari Ball, a key item to the
+  game, among them), TM01-50 and HM01-05 as Gen IV's 328-377 and 420-424, the game's key items (pret's
+  `KeyItemFlags`), and the rest; the stones and rods by their Gen IV numbers, any other item 1000 + its Gen I id;
+- a battle is `wIsInBattle` 1 wild, 2 trainer, our battler over the party member `wPlayerMonNumber` names, the
+  foe's over the trainer's party member out (`wEnemyMonPartyPos`), the stat mods (7 none) with Special's for both
+  special stats, and the trainer as `wTrainerClass` << 8 | `wTrainerNo`;
+- the place is the map's number (`wCurMap`), the money three BCD bytes, the badges one byte, the Pokédex 19 bytes a
+  bit set, and no time of day (`ANY`).
+
 The snapshot counts as the game's only once the party has a count of 1-6 whose species list matches the structures:
 before a save is loaded WRAM holds leftovers.
 
 ### The test captures
 
-`kiwami/tests/gbpk/fixtures/` holds PokeDaisy's RAM captures of Gold, Silver and Crystal (17 folders, unchanged from
-its `app/src/test/resources/fixtures/` at `135ac809`, with their `README.txt`s), under its GPL-3.0 (the folder's
-`LICENSE` and `NOTICE`). `kiwami/tests/gbpk-units.cpp` answers the reader's requests from them as the cores' memory
-maps would (C000-CFFF bank 0, D000-DFFF bank 1, banks 2-7 from 0x10000) and checks what each README says: CHRIS's
-CHIKORITA with a BERRY on Route 29 at (46, 11) in all three Crystals, the wild battles, Gold's party, bag, money and ID,
-the CHAMPION's six in `gold_trainer`.
+`kiwami/tests/gbpk/fixtures/` holds PokeDaisy's RAM captures of the six games (33 folders: 17 of Gold, Silver and
+Crystal, 16 of Red, Blue and Yellow, its English ones; unchanged from its `app/src/test/resources/fixtures/` at
+`135ac809`, with their `README.txt`s), under its GPL-3.0 (the folder's `LICENSE` and `NOTICE`).
+`kiwami/tests/gbpk-units.cpp` answers the reader's requests from them as the cores' memory maps would (C000-CFFF bank
+0, D000-DFFF bank 1, banks 2-7 from 0x10000; a Game Boy game's capture is C000-DFFF alone) and checks what each README
+says: CHRIS's CHIKORITA with a BERRY on Route 29 at (46, 11) in all three Crystals, the wild battles, Gold's party,
+bag, money and ID, the CHAMPION's six in `gold_trainer`; Nelson's six Lv100s with their nicknames in Vermilion City's
+Pokémon Center in Red, Blue and Yellow, his money, badges, play time, Pokédex and 17 bag items, Yellow's Pikachu's
+happiness (and none for one with another OT), the wild CHARMANDER Lv12 against Joseph's PIKACHU, the fainted
+PIKACHU. No Gen I capture is of a trainer battle, so one is made from `red_battle` (a copy of the party's second as
+the trainer's one Pokémon). The internal indexes of the captures' seven species are given as the ROM's table would
+give them (pret's `constants/pokemon_constants.asm`).
 
 ## The battle rules
 
@@ -286,8 +314,8 @@ spots. `kiwami/tests/gbpk-roms.sh` reads the player's own ROMs (*The ROMs for th
 
 ## The data files
 
-`/usr/share/banana/companions/gb-pokemon/<game>.ram.json` (`crystal`, `gold`, `silver`; Red, Blue and Yellow from
-step 12), JSON with sorted keys:
+`/usr/share/banana/companions/gb-pokemon/<game>.ram.json` (`red`, `blue`, `yellow`, `gold`, `silver`, `crystal`),
+JSON with sorted keys:
 
 ```json
 { "schema": 1, "kind": "gb-pokemon-ram", "game": "crystal", "gen": 2, "title": "Crystal",
@@ -302,7 +330,13 @@ step 12), JSON with sorted keys:
 ```
 
 - `header_title` is the ROM header's title (0x134), the same for a game's releases; `code` is a release's game code
-  (0x13F), which only the Game Boy Color games have (Crystal's Australian release has its own, `BYTU`).
+  (0x13F), which only the Game Boy Color games have (Crystal's Australian release has its own, `BYTU`). A release
+  with `"hack": true` is a ROM hack read as the game (Fast Red and Fast Blue): `gbpk-symbols.txt`'s `hack` lines,
+  each checked to be a patch of one of the game's releases in `kiwami/tests/gbpk/roms.patches`.
+- Gen I's `ram` keys are PokeDaisy's `Gen1Config` names where it reads them (`bagCount`, `badges`, `curMap`,
+  `isInBattle`, `playTime`, ...); the Game Boy has no WRAM banks, so pret's symbols give D000-DFFF bank 0 and the file
+  says bank 1, as the cores map it. `sizes` has `bagSlots` (PokeDaisy's and pret's `BAG_ITEM_CAPACITY`, checked
+  equal) and Yellow's `starterPikachu` (its internal index). A size both sources give must agree.
 - A `ram` address's `bank` is 0 for C000-CFFF and HRAM, 1 for the D000 bank the cores map there, and from 2 up
   another WRAM bank, read at `0x10000 + (bank - 2) * 0x1000 + (addr - 0xD000)` through `READ_CORE_MEMORY`.
 - `sizes` are counts and ids: the pockets' capacities, the species, the bytes of event flags (pret's `NUM_EVENTS` /

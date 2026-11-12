@@ -10,7 +10,10 @@
 # - a made-up ROM with Crystal's title and another SHA-1: "Not supported", and nothing asked of the game;
 # - upstream's gamepanel after it: no companion, and not the Game Boy one again;
 # - the pages' blocks for Gen II (KIWAMI_GBPK_TRACE=1 names each drawn): DVs and stat experience, Hidden Power, the
-#   Item row alone, no abilities; the Party page as upstream draws it with them off (KIWAMI_GBPK_PAGES=0).
+#   Item row alone, no abilities; the Party page as upstream draws it with them off (KIWAMI_GBPK_PAGES=0);
+# - Red's pages on its captures (the stand-in's species by their internal index): Gen I's rules on, the party and a
+#   wild battle, Gen I's blocks (one Special row, no Item or Friendship row, no Hidden Power, base stats with
+#   Special), and its rules off before Crystal's companion opens after it.
 # Needs ui/banana-ui (make ui) and ImageMagick (the shots not blank). Run by kiwami/tests/ci.sh when banana-ui is
 # built, or by hand:
 #   kiwami/tests/gbpk-ui.sh       (the shots and logs in $OUT, /tmp/kiwami-gbpk-ui by default)
@@ -122,6 +125,32 @@ gtouch 100 298; gshot pidgey"
     cmp -s "$OUT/$size-pages-party-bot.png" "$OUT/$size-upstream-party-bot.png" &&
         { echo "FAIL $size upstream: the Party page is the same with the fork's blocks off"; fail=1; }
     grep -E 'gbdrag|gb companion: pages:' "$OUT/$size-pages.log" | sort | uniq -c | sed "s/^ */gbpk-ui: $size: /"
+
+    # Red: Gen I's rules, its party of six and a wild battle, Gen I's blocks on the Party, Battle and Dex pages (a
+    # species picked off the list), none of Gen II's; then Crystal's companion, with Gen I's rules off before it
+    export KIWAMI_GBPK_TRACE=1
+    run $size red "home 0; gbpanel 1 $CAP/red; gbhost; gbfeed $CAP/red; sleep 300; gshot party; wait 300; \
+gbfeed $CAP/red_battle; sleep 300; gshot battle; wait 300; gbfeed $CAP/red; sleep 100; gtouch 509 448; gshot dex; \
+gtouch 100 298; gshot species; gbpanel 1 $CAP/crystal; gbhost"
+    unset KIWAMI_GBPK_TRACE
+    logged "gbpanel .*/red: companion Red$"
+    logged "gb companion: rules on \(Generation I\)$"
+    logged "gbhost: ready Red view pages:Party$"
+    logged "gbfeed .*/red: asked [1-9][0-9]*, party 6, battle 0, view pages:Party$"
+    logged "gbfeed .*/red_battle: asked [1-9][0-9]*, party 6, battle 1, view pages:Battle$"
+    logged "gb companion: pages: summary none$"
+    logged "gb companion: pages: no friendship$"
+    logged "gb companion: pages: stats dv statexp 5 rows$"
+    logged "gb companion: pages: wild dvs$"
+    logged "gb companion: pages: base stats special$"
+    logged "gb companion: pages: no abilities$"
+    ! grep -qE "gb companion: pages: (summary item|stats dv statexp 6 rows|wild dvs hidden-power)" "$log" ||
+        { echo "FAIL $size red: a Gen II block drawn for Red"; fail=1; }
+    before "gb companion: rules on \(Generation I\)" "gb companion: rules off"
+    before "gb companion: rules off" "gb companion: rules on \(Generation II\)"
+    shown party; shown battle; shown species
+    differ party battle
+    grep -E 'gb(host|feed|panel)|gb companion: (rules|pages:)' "$log" | sort | uniq -c | sed "s/^ */gbpk-ui: $size: red: /; s|$PWD/||g"
 done
 
 [ $fail = 0 ] || exit 1

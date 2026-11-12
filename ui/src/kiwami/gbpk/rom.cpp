@@ -12,17 +12,34 @@ namespace banana::kiwami::gbpk
 {
 	namespace
 	{
-		// Gen II's item ids to Gen IV's (items.inc)
-		const struct { uint8_t gen2; uint16_t gen4; } ITEMS[] = {
+		// Gen I's and II's item ids to Gen IV's (items.inc)
+		struct ItemId { uint8_t id; uint16_t gen4; };
 #include "items.inc"
-		};
 	}
 
 	uint16_t gen2Item(uint8_t id)
 	{
 		if (!id) return 0;
-		for (const auto& e : ITEMS) if (e.gen2 == id) return e.gen4;
+		for (const auto& e : GEN2_ITEMS) if (e.id == id) return e.gen4;
 		return (uint16_t)(GEN2_ONLY + id);
+	}
+
+	uint16_t gen1Item(uint8_t id)
+	{
+		if (!id) return 0;
+		for (const auto& e : GEN1_ITEMS) if (e.id == id) return e.gen4;
+		// TM01-50 as Gen IV's TM01-50 (328-377), HM01-05 as its HM01-05 (420-424)
+		if (id >= GEN1_TM01 && id < GEN1_TM01 + 50) return (uint16_t)(328 + id - GEN1_TM01);
+		if (id >= GEN1_HM01 && id < GEN1_HM01 + 5) return (uint16_t)(420 + id - GEN1_HM01);
+		return (uint16_t)(GEN1_ONLY + id);
+	}
+
+	nds::Pocket gen1Pocket(uint8_t id)
+	{
+		if ((id >= 0x01 && id <= 0x04) || id == 0x08) return nds::POCKET_BALLS;	// (the Safari Ball, a key item to the game)
+		if (id >= GEN1_HM01 && id < GEN1_TM01 + 50) return nds::POCKET_TMS;
+		for (uint8_t k : GEN1_KEY_ITEMS) if (k == id) return nds::POCKET_KEY;
+		return nds::POCKET_ITEMS;
 	}
 
 	nds::Type gen2Type(uint8_t t)

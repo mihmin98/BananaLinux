@@ -24,6 +24,7 @@ from typing import NoReturn
 
 PIN = '135ac809a597230c1fe3ad6359ae0fe81e233583'      # 1.5.0.1
 DATA = 'app/src/main/kotlin/com/pokedaisy/app/companion/data'
+GEN1 = DATA + '/Gen1Reader.kt'
 GEN2 = DATA + '/Gen2Reader.kt'
 GEN2_DEX = DATA + '/Gen2Dex.kt'
 GEN2_ART = DATA + '/Gen2Art.kt'
@@ -42,11 +43,14 @@ FOLDER = os.path.dirname(SOURCES)
 SECTION = 'pokedaisy'
 
 # The games: their key, generation, title, PokeDaisy's config, its ROM tables' config (Gen2Dex.kt), its art's
-# (Gen2Art.kt) and the title GameTitles.kt gives their releases
+# (Gen2Art.kt) and the title GameTitles.kt gives their releases (Gen I's tables and art come with later steps)
 GAMES = [
     ('crystal', 2, 'Crystal', 'GEN2_CRYSTAL', 'GEN2_DEX_CRYSTAL', 'CRYSTAL', 'Pokémon Crystal'),
     ('gold', 2, 'Gold', 'GEN2_GOLD', 'GEN2_DEX_GOLD_SILVER', 'GOLD', 'Pokémon Gold'),
     ('silver', 2, 'Silver', 'GEN2_SILVER', 'GEN2_DEX_GOLD_SILVER', 'SILVER', 'Pokémon Silver'),
+    ('red', 1, 'Red', 'GEN1_RED', None, None, 'Pokémon Red'),
+    ('blue', 1, 'Blue', 'GEN1_BLUE', None, None, 'Pokémon Blue'),
+    ('yellow', 1, 'Yellow', 'GEN1_YELLOW', None, None, 'Pokémon Yellow'),
 ]
 
 # Gen2Config's fields that are the games' own tables, or PokeDaisy's features outside the companion: left out
@@ -58,6 +62,18 @@ SKIP = {
     'mailItems': 'item ids of the game\'s',
     'growthRates': 'a table of the game\'s, read from the ROM instead',
     'cursorTile': 'a tile id for PokeDaisy\'s battle buttons, not used',
+}
+
+# Gen1Config's fields that are the games' own tables, or PokeDaisy's features outside the companion: left out
+# (language is checked to be English's instead)
+GEN1_SKIP = {
+    'internalToDex': 'a table of the game\'s (its species\' internal order), read from the ROM instead',
+    'pokedex': 'the ROM tables of PokeDaisy\'s Pokédex pages (later steps read their own)',
+    'language': 'English\'s (checked)',
+    'gameCode': 'the European Yellows\' code',
+    'battleMenuLeftX': 'a cursor column for PokeDaisy\'s battle buttons, not used',
+    'battleMenuRightX': 'a cursor column for PokeDaisy\'s battle buttons, not used',
+    'battlePartyMenu': 'a menu id for PokeDaisy\'s battle switch, not used',
 }
 
 # Gen2DexTables' fields: the ROM tables the data files' rom section takes (by its key), the numbers its sizes take,
@@ -198,21 +214,21 @@ def evaluate(expr):
     return None
 
 
-def read_configs(src):
-    """Gen2Config's fields (name -> (type, default text)) and every 'val X = Gen2Config(...)' or '= Y.copy(...)'."""
+def read_configs(src, cls='Gen2Config', where=GEN2):
+    """A config class's fields (name -> (type, default text)) and every 'val X = <cls>(...)' or '= Y.copy(...)'."""
     s = strip_comments(src)
-    m = re.search(r'data class Gen2Config\(', s)
+    m = re.search(r'data class %s\(' % cls, s)
     if not m:
-        fail('no data class Gen2Config in %s' % GEN2)
+        fail('no data class %s in %s' % (cls, where))
     params = s[m.end():closing(s, m.end() - 1)]
     fields = {}
     for p in split_args(params, angles=True):
         pm = re.fullmatch(r'val\s+(\w+)\s*:\s*([^=]+?)\s*(?:=\s*(.+))?', p, re.S)
         if not pm:
-            fail('a Gen2Config field it can\'t read: %s' % p)
+            fail('a %s field it can\'t read: %s' % (cls, p))
         fields[pm.group(1)] = (pm.group(2).strip(), pm.group(3))
     configs = {}
-    for m in re.finditer(r'\bval\s+(\w+)\s*=\s*(Gen2Config|\w+\.copy)\(', s):
+    for m in re.finditer(r'\bval\s+(\w+)\s*=\s*(%s|\w+\.copy)\(' % cls, s):
         body = s[m.end():closing(s, m.end() - 1)]
         args = {}
         for a in split_args(body):
@@ -220,7 +236,7 @@ def read_configs(src):
             if not am:
                 fail('%s: an argument it can\'t read: %s' % (m.group(1), a))
             args[am.group(1)] = am.group(2).strip()
-        base = None if m.group(2) == 'Gen2Config' else m.group(2)[:-len('.copy')]
+        base = None if m.group(2) == cls else m.group(2)[:-len('.copy')]
         configs[m.group(1)] = (base, args)
     return fields, configs
 
@@ -228,7 +244,7 @@ def read_configs(src):
 def resolve(name, fields, configs):
     """A config's arguments over its base's, over Gen2Config's defaults."""
     if name not in configs:
-        fail('no config %s in %s' % (name, GEN2))
+        fail('no config %s in PokeDaisy\'s readers' % name)
     base, args = configs[name]
     if base:
         out = resolve(base, fields, configs)
@@ -236,7 +252,7 @@ def resolve(name, fields, configs):
         out = {k: d for k, (t, d) in fields.items()}
     for k, v in args.items():
         if k not in fields:
-            fail('%s sets %s, which Gen2Config doesn\'t have' % (name, k))
+            fail('%s sets %s, which its config class doesn\'t have' % (name, k))
         out[k] = v
     return out
 
@@ -248,10 +264,10 @@ def addr_value(v):
     return (1 if 0xD000 <= v <= 0xDFFF else 0), v
 
 
-def config_values(name, fields, configs):
+def config_values(name, fields, configs, skip=None):
     ram, sizes, unread = {}, {}, []
     for k, text in resolve(name, fields, configs).items():
-        if k in SKIP:
+        if k in (SKIP if skip is None else skip):
             continue
         typ = fields[k][0]
         if text is None:
@@ -525,6 +541,7 @@ def build(checkout):
         return data.decode('utf-8')
 
     fields, configs = read_configs(read(GEN2))
+    fields1, configs1 = read_configs(read(GEN1), 'Gen1Config', GEN1)
     dex_src = read(GEN2_DEX)
     art_src = read(GEN2_ART)
     guide_src = read(CRYSTAL_GUIDE)
@@ -536,10 +553,15 @@ def build(checkout):
     extra = json.loads(extra_text)
     files, unread = {}, []
     for key, gen, title, cfg, dex_cfg, art_cfg, pd_title in GAMES:
-        ram, sizes, u = config_values(cfg, fields, configs)
+        if gen == 1:
+            ram, sizes, u = config_values(cfg, fields1, configs1, GEN1_SKIP)
+            if resolve(cfg, fields1, configs1).get('language') != "'E'":
+                unread.append('%s.language isn\'t English\'s' % cfg)
+        else:
+            ram, sizes, u = config_values(cfg, fields, configs)
         unread += u
         rom, rom_src = {}, {}
-        dex = read_dex(dex_src, dex_cfg)
+        dex = read_dex(dex_src, dex_cfg) if dex_cfg else {}
         for k, v in dex.items():
             if (dex_cfg, k) in DEX_UNUSED or k in DEX_SKIP:
                 continue
@@ -549,7 +571,7 @@ def build(checkout):
                 sizes[DEX_SIZES[k]] = v
             else:
                 unread.append('%s.%s = %s' % (dex_cfg, k, v))
-        for k, v in read_art(art_src, art_cfg).items():
+        for k, v in (read_art(art_src, art_cfg) if art_cfg else {}).items():
             if k in ART_SKIP:
                 continue
             if k in ART_ROM and isinstance(v, tuple):
@@ -596,6 +618,8 @@ def build(checkout):
                  (key, dex.get('dexEntryFirstBank'), rom['dexEntryFirst'][0]))
         for k, v in g.get('const', {}).items():
             if k != 'numEvents':
+                if k in sizes and sizes[k] != v['value']:
+                    fail('%s sizes.%s: PokeDaisy says %d, pret\'s %s %d' % (key, k, sizes[k], v['symbol'], v['value']))
                 sizes[k] = v['value']
         if 'numEvents' in g.get('const', {}):
             n = g['const']['numEvents']['value']
@@ -604,11 +628,12 @@ def build(checkout):
             if sizes.get('eventFlagBytes', n // 8) != n // 8:
                 fail('%s: PokeDaisy has %d bytes of event flags, pret %d' % (key, sizes['eventFlagBytes'], n // 8))
             sizes['eventFlagBytes'] = n // 8
-        pret_sha1 = {r['sha1'] for r in g['releases']}
+        # (the ROM hacks read as the game they patch aren't PokeDaisy's: gbpk-symbols.txt's hack lines)
+        pret_sha1 = {r['sha1'] for r in g['releases'] if not r.get('hack')}
         if titles.get(pd_title, set()) != pret_sha1:
             fail('%s: GameTitles.kt\'s "%s" SHA-1s %s aren\'t pret\'s %s' %
                  (key, pd_title, sorted(titles.get(pd_title, ())), sorted(pret_sha1)))
-        releases = [{k: r[k] for k in ('sha1', 'name', 'code') if k in r} for r in g['releases']]
+        releases = [{k: r[k] for k in ('sha1', 'name', 'code', 'hack') if k in r} for r in g['releases']]
         # the flag banks its guide reads (Live::flags: each bank's bits from its first, the derived bits after them)
         flags, derived = [], []
         if key == 'crystal':

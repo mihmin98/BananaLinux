@@ -66,8 +66,17 @@ static void testDetect()
 	h = header("POKEMON_SLV", "AAXE");
 	CHECK(detect(h.data(), h.size(), key) == Match::KNOWN);
 	EQ(key, "silver");
-	// Red has no data file until its memory is read
+	// Red's, Blue's and Yellow's titles: no code, the rest of the sixteen bytes 0
 	h = header("POKEMON RED");
+	CHECK(detect(h.data(), h.size(), key) == Match::KNOWN);
+	EQ(key, "red");
+	h = header("POKEMON BLUE");
+	CHECK(detect(h.data(), h.size(), key) == Match::KNOWN);
+	EQ(key, "blue");
+	h = header("POKEMON YELLOW");
+	CHECK(detect(h.data(), h.size(), key) == Match::KNOWN);
+	EQ(key, "yellow");
+	h = header("POKEMON REDX");
 	CHECK(detect(h.data(), h.size(), key) == Match::NONE && key.empty());
 	h = header("TETRIS");
 	CHECK(detect(h.data(), h.size(), key) == Match::NONE);
@@ -115,11 +124,26 @@ static void testData()
 	CHECK(d.derived[4].bit == 2052 && d.derived[4].all && (d.derived[4].of == std::vector<int>{ 68, 1890 }));
 	CHECK(loadData("gold", d, &why) && d.flags.empty() && d.derived.empty());
 
-	// refusals: a game it doesn't know, a missing file
+	// Gen I's: no WRAM banks, so D000-DFFF is bank 1 as the cores map it; Red's and Blue's addresses one byte after
+	// Yellow's; Fast Red and Fast Blue releases of Red and Blue; Yellow's starter Pikachu by its internal index
+	CHECK(loadData("red", d, &why) && d.gen == 1 && d.game.gen == GEN_I && d.game.id == RED && d.game.dexSize == 151);
+	EQ(d.headerTitle, "POKEMON RED");
+	CHECK(d.at("partyCount").bank == 1 && d.at("partyCount").addr == 0xD163 && d.at("enemyMon").bank == 0);
+	CHECK(d.releases.size() == 2 && d.releases[0].code.empty());
+	EQ(d.releases[1].name, "Fast Red (v1.0)");
+	CHECK(d.size("bagSlots") == 20 && d.size("starterPikachu", -1) == -1 && !d.at("pikachuHappiness").ok());
+	CHECK(loadData("blue", d, &why) && d.game.id == BLUE && d.at("partyCount").addr == 0xD163 && d.releases.size() == 2);
+	CHECK(loadData("yellow", d, &why) && d.game.id == YELLOW && d.at("partyCount").addr == 0xD162 && d.releases.size() == 1);
+	CHECK(d.size("starterPikachu") == 0x54 && d.at("pikachuHappiness").addr == 0xD46F);
+	EQ(d.game.title, "Yellow");
+
+	// refusals: a game it doesn't know, a missing file (a folder without the data files)
 	CHECK(!loadData("pinball", d, &why));
 	CHECK(why.find("not one of the six") != std::string::npos);
+	setenv("KIWAMI_GBPK_DIR", testDir.c_str(), 1);
 	CHECK(!loadData("red", d, &why));
 	CHECK(why.find("can't be read") != std::string::npos);
+	setenv("KIWAMI_GBPK_DIR", dataPath.c_str(), 1);
 
 	// ... and flags it can't lay out: Crystal's file with one thing changed, in a folder of its own
 	auto changed = [&](const char* from, const char* to) {
@@ -205,6 +229,11 @@ static void testText()
 	const uint8_t misc[] = { 0x54, 0x7F, 0x81, 0x80, 0x8B, 0x8B, 0x7F, 0xF6, 0xFF, 0xE3, 0xEF, 0x05, 0x50 };
 	EQ(decode(2, misc, sizeof misc), "POKé BALL 09-♂");	// (0x05, a Japanese kana, left out)
 	EQ(decode(2, nullptr, 4), "");
+	// Gen I's own: é and the contractions at BA-BF, 'r and 'm at E4-E5, the single quotes; Gen II's umlauts and its 'd
+	// at D0 are nothing there
+	const uint8_t g1[] = { 0x70, 0x8F, 0x8E, 0x8A, 0xBA, 0x8C, 0x8E, 0x8D, 0x71, 0x7F, 0xE4, 0xE5, 0xBD, 0xBB, 0xC0, 0xD0, 0x50 };
+	EQ(decode(1, g1, sizeof g1), "‘POKéMON’ 'r'm's'd");
+	EQ(decode(2, g1, sizeof g1), "POKMON Ä'd");
 
 	EQ(nameCase("CHIKORITA"), "Chikorita");
 	EQ(nameCase("DOUBLE-EDGE"), "Double-Edge");
@@ -300,7 +329,7 @@ static void testRomList()
 		bool listed = false;
 		for (const Line& x : lines) listed |= x.system == "gb" && x.game == key;
 		CHECK(listed);
-		if (!loadData(key, d, nullptr)) continue;	// Red, Blue and Yellow have their data files from Gen I's memory on
+		CHECK(loadData(key, d, nullptr));
 		games++;
 		for (const Line& x : lines)
 		{
@@ -319,7 +348,7 @@ static void testRomList()
 			released++;
 		}
 	}
-	CHECK(games == 3 && released == 5);
+	CHECK(games == 6 && released == 10);
 }
 
 // ---- the ROM reader on a made-up ROM ----------------------------------------------------------------------------
@@ -762,21 +791,24 @@ struct Dump
 			out.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
 			return !out.empty();
 		};
-		bool ok = file("wram.bin", wram) && file("hram.bin", hram) && file("wramx.bin", wramx);
+		// (a Game Boy game's has no wramx.bin: its WRAM is C000-DFFF, no banks)
+		bool ok = file("wram.bin", wram) && file("hram.bin", hram);
+		if (ok && !file("wramx.bin", wramx)) wramx.clear();
 		if (!ok) fprintf(stderr, "gbpk-units: no capture %s\n", name.c_str());
-		return ok && wram.size() == 0x2000 && wramx.size() == 0x8000;
+		return ok && wram.size() == 0x2000 && (wramx.empty() || wramx.size() == 0x8000);
 	}
 	// a byte as the cores' memory maps give READ_CORE_MEMORY: C000-CFFF bank 0, D000-DFFF bank 1, HRAM, and banks
 	// 2-7 from 0x10000
 	int at(uint32_t a) const
 	{
 		if (a >= 0xC000 && a < 0xD000) return wram[a - 0xC000];
-		if (a >= 0xD000 && a < 0xE000) return wramx[0x1000 + a - 0xD000];
+		if (a >= 0xD000 && a < 0xE000) return wramx.empty() ? wram[a - 0xC000] : wramx[0x1000 + a - 0xD000];
 		if (a >= 0xFF80 && a < 0xFFFF) return hram[a - 0xFF80];
-		if (a >= 0x10000 && a < 0x16000) return wramx[0x2000 + a - 0x10000];
+		if (a >= 0x10000 && a < 0x16000 && !wramx.empty()) return wramx[0x2000 + a - 0x10000];
 		return -1;
 	}
-	uint8_t& d(uint16_t a) { return wramx[0x1000 + a - 0xD000]; }	// (bank 1's byte, to change a capture)
+	// (a byte of C000-CFFF or bank 1's D000-DFFF, to change a capture)
+	uint8_t& d(uint16_t a) { return a < 0xD000 || wramx.empty() ? wram[a - 0xC000] : wramx[0x1000 + a - 0xD000]; }
 };
 
 // the emulator's replies to a set of requests, from a capture; "" when one can't be answered
@@ -1045,6 +1077,189 @@ static void testRomGuide()
 	EQ(next(), "e4-will");
 	l.badges |= 1 << (8 + 4);	// (SOULBADGE: the Elite Four and the Champion done by a later milestone)
 	EQ(next(), "none");
+}
+
+// ---- Generation I's captures ----
+
+// the internal indexes of the Pokémon in Gen I's captures (pret's pokered constants/pokemon_constants.asm), as the ROM's
+// table will give them: PIKACHU $54, SANDSLASH $61, SNORLAX $84, LAPRAS $13, PIDGEOT $97, RATICATE $A6, CHARMANDER $B0
+static std::shared_ptr<GbRomData> gen1Rom()
+{
+	auto r = std::make_shared<GbRomData>();
+	r->gen = 1;
+	r->national.assign(256, 0);
+	const std::pair<int, int> SP[] = { { 0x54, 25 }, { 0x61, 28 }, { 0x84, 143 }, { 0x13, 131 }, { 0x97, 18 }, { 0xA6, 20 }, { 0xB0, 4 } };
+	for (auto [in, nat] : SP) r->national[(size_t)in] = (uint16_t)nat;
+	return r;
+}
+static int bits(const std::vector<uint8_t>& v) { int n = 0; for (uint8_t b : v) n += __builtin_popcount(b); return n; }
+static const uint16_t THUNDERBOLT = 85, THUNDER = 87, SLAM = 21, LIGHT_SCREEN = 113, SCRATCH = 10, EMBER = 52;
+
+// Red, Blue and Yellow on the same save (their READMEs): Nelson, eight badges, ¥999999, 24:18 played, 10 owned and 106
+// seen; six Lv100s, Joseph PIKACHU, Liam SANDSLASH, Fred SNORLAX, Henry LAPRAS, Seth PIDGEOT, Richard RATICATE; 17 bag
+// items, no TOWN MAP; in Vermilion City's Pokémon Center (map $59) at (3, 5)
+static std::shared_ptr<nds::Live> checkGen1(const char* capture, const char* key, Dump* changed = nullptr)
+{
+	Dump d;
+	if (!d.load(capture)) { failed++; return std::make_shared<nds::Live>(); }
+	if (changed) d = *changed;
+	Reader r;
+	r.open(game(key));
+	double now = 0;
+	auto rom = gen1Rom();
+	auto l = replay(r, d, now, rom.get());
+	CHECK(l->valid && l->trainerKnown);
+	EQ(l->trainerName, "Nelson");
+	const uint16_t species[6] = { 25, 28, 143, 131, 18, 20 };
+	const char* const nicks[6] = { "Joseph", "Liam", "Fred", "Henry", "Seth", "Richard" };
+	CHECK(l->party.size() == 6);
+	for (size_t i = 0; i < l->party.size() && i < 6; i++)
+	{
+		const nds::Mon& m = l->party[i];
+		CHECK(m.species == species[i] && m.level == 100 && m.item == 0 && !m.female && !m.shiny() && !m.egg);
+		EQ(m.nick, nicks[i]);
+		EQ(m.otName, "Nelson");
+		CHECK(m.otId == l->tid && m.stats[3] > 0 && m.stats[3] == m.stats[4] && m.ivs[4] == m.ivs[5]);
+	}
+	if (l->party.size() == 6)
+	{
+		const nds::Mon& p = l->party[0];
+		CHECK(p.maxHp == 182 && p.moves[0] == THUNDERBOLT && p.moves[1] == THUNDER && p.moves[2] == SLAM && p.moves[3] == LIGHT_SCREEN);
+		// (no friendship in Red and Blue; Yellow's starter Pikachu has its happiness)
+		CHECK(std::string(key) == "yellow" ? p.friendship > 0 : p.friendship == 0);
+		for (size_t i = 1; i < 6; i++) CHECK(l->party[i].friendship == 0);
+	}
+	CHECK(l->zone == 0x59 && l->mapX == 3 && l->mapY == 5);
+	// (24:18 when saved; the captures that played on reach 24:19)
+	CHECK(l->money == 999999 && l->badges == 0xFF && l->playSeconds / 60 >= 24 * 60 + 18 && l->playSeconds / 60 <= 24 * 60 + 19);
+	CHECK(l->dexCaught.size() == 19 && bits(l->dexCaught) == 10 && bits(l->dexSeen) == 106);
+	size_t items = 0;
+	for (const auto& [pocket, list] : l->bag) items += list.size();
+	CHECK(items == 17 && !inBag(*l, nds::POCKET_KEY, GEN1_ONLY + 0x05));
+	CHECK(l->timeOfDay == nds::TimeOfDay::ANY && l->flags.empty() && r.error().empty());
+	return l;
+}
+
+static void testGen1Captures()
+{
+	// on the field
+	for (auto [cap, key] : { std::pair{ "red", "red" }, { "blue", "blue" }, { "yellow", "yellow" } })
+	{
+		auto l = checkGen1(cap, key);
+		CHECK(l->battle.kind == nds::BattleKind::NONE);
+	}
+	// the bag's pockets: the five stones, HM01-04 as Gen IV's 420-423, the key items by the game's list
+	{
+		auto l = checkGen1("red", "red");
+		CHECK(inBag(*l, nds::POCKET_ITEMS, 81) && inBag(*l, nds::POCKET_ITEMS, 85));
+		CHECK(inBag(*l, nds::POCKET_TMS, 420) && inBag(*l, nds::POCKET_TMS, 423) && !inBag(*l, nds::POCKET_TMS, 424));
+		CHECK(l->bag.count(nds::POCKET_KEY) && l->bag.at(nds::POCKET_KEY).size() == 8);
+	}
+	// a wild CHARMANDER Lv12 (SCRATCH / GROWL / EMBER) against Joseph, PIKACHU Lv100 at 182/182, out of the first
+	// slot: our battler is the party member (its name kept), the foe's types the battle's
+	for (auto [cap, key, hp] : { std::tuple{ "red_battle", "red", 34 }, { "blue_battle", "blue", 32 }, { "yellow_battle", "yellow", -1 } })
+	{
+		auto l = checkGen1(cap, key);
+		const nds::Battle& b = l->battle;
+		CHECK(b.kind == nds::BattleKind::WILD && b.trainerId == 0 && b.foeParty.empty());
+		CHECK(b.ours[0].present && b.ours[0].mon.species == 25 && b.ours[0].mon.level == 100 && b.ours[0].mon.hp == 182 && b.ours[0].mon.maxHp == 182);
+		EQ(b.ours[0].mon.nick, "Joseph");
+		CHECK(b.ours[0].types[0] == nds::ELECTRIC && b.ours[0].types[1] == nds::ELECTRIC && b.ours[0].stages[1] == 0);
+		const nds::Mon& f = b.foes[0].mon;
+		CHECK(b.foes[0].present && f.species == 4 && f.level == 12 && (hp < 0 || f.hp == hp) && f.hp == f.maxHp);
+		CHECK(f.moves[0] == SCRATCH && f.moves[1] == GROWL && f.moves[2] == EMBER && f.moves[3] == 0);
+		CHECK(b.foes[0].types[0] == nds::FIRE && b.foes[0].types[1] == nds::FIRE && f.stats[3] == f.stats[4]);
+	}
+	// the menus' captures read as the battle's
+	for (auto [cap, key] : { std::pair{ "red_battle_menu", "red" }, { "red_battle_move2", "red" }, { "red_battle_party", "red" },
+		{ "red_battle_switch_menu", "red" }, { "yellow_battle_menu", "yellow" }, { "yellow_battle_move2", "yellow" },
+		{ "yellow_battle_party", "yellow" }, { "yellow_battle_switch_menu", "yellow" } })
+	{
+		auto l = checkGen1(cap, key);
+		CHECK(l->battle.kind == nds::BattleKind::WILD && l->battle.ours[0].mon.species == 25 && l->battle.foes[0].mon.species == 4);
+	}
+	// Joseph fainted (0/182), in the party and out in the battle
+	for (auto [cap, key] : { std::pair{ "red_battle_faint", "red" }, { "yellow_battle_faint", "yellow" } })
+	{
+		auto l = checkGen1(cap, key);
+		CHECK(l->party.size() == 6 && l->party[0].hp == 0 && l->battle.ours[0].mon.hp == 0 && !l->battle.ours[0].present);
+	}
+
+	// a trainer battle, made from red_battle: one foe, a copy of the party's second (Liam, SANDSLASH) out, the
+	// trainer's class and number
+	{
+		Dump d;
+		if (d.load("red_battle"))
+		{
+			const GameData g = game("red");
+			auto a = [&](const char* k) { return g.at(k).addr; };
+			d.d(a("isInBattle")) = 2;
+			d.d(a("enemyPartyCount")) = 1;
+			d.d((uint16_t)(a("enemyPartyCount") + 1)) = 0x61;
+			d.d((uint16_t)(a("enemyPartyCount") + 2)) = 0xFF;
+			for (int i = 0; i < 44; i++) d.d((uint16_t)(a("enemyMons") + i)) = d.d((uint16_t)(a("partyMons") + 44 + i));
+			d.d(a("enemyMonPartyPos")) = 0;
+			d.d(a("enemyMon")) = 0x61;
+			d.d(a("trainerClass")) = 0x22;
+			d.d(a("trainerNo")) = 3;
+			auto l = checkGen1("red_battle", "red", &d);
+			const nds::Battle& b = l->battle;
+			CHECK(b.kind == nds::BattleKind::TRAINER && b.trainerId == (0x22 << 8 | 3) && b.foeParty.size() == 1);
+			// (the foe is its party's member: Liam's stat experience, which the battle's copy doesn't hold)
+			CHECK(b.foes[0].mon.species == 28 && b.foes[0].mon.statExp[0] == 250);
+			if (b.foeParty.size() == 1) CHECK(b.foeParty[0].species == 28 && b.foeParty[0].level == 100);
+		}
+	}
+
+	// Yellow's Pikachu with another OT id: not the starter, no happiness
+	{
+		Dump d;
+		if (d.load("yellow"))
+		{
+			d.d((uint16_t)(game("yellow").at("partyMons").addr + 12)) ^= 0xFF;
+			Reader r;
+			r.open(game("yellow"));
+			double now = 0;
+			auto rom = gen1Rom();
+			auto l = replay(r, d, now, rom.get());
+			CHECK(l->valid && l->party.size() == 6 && l->party[0].species == 25 && l->party[0].friendship == 0);
+		}
+	}
+	// without the ROM's table a species is its internal index (PIKACHU $54); an index the table has no species for
+	// (RATICATE's, made one) leaves the party unread
+	{
+		Dump d;
+		if (d.load("red"))
+		{
+			Reader r;
+			r.open(game("red"));
+			double now = 0;
+			auto l = replay(r, d, now);
+			CHECK(l->valid && l->party.size() == 6 && l->party[0].species == 0x54);
+			auto rom = gen1Rom();
+			rom->national[0xA6] = 0;
+			d.d(game("red").at("playTime").addr) ^= 1;	// (a new set: another byte)
+			l = replay(r, d, now, rom.get());
+			CHECK(!l->valid && l->party.empty());
+		}
+	}
+	// a party count of 7, or a species list that isn't the structs', leaves it unread
+	{
+		Dump d;
+		if (d.load("red"))
+		{
+			const uint16_t pc = game("red").at("partyCount").addr;
+			Dump c = d;
+			c.d(pc) = 7;
+			Reader r;
+			r.open(game("red"));
+			double now = 0;
+			CHECK(!replay(r, c, now, gen1Rom().get())->valid);
+			c = d;
+			c.d((uint16_t)(pc + 1)) = 0x13;
+			CHECK(!replay(r, c, now, gen1Rom().get())->valid);
+		}
+	}
 }
 
 static void testCaptures()
@@ -1454,6 +1669,7 @@ int main(int argc, char** argv)
 	testLz();
 	testPictureFormats();
 	testCaptures();
+	testGen1Captures();
 	testDerivedFlags();
 	testGuide();
 	testRomGuide();

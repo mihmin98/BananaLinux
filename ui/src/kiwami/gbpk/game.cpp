@@ -111,7 +111,8 @@ namespace banana::kiwami::gbpk
 	namespace
 	{
 		// a stand-in for the ROM's tables, for a fixture's game with no ROM (CI has none): every species, move and
-		// item named by its number, nothing else
+		// item named by its number, nothing else (Gen I's species by their internal index, all 255 of them: there is no
+		// table to give their national numbers)
 		struct StandIn : nds::RomData
 		{
 			std::shared_ptr<const nds::Sprite> sprite(uint16_t, bool, uint8_t) const override { return nullptr; }
@@ -120,14 +121,14 @@ namespace banana::kiwami::gbpk
 		{
 			auto r = std::make_shared<StandIn>();
 			r->game = d.game;
-			r->species.resize((size_t)d.game.dexSize + 1);
+			r->species.resize(d.gen == 1 ? 256 : (size_t)d.game.dexSize + 1);
 			for (size_t s = 1; s < r->species.size(); s++)
 			{
 				nds::Species& sp = r->species[s];
 				sp.name = "Species " + std::to_string(s);
 				std::fill(std::begin(sp.base), std::end(sp.base), 50);
 				sp.catchRate = 45;
-				sp.genderRatio = 127;
+				sp.genderRatio = d.gen == 1 ? 255 : 127;	// (no genders in Gen I: 255, none, draws no sign)
 			}
 			r->moves.resize(252);
 			for (size_t m = 1; m < r->moves.size(); m++) { r->moves[m].name = "Move " + std::to_string(m); r->moves[m].power = 40; r->moves[m].pp = 35; r->moves[m].accuracy = 100; }
@@ -138,7 +139,8 @@ namespace banana::kiwami::gbpk
 		}
 
 		// a capture's memory (kiwami/tests/gbpk/fixtures/<name>: wram.bin C000-DFFF, hram.bin FF80-FFFE, wramx.bin the
-		// eight WRAM banks) as READ_CORE_MEMORY reads it: C000-CFFF, D000-DFFF bank 1, HRAM, banks 2-7 from 0x10000
+		// eight WRAM banks, none for a Game Boy game's) as READ_CORE_MEMORY reads it: C000-CFFF, D000-DFFF bank 1 (or
+		// wram.bin's without banks), HRAM, banks 2-7 from 0x10000
 		struct Capture
 		{
 			std::vector<uint8_t> wram, hram, wramx;
@@ -149,14 +151,14 @@ namespace banana::kiwami::gbpk
 					o.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
 				};
 				file("wram.bin", wram); file("hram.bin", hram); file("wramx.bin", wramx);
-				return wram.size() == 0x2000 && wramx.size() == 0x8000 && hram.size() >= 0x7F;
+				return wram.size() == 0x2000 && (wramx.empty() || wramx.size() == 0x8000) && hram.size() >= 0x7F;
 			}
 			int at(uint32_t a) const
 			{
 				if (a >= 0xC000 && a < 0xD000) return wram[a - 0xC000];
-				if (a >= 0xD000 && a < 0xE000) return wramx[0x1000 + a - 0xD000];
+				if (a >= 0xD000 && a < 0xE000) return wramx.empty() ? wram[a - 0xC000] : wramx[0x1000 + a - 0xD000];
 				if (a >= 0xFF80 && a < 0xFFFF) return hram[a - 0xFF80];
-				if (a >= 0x10000 && a < 0x16000) return wramx[0x2000 + a - 0x10000];
+				if (a >= 0x10000 && a < 0x16000 && !wramx.empty()) return wramx[0x2000 + a - 0x10000];
 				return -1;
 			}
 		};

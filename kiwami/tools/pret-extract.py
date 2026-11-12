@@ -25,6 +25,7 @@ REPO = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 LIST = 'kiwami/tools/gbpk-symbols.txt'
 OUT = 'kiwami/tools/gbpk-extra.json'
 SOURCES = 'kiwami/rootfs/usr/share/banana/companions/gb-pokemon/SOURCES'
+PATCHES = 'kiwami/tests/gbpk/roms.patches'   # the ROM hacks read as the game they patch (a hack line's check)
 SECTION = 'pret'
 PROG = 'pret-extract'       # (pokedaisy-extract.py sets its own name when it uses these helpers)
 
@@ -55,6 +56,12 @@ def read_list(text):
             if len(a) != 3:
                 fail('%s:%d: a release is <game> release <repo> <build> <name>' % (LIST, n))
             out.append((n, games, 'release', None, a))
+            continue
+        if parts[1] == 'hack':
+            a = parts[2].split(None, 1)
+            if len(a) != 2 or not re.fullmatch(r'[0-9a-f]{40}', a[0]):
+                fail('%s:%d: a hack is <game> hack <sha1> <name>' % (LIST, n))
+            out.append((n, games, 'hack', None, a))
             continue
         kind, dot, key = parts[1].partition('.')
         if kind not in ('ram', 'rom', 'const') or not dot or not key:
@@ -246,6 +253,16 @@ def hexaddr(a):
     return '0x%04X' % a
 
 
+def read_patches():
+    """roms.patches' hacks: the hack's SHA-1 -> its retail ROM's."""
+    out = {}
+    for line in open(os.path.join(REPO, PATCHES), encoding='utf-8').read().splitlines():
+        f = line.split('#', 1)[0].split()
+        if len(f) >= 2:
+            out[f[0]] = f[1]
+    return out
+
+
 def build(pret, lines):
     games = {}
     # the releases first: they say which repository and symbol files a game's values come from
@@ -275,9 +292,21 @@ def build(pret, lines):
             rel['code'] = fix['-i']
         g['releases'].append(rel)
         g.setdefault('syms', []).append(parse_sym(pret.read(repo, 'symbols:%s.sym' % bld)))
+    # the ROM hacks read as the game they patch: roms.patches must list each as a patch of one of the game's releases
+    # (kiwami/tests/gbpk-roms.sh checks the patch moves nothing the companion reads); no symbols of their own
+    patches = read_patches()
+    for n, gs, kind, key, a in lines:
+        if kind != 'hack':
+            continue
+        if len(gs) != 1 or gs[0] not in games:
+            fail('%s:%d: a hack names one game with a release line' % (LIST, n))
+        g = games[gs[0]]
+        if patches.get(a[0]) not in {r['sha1'] for r in g['releases']}:
+            fail('%s:%d: %s isn\'t in %s as a patch of a %s release' % (LIST, n, a[0], PATCHES, gs[0]))
+        g['releases'].append({'hack': True, 'name': a[1], 'sha1': a[0]})
     consts = {}
     for n, gs, kind, key, a in lines:
-        if kind == 'release':
+        if kind in ('release', 'hack'):
             continue
         for game in gs:
             if game not in games:
@@ -302,7 +331,7 @@ def build(pret, lines):
                 g['const'][key] = {'value': consts[ck].v[name], 'symbol': name, 'file': f}
                 continue
             found = set()
-            for rel, syms in zip(g['releases'], g['syms']):
+            for rel, syms in zip([r for r in g['releases'] if not r.get('hack')], g['syms']):
                 if a[0] not in syms:
                     fail('%s:%d: %s isn\'t in %s.sym' % (LIST, n, a[0], rel['build']))
                 found.add(syms[a[0]])
@@ -313,7 +342,8 @@ def build(pret, lines):
             if kind == 'ram':
                 if not (0xC000 <= addr <= 0xDFFF or 0xFF80 <= addr <= 0xFFFE):
                     fail('%s:%d: %s at %04X isn\'t in WRAM or HRAM' % (LIST, n, a[0], addr))
-                bank = bank if 0xD000 <= addr <= 0xDFFF else 0
+                # (Gen I's symbols give D000-DFFF bank 0, the Game Boy having no other: the bank the cores map there)
+                bank = max(bank, 1) if 0xD000 <= addr <= 0xDFFF else 0
             elif addr >= 0x8000:
                 fail('%s:%d: %s at %04X isn\'t in the ROM' % (LIST, n, a[0], addr))
             g[kind][key] = {'bank': bank, 'addr': hexaddr(addr), 'symbol': a[0]}
@@ -400,7 +430,7 @@ def main(argv):
     if not args:
         if not check:
             fail('give the folder of pret\'s checkouts, or --check')
-        n = verify_sources(SECTION, [LIST, OUT])
+        n = verify_sources(SECTION, [LIST, OUT, PATCHES])
         extra = json.load(open(os.path.join(REPO, OUT), encoding='utf-8'))
         values = 0
         for ln, gs, kind, key, a in lines:
@@ -409,8 +439,10 @@ def main(argv):
                 if g is None:
                     fail('%s:%d: no %s in %s' % (LIST, ln, game, OUT))
                 if kind == 'release':
-                    ok = any(r['build'] == a[1] and r['name'] == a[2] and len(r.get('sha1', '')) == 40
+                    ok = any(r.get('build') == a[1] and r['name'] == a[2] and len(r.get('sha1', '')) == 40
                              for r in g['releases'])
+                elif kind == 'hack':
+                    ok = any(r.get('hack') and r['sha1'] == a[0] and r['name'] == a[1] for r in g['releases'])
                 else:
                     v = g.get(kind, {}).get(key)
                     ok = v is not None and v.get('symbol') == a[-1]
@@ -427,6 +459,7 @@ def main(argv):
     body = ['commit %s %s symbols %s' % (r, v['commit'], v['symbols']) for r, v in sorted(data['repos'].items())]
     body += ['in  %s  %s' % (h, w) for h, w in sorted(pret.inputs, key=lambda x: x[1])]
     body += ['in  %s  %s' % (sha256(listing.encode('utf-8')), LIST)]
+    body += ['in  %s  %s' % (sha256(open(os.path.join(REPO, PATCHES), 'rb').read()), PATCHES)]
     body += ['out %s  %s' % (sha256(out.encode('utf-8')), OUT)]
     sources = write_sources(old_sources, SECTION, body)
     if check:

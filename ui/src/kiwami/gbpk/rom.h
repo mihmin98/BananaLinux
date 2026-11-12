@@ -24,6 +24,11 @@ namespace banana::kiwami::gbpk
 	// GEN2_ONLY + the id; 0 for 0
 	constexpr uint16_t GEN2_ONLY = 1000;
 	uint16_t gen2Item(uint8_t id);
+	// Gen I's the same way (1000 + the id: a game is of one generation), its TMs and HMs as Gen IV's; and the pocket the
+	// pages put it in (the game has one bag list): balls, TMs and HMs, the game's key items, the rest
+	constexpr uint16_t GEN1_ONLY = 1000;
+	uint16_t gen1Item(uint8_t id);
+	nds::Pocket gen1Pocket(uint8_t id);
 	// Gen II's types (pret's constants/type_constants.asm: Normal .. Rock 0-5, Bug, Ghost, Steel 7-9, Fire .. Dark
 	// 20-27) in nds::Type's order; NO_TYPE for the others (Curse's ???)
 	nds::Type gen2Type(uint8_t t);
@@ -87,6 +92,7 @@ namespace banana::kiwami::gbpk
 		int gen = 0;
 		Gen2Pics pics;
 		std::vector<HiddenItem> hidden;		// by zone, in the maps' order (the Here page's secrets: host.cpp)
+		std::vector<uint16_t> national;		// Gen I: a species' national number by its internal index (0: none)
 		std::shared_ptr<const nds::Sprite> sprite(uint16_t species, bool female = false, uint8_t form = 0) const override;
 	};
 	// Gen II's tables into out (rom2.cpp)

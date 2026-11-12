@@ -1066,6 +1066,7 @@ namespace banana::nds
 		void dex();
 		void dexDetail(uint16_t n, float x, float y, float w, float& bottom);
 		void log();
+#include "../kiwami/gbpk/pages-decl.inc"	// kiwami: Gen I/II's blocks (the GB Pokémon companion)
 	};
 
 	// ---- the frame -----------------------------------------------------------------------------------------------------
@@ -1494,6 +1495,7 @@ namespace banana::nds
 					}
 			}
 			else text(tr("No balls in your bag"), false, 13, 26, ry, p.muted);
+			if (kiwamiWild(f, y, bottom)) return;	// kiwami: DVs, not a nature and IVs
 			box("bubble", 360, y, 268, bottom - y);
 			std::string nat = dt.rom && f.nature < dt.rom->natures.size() ? dt.rom->natures[f.nature] : "";
 			text(nat, true, 14, 374, y + 8, p.ink, true);
@@ -1619,6 +1621,7 @@ namespace banana::nds
 			float lw = text(label, false, 12, tx, yy + 1, p.muted);
 			text(value, true, 13, tx + std::max(56.0f, lw + 8), yy, p.ink, raw, tw - 60);
 		};
+		if (kiwamiSummary(m, tx, tw, ly)) {} else	// kiwami: no Nature or Ability
 		if (!m.egg)
 		{
 			std::string nat = dt.rom && m.nature < dt.rom->natures.size() ? dt.rom->natures[m.nature] : "";
@@ -1648,6 +1651,7 @@ namespace banana::nds
 			}
 			y += 20;
 		}
+		if (kiwamiNoFriendship(m)) {} else	// kiwami: Gen I has none
 		{
 			text(tr("Friendship"), false, 12, x, y + 1, p.muted);
 			int hearts = (m.friendship * 5 + 127) / 255, kk = std::max(1, (int)std::lround(1.5f * s));
@@ -1658,6 +1662,7 @@ namespace banana::nds
 			y += 26;
 		}
 		// the stats: value, IV, EV (and the nature's up and down)
+		if (!kiwamiStats(m, x, y, w)) {	// kiwami: DVs and stat experience
 		y = heading(tr("Stats"), x, y);
 		text(tr("IV"), false, 11, x + 146, y - 20, p.muted);
 		text(tr("Effort points"), false, 11, x + 214, y - 20, p.muted);
@@ -1687,6 +1692,7 @@ namespace banana::nds
 			textR(t, false, 12, x + w, y, p.muted, true);
 			y += 22;
 		}
+		}	// kiwami:
 		// moves with PP
 		y = heading(tr("Moves"), x, y);
 		for (int i = 0; i < 4; i++)
@@ -2477,6 +2483,7 @@ namespace banana::nds
 		}
 		// abilities (the hidden one, Gen V, quieter)
 		float ay = y + 102;
+		if (kiwamiNoAbilities()) ay -= 15; else	// kiwami: no abilities
 		text(tr("Ability"), false, 11, tx, ay, p.muted);
 		ay += 15;
 		for (int i = 0; i < 3; i++)
@@ -2489,6 +2496,7 @@ namespace banana::nds
 		}
 		y = std::max(sy + 36, ay + 8);
 		// base stats
+		if (!kiwamiBaseStats(*sp, x, y, w)) {	// kiwami: Gen I's Special
 		y = heading(tr("Base stats"), x, y);
 		int total = 0;
 		for (int i = 0; i < 6; i++)
@@ -2505,6 +2513,7 @@ namespace banana::nds
 		text(tr("Total"), false, 12, x, y, p.muted);
 		textR(std::to_string(total), true, 12, x + 96, y, p.ink, true);
 		y += 26;
+		}	// kiwami:
 		// the Pokédex text (the game's)
 		if (!sp->dexText.empty()) y += wrap(sp->dexText, 13, x, y, w, 6, p.ink, true) + 10;
 		// the evolution family: from its first stage
@@ -2971,3 +2980,4 @@ namespace banana::nds
 		return it == d->scrolls.end() ? 0 : it->second.max;
 	}
 }
+#include "../kiwami/gbpk/pages-impl.inc"	// kiwami: Gen I/II's blocks, after the namespace (they include the fork's headers)

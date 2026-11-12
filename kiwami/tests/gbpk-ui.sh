@@ -7,7 +7,9 @@
 #   PokeDaisy's captures (gbfeed): the pages ready, the party read, a battle showing the Battle page and its end the
 #   Party page, the corner switching to the menu and back, the rules on and put back when the host goes;
 # - a made-up ROM with Crystal's title and another SHA-1: "Not supported", and nothing asked of the game;
-# - upstream's gamepanel after it: no companion, and not the Game Boy one again.
+# - upstream's gamepanel after it: no companion, and not the Game Boy one again;
+# - the pages' blocks for Gen II (KIWAMI_GBPK_TRACE=1 names each drawn): DVs and stat experience, Hidden Power, the
+#   Item row alone, no abilities; the Party page as upstream draws it with them off (KIWAMI_GBPK_PAGES=0).
 # Needs ui/banana-ui (make ui) and ImageMagick (the shots not blank). Run by kiwami/tests/ci.sh when banana-ui is
 # built, or by hand:
 #   kiwami/tests/gbpk-ui.sh       (the shots and logs in $OUT, /tmp/kiwami-gbpk-ui by default)
@@ -84,6 +86,39 @@ gamepanel 1 /nonexistent.gba; gtouch 300 300"
     logged "gamepanel /nonexistent.gba: companion none"
     logged "gtouch 300 300: action [0-9]+ keys 0 view $"
     grep -E 'gb(host|feed|panel)|gtouch|gamepanel' "$log" | sed "s/^banana-ui: /gbpk-ui: $size: /; s|$PWD/||g"
+
+    # Gen II's blocks on the pages (pages-impl.inc, traced): the Party page's Item row alone and its DVs and stat
+    # experience, the wild box's DVs and Hidden Power, the Dex page with no abilities (Pidgey, the list dragged to it:
+    # Bulbasaur, its first, isn't seen). A tap on a party row and a drag on the summary still move the page. A page's
+    # taps are the ones it was last drawn with, so a shot comes before each tap. gbdrag is in the panel's own px.
+    k=$(echo $size | awk -Fx '{print $2 / 480}')
+    drag() { echo "gbdrag $(echo "$*" | awk -v k=$k '{for (i = 1; i <= NF; i++) printf "%s%d", (i > 1 ? " " : ""), $i * k}')"; }
+    export KIWAMI_GBPK_TRACE=1
+    run $size pages "home 0; gbpanel 1 $CAP/crystal; gbhost; gbfeed $CAP/crystal; sleep 300; gshot party; \
+$(drag 400 380 400 100); gshot scrolled; gtouch 100 150; gshot second; gbfeed $CAP/crystal_battle; sleep 300; gshot battle; \
+wait 300; gbfeed $CAP/crystal; sleep 100; gshot back; gtouch 509 448; gshot dex; $(drag 100 400 100 64); gshot list; \
+gtouch 100 298; gshot pidgey"
+    unset KIWAMI_GBPK_TRACE
+    logged "gb companion: pages: summary item$"
+    logged "gb companion: pages: stats dv statexp 6 rows$"
+    logged "gb companion: pages: wild dvs hidden-power$"
+    logged "gb companion: pages: no abilities$"
+    logged "gbdrag [0-9 ]+: view pages:Party$"
+    logged "gtouch 509 448: action 0 keys 0 view pages:Dex$"
+    ! grep -qE "gb companion: pages: (summary none|no friendship|base stats|stats dv statexp 5)" "$log" ||
+        { echo "FAIL $size pages: a Gen I block drawn for Crystal"; fail=1; }
+    shown party; shown battle; shown pidgey
+    differ party scrolled; differ scrolled second; differ list pidgey
+    # the same Party page with the fork's blocks off: upstream's, so another picture, and nothing traced
+    export KIWAMI_GBPK_PAGES=0 KIWAMI_GBPK_TRACE=1
+    run $size upstream "home 0; gbpanel 1 $CAP/crystal; gbhost; gbfeed $CAP/crystal; sleep 300; gshot party"
+    unset KIWAMI_GBPK_PAGES KIWAMI_GBPK_TRACE
+    logged "gbfeed .*/crystal: asked [1-9][0-9]*, party 2, battle 0, view pages:Party$"
+    ! grep -q "gb companion: pages:" "$log" || { echo "FAIL $size upstream: the fork's blocks drawn with KIWAMI_GBPK_PAGES=0"; fail=1; }
+    shown party
+    cmp -s "$OUT/$size-pages-party-bot.png" "$OUT/$size-upstream-party-bot.png" &&
+        { echo "FAIL $size upstream: the Party page is the same with the fork's blocks off"; fail=1; }
+    grep -E 'gbdrag|gb companion: pages:' "$OUT/$size-pages.log" | sort | uniq -c | sed "s/^ */gbpk-ui: $size: /"
 done
 
 [ $fail = 0 ] || exit 1

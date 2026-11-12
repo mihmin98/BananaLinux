@@ -251,6 +251,17 @@ namespace banana::kiwami::gbpk
 				s.gbaTitle().c_str(), s.gamePanelView().c_str());
 			return true;
 		}
+		if (op == "gbdrag")
+		{
+			float x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+			cs >> x1 >> y1 >> x2 >> y2;
+			s.gameTouch(x1, y1, true);
+			s.gameTouchMove(x2, y2);
+			s.gameTouch(x2, y2, false);
+			s.gameUpdate(now);
+			fprintf(stderr, "banana-ui: gbdrag %.0f %.0f %.0f %.0f: view %s\n", x1, y1, x2, y2, s.gamePanelView().c_str());
+			return true;
+		}
 		return false;
 	}
 }

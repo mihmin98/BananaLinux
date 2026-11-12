@@ -291,7 +291,21 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    at the game's end, and the headless verbs before the script's `unknown command`. If upstream moves the pipe or the
    feeds, or a third companion joins them, the hooks move with them; `kiwami/tests/gbpk-ui.sh` drives the panel through
    the headless verbs, and the Settings rows (the hook after upstream's Pokémon companion row in Second screen, a page
-   not in `ORDER`, so the rows stay where they are added).
+   not in `ORDER`, so the rows stay where they are added). And the same companion's pages: `ui/src/nds/pages.cpp`
+   includes `ui/src/kiwami/gbpk/pages-decl.inc` as the last members of `struct Pages::Impl` and
+   `pages-impl.inc` after the file's closing brace, and eight lines hand Gen I/II's blocks to them, each by the
+   statement it sits beside: the Battle page's wild box (`if (kiwamiWild(...)) return;` before its
+   `box("bubble", 360, ...)`), the Party page's Nature/Ability/Item rows (`if (kiwamiSummary(...)) {} else` before
+   `if (!m.egg)`), its Friendship block (`if (kiwamiNoFriendship(m)) {} else` before the block's `{`), its Stats block
+   with the Effort points total (`if (!kiwamiStats(...)) {` before `heading(tr("Stats")...)`, the closing `}` before
+   `// moves with PP`), the Dex page's Ability lines (`if (kiwamiNoAbilities()) ay -= 15; else` before
+   `text(tr("Ability")...)`) and its Base stats block (`if (!kiwamiBaseStats(...)) {` before
+   `heading(tr("Base stats")...)`, the `}` after its `y += 26;`). Upstream's lines between a `{` and its `}` keep their
+   indentation. The `.inc` files draw with `Pages::Impl`'s own helpers and constants (`text`, `textR`, `bar`, `fill`,
+   `box`, `heading`, `typeChip`, `measure`, `tr`, `STAT_NAMES`, `GOOD`, ...): one upstream renames or reshapes fails to
+   compile and is followed there. A block upstream reworks moves its hook with it; one upstream adds that shows natures,
+   IVs, EVs or abilities draws empty or upstream's values for the Game Boy games until a hook skips it, which
+   `kiwami/tests/gbpk-ui.sh`'s shots and its trace lines (`KIWAMI_GBPK_TRACE=1`) show.
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

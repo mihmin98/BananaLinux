@@ -694,6 +694,7 @@ Added after step 5 was committed (*Deviations*, 2026-11-11).
 - **Files**:
   - `ui/src/kiwami/gbpk/pages-decl.inc`, `pages-impl.inc` (new)
   - `ui/src/nds/pages.cpp` (hook, 10 lines)
+  - `ui/src/kiwami/gbpk/game.h`, `game.cpp` (changed: the `gbdrag` verb, *Deviations*)
   - `kiwami/tests/gbpk-ui.sh` (changed)
   - `docs/FORK.md` (changed)
 - **Change**: the fork's blocks as members of `Pages::Impl`, drawn with its own helpers (`text`, `textR`, `bar`,
@@ -716,7 +717,7 @@ Added after step 5 was committed (*Deviations*, 2026-11-11).
   - **Hooks in `pages.cpp`**:
     1. inside `struct Pages::Impl`, before its closing `};` (`:1069`):
        `#include "../kiwami/gbpk/pages-decl.inc"	// kiwami: Gen I/II's blocks (the GB Pokémon companion)`
-    2. at the file's end, before the namespace's closing brace: `#include "../kiwami/gbpk/pages-impl.inc"	// kiwami:`
+    2. at the file's end, after the namespace's closing brace (*Deviations*): `#include "../kiwami/gbpk/pages-impl.inc"	// kiwami:`
     3. the Battle page's wild box, before `box("bubble", 360, y, 268, bottom - y);` (`:1497`):
        `if (kiwamiWild(f, y, bottom)) return;	// kiwami: DVs, not a nature and IVs`
        (the function ends after this `if (wild)`/`else`, so returning is the same as skipping to its end)
@@ -1156,6 +1157,19 @@ Where the implementation turned out different from this plan, why, and what chan
     `host.cpp` and `panel.cpp`, which need banana-ui's Settings and pages. The host's states are fed by
     `nds::SessionThread::feed`, and Gen II's badges set on the rules (`setBadges`) from each, as step 4 asked. The
     tests sleep (real time) before a shot: the Session answers on its own thread.
+- **2026-11-12, step 9: hook 2's place, and a drag verb for the tests** (agreed with the user).
+  - `pages-impl.inc` is included after `pages.cpp`'s last line, the closing brace of `namespace banana::nds`, not
+    before it: it includes `gbpk.h` and `rules.h`, whose `namespace banana::kiwami::gbpk` would nest inside
+    `banana::nds` there, and then reopens `banana::nds` for the members. Still one line, and ten in all.
+  - `game.cpp` and `game.h` gain the headless verb `gbdrag <x1> <y1> <x2> <y2>` (a finger down, moved and lifted on the
+    game panel), since upstream's `gtouch` only taps. It takes the panel's own pixels, which `gbpk-ui.sh` scales from
+    640x480 (Settings' scale is private to it). The drag scrolls the Party page's summary, as planned, and the Dex list
+    to Pidgey, the Dex test's species: the Dex opens on Bulbasaur, which the capture hasn't seen, and an unseen
+    species' page stops before its Ability lines.
+  - The Gen I blocks (`summary none`, `no friendship`, five stat rows, `base stats special`) are written here and traced,
+    but first drawn by step 12's Gen I captures; `gbpk-ui.sh` checks that Crystal draws none of them.
+  - Step 8's `make test` renders were gone before they could be kept (`run.sh` clears `ui/tests/out/` first), so the
+    comparison is with `nds-pages-test` built from `git archive HEAD` (step 8's tree) in `/tmp`.
 
 ## Progress
 
@@ -1172,7 +1186,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 6. Gen II's ROM: the tables | done | `GB Pokémon companion: Gold, Silver and Crystal's species, moves, items, encounters and trainers from the ROM` |
 | 7. Gen II's ROM: the sprites and the Pokégear's maps | done | `GB Pokémon companion: Gen II's sprites in their palettes and the Pokégear's maps, decoded from the ROM` |
 | 8. The companion on the game panel, with its Settings rows | done | `GB Pokémon companion: the pages on the game panel for Gold, Silver and Crystal, behind two Settings rows` |
-| 9. Gen-aware pages | todo | |
+| 9. Gen-aware pages | done | `GB Pokémon companion: the pages show DVs, stat experience and Special, and no natures or abilities` |
 | 10. Crystal's guide | todo | |
 | 11. Gold and Silver's guide, built from the ROM | todo | |
 | 12. Gen I's memory: Red, Blue and Yellow | todo | |

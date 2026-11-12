@@ -113,6 +113,27 @@ namespace banana
 			s.items.push_back(it);
 			keys = it.key;
 		}
+		else if (strcmp(group, "Second screen") == 0)
+		{
+			// the Game Boy Pokémon companion (ui/src/kiwami/gbpk/, kiwami/GB-POKEMON.md), right after upstream's Pokémon
+			// companion: a row for each system, read at each game's start (game.cpp). Second screen isn't in build()'s
+			// ORDER, so its rows stay where the hook adds them
+			for (const char* sys : { "gb", "gbc" })
+			{
+				Item it;
+				it.section = group; it.icon = "gamepad";
+				it.label = strcmp(sys, "gb") == 0 ? "Pokémon: Game Boy" : "Pokémon: Game Boy Color";
+				it.key = std::string("kiwami_pokemon_companion_") + sys;
+				it.help = "The Pokémon games' pages on the second screen, as on the GBA: Red, Blue, Yellow, Gold, Silver and "
+					"Crystal (English). A game follows the row of the system it is started from. Based on PokeDaisy by Lidor "
+					"Itzhari.";
+				it.file = s.data + "/settings.conf";
+				it.names = { "Off", "On" }; it.values = { "off", "on" };
+				it.hints = { "No companion.", "Battle, party, a guide, the map and more. Needs Second screen on. Challenge mode applies to it too." };
+				s.items.push_back(it);
+				keys += (keys.empty() ? "" : " ") + it.key;
+			}
+		}
 		// (the tests read it)
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
 	}

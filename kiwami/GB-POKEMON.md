@@ -83,8 +83,8 @@ them) it verifies the committed files against `SOURCES`' hashes, and `pret-extra
 
 ## Which game a ROM is
 
-`ui/src/kiwami/gbpk/games.cpp`, when a game starts from Game Boy or Game Boy Color with the system's row on (the game
-panel calls it from step 8 of the plan):
+`ui/src/kiwami/gbpk/games.cpp`, when a game starts from Game Boy or Game Boy Color with the system's row on
+(*On the game panel*):
 
 1. The ROM's first 0x150 bytes are read: the file, or the first `.gb`/`.gbc` in a `.zip` or `.7z` in name order (as
    RetroArch takes it; a `.7z` through the fork's LZMA SDK reader, `ra7z.cpp`, not `7zz`).
@@ -98,6 +98,39 @@ The six games are values of upstream's `nds::Gen` and `nds::GameId` (`gbpk.h`: `
 `CRYSTAL` 105), so upstream's model, session and pages take them unchanged. Names are decoded from the games' English
 character set, pret's `constants/charmap.asm` (`text.cpp`), the only reference this feature uses for the games' rules
 and layouts (Bulbapedia refuses automated access).
+
+## On the game panel
+
+**Settings > Other systems > Second screen** has two rows after upstream's Pokémon companion, **Pokémon: Game Boy**
+and **Pokémon: Game Boy Color** (`kiwami_pokemon_companion_gb` and `_gbc` in `settings.conf`, Off by default). A game
+follows the row of the system it was started from, not its cartridge's kind: Crystal started from Game Boy needs the
+Game Boy row. Upstream's **Challenge mode** row (`gba_challenge`) applies to it too. The rows' labels, help and hints
+are English in every language: they have no entry in `ui/assets/lang/`.
+
+When a game starts (`ui/src/kiwami/gbpk/game.cpp`, from `main.cpp`'s `kiwami:` hooks), the companion opens if the game
+panel is on, the system is `gb` or `gbc`, its row is On, neither upstream's Pokémon companion nor its game companion
+took the game (a definition of the user's own for it wins), and the header names one of the six. Only then is the
+ROM's header read; with the rows Off nothing of the fork's runs. It makes RetroArch's reply pipe as upstream does
+(`/run/banana/retroarch.out`) and logs `gb companion: <title>`. The game panel's pages are upstream's, on the panel's
+screen with its menu one tap away in the corner, as for a GBA game (`panel.cpp`: Settings' `gbaPanel` is a
+`PanelSwitch` holding upstream's panel and this one).
+
+`host.cpp` reads the whole ROM on a thread (the game in a `.zip` or `.7z` too), checks its SHA-1, then its tables, and
+logs `gb companion: <title> (<release>) read in <N> ms`. Only then does the memory reader open: a ROM it doesn't know
+shows "Not supported" alone and is never asked anything. The rules go to the game's generation (`rules on`), and back
+to upstream's when the game ends (`rules off`). Upstream's `nds::SessionThread` keeps the journey log and the seen
+notices in `/data/banana/cache/gb-companion/`, as the GBA's are kept in `cache/gba-companion/`; a battle's start shows
+the Battle page and its end the Party page. Gen II's badges go to the rules with each state, for the badge boosts. The
+guides come with their own steps; until then the Guide page has none.
+
+`kiwami/tests/gbpk-ui.sh` (in `ci.sh` when banana-ui is built) runs banana-ui headless at both panel sizes: the rows,
+and the panel through three test verbs of the fork's: `gbpanel <screen> <capture folder> [rom]` (the companion for the
+capture's game, with a stand-in for the ROM's tables, every species, move and item named by its number, or the ROM
+given read and checked), `gbfeed <capture folder>` (the reader's requests answered from a capture) and `gbhost` (the
+wait for the ROM's data, as upstream's `gbahost`, which needs a GBA companion). It checks Crystal's capture read into
+the pages, a wild battle's start and end, the corner to the menu and back, the rules put back when the host goes, a
+ROM with Crystal's title and another SHA-1 shown "Not supported" and never asked, and upstream's `gamepanel` after it
+opening no Game Boy panel.
 
 ## Reading the game's memory
 

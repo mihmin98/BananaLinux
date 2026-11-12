@@ -42,6 +42,7 @@
 #include "layout.h"
 #include "nas.h"
 #include "kiwami/library.h"	// kiwami: the library, for Settings' RetroAchievements pages
+#include "kiwami/gbpk/game.h"	// kiwami: the GB Pokémon companion
 
 #include <algorithm>
 #include <atomic>
@@ -1448,6 +1449,7 @@ static int runHeadless(const Options& o, Host& lib, const std::string& variant, 
 			logf("bench: %d frames, %.2f ms average, %.2f ms worst (drawing %.2f / %.2f; the worker %.2f / %.2f), %d of %d screens unchanged, %.1f%% of pixels drawn again", n, total / n, worst,
 				draw / n, drawWorst, work / n, workWorst, be.skipped, 2 * n, 100.0 * be.redrawn / (2.0 * n * be.width() * be.height()));
 		}
+		else if (kiwami::gbpk::Game::script(op, cs, settings, o.headless, now)) {}	// kiwami: gbpanel, gbfeed, gbhost
 		else if (!op.empty()) { logf("unknown command %s", op.c_str()); return 2; }
 		if (settings.isOpen()) { settings.update(now); settings.update(now); }
 		if (lib.pendingLaunch() >= 0)
@@ -2291,6 +2293,7 @@ int main(int argc, char** argv)
 	double quietUntil = 0;	// no frame before this: the last one flipped nothing (see present below)
 	int lastMinute = -1;
 	pkmn::Companion companion;	// the game panel's Pokémon companion (pokemon.h), for the game running
+	kiwami::gbpk::Game gbGame;	// kiwami: the GB Pokémon companion, for the game running
 	std::string gameRomPath;	// the running game's file (the game panel's save states)
 	CompLink compLink;	// the emulator's memory export (complink.h), when the emulator attaches to it (BananaFront, BananaDS)
 	nds::Overlay ndsOverlay;	// the DS companion's picture for BananaDS's bottom screen (nds/overlay.h)
@@ -2573,6 +2576,7 @@ int main(int argc, char** argv)
 			settingsView.gameRom(gameRomPath);
 			settingsView.gameKeyboard(keysOn ? &vkbd : nullptr);
 			settingsView.gameOpen(title, sysName, panelScreen, input.hasTouch(panelScreen));
+			gbGame.attach(outFd, o.data);	// kiwami:
 			settingsView.gbaAttach(gbaHost.get());
 		}
 		be.invalidate();
@@ -2591,6 +2595,7 @@ int main(int argc, char** argv)
 			{
 				// the companion's reads of the game's memory, on RetroArch's stdin beside the tiles' commands
 				std::string r = companion.active() ? companion.requests(t) : gameComp.requests(t);
+				if (gbGame.active()) r = gbGame.requests(t);	// kiwami:
 				// through the emulator's memory export when it attached to it (BananaFront), else RetroArch's stdin
 				if (!r.empty() && !compLink.send(r) && !pipeWrite(cmdFd, r.data(), r.size()) && !pipeWarned) { logf("companion: the command pipe is full or closed"); pipeWarned = true; }
 			}
@@ -2604,6 +2609,7 @@ int main(int argc, char** argv)
 				std::string rep = compLink.receive();
 				if (!rep.empty())
 				{
+					if (gbGame.feed(rep.data(), rep.size())) {} else	// kiwami:
 					if (companion.active()) companion.feed(rep.data(), rep.size());
 					else
 					{
@@ -2668,6 +2674,7 @@ int main(int argc, char** argv)
 				ssize_t n;
 				while ((n = read(outFd, buf, sizeof buf)) > 0)
 				{
+					if (gbGame.feed(buf, (size_t)n)) {} else	// kiwami:
 					if (companion.active()) companion.feed(buf, (size_t)n);
 					else
 					{
@@ -2721,6 +2728,7 @@ int main(int argc, char** argv)
 					});
 		}
 		if (pidFd >= 0) ::close(pidFd);
+		gbGame.release(settingsView, worker.uiLock);	// kiwami:
 		if (gbaHost)
 		{
 			// (before gbaHost goes: the panel's pages let go of it; the Session saves the journey as it stops)
@@ -2831,6 +2839,7 @@ int main(int argc, char** argv)
 			else if (pkOn) logf("pokemon companion: %s", companion.game()->name);
 			else logf("game companion: %s (%s)", gameComp.game()->title.c_str(), gameComp.game()->file.c_str());
 		}
+		gbGame.open(panel, sd.id, rom, o.data + "/settings.conf", pkOn || gcOn, OUT, outFd);	// kiwami: the GB Pokémon companion
 		// the DS Pokémon companion (alpha; settings.conf nds_companion): no panel of its own beside a DS game, so its
 		// pages go to BananaDS through the companion overlay (nds/overlay.h), which BananaDS shows on the bottom screen
 		// when its icon is tapped. test: the overlay's test page for any DS game (the overlay's own checks and cost
@@ -3044,6 +3053,7 @@ int main(int argc, char** argv)
 			if (outFd >= 0) { ::close(outFd); unlink(OUT); }
 			compLink.close();
 			companion.close();
+			gbGame.close();	// kiwami:
 			gameComp.close();
 			input.close();
 			disp.close();

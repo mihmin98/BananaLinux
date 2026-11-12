@@ -215,7 +215,7 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
        system/rootfs/etc/banana/retroarch.cfg \
        system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
        buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update ui/Makefile \
-       ui/src/nds/model.h ui/src/nds/model.cpp ui/src/nds/logic.cpp
+       ui/src/nds/model.h ui/src/nds/model.cpp ui/src/nds/logic.cpp ui/src/gba/panel.h ui/src/settings_gamepanel.cpp
    ```
    (the systems list, whose N64 `ext` line `kiwami/post-build.sh` adds `7z` to (upstream lists it on the other six
    cartridge systems; the build stops if N64's line is gone; a new cartridge system without it may want it too), the defconfigs the fork adds to, the share script
@@ -279,7 +279,19 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    upstream makes to these functions' signatures, `Fighter`, `DamageRange`, `CatchContext` or `Mon` breaks the fork at
    compile time; a rule upstream adds inside them (a held item, a ball) doesn't reach the Game Boy games, which take
    the fork's alone; a new upstream `switch` on `Gen` with no default falls through for the fork's values.
-   `kiwami/tests/gbpk-units.cpp` checks the rules through upstream's entry points.
+   `kiwami/tests/gbpk-units.cpp` checks the rules through upstream's entry points. And the same companion on the game
+   panel: Settings' `gbaPanel` (`settings.h`) is the fork's `kiwami::gbpk::PanelSwitch`, which holds upstream's
+   `gba::Panel` and the Game Boy one and forwards every member `settings_gamepanel.cpp` and `settings.h` call (upstream's
+   first). A member upstream starts calling on `gbaPanel`, or a change to one's signature in `gba/panel.h`, fails to
+   compile until `ui/src/kiwami/gbpk/panel.h` forwards it. In `main.cpp`, the hooks follow the game's companion
+   wiring: `gbGame.open` after the block that makes the reply pipe for upstream's Pokémon and game companions (it
+   makes its own when they didn't), `attach` just before `gbaAttach`, the requests after upstream's `r = ...` line, the
+   two feeds as an `if (...) {} else` before upstream's `if (companion.active())` (the replies of BananaFront's shared
+   memory and of RetroArch's stdout), `release` after the game's pidfd closes and `close` beside `companion.close()`
+   at the game's end, and the headless verbs before the script's `unknown command`. If upstream moves the pipe or the
+   feeds, or a third companion joins them, the hooks move with them; `kiwami/tests/gbpk-ui.sh` drives the panel through
+   the headless verbs, and the Settings rows (the hook after upstream's Pokémon companion row in Second screen, a page
+   not in `ORDER`, so the rows stay where they are added).
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

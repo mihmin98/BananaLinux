@@ -37,8 +37,10 @@ ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.
 # ROM is (the made-up ones in kiwami/tests/gbpk/made-up/, plain and in archives), its data files and the list of ROMs
 # its ROM tests expect (kiwami/tests/gbpk/roms.sha1), its text, its ROM reader on a made-up ROM, its memory reader
 # replayed over PokeDaisy's captures (kiwami/tests/gbpk/fixtures/), and Gen I's and II's rules through upstream's logic
-# and its hooks
-${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/gbpk-units" kiwami/tests/gbpk-units.cpp ui/src/kiwami/gbpk/*.cpp \
+# and its hooks. Its sources but the game panel's (game.cpp, host.cpp, panel.cpp: Settings' and the pages', built
+# only into banana-ui, gbpk-ui.sh below)
+gbpk_data() { ls ui/src/kiwami/gbpk/*.cpp | grep -Ev '/(game|host|panel)\.cpp$'; }
+${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/gbpk-units" kiwami/tests/gbpk-units.cpp $(gbpk_data) \
     ui/src/kiwami/json.cpp ui/src/kiwami/ra7z.cpp ui/src/zip.cpp ui/src/zipdir.cpp ui/src/nds/nitro.cpp ui/src/nds/model.cpp \
     ui/src/nds/logic.cpp ui/src/pokemon.cpp ui/src/pokemap.cpp $(find ui/src/kiwami/third_party/lzma -name '*.kiwami.o') -lz -lpthread
 "$T/gbpk-units" kiwami/rootfs/usr/share/banana/companions/gb-pokemon kiwami/tests/gbpk
@@ -179,6 +181,10 @@ if [ -x ui/banana-ui ]; then kiwami/tests/cores-ui.sh; else echo "cores-ui: skip
 
 # the RetroAchievements group in Settings and the grid scrolling to it, headless, when banana-ui is built
 if [ -x ui/banana-ui ]; then kiwami/tests/ra-ui.sh; else echo "ra-ui: skipped, no ui/banana-ui (make ui)"; fi
+
+# the Game Boy Pokémon companion in banana-ui, headless, when banana-ui is built: its Settings rows, the game panel's
+# pages for Crystal fed PokeDaisy's captures, a ROM it doesn't know, upstream's panel after it
+if [ -x ui/banana-ui ]; then kiwami/tests/gbpk-ui.sh; else echo "gbpk-ui: skipped, no ui/banana-ui (make ui)"; fi
 
 # post-build.sh vetoes tailscaled's state and RetroArch master's credentials file in upstream's share script, each
 # once and the same on a second run, and stops the build when the line isn't there

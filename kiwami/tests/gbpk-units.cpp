@@ -3,7 +3,8 @@
 // reader on a made-up ROM, and its memory reader replayed over PokeDaisy's RAM captures (kiwami/tests/gbpk/fixtures/).
 // Built and run by kiwami/tests/ci.sh with the host's g++ (the vendored C first, make -C ui kiwami-c, for the 7z
 // reader):
-//   g++ -std=c++17 -Wall -Werror -I ui/src kiwami/tests/gbpk-units.cpp ui/src/kiwami/gbpk/*.cpp ui/src/kiwami/json.cpp
+//   g++ -std=c++17 -Wall -Werror -I ui/src kiwami/tests/gbpk-units.cpp <ui/src/kiwami/gbpk/*.cpp but game.cpp, host.cpp
+//       and panel.cpp> ui/src/kiwami/json.cpp
 //       ui/src/kiwami/ra7z.cpp ui/src/zip.cpp ui/src/zipdir.cpp ui/src/nds/nitro.cpp ui/src/nds/model.cpp
 //       ui/src/nds/logic.cpp ui/src/pokemon.cpp ui/src/pokemap.cpp ui/src/kiwami/third_party/lzma/*.kiwami.o -lz -lpthread
 //       -o gbpk-units

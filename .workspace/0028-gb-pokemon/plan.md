@@ -50,8 +50,8 @@ Found while reading the code, each a change to what the investigation proposed:
 
 ## Acceptance criteria
 
-- **A1**: given Settings > Other systems > Second screen, then the rows `Pokémon companion: Game Boy` and
-  `Pokémon companion: Game Boy Color` follow upstream's Pokémon companion row, both Off on a fresh card, each writing
+- **A1**: given Settings > Other systems > Second screen, then the rows `Pokémon: Game Boy` and
+  `Pokémon: Game Boy Color` (renamed in step 8, *Deviations*) follow upstream's Pokémon companion row, both Off on a fresh card, each writing
   `kiwami_pokemon_companion_gb` / `_gbc` = `on`/`off` to `settings.conf`. Their hints say a game follows the folder it
   is started from and that Challenge mode applies.
 - **A2**: given both rows Off, when any game is started, then nothing of the fork's runs: no ROM read, no memory reads,
@@ -1136,6 +1136,26 @@ Where the implementation turned out different from this plan, why, and what chan
     writes a sheet of all 251 pictures (normal, shiny) and each map a game to `GBPK_ROMS_OUT` (default
     `ui/tests/out/gbpk-roms/`), rather than a PNG a picture, and checks too that Pallet Town is on Kanto's map and
     every named place but the special landmark's rooms is on one.
+- **2026-11-12, step 8: the game panel's wiring as it had to be** (agreed with the user).
+  - The memory reader opens only once the ROM's SHA-1 is confirmed (on the host's load thread, then at the host's
+    next tick), not at the launch: the header's title alone makes the reply pipe, but nothing is asked of the game
+    until then, so a ROM it doesn't know is never asked anything (A4), not even in the moment before the check.
+  - Upstream's `gbahost` verb returns when `settings.companion` is null, which it always is for a Game Boy game, so the
+    test uses the fork's `gbhost` (the same wait, the same line). `gbpanel` names the ROM in its line when one is given.
+  - CI has no ROMs: `gbpanel` without a ROM uses a stand-in RomData made in `game.cpp`'s test code (every species, move
+    and item named by its number); with a ROM it reads and checks it as on the device (run by hand with the user's
+    Crystal: read in 10 ms, sprites, Route 29's encounters, damage and catch chance on the pages).
+  - No Gen I data before step 12: the rules-off check runs on Crystal's capture (Gen II turns the rules on too), and
+    `gbpk-units` already checks the chart is upstream's after `useRules(Gen::IV)`. Step 12 adds Gen I's run.
+  - The Game Boy host is handed to the panel once (`PanelSwitch::pending`, taken by the next `open`), so upstream's
+    `gamepanel` after a Game Boy game opens its own panel or none.
+  - The rows are **Pokémon: Game Boy** and **Pokémon: Game Boy Color** (A1 changed): the top screen's title is cut
+    at 26 characters at both sizes, so the plan's labels both showed as "Pokémon companion: Game Bo" (the user's
+    choice).
+  - `kiwami/tests/ci.sh` and `gbpk-roms.sh` build their binaries from `ui/src/kiwami/gbpk/` without `game.cpp`,
+    `host.cpp` and `panel.cpp`, which need banana-ui's Settings and pages. The host's states are fed by
+    `nds::SessionThread::feed`, and Gen II's badges set on the rules (`setBadges`) from each, as step 4 asked. The
+    tests sleep (real time) before a shot: the Session answers on its own thread.
 
 ## Progress
 
@@ -1151,7 +1171,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 5a. Fast Red and Fast Blue in the ROM list, and the check of their patch | done | `GB Pokémon companion: Fast Red and Fast Blue in the ROM list, checked to patch nothing it reads` |
 | 6. Gen II's ROM: the tables | done | `GB Pokémon companion: Gold, Silver and Crystal's species, moves, items, encounters and trainers from the ROM` |
 | 7. Gen II's ROM: the sprites and the Pokégear's maps | done | `GB Pokémon companion: Gen II's sprites in their palettes and the Pokégear's maps, decoded from the ROM` |
-| 8. The companion on the game panel, with its Settings rows | todo | |
+| 8. The companion on the game panel, with its Settings rows | done | `GB Pokémon companion: the pages on the game panel for Gold, Silver and Crystal, behind two Settings rows` |
 | 9. Gen-aware pages | todo | |
 | 10. Crystal's guide | todo | |
 | 11. Gold and Silver's guide, built from the ROM | todo | |

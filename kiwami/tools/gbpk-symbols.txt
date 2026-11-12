@@ -308,3 +308,19 @@ red,blue,yellow rom.townMap CompressedMap
 red,blue,yellow rom.townMapTiles WorldMapTileGraphics
 red,blue,yellow rom.townMapOrder TownMapOrder
 red,blue,yellow rom.townMapOrderEnd TownMapOrderEnd
+
+# Red's, Blue's and Yellow's guides (pokedaisy-extract.py, from PokeDaisy's GuideGen1Gen.kt, which has these too:
+# pret's value must agree with it): the event flags and the toggleable objects' flags, which the milestones' done_when
+# name; the event flags' count; and the toggleable object the Hall of Fame hides (scripts/HallOfFame.asm), the Cerulean
+# Cave guard, by which an Elite Four member stays beaten once the League is won (the lobby clears their rooms' flags)
+red,blue,yellow ram.eventFlags wEventFlags
+red,blue,yellow ram.toggleFlags wToggleableObjectFlags
+red,blue,yellow const.numEvents constants/event_constants.asm NUM_EVENTS
+red,blue,yellow const.toggleCeruleanCaveGuy constants/toggle_constants.asm TOGGLE_CERULEAN_CAVE_GUY
+# (the hidden items, ui/src/kiwami/gbpk/rom1.cpp: the maps with hidden events, each map's events, those that call
+# HiddenItems, and their flags by HiddenItemCoords' order; Red's and Blue's maps point to their events through a table
+# of their own, Yellow's each with its pointer)
+red,blue,yellow rom.hiddenEventMaps HiddenEventMaps
+red,blue rom.hiddenEventPointers HiddenEventPointers
+red,blue,yellow rom.hiddenItems HiddenItems
+red,blue,yellow rom.hiddenItemCoords HiddenItemCoords

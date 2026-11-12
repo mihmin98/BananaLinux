@@ -2,7 +2,8 @@
 // the repository: each .gb/.gbc in the folder that is a release the data files list (kiwami/tests/gbpk/roms.sha1, by
 // SHA-1) is read, and what the ROM is known to hold is checked against what was read, the game's guide file with it.
 // With a PokeDaisy checkout, every species' gender ratio and growth rate are compared with PokeDaisy's tables
-// (Gen2SpeciesCrystal.kt), and Crystal's hidden items with its guide's (GuideCrystalGen.kt). With
+// (Gen2SpeciesCrystal.kt), and Crystal's, Red's, Blue's and Yellow's hidden items with their guides' (GuideCrystalGen.kt,
+// GuideGen1Gen.kt). With
 // GBPK_ROMS_OUT set, every species' front picture (normal, and Gen II's shiny) and the region maps are written there as
 // PNGs, a game's <key>-pics.png, <key>-shiny.png and <key>-<map>.png, for looking at. Built and run by
 // kiwami/tests/gbpk-roms.sh after its check of the folder:
@@ -29,6 +30,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <vector>
 
 using namespace banana;
@@ -364,8 +366,9 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 }
 
 // the hidden items from the maps' events, and the game's guide file over this ROM: every place found by its name,
-// every boss's team the ROM's with its top level. Crystal's hidden items are PokeDaisy's, by flag and item (its
-// GuideCrystalGen.kt's HIDDEN lines: landmark|HIDDEN|item|flag|...).
+// every boss's teams the ROM's with its top level (the Champion of Gen I three, one for each starter). Crystal's hidden
+// items are PokeDaisy's, by flag and item (its GuideCrystalGen.kt's HIDDEN lines: landmark|HIDDEN|item|flag|...); Red's,
+// Blue's and Yellow's by map, flag and item (GuideGen1Gen.kt's <prefix>_AREAS_RAW: map|HIDDEN|item|0x20000 + flag|...).
 static void checkGuide(const nds::RomData& r, const GameData& d, const std::string& pokedaisy)
 {
 	const std::vector<HiddenItem>& hidden = static_cast<const GbRomData&>(r).hidden;
@@ -387,6 +390,30 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 		for (const HiddenItem& h : hidden) ours.insert({ h.flag, h.item });
 		CHECK(theirs.size() == 85 && ours == theirs);
 		fprintf(stderr, "gbpk-roms: %s: the %zu hidden items are PokeDaisy's, by flag and item\n", current.c_str(), theirs.size());
+	}
+	if (d.gen == 1 && !pokedaisy.empty())
+	{
+		std::ifstream f(pokedaisy + "/app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen1Gen.kt");
+		const std::string table = std::string(d.key == "red" ? "G1R" : d.key == "blue" ? "G1B" : "G1Y") + "_AREAS_RAW";
+		std::set<std::tuple<int, int, int>> theirs, ours;
+		bool in = false;
+		for (std::string l; std::getline(f, l);)
+		{
+			if (l.find("val " + table) != std::string::npos) in = true;
+			else if (in && l == ")") break;
+			int map, item, flag;
+			if (in && sscanf(l.c_str(), "%d|HIDDEN|%d|%d|", &map, &item, &flag) == 3) theirs.insert({ map, flag - 0x20000, gen1Item((uint8_t)item) });
+		}
+		// (and one more: the item left on UNUSED_MAP_6F, a map the game never loads, which PokeDaisy's generator leaves
+		// out; the Here page lists a map's own, so it never shows)
+		const int UNUSED_MAP_6F = 0x6F;
+		int unused = 0;
+		for (const HiddenItem& h : hidden)
+			if (h.zone == UNUSED_MAP_6F) unused++;
+			else ours.insert({ h.zone, h.flag, h.item });
+		CHECK(theirs.size() == (d.key == "yellow" ? 54u : 53u) && unused == 1 && ours.size() + 1 == hidden.size() && ours == theirs);
+		fprintf(stderr, "gbpk-roms: %s: the %zu hidden items are PokeDaisy's, by map, flag and item, and one on a map the game never loads\n",
+			current.c_str(), theirs.size());
 	}
 	if (d.game.id == GOLD || d.game.id == SILVER)
 	{
@@ -431,16 +458,20 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 	EQ(unresolved, "");
 	for (const nds::Milestone& m : g.milestones)
 	{
-		auto t = m.trainerIds.empty() ? r.trainers.end() : r.trainers.find(m.trainerIds[0]);
-		int top = 0;
-		if (t != r.trainers.end()) for (const nds::TrainerMon& tm : t->second.team) top = std::max<int>(top, tm.level);
-		if (t == r.trainers.end() || top != m.levelCap)
+		CHECK(m.trainerIds.size() == (d.gen == 1 && m.kind == "champion" ? 3u : 1u));
+		for (size_t i = 0; i < std::max<size_t>(1, m.trainerIds.size()); i++)
 		{
-			failed++;
-			fprintf(stderr, "gbpk-roms: FAIL %s: %s: the ROM's trainer %d has top level %d, not %d\n", current.c_str(), m.id.c_str(),
-				m.trainerIds.empty() ? -1 : m.trainerIds[0], top, m.levelCap);
+			auto t = i < m.trainerIds.size() ? r.trainers.find(m.trainerIds[i]) : r.trainers.end();
+			int top = 0;
+			if (t != r.trainers.end()) for (const nds::TrainerMon& tm : t->second.team) top = std::max<int>(top, tm.level);
+			if (t == r.trainers.end() || top != m.levelCap)
+			{
+				failed++;
+				fprintf(stderr, "gbpk-roms: FAIL %s: %s: the ROM's trainer %d has top level %d, not %d\n", current.c_str(), m.id.c_str(),
+					i < m.trainerIds.size() ? m.trainerIds[i] : -1, top, m.levelCap);
+			}
+			checks++;
 		}
-		checks++;
 	}
 	fprintf(stderr, "gbpk-roms: %s: %s.json's %zu milestones, their places and teams, found in the ROM\n", current.c_str(),
 		d.key.c_str(), g.milestones.size());
@@ -496,6 +527,7 @@ int main(int argc, char** argv)
 		if (d.gen == 1)
 		{
 			checkGen1(*r, d);
+			checkGuide(*r, d, pokedaisy);
 			checkPics(*r, *rom, out ? out : "", key);
 			checkTownMap(*r, out ? out : "", key);
 			continue;

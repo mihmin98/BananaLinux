@@ -25,6 +25,7 @@
 #include "nds/guide.h"
 #include "nds/logic.h"
 #include "nds/rom.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -33,6 +34,7 @@
 #include <iterator>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <unistd.h>
 #include <vector>
 
@@ -137,6 +139,15 @@ static void testData()
 	CHECK(loadData("yellow", d, &why) && d.game.id == YELLOW && d.at("partyCount").addr == 0xD162 && d.releases.size() == 1);
 	CHECK(d.size("starterPikachu") == 0x54 && d.at("pikachuHappiness").addr == 0xD46F);
 	EQ(d.game.title, "Yellow");
+	// (the guide's flags: the event flags from bit 0, the toggleable objects' after them, the Elite Four's and the
+	// Champion's derived bits after those: their room's flag or the Cerulean Cave guard hidden, Yellow's object 9)
+	CHECK(d.flags.size() == 2 && d.flags[0].ram == "eventFlags" && d.flags[0].bytes == 320 && d.flags[0].first == 0 &&
+		d.at("eventFlags").addr == 0xD746);
+	CHECK(d.flags[1].ram == "toggleFlags" && d.flags[1].bytes == 32 && d.flags[1].first == 2560 && d.at("toggleFlags").addr == 0xD5A5);
+	CHECK(d.derived.size() == 5 && d.derived[0].bit == 2816 && !d.derived[0].all && (d.derived[0].of == std::vector<int>{ 2273, 2569 }));
+	CHECK(d.derived[4].bit == 2820 && (d.derived[4].of == std::vector<int>{ 2305, 2569 }));
+	CHECK(loadData("red", d, &why) && d.flags.size() == 2 && d.at("toggleFlags").addr == 0xD5A6 && d.derived.size() == 5 &&
+		(d.derived[0].of == std::vector<int>{ 2273, 2568 }));
 
 	// refusals: a game it doesn't know, a missing file (a folder without the data files)
 	CHECK(!loadData("pinball", d, &why));
@@ -1073,6 +1084,89 @@ static void testGuide()
 	EQ(next(), "gym-1-falkner");
 }
 
+// Red's, Blue's and Yellow's guide files through upstream's loader (a stand-in resolver: every place is map 1, every
+// trainer 1:1) and logic: the eight gyms by their badges, the Elite Four and the Champion by derived bits, every flag
+// inside the banks and the derived bits; the in-game trades as notes on the Pokémon given
+static void testGen1Guides()
+{
+	nds::GuideResolver res;
+	res.zones = [](const std::string&) { return std::vector<uint16_t>{ 1 }; };
+	res.trainers = [](const std::string&, const std::string&, int) { return std::vector<uint16_t>{ 1 << 8 | 1 }; };
+	for (auto [key, id, trades] : { std::tuple{ "red", RED, 9 }, { "blue", BLUE, 9 }, { "yellow", YELLOW, 7 } })
+	{
+		GameData d;
+		std::string why = "-";
+		CHECK(loadData(key, d, &why));
+		nds::GuideData g;
+		why = "-";
+		CHECK(nds::loadGuideFile(dataPath + "/" + key + ".json", g, id, &why, &res));
+		EQ(why, "");
+		CHECK(g.unresolved.empty() && g.secrets.empty() && g.notes.empty());
+		size_t notes = 0;
+		for (const auto& [sp, text] : g.evolutionNotes) notes += 1 + std::count(text.begin(), text.end(), '\n');
+		CHECK(notes == (size_t)trades);
+		int gyms = 0, e4 = 0, champion = 0, top = 0;
+		for (const nds::Milestone& m : g.milestones)
+		{
+			gyms += m.kind == "gym";
+			e4 += m.kind == "elite4";
+			champion += m.kind == "champion";
+			CHECK(m.trainerIds.size() == 1 && m.levelCap > 0 && m.foeAceLevel == m.levelCap && m.foeClass.empty() && !m.placeZones.empty());
+			if (m.kind == "gym") EQ(m.doneWhen, "badge:" + std::to_string(gyms));
+			else if (m.doneWhen.compare(0, 5, "flag:") == 0) top = std::max(top, atoi(m.doneWhen.c_str() + 5));
+			else EQ(m.doneWhen, "flag:N");
+		}
+		CHECK(g.milestones.size() == 13 && gyms == 8 && e4 == 4 && champion == 1);
+		// (the highest flag a milestone names is a derived bit, inside Live::flags: the banks, then the derived bits)
+		int bits = 0;
+		for (const FlagBank& f : d.flags) bits = std::max(bits, f.first + 8 * f.bytes);
+		CHECK(top >= bits && top < bits + (int)d.derived.size());
+		if (g.milestones.size() != 13) continue;
+		EQ(g.milestones[0].name, "Gym 1: Brock");
+		EQ(g.milestones[0].place, "Pewter City");
+		EQ(g.milestones[2].foeName, "Lt. Surge");
+		EQ(g.milestones[8].name, "Elite Four: Lorelei");
+		EQ(g.milestones[12].name, "Champion: your rival");
+		EQ(g.milestones[12].foeName, "Rival3");
+		EQ(g.milestones[12].leader, "your rival");
+		CHECK(g.milestones[0].levelCap == (key == std::string("yellow") ? 12 : 14) && g.milestones[12].levelCap == 65);
+		auto mr = g.evolutionNotes.find(122);
+		CHECK(mr != g.evolutionNotes.end());
+		if (mr != g.evolutionNotes.end()) EQ(mr->second, "From an in-game trade in the Route 2 Trade House.");
+
+		// the next milestone follows the badges, then the flags: a room's flag its member alone, the Cerulean Cave
+		// guard hidden (the League won) the Elite Four and the Champion, worked out by the reader (Reader::flagsInto)
+		nds::Live l;
+		l.valid = true;
+		auto next = [&] { const nds::Milestone* m = nds::nextMilestone(g, l); return m ? m->id : std::string("none"); };
+		auto withFlags = [&](std::initializer_list<int> set) {
+			std::vector<uint8_t> f(353, 0);
+			for (int n : set) f[(size_t)n >> 3] |= (uint8_t)(1 << (n & 7));
+			for (const DerivedFlag& dv : d.derived)
+			{
+				bool v = false;
+				for (int b : dv.of) v = v || (f[(size_t)b >> 3] >> (b & 7) & 1);
+				if (v) f[(size_t)dv.bit >> 3] |= (uint8_t)(1 << (dv.bit & 7));
+			}
+			l.flags = f;
+		};
+		withFlags({});
+		EQ(next(), "gym-1-brock");
+		l.badges = 0x01;
+		EQ(next(), "gym-2-misty");
+		l.badges = 0xFF;
+		EQ(next(), "e4-lorelei");
+		withFlags({ 2273 });
+		EQ(next(), "e4-bruno");
+		withFlags({ 2273, 2281, 2289, 2297 });
+		EQ(next(), "champion-your-rival");
+		withFlags({ 2560 + d.size("toggleCeruleanCaveGuy") });
+		EQ(next(), "none");
+		withFlags({ 2560 + d.size("toggleCeruleanCaveGuy") + 1 });
+		EQ(next(), "e4-lorelei");
+	}
+}
+
 // Gold's guide from a made-up ROM's trainers (gsguide.h), with gold.ram.json's class ids: the stages in the story's
 // order and by level in each, whatever the table's order; each leader done by its gym's badge, not its place (Chuck,
 // Pryce and Jasmine are fought in that order, their badges are STORM, GLACIER and MINERAL: bits 5, 6 and 4 of
@@ -1194,7 +1288,15 @@ static std::shared_ptr<nds::Live> checkGen1(const char* capture, const char* key
 	size_t items = 0;
 	for (const auto& [pocket, list] : l->bag) items += list.size();
 	CHECK(items == 17 && !inBag(*l, nds::POCKET_KEY, GEN1_ONLY + 0x05));
-	CHECK(l->timeOfDay == nds::TimeOfDay::ANY && l->flags.empty() && r.error().empty());
+	CHECK(l->timeOfDay == nds::TimeOfDay::ANY && r.error().empty());
+	// the guide's flags: the 320 bytes of event flags, the 32 of the toggleable objects' from bit 2560, then a byte of
+	// derived bits; the Elite Four's rooms' flags clear (the lobby clears them), and the League not won in Red's and
+	// Blue's numbering. Yellow's save holds the same bytes, and its toggleable objects are numbered one on from the
+	// Cerulean Cave guard's: Red's object 9 hidden reads as Yellow's guard hidden, the League won
+	auto flag = [&](int n) { return (size_t)(n >> 3) < l->flags.size() && (l->flags[(size_t)n >> 3] >> (n & 7) & 1); };
+	const bool yellow = std::string(key) == "yellow";
+	CHECK(l->flags.size() == 353 && l->flags[352] == (yellow ? 0x1F : 0));
+	CHECK(!flag(2273) && !flag(2305) && flag(2560 + 8) == false && flag(2560 + 9));
 	return l;
 }
 
@@ -1453,6 +1555,18 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpGen1(GameData& d, int b
 	m.key("townMapTiles", m.put(tiles));
 	m.key("townMapOrder", m.put({ 0, 1 }));
 	m.key("townMapOrderEnd", m.next);
+	// the hidden items: HiddenItems at 01:7F00; HiddenItemCoords map 1 (y 3, x 4), map 2 (y 5, x 6), map 1 (y 7, x 8);
+	// map 1's events a Moon Stone at x 4, y 3, another function's event, a Poké Ball at x 8, y 7; map 2's a Master Ball
+	// at x 6, y 5 (or, for a refusal, at x 9, y 9, which HiddenItemCoords hasn't). Red's layout (HiddenEventMaps' ids,
+	// HiddenEventPointers'), and Yellow's (an id and its pointer) under another key
+	m.key("hiddenItems", 0x7F00);
+	m.key("hiddenItemCoords", m.put({ 1, 3, 4, 2, 5, 6, 1, 7, 8, 0xFF }));
+	const int h1 = m.put({ 3, 4, 0x0A, 1, 0x00, 0x7F, 9, 9, 0, 1, 0x00, 0x60, 7, 8, 0x04, 1, 0x00, 0x7F, 0xFF });
+	const int h2 = m.put({ bad == 4 ? 9 : 5, bad == 4 ? 9 : 6, 0x01, 1, 0x00, 0x7F, 0xFF });
+	m.key("hiddenEventMaps", m.put({ 1, 2, 0xFF }));
+	m.key("hiddenEventPointers", m.put(R::words({ h1, h2 })));
+	m.key("yellowHiddenEventMaps", m.put({ 1, h1 & 0xFF, h1 >> 8, 2, h2 & 0xFF, h2 >> 8, 0xFF }));
+	CHECK(m.next < 0x7F00);
 	d = m.d;
 	return std::make_shared<std::vector<uint8_t>>(m.b);
 }
@@ -1618,14 +1732,36 @@ static void testGen1RomTables()
 		else failed++;
 	}
 
+	// the hidden items, by the maps' order and their events', each with its flag, its place in HiddenItemCoords; the
+	// same with Yellow's layout
+	auto hidden = [](const nds::RomData& x) {
+		std::string o;
+		for (const HiddenItem& h : static_cast<const GbRomData&>(x).hidden)
+			o += std::to_string(h.zone) + ":" + std::to_string(h.x) + "," + std::to_string(h.y) + ":" + std::to_string(h.item) + ":" + std::to_string(h.flag) + " ";
+		return o;
+	};
+	const std::string want = "1:4,3:" + std::to_string(gen1Item(0x0A)) + ":0 1:8,7:" + std::to_string(gen1Item(0x04)) + ":2 2:6,5:" +
+		std::to_string(gen1Item(0x01)) + ":1 ";
+	EQ(hidden(*r), want);
+	{
+		GameData y = d;
+		y.rom["hiddenEventMaps"] = y.rom["yellowHiddenEventMaps"];
+		y.rom.erase("hiddenEventPointers");
+		auto ry = readRom(rom, y, &why);
+		CHECK(ry);
+		if (ry) EQ(hidden(*ry), want);
+	}
+
 	// refusals: a species twice in PokedexOrder, a first record that isn't Bulbasaur's, a trainer whose species isn't
-	// one, a table the data file doesn't give, no Super Rod table (or both)
+	// one, a hidden item HiddenItemCoords hasn't, a table the data file doesn't give, no Super Rod table (or both)
 	rom = madeUpGen1(d, 1);
 	CHECK(!readRom(rom, d, &why) && why.find("PokedexOrder") != std::string::npos);
 	rom = madeUpGen1(d, 2);
 	CHECK(!readRom(rom, d, &why) && why.find("Bulbasaur") != std::string::npos);
 	rom = madeUpGen1(d, 3);
 	CHECK(!readRom(rom, d, &why) && why.find("class 3") != std::string::npos);
+	rom = madeUpGen1(d, 4);
+	CHECK(!readRom(rom, d, &why) && why.find("map 2's hidden item at 9, 9 isn't in HiddenItemCoords") != std::string::npos);
 	rom = madeUpGen1(d);
 	GameData d2 = d;
 	d2.rom.erase("wildData");
@@ -1650,6 +1786,9 @@ static void testGen1RomTables()
 	d2 = d;
 	d2.rom.erase("townMapTiles");
 	CHECK(!readRom(rom, d2, &why) && why.find("rom.townMapTiles") != std::string::npos);
+	d2 = d;
+	d2.rom.erase("hiddenItemCoords");
+	CHECK(!readRom(rom, d2, &why) && why.find("rom.hiddenItemCoords") != std::string::npos);
 	auto bad = std::make_shared<std::vector<uint8_t>>(*rom);
 	const size_t order = RomView{ *bad }.at(d.rom.at("townMapOrder"));
 	(*bad)[order + 1] = 3;
@@ -2073,6 +2212,7 @@ int main(int argc, char** argv)
 	testGen1RomTables();
 	testDerivedFlags();
 	testGuide();
+	testGen1Guides();
 	testRomGuide();
 	testReaderRules();
 	testRules();

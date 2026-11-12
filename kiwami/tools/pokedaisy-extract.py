@@ -33,6 +33,8 @@ GEN2_ART = DATA + '/Gen2Art.kt'
 GEN1_ART = DATA + '/Gen1Art.kt'
 CRYSTAL_GUIDE = DATA + '/GuideCrystalGen.kt'
 CRYSTAL_RULES = DATA + '/GuideCrystal.kt'
+GEN1_GUIDE = DATA + '/GuideGen1Gen.kt'
+GEN1_RULES = DATA + '/GuideGen1.kt'
 TITLES = 'app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt'
 
 # pret-extract.py's SOURCES helpers (one file, two sections)
@@ -138,6 +140,26 @@ CRYSTAL_GUIDE_SIZES = {'CR_EVENT_FLAG_BYTES': 'eventFlagBytes', 'CR_TRADE_FLAG_B
 GUIDE_KINDS = [('LEADER ', 'gym', 'Gym', 'Leader'), ('ELITE FOUR ', 'elite4', 'Elite Four', 'Elite Four'),
                ('CHAMPION ', 'champion', 'Champion', 'Champion'), ('', 'postgame', None, None)]
 PLACE_ALIAS = {'POKéMON LEAGUE': 'INDIGO PLATEAU', 'MT. SILVER': 'SILVER CAVE'}
+
+# Red's, Blue's and Yellow's guides (GuideGen1.kt's rules over GuideGen1Gen.kt's tables): each game's names there (its
+# constants' prefix, its RAM's and its world's), and the guide file's code (the fork's own: the carts have none,
+# ui/src/kiwami/gbpk/guide-games.inc)
+GEN1_GUIDES = {'red': ('G1R', 'RED', 'PKRD'), 'blue': ('G1B', 'BLUE', 'PKBL'), 'yellow': ('G1Y', 'YELLOW', 'PKYL')}
+# GuideGen1Gen.kt's RAM constants (<prefix>_<name>, Gen I's D000-DFFF the data files' bank 1), by the data file's key,
+# and its sizes; what is left out
+GEN1_GUIDE_RAM = {'EVENT_FLAGS': 'eventFlags', 'MISSABLE_FLAGS': 'toggleFlags', 'BADGES': 'badges'}
+GEN1_GUIDE_SIZES = {'EVENT_FLAG_BYTES': 'eventFlagBytes', 'MISSABLE_FLAG_BYTES': 'toggleFlagBytes'}
+GEN1_GUIDE_SKIP = {
+    'HIDDEN_ITEM_FLAGS': 'the hidden items are listed whether found or not', 'HIDDEN_ITEM_FLAG_BYTES': 'the same',
+    'TRADE_FLAGS': 'the trades are notes, not followed', 'TRADE_FLAG_BYTES': 'the same',
+    'TEAM_VAR': 'the Champion\'s teams are the ROM\'s, every one his milestone\'s',
+}
+# GuideGen1.kt's flag ids past the event flags: a bank each, by the id's 0x10000s (its readGen1Progress)
+GEN1_BANKS = {'G1_MISSABLE_FLAG': 0x10000, 'G1_HIDDEN_ITEM_FLAG': 0x20000, 'G1_TRADE_FLAG': 0x30000,
+              'G1_BADGE_FLAG': 0x40000}
+# the Champion (PokeDaisy's "CHAMPION, YOUR RIVAL"): the class his three teams have in the ROM (pret's TrainerNames,
+# RIVAL3), by which the guide's resolver finds them, and who he is in the advice's sentences
+GEN1_CHAMPION = ('CHAMPION', 'CHAMPION, YOUR RIVAL', 'Rival3', 'your rival')
 
 
 def fail(msg) -> NoReturn:
@@ -470,8 +492,9 @@ def flag_rule(lam, consts, params=None):
 
 
 def name_case(s):
-    """A name as the companion writes it: "LT. SURGE" Lt. Surge, "POKéMON LEAGUE" Pokémon League."""
-    return ' '.join(w[:1].upper() + w[1:].lower() for w in s.split())
+    """A name as the companion writes it: "LT. SURGE" Lt. Surge, "POKéMON LEAGUE" Pokémon League, a floor as the game
+    writes it ("GATE 2F" Gate 2F)."""
+    return ' '.join(w if re.fullmatch(r'B?\d+F', w) else w[:1].upper() + w[1:].lower() for w in s.split())
 
 
 def slug(s):
@@ -585,6 +608,137 @@ def crystal_guide(rules_src, gen_src, first_derived):
     return guide, derived, unread
 
 
+# --- Red's, Blue's and Yellow's guides ---
+
+def raw_table(src, name, where):
+    """A generated table, val <name>: List<String> = listOf(\"\"\"...\"\"\"), as its lines."""
+    m = re.search(r'\bval %s\s*:[^=]*=\s*listOf\(\s*"""(.*?)"""\s*,?\s*\)' % name, src, re.S)
+    if not m:
+        fail('no %s (one string) in %s' % (name, where))
+    return [line for line in m.group(1).splitlines() if line.strip()]
+
+
+def gen1_rules(rules_src, prefix, world):
+    """What GuideGen1.kt does with a game's tables, as the conversion takes it: a boss is done when any of its flags is
+    set, the flag ids past the event flags are GEN1_BANKS' banks of the save (the badges 8 bits of wObtainedBadges),
+    and the game's guide is its world's over its own constants. Returns what doesn't hold."""
+    s = ' '.join(strip_comments(rules_src).split())
+    consts = guide_consts(rules_src)
+    out = ['%s isn\'t 0x%X' % (k, v) for k, v in GEN1_BANKS.items() if consts.get(k) != v]
+    for shape in ('doneIf = { p -> first.done.any { p.flag(it) } }',
+                  'SaveProgress( read(ram.eventFlags, ram.eventBytes), ByteArray(0),',
+                  'SaveBank(G1_MISSABLE_FLAG, 0, ram.missableBytes * 8) to read(ram.missable, ram.missableBytes)',
+                  'SaveBank(G1_BADGE_FLAG, 0, 8) to read(ram.badges, 1)',
+                  'private val %s_GUIDE_RAM = Gen1GuideRam( %s_EVENT_FLAGS, %s_EVENT_FLAG_BYTES, %s_MISSABLE_FLAGS, '
+                  '%s_MISSABLE_FLAG_BYTES,' % ((world,) + (prefix,) * 4),
+                  ' %s_BADGES, %s_TEAM_VAR, )' % (prefix, prefix),
+                  'cfg === GEN1_%s -> %s_GUIDE_RAM' % (world, world),
+                  'internal val %s_WORLD = Gen1World(%s_WILD_RAW, %s_BOSSES_RAW)' % (world, prefix, prefix),
+                  'internal val GUIDE_%s = gen1Guide(%s_WORLD)' % (world, world)):
+        if shape not in s:
+            out.append('no "%s"' % shape)
+    return out
+
+
+def gen1_guide(gen_src, key, prefix, code, title, sizes, cave_guy, first_derived):
+    """The guide file of Red, Blue or Yellow (nds-pokemon-guide, schema 1) and the bits derived from the save's flags its
+    milestones read: each boss of GuideGen1Gen.kt's <prefix>_BOSSES_RAW in its order (a key's lines one boss, its
+    teams the Champion's by his starter), a gym done by its badge, the others by a derived bit when any of their flags
+    is set (the event flags from bit 0, the toggleable objects' after them); the in-game trades as the Pokédex's notes
+    on the Pokémon given, by their place. The item balls, gifts and key items of <prefix>_AREAS_RAW are left out, and
+    its hidden items are the ROM's. Returns (guide, derived, unread)."""
+    unread, groups = [], {}
+    events, toggles = 8 * sizes['eventFlagBytes'], 8 * sizes['toggleFlagBytes']
+    for line in raw_table(gen_src, prefix + '_BOSSES_RAW', GEN1_GUIDE):
+        f = line.split('|')
+        teams = [t.split() for t in f[5].split(';')] if len(f) == 6 else []
+        if not teams or not all(len(t) >= 3 and t[0].isdigit() for t in teams):
+            unread.append('%s_BOSSES_RAW: %s' % (prefix, line))
+            continue
+        groups.setdefault(f[0], []).append((f[1], f[2], f[3], f[4], max(int(t[0]) for t in teams)))
+    places, milestones, derived, gyms = {}, [], [], 0
+    for bkey, lines in groups.items():
+        title_, where, done, _, ace = lines[0]
+        # (one boss a key: its lines differ only by the team, which the Champion's var picks; every team's top level
+        # the same, which the resolver finds them by)
+        if any(x[:3] != lines[0][:3] or x[4] != ace for x in lines) or \
+                (len(lines) > 1) != all(re.fullmatch(r'0x10000=\d+', x[3]) for x in lines):
+            unread.append('%s_BOSSES_RAW: %s (its lines)' % (prefix, bkey))
+            continue
+        flags = [int(x, 0) for x in done.split('/') if x]
+        leader = None
+        if title_.startswith('LEADER ') and where.endswith(' GYM'):
+            kind, foe, where = 'gym', name_case(title_[len('LEADER '):]), where[:-len(' GYM')]
+        elif title_.startswith('ELITE FOUR '):
+            kind, foe = 'elite4', name_case(title_[len('ELITE FOUR '):])
+        elif (bkey, title_) == GEN1_CHAMPION[:2]:
+            kind, foe, leader = 'champion', GEN1_CHAMPION[2], GEN1_CHAMPION[3]
+        else:
+            unread.append('%s_BOSSES_RAW: %s (its kind)' % (prefix, bkey))
+            continue
+        place_name = name_case(where)
+        places[slug(place_name)] = {'name': place_name}
+        # done: a gym by its badge (the badges' bank, bit n: badge:n + 1); the others by any of their flags
+        bits = []
+        for n in flags:
+            if n < events:
+                bits.append(n)
+            elif GEN1_BANKS['G1_MISSABLE_FLAG'] <= n < GEN1_BANKS['G1_MISSABLE_FLAG'] + toggles:
+                if n - GEN1_BANKS['G1_MISSABLE_FLAG'] != cave_guy:
+                    fail('%s: %s is done by toggleable object %d, not pret\'s TOGGLE_CERULEAN_CAVE_GUY %d' %
+                         (key, bkey, n - GEN1_BANKS['G1_MISSABLE_FLAG'], cave_guy))
+                bits.append(events + n - GEN1_BANKS['G1_MISSABLE_FLAG'])
+            else:
+                bits = None
+                break
+        if kind == 'gym':
+            gyms += 1
+            if flags != [GEN1_BANKS['G1_BADGE_FLAG'] + gyms - 1]:
+                unread.append('%s_BOSSES_RAW: %s (not its badge, %d)' % (prefix, bkey, gyms))
+                continue
+            mid, name, done_when = 'gym-%d-%s' % (gyms, slug(foe)), 'Gym %d: %s' % (gyms, foe), 'badge:%d' % gyms
+        else:
+            if not bits:
+                unread.append('%s_BOSSES_RAW: %s (its flags)' % (prefix, bkey))
+                continue
+            label = 'Elite Four' if kind == 'elite4' else 'Champion'
+            mid = '%s-%s' % ('e4' if kind == 'elite4' else kind, slug(leader or foe))
+            name = '%s: %s' % (label, leader or foe)
+            if len(bits) == 1:
+                done_when = 'flag:%d' % bits[0]
+            else:
+                bit = first_derived + len(derived)
+                derived.append({'bit': bit, 'any': bits, 'for': mid})
+                done_when = 'flag:%d' % bit
+        ms = {'id': mid, 'name': name, 'kind': kind, 'place': slug(place_name), 'level_cap': ace,
+              'foe': {'name': foe, 'ace_level': ace}, 'done_when': done_when, 'quality': 'reference-only',
+              'source': 'PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (%s_BOSSES_RAW %s)' % (prefix, bkey)}
+        if leader:
+            ms['leader'] = leader
+        milestones.append(ms)
+    # the in-game trades: map|TRADE|the Pokémon given|its flag|count|the Pokémon wanted|the place
+    evolutions = []
+    for line in raw_table(gen_src, prefix + '_AREAS_RAW', GEN1_GUIDE):
+        f = line.split('|')
+        if len(f) < 2 or f[1] != 'TRADE':
+            continue
+        if len(f) != 7 or not f[2].isdigit() or not 1 <= int(f[2]) <= 151 or not f[6].strip():
+            unread.append('%s_AREAS_RAW: %s' % (prefix, line))
+            continue
+        evolutions.append({'species': int(f[2]), 'text': 'From an in-game trade in the %s.' % name_case(f[6]),
+                           'quality': 'reference-only', 'source': 'PokeDaisy GuideGen1Gen.kt (%s_AREAS_RAW)' % prefix})
+    guide = {
+        'schema': 1, 'kind': 'nds-pokemon-guide', 'game': key, 'code': code, 'title': title, 'revision': 1,
+        'sources': ['PokeDaisy by Lidor Itzhari, %s (GPL-3.0): GuideGen1.kt\'s rules; GuideGen1Gen.kt\'s bosses, their '
+                    'order and flags, and the in-game trades, generated there from pret/pokered and pret/pokeyellow'
+                    % PIN[:8],
+                    'The player\'s ROM: the trainers\' teams, the places\' maps and the hidden items, read when the '
+                    'game starts (kiwami/GB-POKEMON.md)'],
+        'places': places, 'milestones': milestones, 'evolutions': evolutions,
+    }
+    return guide, derived, unread
+
+
 # --- The data files ---
 
 def build(checkout):
@@ -604,6 +758,9 @@ def build(checkout):
     guide_src = read(CRYSTAL_GUIDE)
     guide = guide_consts(guide_src)
     rules_src = read(CRYSTAL_RULES)
+    gen1_guide_src = read(GEN1_GUIDE)
+    gen1_guide_consts = guide_consts(gen1_guide_src)
+    gen1_rules_src = read(GEN1_RULES)
     titles = retail_sha1s(read(TITLES))
     extra_text = open(os.path.join(REPO, EXTRA), encoding='utf-8').read()
     inputs[EXTRA] = pe.sha256(extra_text.encode('utf-8'))
@@ -661,6 +818,25 @@ def build(checkout):
                     unread.append('%s: no %s' % (CRYSTAL_GUIDE, c))
                     continue
                 sizes[k] = guide[c]
+        if key in GEN1_GUIDES:
+            prefix = GEN1_GUIDES[key][0]
+            for c, k in GEN1_GUIDE_RAM.items():
+                if prefix + '_' + c not in gen1_guide_consts:
+                    unread.append('%s: no %s_%s' % (GEN1_GUIDE, prefix, c))
+                    continue
+                v = addr_value(gen1_guide_consts[prefix + '_' + c])
+                if k in ram and ram[k] != v:
+                    fail('%s ram.%s: %s says %02X:%04X, %s_%s %02X:%04X' % (key, k, GEN1, ram[k][0], ram[k][1], prefix, c, v[0], v[1]))
+                ram[k], src[k] = v, 'pokedaisy'
+            for c, k in GEN1_GUIDE_SIZES.items():
+                if prefix + '_' + c not in gen1_guide_consts:
+                    unread.append('%s: no %s_%s' % (GEN1_GUIDE, prefix, c))
+                    continue
+                sizes[k] = gen1_guide_consts[prefix + '_' + c]
+            for c in gen1_guide_consts:
+                if c.startswith(prefix + '_') and c[len(prefix) + 1:] not in {**GEN1_GUIDE_RAM, **GEN1_GUIDE_SIZES, **GEN1_GUIDE_SKIP}:
+                    unread.append('%s: %s' % (GEN1_GUIDE, c))
+            unread += ['%s: %s' % (GEN1_RULES, u) for u in gen1_rules(gen1_rules_src, prefix, GEN1_GUIDES[key][1])]
         g = extra['games'].get(key)
         if g is None:
             fail('%s has no %s' % (EXTRA, key))
@@ -719,6 +895,14 @@ def build(checkout):
             gd, derived, u = crystal_guide(rules_src, guide_src, 8 * sizes['eventFlagBytes'])
             unread += u
             files['%s/%s.json' % (FOLDER, key)] = pe.dump(gd).encode('utf-8')
+        elif key in GEN1_GUIDES:
+            ev = sizes['eventFlagBytes']
+            flags = [{'ram': 'eventFlags', 'bytes': ev, 'first': 0},
+                     {'ram': 'toggleFlags', 'bytes': sizes['toggleFlagBytes'], 'first': 8 * ev}]
+            gd, derived, u = gen1_guide(gen1_guide_src, key, prefix, GEN1_GUIDES[key][2], pd_title, sizes,
+                                        sizes['toggleCeruleanCaveGuy'], 8 * (ev + sizes['toggleFlagBytes']))
+            unread += u
+            files['%s/%s.json' % (FOLDER, key)] = pe.dump(gd).encode('utf-8')
         doc = {
             'schema': 1, 'kind': 'gb-pokemon-ram', 'game': key, 'gen': gen, 'title': title,
             'header_title': g['header_title'], 'releases': releases,
@@ -745,7 +929,8 @@ def main(argv):
     args = [a for a in argv if a not in ('--check', '--any-commit')]
     if len(args) > 1 or any(a.startswith('-') for a in args):
         sys.exit('usage: pokedaisy-extract.py [<pokedaisy checkout>] [--check] [--any-commit]')
-    outs = ['%s/%s.ram.json' % (FOLDER, g[0]) for g in GAMES] + [FOLDER + '/crystal.json', FOLDER + '/LICENSE']
+    outs = ['%s/%s.ram.json' % (FOLDER, g[0]) for g in GAMES] + [FOLDER + '/LICENSE'] + \
+        ['%s/%s.json' % (FOLDER, k) for k in ['crystal'] + list(GEN1_GUIDES)]
     if not args:
         if not check:
             fail('give PokeDaisy\'s checkout, or --check')

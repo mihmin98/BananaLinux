@@ -1,5 +1,58 @@
 {
-  "flags": [],
+  "derived": [
+    {
+      "any": [
+        2273,
+        2569
+      ],
+      "bit": 2816,
+      "for": "e4-lorelei"
+    },
+    {
+      "any": [
+        2281,
+        2569
+      ],
+      "bit": 2817,
+      "for": "e4-bruno"
+    },
+    {
+      "any": [
+        2289,
+        2569
+      ],
+      "bit": 2818,
+      "for": "e4-agatha"
+    },
+    {
+      "any": [
+        2297,
+        2569
+      ],
+      "bit": 2819,
+      "for": "e4-lance"
+    },
+    {
+      "any": [
+        2305,
+        2569
+      ],
+      "bit": 2820,
+      "for": "champion-your-rival"
+    }
+  ],
+  "flags": [
+    {
+      "bytes": 320,
+      "first": 0,
+      "ram": "eventFlags"
+    },
+    {
+      "bytes": 32,
+      "first": 2560,
+      "ram": "toggleFlags"
+    }
+  ],
   "game": "yellow",
   "gen": 1,
   "header_title": "POKEMON YELLOW",
@@ -59,6 +112,11 @@
       "addr": "0xCD2E",
       "bank": 0,
       "src": "pret (wEnemyMonStatMods)"
+    },
+    "eventFlags": {
+      "addr": "0xD746",
+      "bank": 1,
+      "src": "pokedaisy pret (wEventFlags)"
     },
     "isInBattle": {
       "addr": "0xD056",
@@ -135,6 +193,11 @@
       "bank": 0,
       "src": "pokedaisy pret (wTileMap)"
     },
+    "toggleFlags": {
+      "addr": "0xD5A5",
+      "bank": 1,
+      "src": "pokedaisy pret (wToggleableObjectFlags)"
+    },
     "topMenuItemY": {
       "addr": "0xCC24",
       "bank": 0,
@@ -197,6 +260,21 @@
       "addr": "0x612C",
       "bank": 3,
       "src": "pret (GoodRodMons)"
+    },
+    "hiddenEventMaps": {
+      "addr": "0x668D",
+      "bank": 60,
+      "src": "pret (HiddenEventMaps)"
+    },
+    "hiddenItemCoords": {
+      "addr": "0x5FAA",
+      "bank": 29,
+      "src": "pret (HiddenItemCoords)"
+    },
+    "hiddenItems": {
+      "addr": "0x5F74",
+      "bank": 29,
+      "src": "pret (HiddenItems)"
     },
     "internalMapEntries": {
       "addr": "0x540B",
@@ -333,6 +411,7 @@
   "sizes": {
     "bagSlots": 20,
     "counter": 68,
+    "eventFlagBytes": 320,
     "firstIndoorMap": 37,
     "hm01": 196,
     "numItems": 83,
@@ -348,7 +427,9 @@
     "picsTangela": 30,
     "quickAttack": 98,
     "starterPikachu": 84,
-    "tm01": 201
+    "tm01": 201,
+    "toggleCeruleanCaveGuy": 9,
+    "toggleFlagBytes": 32
   },
   "title": "Yellow"
 }

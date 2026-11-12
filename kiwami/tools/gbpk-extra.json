@@ -62,6 +62,11 @@
           "symbol": "SABRINA",
           "value": 40
         },
+        "numEvents": {
+          "file": "constants/event_constants.asm",
+          "symbol": "NUM_EVENTS",
+          "value": 2560
+        },
         "numItems": {
           "file": "constants/item_constants.asm",
           "symbol": "NUM_ITEMS",
@@ -126,6 +131,11 @@
           "file": "constants/item_constants.asm",
           "symbol": "TM01",
           "value": 201
+        },
+        "toggleCeruleanCaveGuy": {
+          "file": "constants/toggle_constants.asm",
+          "symbol": "TOGGLE_CERULEAN_CAVE_GUY",
+          "value": 8
         }
       },
       "header_title": "POKEMON BLUE",
@@ -184,6 +194,11 @@
           "addr": "0xCD2E",
           "bank": 0,
           "symbol": "wEnemyMonStatMods"
+        },
+        "eventFlags": {
+          "addr": "0xD747",
+          "bank": 1,
+          "symbol": "wEventFlags"
         },
         "isInBattle": {
           "addr": "0xD057",
@@ -255,6 +270,11 @@
           "bank": 0,
           "symbol": "wTileMap"
         },
+        "toggleFlags": {
+          "addr": "0xD5A6",
+          "bank": 1,
+          "symbol": "wToggleableObjectFlags"
+        },
         "topMenuItemY": {
           "addr": "0xCC24",
           "bank": 0,
@@ -324,6 +344,26 @@
           "addr": "0x627F",
           "bank": 3,
           "symbol": "GoodRodMons"
+        },
+        "hiddenEventMaps": {
+          "addr": "0x6A40",
+          "bank": 17,
+          "symbol": "HiddenEventMaps"
+        },
+        "hiddenEventPointers": {
+          "addr": "0x6A96",
+          "bank": 17,
+          "symbol": "HiddenEventPointers"
+        },
+        "hiddenItemCoords": {
+          "addr": "0x66B9",
+          "bank": 29,
+          "symbol": "HiddenItemCoords"
+        },
+        "hiddenItems": {
+          "addr": "0x6689",
+          "bank": 29,
+          "symbol": "HiddenItems"
         },
         "internalMapEntries": {
           "addr": "0x5382",
@@ -1687,6 +1727,11 @@
           "symbol": "SABRINA",
           "value": 40
         },
+        "numEvents": {
+          "file": "constants/event_constants.asm",
+          "symbol": "NUM_EVENTS",
+          "value": 2560
+        },
         "numItems": {
           "file": "constants/item_constants.asm",
           "symbol": "NUM_ITEMS",
@@ -1751,6 +1796,11 @@
           "file": "constants/item_constants.asm",
           "symbol": "TM01",
           "value": 201
+        },
+        "toggleCeruleanCaveGuy": {
+          "file": "constants/toggle_constants.asm",
+          "symbol": "TOGGLE_CERULEAN_CAVE_GUY",
+          "value": 8
         }
       },
       "header_title": "POKEMON RED",
@@ -1809,6 +1859,11 @@
           "addr": "0xCD2E",
           "bank": 0,
           "symbol": "wEnemyMonStatMods"
+        },
+        "eventFlags": {
+          "addr": "0xD747",
+          "bank": 1,
+          "symbol": "wEventFlags"
         },
         "isInBattle": {
           "addr": "0xD057",
@@ -1880,6 +1935,11 @@
           "bank": 0,
           "symbol": "wTileMap"
         },
+        "toggleFlags": {
+          "addr": "0xD5A6",
+          "bank": 1,
+          "symbol": "wToggleableObjectFlags"
+        },
         "topMenuItemY": {
           "addr": "0xCC24",
           "bank": 0,
@@ -1949,6 +2009,26 @@
           "addr": "0x627F",
           "bank": 3,
           "symbol": "GoodRodMons"
+        },
+        "hiddenEventMaps": {
+          "addr": "0x6A40",
+          "bank": 17,
+          "symbol": "HiddenEventMaps"
+        },
+        "hiddenEventPointers": {
+          "addr": "0x6A96",
+          "bank": 17,
+          "symbol": "HiddenEventPointers"
+        },
+        "hiddenItemCoords": {
+          "addr": "0x66B8",
+          "bank": 29,
+          "symbol": "HiddenItemCoords"
+        },
+        "hiddenItems": {
+          "addr": "0x6688",
+          "bank": 29,
+          "symbol": "HiddenItems"
         },
         "internalMapEntries": {
           "addr": "0x5382",
@@ -2767,6 +2847,11 @@
           "symbol": "HM01",
           "value": 196
         },
+        "numEvents": {
+          "file": "constants/event_constants.asm",
+          "symbol": "NUM_EVENTS",
+          "value": 2560
+        },
         "numItems": {
           "file": "constants/item_constants.asm",
           "symbol": "NUM_ITEMS",
@@ -2836,6 +2921,11 @@
           "file": "constants/item_constants.asm",
           "symbol": "TM01",
           "value": 201
+        },
+        "toggleCeruleanCaveGuy": {
+          "file": "constants/toggle_constants.asm",
+          "symbol": "TOGGLE_CERULEAN_CAVE_GUY",
+          "value": 9
         }
       },
       "header_title": "POKEMON YELLOW",
@@ -2894,6 +2984,11 @@
           "addr": "0xCD2E",
           "bank": 0,
           "symbol": "wEnemyMonStatMods"
+        },
+        "eventFlags": {
+          "addr": "0xD746",
+          "bank": 1,
+          "symbol": "wEventFlags"
         },
         "isInBattle": {
           "addr": "0xD056",
@@ -2970,6 +3065,11 @@
           "bank": 0,
           "symbol": "wTileMap"
         },
+        "toggleFlags": {
+          "addr": "0xD5A5",
+          "bank": 1,
+          "symbol": "wToggleableObjectFlags"
+        },
         "topMenuItemY": {
           "addr": "0xCC24",
           "bank": 0,
@@ -3034,6 +3134,21 @@
           "addr": "0x612C",
           "bank": 3,
           "symbol": "GoodRodMons"
+        },
+        "hiddenEventMaps": {
+          "addr": "0x668D",
+          "bank": 60,
+          "symbol": "HiddenEventMaps"
+        },
+        "hiddenItemCoords": {
+          "addr": "0x5FAA",
+          "bank": 29,
+          "symbol": "HiddenItemCoords"
+        },
+        "hiddenItems": {
+          "addr": "0x5F74",
+          "bank": 29,
+          "symbol": "HiddenItems"
         },
         "internalMapEntries": {
           "addr": "0x540B",

@@ -913,6 +913,8 @@ derived bits, the gyms by their leaders' flags, no `opens`.)
 - **Commit**: `GB Pokémon companion: Red, Blue and Yellow's guides, converted from PokeDaisy's tables`
 - (*Deviations* 2026-11-12, step 13: a Gen I trainer's `name` is its class's, `Brock`; the rivals' classes are the
   ROM's `Rival1`, `Rival2` and `Rival3`.)
+- (*Deviations* 2026-11-12, step 15: the hidden items from the ROM's hidden events, the trades as the Dex's notes, no
+  item descriptions, the Champion's derived bit in place of a rival fight's.)
 
 ### 16. PokeDaisy's reference data for every mainline game
 
@@ -1319,6 +1321,34 @@ Where the implementation turned out different from this plan, why, and what chan
     so a wrong bank is caught. `gbpk-roms` checks Gen I's pictures and map with Gen II's `checkPics` (each picture's
     size from its stream; Bulbasaur 5 x 5 and Mewtwo 7 x 7, as pret's PNGs) and a new `checkTownMap`, and writes
     `<key>-pics.png` and `<key>-Kanto.png` (no shiny sheet for Gen I).
+- **2026-11-12, step 15: Red's, Blue's and Yellow's guides as PokeDaisy's tables allow** (the first three agreed with
+  the user).
+  - **The hidden items come from the ROM**, as Crystal's since step 10: PokeDaisy's have their map, item and flag but no
+    x and y. `rom1.cpp` reads pret's `HiddenEventMaps` (Red's and Blue's ids with `HiddenEventPointers`, Yellow's an id
+    and its pointer each), each map's hidden events, the ones calling `HiddenItems`, and their flags by
+    `HiddenItemCoords`' order (`FindHiddenItemOrCoinsIndex`), into `GbRomData::hidden` (`rom.h`'s comment); the host
+    already lists them. Red and Blue have 54, Yellow 55: PokeDaisy's 53 and 54 by map, flag and item, and one on
+    `UNUSED_MAP_6F`, which PokeDaisy's generator leaves out (a map the game never loads); kept, as the Here page lists
+    the player's own map's only. The files have no secrets.
+  - **The trades are the Dex's notes** (`evolutions`, on the Pokémon given: "From an in-game trade in the Route 2 Trade
+    House."), not `notes`: upstream's pages show no guide `notes` (Crystal's tips aren't shown either), and a note
+    naming the species wanted would put species names in the file.
+  - **No item descriptions**: `ItemDescriptionsYellow.kt` names the games' items ("GREAT BALL"), which A21 and step
+    16's scan keep out; the hidden items read "A hidden <item>." as Gen II's.
+  - **No rival fights**: PokeDaisy's Gen I bosses are the eight gyms, the Elite Four and the Champion (13). The gyms
+    are done by `badge:1`-`8`; the Elite Four and the Champion by derived bits over their room's event flag and the
+    Cerulean Cave guard hidden (the Hall of Fame hides it; the lobby clears the rooms' flags), so the test's "rival
+    fight's flag in its bank" is the guard's bit in the toggleable objects' bank. The milestones name no trainer ids:
+    the resolver finds each foe by name and top level (the Champion's class `Rival3`, his three teams by starter all
+    his milestone's, `leader` "your rival"). `flags` are the event flags (320 bytes) and the toggleable objects' (32,
+    from bit 2560), the hidden items' and trades' banks not read; `Live::flags` is 353 bytes.
+  - **More files than planned**: `gbpk-symbols.txt` and `gbpk-extra.json` (Gen I's `wEventFlags`,
+    `wToggleableObjectFlags`, `NUM_EVENTS`, `TOGGLE_CERULEAN_CAVE_GUY` and the hidden events' four tables, each
+    checked against PokeDaisy's where it has it); `pret-extract.py`, whose evaluator now sets aside a `DEF` whose name
+    is made with a symbol the file doesn't define (`toggle_constants.asm`'s `TOGGLEMAP{\1}_ID`), its other outputs
+    unchanged; `rom.h`, `rom1.cpp`; `gbpk-roms.cpp` (Gen I's hidden items against PokeDaisy's, the three guides' places
+    and teams in the ROM, every team of a milestone at its level cap) and `gbpk-ui.sh` (Red's guide loaded on the
+    stand-in). The Gen I captures' `Live::flags` change from none to the banks (`gbpk-units`' `checkGen1`).
 
 ## Progress
 
@@ -1341,7 +1371,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 12. Gen I's memory: Red, Blue and Yellow | done | `GB Pokémon companion: Red, Blue and Yellow's memory read into the pages' Live` |
 | 13. Gen I's ROM: the tables | done | `GB Pokémon companion: Red, Blue and Yellow's species, moves, items, encounters and trainers from the ROM` |
 | 14. Gen I's ROM: the sprites and the town map | done | `GB Pokémon companion: Gen I's sprites and town map, decoded from the ROM` |
-| 15. Red, Blue and Yellow's guides | todo | |
+| 15. Red, Blue and Yellow's guides | done | `GB Pokémon companion: Red, Blue and Yellow's guides, converted from PokeDaisy's tables` |
 | 16. PokeDaisy's reference data for every mainline game | todo | |
 | 17. The documentation, and what the feature weighs | todo | |
 | 18. Final check | todo | |

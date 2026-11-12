@@ -3,8 +3,8 @@
 // data file. Each table is checked as it is read: PokedexOrder gives each species one internal index, every base data
 // record names its own species and the first is Bulbasaur's, every move record its own animation and the first is
 // Pound's, the lists end where pret's do, a class's trainers end where the next class's begin, Bulbasaur's front
-// picture decodes at its base data's size, and a pointer that leaves its bank stops the read. The pictures and the
-// town map are decoded by pics.cpp and maps.cpp.
+// picture decodes at its base data's size, every hidden item has its place in HiddenItemCoords, and a pointer that
+// leaves its bank stops the read. The pictures and the town map are decoded by pics.cpp and maps.cpp.
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
@@ -42,6 +42,9 @@ namespace banana::kiwami::gbpk
 		const int NUM_TMS = 50, NUM_HMS = 5;	// constants/item_constants.asm (the TM/HM bits)
 		const int SUPER_ROD = 3;			// data/wild/super_rod.asm SuperRodData: map, the group's pointer (a group: a
 											// count, then its levels and species)
+		const int HIDDEN_EVENT = 6;			// data/events/hidden_events.asm hidden_event: y, x, the function's argument,
+											// its bank and address
+		const int HIDDEN_COORDS = 3;		// data/events/hidden_item_coords.asm hidden_item: map, y, x
 		const int ROD_SLOTS = 4;			// pokeyellow's data/wild/super_rod.asm: map, four species and levels
 		const int YELLOW_ROD_PERCENT[ROD_SLOTS] = { 40, 30, 20, 10 };	// pokeyellow's engine/items/super_rod.asm
 		const uint8_t OWN_LEVELS = 0xFF;	// data/trainers/parties.asm: a party with a level each
@@ -98,6 +101,11 @@ namespace banana::kiwami::gbpk
 		// the Super Rod's four slots and SpecialTrainerMoves
 		const size_t mew = optional("mewBaseData"), mewPic = optional("mewPicFront"), superRod = optional("superRod"), rodSlots = optional("superRodSlots"),
 			loneMoves = optional("loneMoves"), teamMoves = optional("teamMoves"), special = optional("specialTrainerMoves");
+		// the hidden items: the maps with hidden events (Red's and Blue's events through a table of pointers of its own,
+		// Yellow's each with its map), the function that gives an item, and the items' flags
+		const size_t hiddenMaps = table("hiddenEventMaps"), hiddenCoords = table("hiddenItemCoords"),
+			hiddenPointers = optional("hiddenEventPointers");
+		table("hiddenItems");
 		if (!missing.empty()) return no("no rom." + missing + " in the data file, or it is past the ROM's end");
 		if ((superRod == RomView::NONE) == (rodSlots == RomView::NONE)) return no("the data file gives neither rom.superRod nor rom.superRodSlots, or both");
 		if ((mew == RomView::NONE) != (mewPic == RomView::NONE)) return no("the data file gives Mew's base data apart without its picture's bank, or that without it");
@@ -380,6 +388,42 @@ namespace banana::kiwami::gbpk
 		// the town map, and each place's spot on it (maps.cpp)
 		std::string w;
 		if (!readTownMap(r, d, pointOf, out, &w)) return no(w);
+
+		// the hidden items (data/events/hidden_events.asm): HiddenEventMaps, the maps with hidden events to -1 (Red's and
+		// Blue's a map id each, its events at HiddenEventPointers' pointer in the same place; Yellow's a map id and its
+		// pointer), each map's events to -1; those that call HiddenItems are hidden items, the function's argument the
+		// item, the flag the place of the map, y and x in HiddenItemCoords (to -1), as the game finds it
+		// (engine/events/hidden_items.asm FindHiddenItemOrCoinsIndex)
+		std::map<uint32_t, uint16_t> flagOf;
+		for (size_t o = hiddenCoords, i = 0;; o += HIDDEN_COORDS, i++)
+		{
+			if (!r.has(o, 1) || i > 255) return no("HiddenItemCoords has no end");
+			if (r.u8(o) == END) break;
+			if (!r.has(o, HIDDEN_COORDS)) return no("HiddenItemCoords has no end");
+			flagOf.emplace((uint32_t)(r.u8(o) << 16 | r.u8(o + 1) << 8 | r.u8(o + 2)), (uint16_t)i);
+		}
+		const Addr giveItem = d.rom.at("hiddenItems");
+		const size_t mapEntry = hiddenPointers != RomView::NONE ? 1 : 3;
+		for (size_t o = hiddenMaps, i = 0;; o += mapEntry, i++)
+		{
+			if (!r.has(o, 1) || i > 255) return no("HiddenEventMaps has no end");
+			const uint8_t m = r.u8(o);
+			if (m == END) break;
+			size_t e = hiddenPointers != RomView::NONE ? r.near(hiddenPointers + 2 * i) : r.near(o + 1);
+			if (m >= nMaps || e == RomView::NONE) return no("HiddenEventMaps' map " + std::to_string(m) + " has no events in its bank");
+			for (int n = 0;; n++, e += HIDDEN_EVENT)
+			{
+				if (!r.has(e, 1) || n > 64) return no("map " + std::to_string(m) + "'s hidden events have no end");
+				if (r.u8(e) == END) break;
+				if (!r.has(e, HIDDEN_EVENT)) return no("map " + std::to_string(m) + "'s hidden events have no end");
+				if (r.u8(e + 3) != giveItem.bank || r.le16(e + 4) != giveItem.addr) continue;
+				auto f = flagOf.find((uint32_t)(m << 16 | r.u8(e) << 8 | r.u8(e + 1)));
+				if (f == flagOf.end())
+					return no("map " + std::to_string(m) + "'s hidden item at " + std::to_string(r.u8(e + 1)) + ", " + std::to_string(r.u8(e)) +
+						" isn't in HiddenItemCoords");
+				out.hidden.push_back({ m, r.u8(e + 1), r.u8(e), gen1Item(r.u8(e + 2)), f->second });
+			}
+		}
 
 		// trainers (data/trainers/parties.asm: TrainerDataPointers' pointer a class; a class's trainers one after another
 		// up to the next class's, the last class's up to TrainerAI: a level and its species to 0, or OWN_LEVELS and a

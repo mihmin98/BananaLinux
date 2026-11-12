@@ -13,7 +13,7 @@
 #   Item row alone, no abilities; the Party page as upstream draws it with them off (KIWAMI_GBPK_PAGES=0);
 # - Red's pages on its captures (the stand-in's species by their internal index): Gen I's rules on, the party and a
 #   wild battle, Gen I's blocks (one Special row, no Item or Friendship row, no Hidden Power, base stats with
-#   Special), and its rules off before Crystal's companion opens after it.
+#   Special), its guide file loaded (13 milestones), and its rules off before Crystal's companion opens after it.
 # Needs ui/banana-ui (make ui) and ImageMagick (the shots not blank). Run by kiwami/tests/ci.sh when banana-ui is
 # built, or by hand:
 #   kiwami/tests/gbpk-ui.sh       (the shots and logs in $OUT, /tmp/kiwami-gbpk-ui by default)
@@ -126,8 +126,8 @@ gtouch 100 298; gshot pidgey"
         { echo "FAIL $size upstream: the Party page is the same with the fork's blocks off"; fail=1; }
     grep -E 'gbdrag|gb companion: pages:' "$OUT/$size-pages.log" | sort | uniq -c | sed "s/^ */gbpk-ui: $size: /"
 
-    # Red: Gen I's rules, its party of six and a wild battle, Gen I's blocks on the Party, Battle and Dex pages (a
-    # species picked off the list), none of Gen II's; then Crystal's companion, with Gen I's rules off before it
+    # Red: Gen I's rules, its guide file, its party of six and a wild battle, Gen I's blocks on the Party, Battle and Dex
+    # pages (a species picked off the list), none of Gen II's; then Crystal's companion, with Gen I's rules off before it
     export KIWAMI_GBPK_TRACE=1
     run $size red "home 0; gbpanel 1 $CAP/red; gbhost; gbfeed $CAP/red; sleep 300; gshot party; wait 300; \
 gbfeed $CAP/red_battle; sleep 300; gshot battle; wait 300; gbfeed $CAP/red; sleep 100; gtouch 509 448; gshot dex; \
@@ -135,6 +135,8 @@ gtouch 100 298; gshot species; gbpanel 1 $CAP/crystal; gbhost"
     unset KIWAMI_GBPK_TRACE
     logged "gbpanel .*/red: companion Red$"
     logged "gb companion: rules on \(Generation I\)$"
+    logged "gb companion: guide: 13 milestones, 0 hidden items$"
+    ! grep -q 'gb companion: no guide' "$log" || { echo "FAIL $size red: $(grep 'no guide' "$log")"; fail=1; }
     logged "gbhost: ready Red view pages:Party$"
     logged "gbfeed .*/red: asked [1-9][0-9]*, party 6, battle 0, view pages:Party$"
     logged "gbfeed .*/red_battle: asked [1-9][0-9]*, party 6, battle 1, view pages:Battle$"

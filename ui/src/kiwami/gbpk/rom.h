@@ -88,8 +88,9 @@ namespace banana::kiwami::gbpk
 	// UncompressMonSprite), and its palette's four colours (MonsterPalettes' id into the palettes)
 	struct Gen1Pics { std::vector<size_t> pic, palette; };
 
-	// a hidden item on a map (Gen II's: a map's background event of the item kind): the zone, where it lies on the
-	// map, the item (as items are numbered here) and the event flag the game sets once it's found
+	// a hidden item on a map (Gen II's: a map's background event of the item kind; Gen I's: a map's hidden event that
+	// calls HiddenItems): the zone, where it lies on the map, the item (as items are numbered here) and the flag the
+	// game sets once it's found (Gen II's an event flag, Gen I's its place in HiddenItemCoords)
 	struct HiddenItem { uint16_t zone = 0; uint8_t x = 0, y = 0; uint16_t item = 0, flag = 0; };
 
 	// what readRom gives; sprite() decodes a picture on demand (pics.cpp)

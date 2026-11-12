@@ -28,6 +28,7 @@ GEN2 = DATA + '/Gen2Reader.kt'
 GEN2_DEX = DATA + '/Gen2Dex.kt'
 GEN2_ART = DATA + '/Gen2Art.kt'
 CRYSTAL_GUIDE = DATA + '/GuideCrystalGen.kt'
+CRYSTAL_RULES = DATA + '/GuideCrystal.kt'
 TITLES = 'app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt'
 
 # pret-extract.py's SOURCES helpers (one file, two sections)
@@ -92,6 +93,12 @@ CRYSTAL_GUIDE_RAM = {'CR_EVENT_FLAGS': 'eventFlags', 'CR_TIME_OF_DAY': 'timeOfDa
                      'CR_TRADE_FLAGS': 'tradeFlags'}
 CRYSTAL_GUIDE_SIZES = {'CR_EVENT_FLAG_BYTES': 'eventFlagBytes', 'CR_TRADE_FLAG_BYTES': 'tradeFlagBytes'}
 
+# Crystal's guide (GuideCrystal.kt's bosses and tips over GuideCrystalGen.kt's flags and teams): the guide file's
+# milestones by the title's first words, and the places PokeDaisy names that aren't a landmark's name in the game
+GUIDE_KINDS = [('LEADER ', 'gym', 'Gym', 'Leader'), ('ELITE FOUR ', 'elite4', 'Elite Four', 'Elite Four'),
+               ('CHAMPION ', 'champion', 'Champion', 'Champion'), ('', 'postgame', None, None)]
+PLACE_ALIAS = {'POKéMON LEAGUE': 'INDIGO PLATEAU', 'MT. SILVER': 'SILVER CAVE'}
+
 
 def fail(msg) -> NoReturn:
     sys.exit('pokedaisy-extract: ' + msg)
@@ -151,11 +158,19 @@ def closing(s, i):
 
 
 def split_args(s, angles=False):
-    """A list's items at the top level (with angles, < > nest too: a field's type, Map<Int, Int>)."""
+    """A list's items at the top level (with angles, < > nest too: a field's type, Map<Int, Int>); a string's commas
+    and brackets are its own."""
     opens, closes = ('([{<', ')]}>') if angles else ('([{', ')]}')
-    out, depth, cur = [], 0, []
+    out, depth, cur, quoted, escaped = [], 0, [], False, False
     for c in s:
-        if c in opens:
+        if quoted:
+            quoted = escaped or c != '"'
+            escaped = not escaped and c == '\\'
+            cur.append(c)
+            continue
+        if c == '"':
+            quoted = True
+        elif c in opens:
             depth += 1
         elif c in closes:
             depth -= 1
@@ -345,6 +360,160 @@ def retail_sha1s(src):
     return out
 
 
+# --- Crystal's guide ---
+
+def kotlin_string(expr):
+    """A string made of literals joined by +, as its text; None for anything else."""
+    lit = r'"((?:[^"\\$]|\\.)*)"'
+    parts = re.findall(lit, expr)
+    if not parts or re.sub(lit, '', expr).replace('+', '').strip():
+        return None
+    return ''.join(re.sub(r'\\(.)', r'\1', p) for p in parts)
+
+
+def braced(s, start):
+    """The { ... } that starts at or after s[start]."""
+    i = s.index('{', start)
+    return s[i:closing(s, i) + 1]
+
+
+def flag_rule(lam, consts, params=None):
+    """A rule over the save's flags, { p -> p.flag(A) || p.flag(B) } or with &&: ('any' or 'all', [flag numbers]);
+    None for another shape."""
+    m = re.fullmatch(r'\{\s*p\s*->\s*(.*?)\s*\}', lam.strip(), re.S)
+    if not m:
+        return None
+    for op, kind in (('||', 'any'), ('&&', 'all')):
+        terms = [t.strip() for t in m.group(1).split(op)]
+        if len(terms) < 2:
+            continue
+        out = []
+        for t in terms:
+            tm = re.fullmatch(r'p\.flag\((\w+)\)', t)
+            n = tm and (params or {}).get(tm.group(1), consts.get(tm.group(1)))
+            if not isinstance(n, int):
+                return None
+            out.append(n)
+        return kind, out
+    return None
+
+
+def name_case(s):
+    """A name as the companion writes it: "LT. SURGE" Lt. Surge, "POKéMON LEAGUE" Pokémon League."""
+    return ' '.join(w[:1].upper() + w[1:].lower() for w in s.split())
+
+
+def slug(s):
+    return re.sub(r'[^a-z0-9]+', '-', s.lower().replace('é', 'e')).strip('-')
+
+
+def crystal_guide(rules_src, gen_src, first_derived):
+    """The guide file of Crystal (nds-pokemon-guide, schema 1) and the bits derived from the save's flags its milestones
+    read: each boss of GuideCrystal.kt in its order, done by its flag, or by a rule over two (crLeague's, a lambda's)
+    as a derived bit from first_derived on; its team's trainer id and top level from GuideCrystalGen.kt; the tips as
+    notes. Returns (guide, derived, unread)."""
+    consts = guide_consts(gen_src)
+    unread = []
+    m = re.search(r'\bval CR_BOSSES_RAW\s*:[^=]*=\s*listOf\(\s*"""(.*?)"""', gen_src, re.S)
+    if not m:
+        fail('no CR_BOSSES_RAW in %s' % CRYSTAL_GUIDE)
+    teams = {}
+    for line in m.group(1).splitlines():
+        if not line.strip():
+            continue
+        f = line.split('|')
+        if len(f) != 5 or not f[1].isdigit() or not f[2].isdigit():
+            fail('%s: a boss line it can\'t read: %s' % (CRYSTAL_GUIDE, line))
+        teams[f[0]] = (int(f[1]) << 8 | int(f[2]), max(int(x.split()[0]) for x in f[4].split(';')))
+    s = strip_comments(rules_src)
+    # (the shapes the conversion takes: crBoss is a Boss of its title, place, flag and rule, its team the key's)
+    if not re.search(r'fun crBoss\(title: String, where: String, done: Int, key: String, doneIf: \(\(SaveProgress\) -> Boolean\)\? = null\)\s*=\s*'
+                     r'Boss\(title, where, done, doneIf = doneIf\)\s*\{\s*CrystalWorld\.trainer\(key\)\s*\}', s):
+        fail('%s: crBoss isn\'t Boss(title, where, done, doneIf) with CrystalWorld\'s team' % CRYSTAL_RULES)
+    gm = re.search(r'\bval GUIDE_CRYSTAL\s*=\s*GameGuide\(', s)
+    gbody = gm and s[gm.end():closing(s, gm.end() - 1)]
+    if not gbody or not re.search(r'bosses\s*=\s*BOSSES_CRYSTAL\b', gbody) or not re.search(r'pages\s*=\s*listOf\(CRYSTAL_TIPS\)', gbody):
+        fail('%s: GUIDE_CRYSTAL isn\'t BOSSES_CRYSTAL with CRYSTAL_TIPS' % CRYSTAL_RULES)
+    lm = re.search(r'fun crLeague\(own: Int\)[^=]*=', s)
+    league = lm and braced(s, lm.end())
+    bm = re.search(r'\bval BOSSES_CRYSTAL\s*=\s*listOf\(', s)
+    if not bm:
+        fail('no BOSSES_CRYSTAL in %s' % CRYSTAL_RULES)
+    places, milestones, derived, gyms = {}, [], [], 0
+    for it in split_args(s[bm.end():closing(s, bm.end() - 1)]):
+        if not it.startswith('crBoss('):
+            unread.append('BOSSES_CRYSTAL: %s' % it)
+            continue
+        c = closing(it, len('crBoss'))
+        args, rest = split_args(it[len('crBoss('):c]), it[c + 1:].strip()
+        title, where, key = (kotlin_string(args[i]) for i in (0, 1, 3)) if len(args) >= 4 else (None, None, None)
+        if not title or not where or key not in teams or len(args) > 5:
+            unread.append('BOSSES_CRYSTAL: %s' % it)
+            continue
+        rule = None
+        if len(args) == 5:
+            cm = re.fullmatch(r'crLeague\((\w+)\)', args[4])
+            if cm and league and cm.group(1) in consts:
+                rule = flag_rule(league, consts, {'own': consts[cm.group(1)]})
+        elif rest:
+            rule = flag_rule(rest, consts)
+        elif args[2] in consts:
+            rule = ('flag', consts[args[2]])
+        if not rule or (args[2] != '0' and len(args) + bool(rest) > 4):
+            unread.append('BOSSES_CRYSTAL: %s (its rule)' % title)
+            continue
+        prefix, kind, label, cls = next(k for k in GUIDE_KINDS if title.startswith(k[0]))
+        foe = name_case(title[len(prefix):])
+        if kind == 'gym':
+            where = re.sub(r' GYM$', '', where)
+        place_name = name_case(PLACE_ALIAS.get(where, where))
+        places[slug(place_name)] = {'name': place_name}
+        if kind == 'gym':
+            gyms += 1
+            mid, name = 'gym-%d-%s' % (gyms, slug(foe)), 'Gym %d: %s' % (gyms, foe)
+        elif label:
+            mid, name = '%s-%s' % ('e4' if kind == 'elite4' else kind, slug(foe)), '%s: %s' % (label, foe)
+        else:
+            mid, name = slug(foe), '%s (%s)' % (foe, place_name)
+        if rule[0] == 'flag':
+            done = 'flag:%d' % rule[1]
+        else:
+            bit = first_derived + len(derived)
+            derived.append({'bit': bit, rule[0]: rule[1], 'for': mid})
+            done = 'flag:%d' % bit
+        tid, ace = teams[key]
+        ms = {'id': mid, 'name': name, 'kind': kind, 'place': slug(place_name), 'level_cap': ace,
+              'foe': {'name': foe, 'ace_level': ace}, 'trainer_ids': [tid], 'done_when': done,
+              'quality': 'reference-only', 'source': 'PokeDaisy GuideCrystal.kt, GuideCrystalGen.kt (%s)' % key}
+        if cls:
+            ms['foe']['class'] = cls
+        milestones.append(ms)
+    notes = []
+    tm = re.search(r'\bval CRYSTAL_TIPS\s*=\s*page\(', s)
+    if not tm:
+        fail('no CRYSTAL_TIPS in %s' % CRYSTAL_RULES)
+    tips = s[tm.end():closing(s, tm.end() - 1)]
+    for em in re.finditer(r'\bentry\(', tips):
+        args = split_args(tips[em.end():closing(tips, em.end() - 1)])
+        q, a = (kotlin_string(args[0]), kotlin_string(args[1])) if len(args) >= 2 else (None, None)
+        # (an entry's hint, the answer's first words in PokeDaisy's quiz, is left out: the notes show the answer)
+        if not q or not a or any(not re.match(r'hint\s*=', x) for x in args[2:]):
+            unread.append('CRYSTAL_TIPS: %s' % ', '.join(args))
+            continue
+        notes.append({'id': 'note-tip-%d' % (len(notes) + 1), 'kind': 'tip', 'title': q, 'text': a,
+                      'quality': 'reference-only', 'source': 'PokeDaisy GuideCrystal.kt (CRYSTAL_TIPS)'})
+    guide = {
+        'schema': 1, 'kind': 'nds-pokemon-guide', 'game': 'crystal', 'code': 'BYTE', 'title': 'Pokémon Crystal',
+        'revision': 1,
+        'sources': ['PokeDaisy by Lidor Itzhari, %s (GPL-3.0): GuideCrystal.kt\'s bosses, their order and rules, and '
+                    'its tips; GuideCrystalGen.kt\'s flags and teams, generated there from pret/pokecrystal' % PIN[:8],
+                    'The player\'s ROM: the trainers\' teams, the places\' maps and the hidden items, read when the '
+                    'game starts (kiwami/GB-POKEMON.md)'],
+        'places': places, 'milestones': milestones, 'notes': notes,
+    }
+    return guide, derived, unread
+
+
 # --- The data files ---
 
 def build(checkout):
@@ -358,7 +527,9 @@ def build(checkout):
     fields, configs = read_configs(read(GEN2))
     dex_src = read(GEN2_DEX)
     art_src = read(GEN2_ART)
-    guide = guide_consts(read(CRYSTAL_GUIDE))
+    guide_src = read(CRYSTAL_GUIDE)
+    guide = guide_consts(guide_src)
+    rules_src = read(CRYSTAL_RULES)
     titles = retail_sha1s(read(TITLES))
     extra_text = open(os.path.join(REPO, EXTRA), encoding='utf-8').read()
     inputs[EXTRA] = pe.sha256(extra_text.encode('utf-8'))
@@ -438,13 +609,22 @@ def build(checkout):
             fail('%s: GameTitles.kt\'s "%s" SHA-1s %s aren\'t pret\'s %s' %
                  (key, pd_title, sorted(titles.get(pd_title, ())), sorted(pret_sha1)))
         releases = [{k: r[k] for k in ('sha1', 'name', 'code') if k in r} for r in g['releases']]
+        # the flag banks its guide reads (Live::flags: each bank's bits from its first, the derived bits after them)
+        flags, derived = [], []
+        if key == 'crystal':
+            flags = [{'ram': 'eventFlags', 'bytes': sizes['eventFlagBytes'], 'first': 0}]
+            gd, derived, u = crystal_guide(rules_src, guide_src, 8 * sizes['eventFlagBytes'])
+            unread += u
+            files['%s/%s.json' % (FOLDER, key)] = pe.dump(gd).encode('utf-8')
         doc = {
             'schema': 1, 'kind': 'gb-pokemon-ram', 'game': key, 'gen': gen, 'title': title,
             'header_title': g['header_title'], 'releases': releases,
             'ram': {k: {'bank': b, 'addr': pe.hexaddr(a), 'src': src[k]} for k, (b, a) in ram.items()},
-            'sizes': sizes, 'flags': [],
+            'sizes': sizes, 'flags': flags,
             'rom': {k: {'bank': b, 'addr': pe.hexaddr(a), 'src': rom_src[k]} for k, (b, a) in rom.items()},
         }
+        if derived:
+            doc['derived'] = derived
         files['%s/%s.ram.json' % (FOLDER, key)] = pe.dump(doc).encode('utf-8')
     if unread:
         print('unread:', file=sys.stderr)
@@ -462,7 +642,7 @@ def main(argv):
     args = [a for a in argv if a not in ('--check', '--any-commit')]
     if len(args) > 1 or any(a.startswith('-') for a in args):
         sys.exit('usage: pokedaisy-extract.py [<pokedaisy checkout>] [--check] [--any-commit]')
-    outs = ['%s/%s.ram.json' % (FOLDER, g[0]) for g in GAMES] + [FOLDER + '/LICENSE']
+    outs = ['%s/%s.ram.json' % (FOLDER, g[0]) for g in GAMES] + [FOLDER + '/crystal.json', FOLDER + '/LICENSE']
     if not args:
         if not check:
             fail('give PokeDaisy\'s checkout, or --check')

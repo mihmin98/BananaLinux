@@ -747,13 +747,19 @@ Added after step 5 was committed (*Deviations*, 2026-11-11).
 
 ### 10. Crystal's guide
 
+(Changed in the work, *Deviations* 2026-11-12: the hidden items from the ROM's map events, the Elite Four and Red by
+derived bits, the gyms by their leaders' flags, no `opens`.)
+
 - **Files**:
   - `ui/src/kiwami/gbpk/guide-games.inc` (new)
   - `ui/src/nds/guide.cpp` (hook, 1 line)
-  - `ui/src/kiwami/gbpk/reader.cpp`, `host.cpp` (changed)
+  - `ui/src/kiwami/gbpk/reader.cpp`, `reader.h`, `host.cpp`, `host.h` (changed)
+  - `ui/src/kiwami/gbpk/games.h`, `games.cpp` (changed: the flag banks and derived bits, *Deviations*)
+  - `ui/src/kiwami/gbpk/rom.h`, `rom2.cpp` (changed: the hidden items, *Deviations*)
   - `kiwami/tools/pokedaisy-extract.py` (changed)
   - `kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.json` (new), `crystal.ram.json`, `SOURCES` (changed)
-  - `kiwami/tests/gbpk-units.cpp` (changed)
+  - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/ci.sh` (changed)
+  - `kiwami/tests/gbpk-roms.cpp`, `gbpk-roms.sh`, `gbpk-ui.sh` (changed, *Deviations*)
   - `docs/FORK.md`, `kiwami/GB-POKEMON.md` (changed)
 - **Change**:
   - **Hook**, `guide.cpp`, inside `GAMES` after the last row (`:27`):
@@ -807,6 +813,8 @@ Added after step 5 was committed (*Deviations*, 2026-11-11).
   `gbpk-roms` (with `GB_ROMS`): Gold's guide has 16 gyms, 4 Elite Four and 1 Champion, the first Falkner; Jasmine's
   milestone is `badge:6` and Pryce's `badge:7`.
 - **Commit**: `GB Pokémon companion: Gold and Silver's gyms, Elite Four and Champion as a guide from the ROM's trainers`
+- (*Deviations* 2026-11-12: the host already adds Gold's and Silver's hidden items from the ROM since step 10; the
+  ROM-built milestones join them.)
 
 ### 12. Gen I's memory: Red, Blue and Yellow
 
@@ -1170,6 +1178,32 @@ Where the implementation turned out different from this plan, why, and what chan
     but first drawn by step 12's Gen I captures; `gbpk-ui.sh` checks that Crystal draws none of them.
   - Step 8's `make test` renders were gone before they could be kept (`run.sh` clears `ui/tests/out/` first), so the
     comparison is with `nds-pages-test` built from `git archive HEAD` (step 8's tree) in `/tmp`.
+- **2026-11-12, step 10: Crystal's guide as PokeDaisy's tables allow** (the first two agreed with the user).
+  - **The hidden items come from the ROM**, not the guide file: PokeDaisy's 85 have their landmark, item and flag, but
+    no coordinates. `rom2.cpp` reads each map's background events of the item kind and their `hiddenitem` (x, y, item,
+    flag) into `GbRomData::hidden` (`rom.h`), and `host.cpp` makes the Here page's secrets of them, each on its own map
+    with its x and y, "A hidden <item>." by the ROM's item name. `gbpk-roms` checks Crystal's 85 are PokeDaisy's by
+    flag and item (the National Park's Full Heal twice: the park and its Bug Contest copy share one flag). Gold and
+    Silver get theirs (87 each, pret's count) now rather than not at all. `crystal.json` has no secrets.
+  - **The Elite Four and Red are done by derived bits.** The game clears each Elite Four room's flag whenever the Indigo
+    Plateau's Pokémon Center loads, so PokeDaisy counts a member beaten by "the League won or the room's flag", and
+    Red by "the League won and `EVENT_RED_IN_MT_SILVER`" (a flag set from a new game). Upstream's `done_when` has no or
+    and no and, so `crystal.ram.json` has `derived` bits after the event flags (2048-2052), each over two flags, which
+    the reader works out after each set. `games.h` and `games.cpp` read `flags` and `derived`, and refuse a bank or a
+    bit out of place.
+  - **The gyms are done by their leaders' flags** (`EVENT_BEAT_FALKNER`, ...), as PokeDaisy has them, not by badges:
+    the badge each leader gives needs pret's gym scripts, which step 11 reads for Gold and Silver; the flags follow
+    each Kanto leader whatever order they're beaten in. The unit test counts 16 gym milestones and follows their flags
+    instead of the badges.
+  - **No `opens`**: PokeDaisy has nothing of which places a boss opens, so the catch suggestions look at the place the
+    player is in only.
+  - `places` are the bosses' 18, named as the ROM's landmarks; PokeDaisy's "POKéMON LEAGUE" and "MT. SILVER" are the
+    game's Indigo Plateau and Silver Cave. `gbpk-roms` checks each place resolves and each boss's team is the ROM's at
+    its level cap. `notes` are the tips' two entries, their quiz hints left out.
+  - The script's `split_args` keeps a string's commas (the tips have them); the files it wrote before are unchanged.
+  - The event flags are one read of 256 bytes; `Live::flags` is 257 bytes (the bank and a byte of derived bits).
+  - Also changed: `kiwami/tests/ci.sh` and `gbpk-roms.sh` link upstream's `guide.cpp` and `json.cpp`; `gbpk-ui.sh`
+    checks the host logs `guide: 22 milestones, 0 hidden items` for the stand-in game (no ROM, no hidden items).
 
 ## Progress
 
@@ -1187,7 +1221,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 7. Gen II's ROM: the sprites and the Pokégear's maps | done | `GB Pokémon companion: Gen II's sprites in their palettes and the Pokégear's maps, decoded from the ROM` |
 | 8. The companion on the game panel, with its Settings rows | done | `GB Pokémon companion: the pages on the game panel for Gold, Silver and Crystal, behind two Settings rows` |
 | 9. Gen-aware pages | done | `GB Pokémon companion: the pages show DVs, stat experience and Special, and no natures or abilities` |
-| 10. Crystal's guide | todo | |
+| 10. Crystal's guide | done | `GB Pokémon companion: Crystal's guide, converted from PokeDaisy's tables` |
 | 11. Gold and Silver's guide, built from the ROM | todo | |
 | 12. Gen I's memory: Red, Blue and Yellow | todo | |
 | 13. Gen I's ROM: the tables | todo | |

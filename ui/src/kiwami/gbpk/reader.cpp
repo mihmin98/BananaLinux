@@ -15,7 +15,7 @@ namespace banana::kiwami::gbpk
 {
 	namespace
 	{
-		const int PARTY = 6, MON = 48, BOX_MON = 32, BATTLE_MON = 32, NAME = 11, TMS_HMS = 57;
+		const int PARTY = 6, MON = 48, BOX_MON = 32, BATTLE_MON = 32, NAME = 11, TMS_HMS = 57, FLAG_READ = 256;
 		const uint8_t EGG = 0xFD, END = 0xFF;
 
 		// Gen II's item ids and types in the pages' conventions (rom.h, shared with the ROM reader)
@@ -152,6 +152,10 @@ namespace banana::kiwami::gbpk
 			Addr a = d_.at(k);
 			if (a.ok()) rs.push_back(Read{ a.core(), n, {}, false });
 		}
+		// the guide's flag banks, 256 bytes a read at most (before neighbours are merged)
+		for (const FlagBank& f : d_.flags)
+			for (int off = 0; off < f.bytes; off += FLAG_READ)
+				rs.push_back(Read{ d_.at(f.ram).core() + (uint32_t)off, std::min(FLAG_READ, f.bytes - off), {}, false });
 		std::sort(rs.begin(), rs.end(), [](const Read& a, const Read& b) { return a.addr < b.addr; });
 		for (const Read& r : rs)
 		{
@@ -286,6 +290,31 @@ namespace banana::kiwami::gbpk
 			l->dexCaught.assign(caught, caught + 32);
 			l->dexSeen.assign(seen, seen + 32);
 			for (int i = 0; i < 32; i++) l->dexSeen[i] |= l->dexCaught[i];
+		}
+		// the guide's flags: each bank's bytes from its first bit, then the bits derived from them (none at all when a
+		// bank wasn't read whole: a milestone isn't marked done by half a bank)
+		{
+			int bits = 0;
+			for (const FlagBank& f : d_.flags) bits = std::max(bits, f.first + 8 * f.bytes);
+			for (const DerivedFlag& f : d_.derived) bits = std::max(bits, f.bit + 1);
+			std::vector<uint8_t> flags((size_t)(bits + 7) / 8);
+			bool whole = true;
+			for (const FlagBank& f : d_.flags)
+				for (int off = 0; whole && off < f.bytes; off += FLAG_READ)
+				{
+					const int n = std::min(FLAG_READ, f.bytes - off);
+					const uint8_t* p = at(f.ram, off, n);
+					if (p) std::copy(p, p + n, flags.begin() + f.first / 8 + off);
+					whole = p != nullptr;
+				}
+			auto bit = [&](int b) { return (flags[(size_t)b >> 3] >> (b & 7) & 1) != 0; };
+			for (const DerivedFlag& f : d_.derived)
+			{
+				bool v = f.all;
+				for (int b : f.of) v = f.all ? v && bit(b) : v || bit(b);
+				if (v) flags[(size_t)f.bit >> 3] |= (uint8_t)(1 << (f.bit & 7));
+			}
+			if (whole) l->flags = std::move(flags);
 		}
 		if (const uint8_t* t = at("timeOfDay", 0, 1))
 			l->timeOfDay = *t == 0 ? nds::TimeOfDay::MORNING : *t == 1 ? nds::TimeOfDay::DAY : nds::TimeOfDay::NIGHT;

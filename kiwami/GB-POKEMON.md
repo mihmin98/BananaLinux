@@ -45,7 +45,7 @@ Two sources, each read by its own script into files that are committed, so a bui
 
 - **PokeDaisy**, by `kiwami/tools/pokedaisy-extract.py`: the RAM addresses in its readers' configs (`Gen2Reader.kt`'s
   `Gen2Config`, read by a small evaluator of its named arguments, `wramx(bank, addr)` and `.copy(...)`), Crystal's
-  guide RAM (`GuideCrystalGen.kt`), and the releases' SHA-1s (`GameTitles.kt`). The configs' fields that are the
+  guide RAM (`GuideCrystalGen.kt`), Crystal's guide (*The guides*), and the releases' SHA-1s (`GameTitles.kt`). The configs' fields that are the
   games' tables (landmarks, gender ratios, TM items, the Pokédex pages' ROM tables) are left out by name; a field it
   can't read fails the run, listed under `unread:`.
 - **pret's disassemblies** (`pret/pokecrystal`, `pret/pokegold`, and for Red, Blue and Yellow `pret/pokered` and
@@ -158,7 +158,10 @@ take it:
   a trainer's whole party and class << 8 | number;
 - the place is the map's group << 8 | number, with the coordinates; the time of day, the badges (Johto's, then
   Kanto's), the Pokédex, the bag's four pockets (none until every list is well formed, as PokeDaisy reads it), the
-  money, the play time, the day-care and the roamers.
+  money, the play time, the day-care and the roamers;
+- the guide's flags (`Live::flags`, a guide's `done_when: flag:N`): the data file's flag banks, each laid in from its
+  first bit (Crystal's event flags, 256 bytes from bit 0, so a flag's number is pret's), then the derived bits worked
+  out from them (*The data files*). A bank not answered whole gives no flags, and no milestone is marked done by it.
 
 The snapshot counts as the game's only once the party has a count of 1-6 whose species list matches the structures:
 before a save is loaded WRAM holds leftovers.
@@ -239,6 +242,11 @@ on a PC. Where each table is comes from the data file's `rom` section; its layou
 - **Trainers** by class << 8 | number, the key the battle's trainer has in memory: the class's name, the trainer's,
   and the team with its items and moves where the party has them, else the four moves the game gives (the last four
   learned by the Pokémon's level).
+- **Hidden items**: each map's background events of the item kind (`BGEVENT_ITEM`), from the events its attributes
+  point to (`data/maps/attributes.asm`; the warps, coord events and bg events in `macros/scripts/maps.asm`'s layout),
+  each with the map, its x and y, and the item and event flag of its `hiddenitem`. Crystal has 85 (the National
+  Park's Full Heal twice: the park's map and its Bug Contest copy share it), all PokeDaisy's by flag and item; Gold
+  and Silver 87 each, pret's count. The Here page lists them (*The guides*).
 
 Names are written as the pages write them ("CHIKORITA" to "Chikorita", "HP UP" to "HP Up", "NEW BARK TOWN" to "New
 Bark Town"); the descriptions and the Pokédex's text as the games write them, their line breaks as spaces.
@@ -287,7 +295,8 @@ step 12), JSON with sorted keys:
   "ram": { "partyCount": { "bank": 1, "addr": "0xDCD7", "src": "pokedaisy pret (wPartyCount)" } },
   "sizes": { "itemsMax": 20, "ballsMax": 12, "keyItemsMax": 25, "speciesCount": 251, "eventFlagBytes": 256,
              "numPokemon": 251, "numMoves": 251, "firstTm": 191 },
-  "flags": [],
+  "flags": [ { "ram": "eventFlags", "bytes": 256, "first": 0 } ],
+  "derived": [ { "bit": 2048, "any": [ 68, 1464 ], "for": "e4-will" } ],
   "rom": { "baseData": { "bank": 20, "addr": "0x5424", "src": "pokedaisy pret (BaseData)" } } }
 ```
 
@@ -305,7 +314,50 @@ step 12), JSON with sorted keys:
   `kantoMap`). Crystal looks a Pokédex entry's bank up in a table (`dexEntryBanks`); Gold and Silver count it from the
   first entry's (`dexEntryFirst`, checked against PokeDaisy's `dexEntryFirstBank`). Crystal fixes a picture's bank by
   `picsBanks`, Gold and Silver by `picBankFixes`.
-- `flags` (the flag banks the guides read) is filled by a later step.
+- `flags` are the banks of the save's flags the guide reads, each at a `ram` key's address, its `bytes` laid into
+  `Live::flags` from bit `first` (a byte's first; no two over one bit). `derived` are bits worked out from those
+  after each read: `bit` is set when `all` (or `any`) of the listed bits are, and `for` names the milestone that reads
+  it. Only Crystal has them yet: its event flags, and five derived bits (*The guides*). The reader asks for a bank
+  256 bytes at a time.
+
+## The guides
+
+The Guide page's milestones and notes, and the Here page's hidden items, in upstream's guide schema
+(`nds-pokemon-guide`, schema 1, `docs/COMPANIONS.md`), loaded through upstream's `nds::loadGuideFile` with
+`nds::guideResolver` over the ROM's data. The six games are rows of upstream's guide loader by a hook
+(`ui/src/kiwami/gbpk/guide-games.inc`, included in `ui/src/nds/guide.cpp`'s `GAMES`): their ids, keys and codes (Gold's,
+Silver's and Crystal's headers'; Red's, Blue's and Yellow's `PKRD`, `PKBL`, `PKYL` are the fork's own, as their carts
+have none). The host (`host.cpp`) loads `<key>.json` from the data folder; no file, or one refused, logs
+`gb companion: no guide: <why>`, and the pages go on with the hidden items alone.
+
+**Crystal's**, `crystal.json`, is converted by `pokedaisy-extract.py` from PokeDaisy's `GuideCrystal.kt` (the bosses,
+their order and their rules, and the tips) over `GuideCrystalGen.kt` (the flags, and each boss's team, generated
+there from pret/pokecrystal):
+
+- **Milestones**, PokeDaisy's 22 bosses in its order: the eight Johto gyms, the Elite Four, Lance, the eight Kanto gyms,
+  Red. Each names its trainer by class << 8 | number (`trainer_ids`: the team the Guide page shows is the ROM's) and
+  its team's top level as `level_cap` and the foe's `ace_level`. A gym is done by PokeDaisy's own flag, its
+  leader's `EVENT_BEAT_*` (`flag:1213` for Falkner), not its badge, so each leader is followed whatever order the
+  Kanto gyms are taken in; Lance by `EVENT_BEAT_ELITE_FOUR`. The Elite Four and Red are done by rules over two flags,
+  which upstream's `done_when` can't say, so each is a derived bit: an Elite Four member's is set when the League is
+  won or the member's room flag is (the game clears the rooms' flags whenever the Indigo Plateau's Pokémon Center
+  loads), Red's when the League is won and `EVENT_RED_IN_MT_SILVER` is (set from a new game while he's hidden, cleared
+  by the Hall of Fame, set again once he's beaten), as PokeDaisy's `crLeague` and Red's lambda say.
+- **Places**: a boss's place by PokeDaisy's words (a gym's without " GYM"), named as the game's landmarks are, so the
+  resolver finds its maps by the ROM's landmark names; PokeDaisy's "POKéMON LEAGUE" and "MT. SILVER" are the game's
+  Indigo Plateau and Silver Cave. `kiwami/tests/gbpk-roms.sh` checks every place and every boss's team (its top level)
+  against each Crystal ROM.
+- **No `opens`**: PokeDaisy has nothing of which places each boss opens, so the advice's catch suggestions look at the
+  place the player is in and none further on.
+- **Notes**: the tips page's two entries (the time of day, the Headbutt trees), in PokeDaisy's words; their hints,
+  the answer's first words for PokeDaisy's quiz, are left out.
+- **Hidden items** are the ROM's (*Reading the ROM*), not the file's: the host adds a secret for each, on its own map
+  with its x and y, "A hidden <item>." by the ROM's item name, every one listed whether found or not, as upstream's
+  companions list theirs. Gold and Silver have theirs too.
+
+The script refuses what it can't read: a boss that isn't `crBoss(title, where, flag, key[, crLeague(flag)])` with
+an optional `{ p -> p.flag(A) && p.flag(B) }`, a rule of another shape, a tip that isn't `entry(question, answer[,
+hint = ...])`, or a `GUIDE_CRYSTAL` with other bosses or pages.
 
 ## The ROMs for the tests
 
@@ -373,7 +425,9 @@ Quick Attack, Vital Throw and Protect; TM01 and HM01's moves; item names and pri
 Pidgey and Sentret; fishing at New Bark Town and none on Route 29; Falkner's Pidgey Lv 7 and Pidgeotto Lv 9; every
 place with wild Pokémon named; every species' front picture drawn, at its base data's size, Chikorita's 5 x 5 tiles;
 both Pokégear maps drawn, New Bark Town on Johto's with its cell naming it, Pallet Town on Kanto's, and every named
-place but the special landmark's rooms on a map. Given PokeDaisy's checkout, every species' gender ratio and growth
-rate is compared with its `Gen2SpeciesCrystal.kt`. The pictures and maps go to `GBPK_ROMS_OUT` (by default
+place but the special landmark's rooms on a map; every hidden item on a named map with a named item, and more than
+50; and the game's guide file (Crystal's) loaded with every place found by name and every boss's team the ROM's, at
+its level cap. Given PokeDaisy's checkout, every species' gender ratio and growth rate is compared with its
+`Gen2SpeciesCrystal.kt`, and Crystal's hidden items with its `GuideCrystalGen.kt`'s 85, by flag and item. The pictures and maps go to `GBPK_ROMS_OUT` (by default
 `ui/tests/out/gbpk-roms/`) as PNGs for looking at: a sheet of every species' picture, normal and shiny, in the box the
 game draws it in, and each map.

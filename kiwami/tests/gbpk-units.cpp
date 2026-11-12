@@ -1,13 +1,14 @@
 // The Game Boy Pokémon companion's code that needs no screen (ui/src/kiwami/gbpk/), checked on its own: which game a
 // ROM is, its data files and the list of ROMs its ROM tests expect (kiwami/tests/gbpk/roms.sha1), its text, its ROM
-// reader on a made-up ROM, and its memory reader replayed over PokeDaisy's RAM captures (kiwami/tests/gbpk/fixtures/).
+// reader on a made-up ROM, its memory reader replayed over PokeDaisy's RAM captures (kiwami/tests/gbpk/fixtures/), and
+// its guides through upstream's loader and logic.
 // Built and run by kiwami/tests/ci.sh with the host's g++ (the vendored C first, make -C ui kiwami-c, for the 7z
 // reader):
 //   g++ -std=c++17 -Wall -Werror -I ui/src kiwami/tests/gbpk-units.cpp <ui/src/kiwami/gbpk/*.cpp but game.cpp, host.cpp
 //       and panel.cpp> ui/src/kiwami/json.cpp
 //       ui/src/kiwami/ra7z.cpp ui/src/zip.cpp ui/src/zipdir.cpp ui/src/nds/nitro.cpp ui/src/nds/model.cpp
-//       ui/src/nds/logic.cpp ui/src/pokemon.cpp ui/src/pokemap.cpp ui/src/kiwami/third_party/lzma/*.kiwami.o -lz -lpthread
-//       -o gbpk-units
+//       ui/src/nds/logic.cpp ui/src/nds/guide.cpp ui/src/json.cpp ui/src/pokemon.cpp ui/src/pokemap.cpp
+//       ui/src/kiwami/third_party/lzma/*.kiwami.o -lz -lpthread -o gbpk-units
 // The rules' expected values are worked by hand, in the comments, from the games' own code in pret's disassemblies.
 //   ./gbpk-units kiwami/rootfs/usr/share/banana/companions/gb-pokemon kiwami/tests/gbpk
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
@@ -19,6 +20,7 @@
 #include "kiwami/gbpk/rom.h"
 #include "kiwami/gbpk/rules.h"
 #include "kiwami/gbpk/text.h"
+#include "nds/guide.h"
 #include "nds/logic.h"
 #include "nds/rom.h"
 #include <cmath>
@@ -29,6 +31,7 @@
 #include <iterator>
 #include <sstream>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 using namespace banana;
@@ -103,11 +106,46 @@ static void testData()
 	CHECK(loadData("silver", d, &why) && d.game.id == SILVER && d.releases[0].code == "AAXE");
 	EQ(d.game.title, "Silver");
 
+	// the guide's flags: Crystal's event flags from bit 0, then the derived bits (the Elite Four's: the League won or
+	// the room's flag; Red's: the League won and EVENT_RED_IN_MT_SILVER); Gold's none yet
+	CHECK(loadData("crystal", d, &why));
+	CHECK(d.flags.size() == 1 && d.flags[0].ram == "eventFlags" && d.flags[0].bytes == 256 && d.flags[0].first == 0);
+	CHECK(d.derived.size() == 5 && d.derived[0].bit == 2048 && !d.derived[0].all && (d.derived[0].of == std::vector<int>{ 68, 1464 }));
+	CHECK(d.derived[4].bit == 2052 && d.derived[4].all && (d.derived[4].of == std::vector<int>{ 68, 1890 }));
+	CHECK(loadData("gold", d, &why) && d.flags.empty() && d.derived.empty());
+
 	// refusals: a game it doesn't know, a missing file
 	CHECK(!loadData("pinball", d, &why));
 	CHECK(why.find("not one of the six") != std::string::npos);
 	CHECK(!loadData("red", d, &why));
 	CHECK(why.find("can't be read") != std::string::npos);
+
+	// ... and flags it can't lay out: Crystal's file with one thing changed, in a folder of its own
+	auto changed = [&](const char* from, const char* to) {
+		std::ifstream in(dataPath + "/crystal.ram.json");
+		std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+		const size_t at = text.find(from);
+		CHECK(at != std::string::npos);
+		if (at == std::string::npos) return std::string();
+		text.replace(at, strlen(from), to);
+		char dir[] = "/tmp/gbpk-units.XXXXXX";
+		if (!mkdtemp(dir)) return std::string();
+		const std::string path = std::string(dir) + "/crystal.ram.json";
+		std::ofstream(path) << text;
+		setenv("KIWAMI_GBPK_DIR", dir, 1);
+		GameData x;
+		std::string w;
+		CHECK(!loadData("crystal", x, &w));
+		setenv("KIWAMI_GBPK_DIR", dataPath.c_str(), 1);
+		unlink(path.c_str());
+		rmdir(dir);
+		return w;
+	};
+	CHECK(changed("\"ram\": \"eventFlags\"", "\"ram\": \"noSuchKey\"").find("a flag bank") != std::string::npos);
+	CHECK(changed("\"first\": 0", "\"first\": 4").find("a flag bank") != std::string::npos);
+	CHECK(changed("\"bit\": 2048", "\"bit\": 100").find("derived flag") != std::string::npos);
+	CHECK(changed("\"bit\": 2049", "\"bit\": 2048").find("derived flag") != std::string::npos);
+	CHECK(changed("1890", "3000").find("derived flag") != std::string::npos);
 }
 
 static void testConfirm()
@@ -374,11 +412,18 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 		l3 = m.put(R::str("FAST SHIP"));
 	m.key("landmarks", m.put({ 8, 16, l0 & 0xFF, l0 >> 8, 100, 100, l1 & 0xFF, l1 >> 8, 60, 124, l2 & 0xFF, l2 >> 8,
 		148, 132, l3 & 0xFF, l3 >> 8 }));
-	// one map group, right after its pointer: map 1 at landmark 1 with fishing group 2, map 2 at landmark 0 with the
-	// Shore group and no water (no fishing); the headers end where the next table starts
+	// map 1's attributes (border, height, width, the blocks' bank and pointer, the scripts' bank and pointer, the
+	// events' pointer, connections) and its events in the scripts' bank: two filler bytes, a warp, no coord events, a
+	// sign and a hidden item (y 5, x 9) whose hiddenitem is flag 0x123 and item 3, then no object events
+	const int hid = m.put({ 0x23, 0x01, 3 });
+	const int ev = m.put({ 0, 0, 1, 1, 2, 1, 0, 0, 0, 2, 3, 4, 0, 0, 0, 5, 9, 7, hid & 0xFF, hid >> 8, 0 });
+	const int attr = m.put({ 0, 1, 1, 0, 0, 0, 1, 0, 0, ev & 0xFF, ev >> 8, 0 });
+	// one map group, right after its pointer: map 1 at landmark 1 with fishing group 2 and its attributes in bank 1,
+	// map 2 at landmark 0 with the Shore group, no water (no fishing) and no attributes; the headers end where the
+	// next table starts
 	const int mg = m.next;
 	m.key("mapGroups", m.put(R::words({ mg + 2 })));
-	m.put({ 0, 0, 2, 0, 0, 1, 0, 0, 2, 0, 0, 3, 0, 0, 0, 0, 0, 1 });
+	m.put({ 1, 0, 2, attr & 0xFF, attr >> 8, 1, 0, 0, 2, 0, 0, 3, 0, 0, 0, 0, 0, 1 });
 	m.key("mapHeadersEnd", m.next);
 	// grass on map 1.1: map, three rates, morning's slots then day's and night's (level 3 + slot); morning's first is
 	// species 1, the rest 2
@@ -499,6 +544,14 @@ static void testRomTables()
 	EQ(z.name, "New Bark Town");
 	EQ(r->zones.at(0x0102).name, "Special");
 	CHECK(r->zones.at(0x0102).encounters.empty());
+	// the hidden item on map 1 (the sign beside it isn't one; map 2 has no attributes, so no events)
+	const std::vector<HiddenItem>& hidden = static_cast<const GbRomData&>(*r).hidden;
+	CHECK(hidden.size() == 1);
+	if (!hidden.empty())
+	{
+		CHECK(hidden[0].zone == 0x0101 && hidden[0].x == 9 && hidden[0].y == 5 && hidden[0].flag == 0x123 && hidden[0].item == gen2Item(3));
+		EQ(r->items[hidden[0].item].name, "HP Up");
+	}
 	auto count = [&](nds::EncounterKind k) { int n = 0; for (const auto& e : z.encounters) n += e.kind == k; return n; };
 	auto find = [&](nds::EncounterKind k, int species, nds::TimeOfDay t, int cond = 0) -> const nds::Encounter* {
 		for (const auto& e : z.encounters) if (e.kind == k && e.species == species && e.time == t && e.condition == cond) return &e;
@@ -821,6 +874,112 @@ static void checkCrystal(const char* capture, const char* key)
 	CHECK(l->dexCaught.size() == 32 && (l->dexCaught[(152 - 1) / 8] >> ((152 - 1) % 8) & 1) && (l->dexCaught[(16 - 1) / 8] >> ((16 - 1) % 8) & 1));
 	CHECK(l->badges == 0 && l->playSeconds > 0);
 	CHECK(r.serial() == 1 && r.error().empty());
+	// the guide's flags: the 256 bytes of event flags, then a byte of derived bits; a new game hasn't won the League,
+	// so none of them is set (EVENT_RED_IN_MT_SILVER is, from the start: Red is hidden till the Hall of Fame)
+	auto flag = [&](int n) { return (size_t)(n >> 3) < l->flags.size() && (l->flags[(size_t)n >> 3] >> (n & 7) & 1); };
+	CHECK(l->flags.size() == 257 && l->flags[256] == 0);
+	CHECK(!flag(68) && flag(1890) && !flag(1213));
+}
+
+// the derived bits on the crystal capture with flags set: the League won sets the Elite Four's and Red's (his own
+// flag is set from the start), a room's flag its member's alone; a bank not answered whole gives no flags
+static void testDerivedFlags()
+{
+	Dump d;
+	if (!d.load("crystal")) { failed++; return; }
+	auto flags = [&](std::initializer_list<int> set) {
+		Dump c = d;
+		for (int n : set) c.d((uint16_t)(0xDA72 + n / 8)) |= (uint8_t)(1 << (n % 8));
+		Reader r;
+		r.open(game("crystal"));
+		double now = 0;
+		return replay(r, c, now)->flags;
+	};
+	std::vector<uint8_t> f = flags({ 68 });
+	CHECK(f.size() == 257 && f[256] == 0x1F);
+	f = flags({ 1465 });
+	CHECK(f.size() == 257 && f[256] == 0x02);
+	f = flags({ 1464, 1467 });
+	CHECK(f.size() == 257 && f[256] == 0x09);
+	// (the event flags asked for: one read of 256 bytes at DA72)
+	Reader r;
+	r.open(game("crystal"));
+	CHECK(r.requests(0).find("READ_CORE_MEMORY da72 256\n") != std::string::npos);
+	// ... and one answered short: the set isn't taken, nothing of it shows
+	std::string q = r.requests(10000);
+	std::string a = answer(q, d);
+	const size_t at = a.find("READ_CORE_MEMORY da72 ");
+	CHECK(at != std::string::npos);
+	if (at != std::string::npos) a.erase(at + 21 + 3 * 200, 3 * 56);	// (the last 56 bytes' " xx")
+	r.feed(a.data(), a.size());
+	CHECK(!r.error().empty() && r.serial() == 0);
+}
+
+// ---- the guides ---------------------------------------------------------------------------------------------------
+
+// Crystal's guide file through upstream's loader (a stand-in resolver: every place is map 0x0101) and logic: the
+// bosses in PokeDaisy's order, done by their flags and the derived bits
+static void testGuide()
+{
+	nds::GuideResolver res;
+	res.zones = [](const std::string&) { return std::vector<uint16_t>{ 0x0101 }; };
+	nds::GuideData g;
+	std::string why = "-";
+	CHECK(nds::loadGuideFile(dataPath + "/crystal.json", g, CRYSTAL, &why, &res));
+	EQ(why, "");
+	CHECK(g.unresolved.empty() && g.secrets.empty() && g.notes.size() == 2);
+	int gyms = 0, e4 = 0, champion = 0, post = 0;
+	for (const nds::Milestone& m : g.milestones)
+	{
+		gyms += m.kind == "gym";
+		e4 += m.kind == "elite4";
+		champion += m.kind == "champion";
+		post += m.kind == "postgame";
+		CHECK(m.trainerIds.size() == 1 && m.levelCap > 0 && m.foeAceLevel == m.levelCap && !m.placeZones.empty() &&
+			m.doneWhen.compare(0, 5, "flag:") == 0);
+	}
+	CHECK(g.milestones.size() == 22 && gyms == 16 && e4 == 4 && champion == 1 && post == 1);
+	if (g.milestones.size() == 22)
+	{
+		const nds::Milestone& f = g.milestones[0];
+		EQ(f.name, "Gym 1: Falkner");
+		EQ(f.place, "Violet City");
+		EQ(f.foeName, "Falkner");
+		EQ(f.doneWhen, "flag:1213");
+		CHECK(f.trainerIds[0] == (1 << 8 | 1) && f.levelCap == 9);
+		EQ(g.milestones[12].name, "Champion: Lance");
+		EQ(g.milestones[12].doneWhen, "flag:68");
+		EQ(g.milestones[21].name, "Red (Silver Cave)");
+		EQ(g.milestones[21].doneWhen, "flag:2052");
+	}
+	// another game's guide is refused
+	nds::GuideData other;
+	CHECK(!nds::loadGuideFile(dataPath + "/crystal.json", other, GOLD, &why, &res));
+
+	// the next milestone follows the save's flags
+	nds::Live l;
+	l.valid = true;
+	l.flags.assign(257, 0);
+	auto set = [&](int n) { l.flags[(size_t)n >> 3] |= (uint8_t)(1 << (n & 7)); };
+	auto next = [&] { const nds::Milestone* m = nds::nextMilestone(g, l); return m ? m->id : std::string("none"); };
+	EQ(next(), "gym-1-falkner");
+	set(1213);
+	EQ(next(), "gym-2-bugsy");
+	for (int n = 1214; n <= 1220; n++) set(n);
+	EQ(next(), "e4-will");
+	set(2048);
+	EQ(next(), "e4-koga");
+	for (int n = 2049; n <= 2051; n++) set(n);
+	EQ(next(), "champion-lance");
+	set(68);
+	EQ(next(), "gym-9-brock");
+	for (int n = 1221; n <= 1228; n++) set(n);
+	EQ(next(), "red");
+	set(2052);
+	EQ(next(), "none");
+	// (no flags read: nothing is done)
+	l.flags.clear();
+	EQ(next(), "gym-1-falkner");
 }
 
 static void testCaptures()
@@ -1230,6 +1389,8 @@ int main(int argc, char** argv)
 	testLz();
 	testPictureFormats();
 	testCaptures();
+	testDerivedFlags();
+	testGuide();
 	testReaderRules();
 	testRules();
 	if (failed)

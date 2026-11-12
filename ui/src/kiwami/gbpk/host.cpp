@@ -5,11 +5,56 @@
 #include "host.h"
 #include "rom.h"
 #include "rules.h"
+#include "../../nds/guide.h"
 #include <chrono>
 #include <cstdio>
 
 namespace banana::kiwami::gbpk
 {
+	namespace
+	{
+		// the game's guide: its file in the data folder (<key>.json, the places' maps found by name in the ROM), with
+		// the ROM's hidden items as the Here page's secrets, each listed whether found or not, as upstream's companions
+		// list theirs. A game without a file (or with one it refuses) has the hidden items alone.
+		std::shared_ptr<const nds::GuideData> guideFor(const GameData& d, const nds::RomData& rom)
+		{
+			auto g = std::make_shared<nds::GuideData>();
+			const nds::GuideResolver res = nds::guideResolver(rom);
+			std::string why;
+			if (!nds::loadGuideFile(dataDir() + "/" + d.key + ".json", *g, d.game.id, &why, &res))
+			{
+				fprintf(stderr, "banana-ui: gb companion: no guide: %s\n", why.c_str());
+				*g = nds::GuideData();
+			}
+			else
+			{
+				if (!why.empty()) fprintf(stderr, "banana-ui: gb companion: guide: %s\n", why.c_str());
+				for (const std::string& p : g->unresolved) fprintf(stderr, "banana-ui: gb companion: guide: no map is %s\n", p.c_str());
+			}
+			size_t hidden = 0;
+			if (const auto* gb = dynamic_cast<const GbRomData*>(&rom))
+				for (const HiddenItem& h : gb->hidden)
+				{
+					nds::Secret s;
+					s.id = "hidden-" + std::to_string(h.flag);
+					s.kind = "hidden-item";
+					const std::string item = h.item < rom.items.size() ? rom.items[h.item].name : "";
+					s.text = item.empty() ? "A hidden item." : "A hidden " + item + ".";
+					s.zone = h.zone;
+					s.zones = { h.zone };
+					auto z = rom.zones.find(h.zone);
+					s.place = z == rom.zones.end() ? "" : z->second.name;
+					s.x = h.x;
+					s.y = h.y;
+					s.source = "the ROM's map events";
+					g->secrets.push_back(std::move(s));
+					hidden++;
+				}
+			fprintf(stderr, "banana-ui: gb companion: guide: %zu milestones, %zu hidden items\n", g->milestones.size(), hidden);
+			return g;
+		}
+	}
+
 	Host::Host(const GameData& d, std::string rom, Reader& r, std::string sd, bool ch, std::shared_ptr<const nds::RomData> si)
 		: data(d), romPath(std::move(rom)), stateDir(std::move(sd)), reader(r), challenge(ch), standIn(std::move(si)) {}
 
@@ -36,7 +81,7 @@ namespace banana::kiwami::gbpk
 			out = nds::PageData();
 			out.reading = true;
 			fresh = true;
-			if (standIn) begin({ standIn, data, false });
+			if (standIn) begin({ standIn, data, false, guideFor(data, *standIn) });
 			else
 			{
 				// the ROM: the whole file (or the game in its .zip or .7z), its SHA-1 among the releases, then its tables
@@ -59,6 +104,7 @@ namespace banana::kiwami::gbpk
 					if (!l.rom) fprintf(stderr, "banana-ui: gb companion: no game data: %s\n", why.c_str());
 					else fprintf(stderr, "banana-ui: gb companion: %s (%s) read in %.0f ms\n", d.game.title.c_str(),
 						d.releases[d.release].name.c_str(), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
+					if (l.rom) l.guide = guideFor(d, *l.rom);
 					return l;
 				});
 			}
@@ -108,12 +154,12 @@ namespace banana::kiwami::gbpk
 	}
 
 	// the ROM's data read: the rules, the reader (only now: nothing is asked of a game the companion can't read) and
-	// the Session (no guide yet: the guides come with their own steps)
+	// the Session with the guide
 	void Host::begin(Loaded l)
 	{
 		data = l.d;
 		base.rom = l.rom;
-		base.guide = std::make_shared<nds::GuideData>();
+		base.guide = l.guide ? l.guide : std::make_shared<nds::GuideData>();
 		useRules(data.game.gen);
 		fprintf(stderr, "banana-ui: gb companion: rules on (Generation %s)\n", data.gen == 1 ? "I" : "II");
 		reader.open(data);

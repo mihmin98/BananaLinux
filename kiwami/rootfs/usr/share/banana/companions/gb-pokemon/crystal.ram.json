@@ -1,5 +1,53 @@
 {
-  "flags": [],
+  "derived": [
+    {
+      "any": [
+        68,
+        1464
+      ],
+      "bit": 2048,
+      "for": "e4-will"
+    },
+    {
+      "any": [
+        68,
+        1465
+      ],
+      "bit": 2049,
+      "for": "e4-koga"
+    },
+    {
+      "any": [
+        68,
+        1466
+      ],
+      "bit": 2050,
+      "for": "e4-bruno"
+    },
+    {
+      "any": [
+        68,
+        1467
+      ],
+      "bit": 2051,
+      "for": "e4-karen"
+    },
+    {
+      "all": [
+        68,
+        1890
+      ],
+      "bit": 2052,
+      "for": "red"
+    }
+  ],
+  "flags": [
+    {
+      "bytes": 256,
+      "first": 0,
+      "ram": "eventFlags"
+    }
+  ],
   "game": "crystal",
   "gen": 2,
   "header_title": "PM_CRYSTAL",

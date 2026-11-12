@@ -131,7 +131,8 @@ make -s -C ui kiwami-c
 gbpk_data() { ls ui/src/kiwami/gbpk/*.cpp | grep -Ev '/(game|host|panel)\.cpp$'; }
 ${CXX:-g++} -std=c++17 -O2 -Wall -Werror -I ui/src -o "$T/gbpk-roms" kiwami/tests/gbpk-roms.cpp $(gbpk_data) \
     ui/src/kiwami/json.cpp ui/src/kiwami/ra7z.cpp ui/src/zip.cpp ui/src/zipdir.cpp ui/src/nds/nitro.cpp ui/src/nds/model.cpp \
-    ui/src/nds/logic.cpp ui/src/pokemon.cpp ui/src/pokemap.cpp $(find ui/src/kiwami/third_party/lzma -name '*.kiwami.o') -lz -lpthread
+    ui/src/nds/logic.cpp ui/src/nds/guide.cpp ui/src/json.cpp ui/src/pokemon.cpp ui/src/pokemap.cpp \
+    $(find ui/src/kiwami/third_party/lzma -name '*.kiwami.o') -lz -lpthread
 # (the pictures and maps it decodes, as PNGs for looking at: GBPK_ROMS_OUT, by default ui/tests/out/gbpk-roms/)
 OUT=${GBPK_ROMS_OUT:-ui/tests/out/gbpk-roms}
 mkdir -p "$OUT"

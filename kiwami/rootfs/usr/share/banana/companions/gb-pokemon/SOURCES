@@ -12,9 +12,11 @@ in  02efcb677831c264613b4313be1c24e9e042f577636b20469fc3f984734c7085  pokedaisy 
 in  96a498f182ceea68d95040239dcd3c2faf4b02fbd103291cfa35036bd532f28e  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Art.kt
 in  ebfde8f4fc1bf6a4f2f411b8cb030dd7c8be36b23a08c2c9a04cb34932e51923  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Dex.kt
 in  f33fd7f41938deb6c1b29556669f643495bb4c42fb554ed849280ba2f6229d92  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Reader.kt
+in  aa78cc353530d524f44f4b168a72e1fcf65a7cbb957cc430b51a8b96a02d2211  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystal.kt
 in  816154d8b641ee466f82736eea9c40d086708fdd2399052ec8502bb6d29dcbe6  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt
 out e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/LICENSE
-out ad591e5248854df78c9dec753a5ab57e9789ed465a2b9837db850e51b5472edd  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.ram.json
+out 477bd98fc9e34e70ae72bb62bc38b42cf76633e0e7589c6213af7f4dbe9adba1  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.json
+out 1e98970db14a16238c9b41033d5f1a1c067c9acd7177b934225ba9444714c326  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.ram.json
 out fcf9adb50b217d343e594cce52c3969a654cff7f9b9ca118d6615b8d2630bf0e  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/gold.ram.json
 out 730283ca2ff0d15c31a5a9be66923df58d04f84c9276155ff743459275f8777b  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/silver.ram.json
 

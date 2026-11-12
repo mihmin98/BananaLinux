@@ -5,7 +5,8 @@
 // nds::Live (reader.h: the journey log, the advice, the notices), and the PageData the game panel's pages draw
 // (panel.h). The memory reader is opened only once the ROM is confirmed: a release the companion doesn't know ("Not
 // supported") is never asked anything. While a Game Boy game's data is in use its rules are upstream's logic's
-// (rules.h useRules), and put back when the host goes.
+// (rules.h useRules), and put back when the host goes. The guide is the game's file in the data folder (Crystal's),
+// with the ROM's hidden items.
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
@@ -43,7 +44,8 @@ namespace banana::kiwami::gbpk
 		bool inBattle() const { return reader.active() && reader.inBattle(); }
 		uint64_t fed = 0;		// (statistics: states handed to the logic)
 	private:
-		struct Loaded { std::shared_ptr<const nds::RomData> rom; GameData d; bool unsupported = false; };
+		struct Loaded { std::shared_ptr<const nds::RomData> rom; GameData d; bool unsupported = false;
+			std::shared_ptr<const nds::GuideData> guide; };
 		GameData data;
 		std::string romPath, stateDir;
 		Reader& reader;

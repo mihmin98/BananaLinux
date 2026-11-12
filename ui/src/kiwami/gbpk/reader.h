@@ -6,7 +6,8 @@
 // make a snapshot of the game's memory, and live() turns it into upstream's nds::Live, in the DS companion's
 // conventions (species by national number, items by Gen IV number, TMs as Gen IV numbers them), so upstream's
 // session, logic and pages take it.
-// Generation II for now (Gold, Silver, Crystal); the addresses are the data file's (games.h).
+// Generation II for now (Gold, Silver, Crystal); the addresses are the data file's (games.h), with the flag banks its
+// guide reads (Live::flags).
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy

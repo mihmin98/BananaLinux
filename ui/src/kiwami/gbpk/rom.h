@@ -76,12 +76,17 @@ namespace banana::kiwami::gbpk
 		int count = 0;
 	};
 
+	// a hidden item on a map (Gen II's: a map's background event of the item kind): the zone, where it lies on the
+	// map, the item (as items are numbered here) and the event flag the game sets once it's found
+	struct HiddenItem { uint16_t zone = 0; uint8_t x = 0, y = 0; uint16_t item = 0, flag = 0; };
+
 	// what readRom gives; sprite() decodes a picture on demand (pics.cpp)
 	struct GbRomData : nds::RomData
 	{
 		std::shared_ptr<const std::vector<uint8_t>> rom;
 		int gen = 0;
 		Gen2Pics pics;
+		std::vector<HiddenItem> hidden;		// by zone, in the maps' order (the Here page's secrets: host.cpp)
 		std::shared_ptr<const nds::Sprite> sprite(uint16_t species, bool female = false, uint8_t form = 0) const override;
 	};
 	// Gen II's tables into out (rom2.cpp)

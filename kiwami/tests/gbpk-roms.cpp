@@ -1,7 +1,8 @@
 // The Game Boy Pokémon companion's ROM reader (ui/src/kiwami/gbpk/rom.h) on the player's own ROMs, which are never in
 // the repository: each .gb/.gbc in the folder that is a release the data files list (kiwami/tests/gbpk/roms.sha1, by
-// SHA-1) is read, and what the ROM is known to hold is checked against what was read. With a PokeDaisy checkout, every
-// species' gender ratio and growth rate are compared with PokeDaisy's tables (Gen2SpeciesCrystal.kt). With
+// SHA-1) is read, and what the ROM is known to hold is checked against what was read, the game's guide file with it.
+// With a PokeDaisy checkout, every species' gender ratio and growth rate are compared with PokeDaisy's tables
+// (Gen2SpeciesCrystal.kt), and Crystal's hidden items with its guide's (GuideCrystalGen.kt). With
 // GBPK_ROMS_OUT set, every species' front picture (normal, shiny) and the region maps are written there as PNGs, a
 // game's <key>-pics.png, <key>-shiny.png and <key>-<map>.png, for looking at. Built and run by
 // kiwami/tests/gbpk-roms.sh after its check of the folder:
@@ -11,6 +12,7 @@
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "kiwami/gbpk/games.h"
 #include "kiwami/gbpk/rom.h"
+#include "nds/guide.h"
 #include "nds/rom.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../third_party/stb_image_write.h"
@@ -222,6 +224,59 @@ static void checkGen2(const nds::RomData& r, const std::string& key, const std::
 	}
 }
 
+// the hidden items from the maps' events, and the game's guide file over this ROM: every place found by its name,
+// every boss's team the ROM's with its top level. Crystal's hidden items are PokeDaisy's, by flag and item (its
+// GuideCrystalGen.kt's HIDDEN lines: landmark|HIDDEN|item|flag|...).
+static void checkGuide(const nds::RomData& r, const GameData& d, const std::string& pokedaisy)
+{
+	const std::vector<HiddenItem>& hidden = static_cast<const GbRomData&>(r).hidden;
+	int named = 0;
+	for (const HiddenItem& h : hidden)
+		named += r.zones.count(h.zone) && !r.zones.at(h.zone).name.empty() && h.item < r.items.size() && !r.items[h.item].name.empty();
+	CHECK(hidden.size() > 50 && named == (int)hidden.size());
+	fprintf(stderr, "gbpk-roms: %s: %zu hidden items\n", current.c_str(), hidden.size());
+	if (d.key == "crystal" && !pokedaisy.empty())
+	{
+		std::ifstream f(pokedaisy + "/app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt");
+		// (a multiset: the National Park's Full Heal lies on the park's map and on its Bug Contest copy, one flag)
+		std::multiset<std::pair<int, int>> theirs, ours;
+		for (std::string l; std::getline(f, l);)
+		{
+			int lm, item, flag;
+			if (sscanf(l.c_str(), "%d|HIDDEN|%d|%d|", &lm, &item, &flag) == 3) theirs.insert({ flag, gen2Item((uint8_t)item) });
+		}
+		for (const HiddenItem& h : hidden) ours.insert({ h.flag, h.item });
+		CHECK(theirs.size() == 85 && ours == theirs);
+		fprintf(stderr, "gbpk-roms: %s: the %zu hidden items are PokeDaisy's, by flag and item\n", current.c_str(), theirs.size());
+	}
+	const std::string path = dataDir() + "/" + d.key + ".json";
+	if (FILE* f = fopen(path.c_str(), "r")) fclose(f);
+	else return;
+	nds::GuideData g;
+	std::string why;
+	const nds::GuideResolver res = nds::guideResolver(r);
+	CHECK(nds::loadGuideFile(path, g, d.game.id, &why, &res));
+	EQ(why, "");
+	std::string unresolved;
+	for (const std::string& p : g.unresolved) unresolved += (unresolved.empty() ? "" : ", ") + p;
+	EQ(unresolved, "");
+	for (const nds::Milestone& m : g.milestones)
+	{
+		auto t = m.trainerIds.empty() ? r.trainers.end() : r.trainers.find(m.trainerIds[0]);
+		int top = 0;
+		if (t != r.trainers.end()) for (const nds::TrainerMon& tm : t->second.team) top = std::max<int>(top, tm.level);
+		if (t == r.trainers.end() || top != m.levelCap)
+		{
+			failed++;
+			fprintf(stderr, "gbpk-roms: FAIL %s: %s: the ROM's trainer %d has top level %d, not %d\n", current.c_str(), m.id.c_str(),
+				m.trainerIds.empty() ? -1 : m.trainerIds[0], top, m.levelCap);
+		}
+		checks++;
+	}
+	fprintf(stderr, "gbpk-roms: %s: %s.json's %zu milestones, their places and teams, found in the ROM\n", current.c_str(),
+		d.key.c_str(), g.milestones.size());
+}
+
 int main(int argc, char** argv)
 {
 	if (argc < 4)
@@ -273,6 +328,7 @@ int main(int argc, char** argv)
 		CHECK(r);
 		if (!r) continue;
 		checkGen2(*r, key, pokedaisy);
+		checkGuide(*r, d, pokedaisy);
 		const char* out = getenv("GBPK_ROMS_OUT");
 		checkPics(*r, *rom, out ? out : "", key);
 		checkMaps(*r, out ? out : "", key);

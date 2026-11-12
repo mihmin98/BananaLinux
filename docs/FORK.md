@@ -215,7 +215,8 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
        system/rootfs/etc/banana/retroarch.cfg \
        system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
        buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update ui/Makefile \
-       ui/src/nds/model.h ui/src/nds/model.cpp ui/src/nds/logic.cpp ui/src/gba/panel.h ui/src/settings_gamepanel.cpp
+       ui/src/nds/model.h ui/src/nds/model.cpp ui/src/nds/logic.cpp ui/src/nds/guide.cpp ui/src/gba/panel.h \
+       ui/src/settings_gamepanel.cpp
    ```
    (the systems list, whose N64 `ext` line `kiwami/post-build.sh` adds `7z` to (upstream lists it on the other six
    cartridge systems; the build stops if N64's line is gone; a new cartridge system without it may want it too), the defconfigs the fork adds to, the share script
@@ -305,7 +306,12 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    `box`, `heading`, `typeChip`, `measure`, `tr`, `STAT_NAMES`, `GOOD`, ...): one upstream renames or reshapes fails to
    compile and is followed there. A block upstream reworks moves its hook with it; one upstream adds that shows natures,
    IVs, EVs or abilities draws empty or upstream's values for the Game Boy games until a hook skips it, which
-   `kiwami/tests/gbpk-ui.sh`'s shots and its trace lines (`KIWAMI_GBPK_TRACE=1`) show.
+   `kiwami/tests/gbpk-ui.sh`'s shots and its trace lines (`KIWAMI_GBPK_TRACE=1`) show. And the same companion's guides:
+   `ui/src/nds/guide.cpp` includes `ui/src/kiwami/gbpk/guide-games.inc` as the last rows of its `GAMES` table (the six
+   games' ids as literals, keys and codes), so `loadGuideFile` takes their files; the fork's host loads them itself
+   from `gb-pokemon/`. A change upstream makes to `GameRow`'s fields breaks the rows at compile time; a schema upstream
+   adds to the guide files (a field, a `done_when` rule) is the fork's to use or not, and `kiwami/tests/gbpk-units.cpp`
+   loads Crystal's file through upstream's loader and follows its milestones through upstream's `nextMilestone`.
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

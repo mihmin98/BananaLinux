@@ -34,7 +34,13 @@ namespace banana::kiwami::gbpk
 	};
 	struct Release { std::string sha1, name, code; };	// code: the header's game code (the Game Boy Color games')
 
-	// one game's data file (flags, the guides' flag banks, come with the guides)
+	// the guide's flags (Live::flags, its done_when "flag:N"): a bank of the save's flags at a ram key's address, its
+	// bytes laid in from bit `first`; and a bit worked out from those, set when all (or any) of `of` are (Crystal's
+	// Elite Four: the League won or the room's flag, which the game clears)
+	struct FlagBank { std::string ram; int bytes = 0, first = 0; };
+	struct DerivedFlag { int bit = 0; bool all = false; std::vector<int> of; };
+
+	// one game's data file
 	struct GameData
 	{
 		std::string key;					// "crystal": the file's name, and the guide's
@@ -44,6 +50,8 @@ namespace banana::kiwami::gbpk
 		std::vector<Release> releases;
 		std::map<std::string, Addr> ram, rom;
 		std::map<std::string, int> sizes;
+		std::vector<FlagBank> flags;		// the banks the guide reads (none: no guide flags)
+		std::vector<DerivedFlag> derived;
 		int release = -1;					// the confirmed ROM's, in releases
 
 		Addr at(const std::string& k) const { auto i = ram.find(k); return i == ram.end() ? Addr{} : i->second; }
@@ -51,7 +59,7 @@ namespace banana::kiwami::gbpk
 	};
 
 	// <dataDir>/<key>.ram.json into out; false with the reason in why (a missing file, another schema or kind, a
-	// game key it doesn't know, an address outside WRAM and HRAM)
+	// game key it doesn't know, an address outside WRAM and HRAM, a flag bank or a derived bit out of place)
 	bool loadData(const std::string& key, GameData& out, std::string* why);
 
 	enum class Match { NONE, KNOWN, UNSUPPORTED };

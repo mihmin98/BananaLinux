@@ -167,6 +167,34 @@ namespace banana::kiwami::gbpk
 			return false;
 		}
 		for (const auto& [k, n] : v["sizes"].obj) out.sizes[k] = (int)n.n;
+		// the guide's flags: each bank at a ram key, whole bytes from a byte's first bit, none over another; the
+		// derived bits after them, each over bits of the banks
+		const int MAX_BITS = 8 * 4096;
+		std::vector<bool> taken(MAX_BITS);
+		for (const auto& f : v["flags"].arr)
+		{
+			FlagBank b{ f["ram"].str(), (int)f["bytes"].n, (int)f["first"].n };
+			bool good = out.ram.count(b.ram) && b.bytes >= 1 && b.bytes <= 1024 && b.first >= 0 && b.first % 8 == 0 &&
+				b.first + 8 * b.bytes <= MAX_BITS;
+			for (int i = 0; good && i < 8 * b.bytes; i++) good = !taken[b.first + i];
+			if (!good) return no("has a flag bank it can't lay out (" + b.ram + ")");
+			for (int i = 0; i < 8 * b.bytes; i++) taken[b.first + i] = true;
+			out.flags.push_back(b);
+		}
+		for (const auto& f : v["derived"].arr)
+		{
+			DerivedFlag dv{ (int)f["bit"].n, !f["all"].isNull(), {} };
+			const json::Value& of = dv.all ? f["all"] : f["any"];
+			bool good = dv.bit >= 0 && dv.bit < MAX_BITS && !taken[dv.bit] && of.size() >= 1 && f["all"].isNull() != f["any"].isNull();
+			for (const auto& o : out.derived) good = good && o.bit != dv.bit;
+			for (const auto& x : of.arr)
+			{
+				good = good && x.type == json::Value::NUM && x.n >= 0 && x.n < MAX_BITS && taken[(int)x.n];
+				if (good) dv.of.push_back((int)x.n);
+			}
+			if (!good) return no("has a derived flag it can't work out (bit " + std::to_string(dv.bit) + ")");
+			out.derived.push_back(dv);
+		}
 		out.game.id = *id;
 		out.game.gen = out.gen == 1 ? GEN_I : GEN_II;
 		out.game.title = v["title"].str();

@@ -34,6 +34,12 @@ namespace banana::kiwami::gbpk
 		const int LANDMARK = 4;				// data/maps/landmarks.asm: x, y, the name's pointer
 		const int MAP_HEADER = 9;			// data/maps/maps.asm: attributes' bank, tileset, environment, attributes'
 											// pointer, landmark, music, phone and palette, fishing group
+		const int MAP_ATTRIBUTES = 12;		// data/maps/attributes.asm: border, height, width, the blocks' bank and
+											// pointer, the scripts' (and events') bank and pointer, the events' pointer,
+											// connections
+		const int WARP = 5, COORD_EVENT = 8, BG_EVENT = 5;	// macros/scripts/maps.asm (a bg event: y, x, function,
+											// script)
+		const uint8_t BGEVENT_ITEM = 7;		// constants/script_constants.asm
 		const int GRASS_SLOTS = 7, WATER_SLOTS = 3;
 		const int GRASS = 2 + 3 + 3 * GRASS_SLOTS * 2;	// data/wild/*_grass.asm: map, three rates, morning, day, night
 		const int WATER = 2 + 1 + WATER_SLOTS * 2;		// data/wild/*_water.asm: map, rate, the slots
@@ -67,6 +73,33 @@ namespace banana::kiwami::gbpk
 			}
 			size_t from = known.size() > 4 ? known.size() - 4 : 0;
 			for (size_t j = from; j < known.size(); j++) m.moves[j - from] = known[j];
+		}
+
+		// a map's hidden items: the events its attributes point to (in the scripts' bank: two filler bytes, then the
+		// warps, the coord events and the bg events, each a count and its records), the bg events of the item kind, and
+		// the hiddenitem each points to (macros/scripts/maps.asm: the flag, dw, then the item). A map whose events
+		// don't read has none.
+		void hiddenItems(const RomView& r, size_t header, uint16_t zone, GbRomData& out)
+		{
+			const size_t a = r.at(r.u8(header), r.le16(header + 3));
+			if (!r.has(a, MAP_ATTRIBUTES)) return;
+			const int bank = r.u8(a + 6);
+			size_t e = r.at(bank, r.le16(a + 9));
+			if (!r.has(e, 3)) return;
+			e += 2;
+			for (int size : { WARP, COORD_EVENT })
+			{
+				e += 1 + (size_t)size * r.u8(e);
+				if (!r.has(e, 1)) return;
+			}
+			const int n = r.u8(e++);
+			if (!r.has(e, (size_t)BG_EVENT * n)) return;
+			for (int i = 0; i < n; i++, e += BG_EVENT)
+			{
+				if (r.u8(e + 2) != BGEVENT_ITEM) continue;
+				const size_t s = r.at(bank, r.le16(e + 3));
+				if (r.has(s, 3)) out.hidden.push_back({ zone, r.u8(e + 1), r.u8(e), gen2Item(r.u8(s + 2)), r.le16(s) });
+			}
 		}
 
 		std::string evoHow(const nds::RomData& r, uint16_t method, uint16_t param)
@@ -317,6 +350,7 @@ namespace banana::kiwami::gbpk
 				if (lm < out.locationNames.size()) loc.name = out.locationNames[lm];
 				landmarkOf[z] = lm;
 				if (r.u8(h + 8)) fishGroupOf[z] = r.u8(h + 8);
+				hiddenItems(r, h, z, out);
 			}
 		}
 		auto zone = [&](size_t o) -> nds::Location& {

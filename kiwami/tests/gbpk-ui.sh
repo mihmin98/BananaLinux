@@ -5,7 +5,8 @@
 #   card, A on the first writing kiwami_pokemon_companion_gb = on;
 # - the game panel with the companion for Crystal (gbpanel: a stand-in for the ROM's tables, as CI has no ROM), fed
 #   PokeDaisy's captures (gbfeed): the pages ready, the party read, a battle showing the Battle page and its end the
-#   Party page, the corner switching to the menu and back, the rules on and put back when the host goes;
+#   Party page, the corner switching to the menu and back, the rules on and put back when the host goes, Crystal's
+#   guide file loaded (its 22 milestones; no hidden items, which come from the ROM);
 # - a made-up ROM with Crystal's title and another SHA-1: "Not supported", and nothing asked of the game;
 # - upstream's gamepanel after it: no companion, and not the Game Boy one again;
 # - the pages' blocks for Gen II (KIWAMI_GBPK_TRACE=1 names each drawn): DVs and stat experience, Hidden Power, the
@@ -64,6 +65,8 @@ gtouch 600 28; gshot menu; gtouch 600 28; gbpanel 1 $CAP/crystal $MADE_UP; gbhos
 gamepanel 1 /nonexistent.gba; gtouch 300 300"
     logged "gbpanel .*/crystal: companion Crystal"
     logged "gb companion: rules on \(Generation II\)"
+    logged "gb companion: guide: 22 milestones, 0 hidden items$"
+    ! grep -q 'gb companion: no guide' "$log" || { echo "FAIL $size crystal: $(grep 'no guide' "$log")"; fail=1; }
     logged "gbhost: ready Crystal view pages:Party$"
     logged "gbfeed .*/crystal: asked [1-9][0-9]*, party 2, battle 0, view pages:Party$"
     logged "gbfeed .*/crystal_battle: asked [1-9][0-9]*, party 2, battle 1, view pages:Battle$"

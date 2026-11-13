@@ -213,31 +213,145 @@ Found while reading the code and the hacks' sources (2026-11-13), each agreed wi
 
 ## Before the steps
 
-What the user sets up, once, before the step that needs it (none of it is committed):
+What has to be on the machine before the step that needs it. None of it is committed, and none of it is needed by
+CI. On another machine, set it up from this list. The paths are the ones on this machine: the scripts take their
+folders as arguments, so another layout works if the same folders are passed. The table says what each step needs.
 
-- **PokeDaisy at the pin** (step 4 on): `git -C /home/mih/Documents/Projects/pokedaisy worktree add
-  ../pokedaisy-135ac809 135ac809`. The scripts are pointed at `/home/mih/Documents/Projects/pokedaisy-135ac809`.
-- **rgbds, three versions** (steps 4, 6 and 9), each built from its release tag into a folder of its own, so the
-  builds can name them (`make RGBDS=~/opt/rgbds-<v>/`, which pret's Makefiles take):
-  - 0.5.2 for Crystal Legacy (PokeDaisy: "`make pokecrystal.gbc` with rgbds 0.5.2 at tag V1.3.1");
-  - 0.6.1 for Yellow Legacy (PokeDaisy: "rgbds 0.6.1 at tag V1.0.10");
-  - 1.0.3 for PureRGB (PokeDaisy's `fixtures/purered/README.txt`).
-- **The hacks' sources, built at their tags**, beside pret's in `/home/mih/Documents/Projects/pret/`:
-  - `Pokemon_Crystal_Legacy` at `V1.3.1` (`6394641e`): `make pokecrystal.gbc`;
-  - `Pokemon_Yellow_Legacy` at `V1.0.10` (`3a5358e8`): `make`;
-  - `pureRGB-2.7.6` at `v2.7.6` (`9c6d40f6`) and `pureRGB-2.7.7` at `v2.7.7` (`b5a155eb`), two clones or worktrees:
-    `make red blue green` in each.
-- **The hacks' ROMs** in `~/gb-companion/roms/romhacks/` (`GB_ROMS`' subfolder, which `gbpk-roms.sh` reads from step
-  4 on): the sixteen releases, there since 2026-11-13 and checked: each file is what its release's BPS patch makes of
-  the user's retail ROM (Crystal Legacy from Crystal rev 1, Crystal Clear from Crystal USA rev 0, Yellow Legacy from
-  Yellow, PureRed from Red, PureBlue and PureGreen from Blue). Their SHA-1s:
-  - Crystal Legacy `74a6727e`; Yellow Legacy `2ac87de4`;
-  - PureRed `2e94d09c` (v2.7.6), `60d445d5` (v2.7.7); PureBlue `d419fe24`, `b96ee563`; PureGreen `fe4c63a6`, `258ec7fe`;
-  - Crystal Clear v2.5.11 `a1c4da6b`, Color Filter `6fc677bf`, SGB Mode `8be3dea8`, Color Filter SGB Mode `913c49bd`;
-    v2.6.0 `84d5c492`, `534876e4`, `059632e8`, `88c943e6`.
+| Step | Needs |
+|---|---|
+| 1 | the host build and the retail ROMs |
+| 2-3 | + PokeDaisy at the pin and pret's four (the retail data files are regenerated) |
+| 4-5 | + rgbds 0.5.2, Crystal Legacy built, its ROM |
+| 6-7 | + rgbds 0.6.1, Yellow Legacy built, its ROM |
+| 8 | the host build only |
+| 9-11 | + rgbds 1.0.x, PureRGB built twice, its six ROMs |
+| 12-14 | + the eight Crystal Clear ROMs and Crystal rev 1 (no build: no source) |
+| 15-16 | everything above, and an image for the device |
 
-  Every Crystal Clear build has Crystal's header title and code (`PM_CRYSTAL`, `BYTE`), so `PM_CRYSTAL` names three
-  games (step 1). Each file gets its line in `roms.sha1` in step 4, 6, 9 or 13.
+### 1. The host build and its tests
+
+- The fork's repository on the feature's branch: `git clone <the fork's URL>` (`git remote get-url origin` on this
+  machine), then `git switch k/0030-gb-pokemon-hacks`.
+- Packages, on Arch/CachyOS: `sudo pacman -S --needed base-devel git python pkgconf freetype2 libdrm zlib alsa-lib
+  imagemagick curl libssh2 openssl`. `make ui`, `make test` and `kiwami/tests/ci.sh` need them: g++, Python 3 for the
+  scripts (standard library only), `pkg-config` with freetype2, libdrm and zlib for banana-ui, alsa-lib for
+  `make -C ui`, ImageMagick's `convert` for the renders' checks.
+- Buildroot's checkout, which `kiwami/tests/ci.sh .buildroot` reads (the defconfig checks): `make .buildroot/Makefile`
+  clones it (Buildroot 2026.02.3, shallow). No image build is needed for it.
+- Optional: `bear`, for clangd (`CLAUDE.md`, *Commands*); `gh`, for reading the issue.
+
+### 2. PokeDaisy at the pin (steps 2 on)
+
+- `git clone https://github.com/lidor30/pokedaisy /home/mih/Documents/Projects/pokedaisy` (this machine has the SSH
+  remote `git@github.com:lidor30/pokedaisy.git`).
+- A worktree at the pin, as the checkout itself has moved on to 1.5.1: `git -C /home/mih/Documents/Projects/pokedaisy
+  worktree add ../pokedaisy-135ac809 135ac809`. `pokedaisy-extract.py` is pointed at
+  `/home/mih/Documents/Projects/pokedaisy-135ac809`, and refuses a checkout whose `HEAD` isn't `135ac809`.
+
+### 3. pret's four disassemblies (steps 2 on)
+
+`pret-extract.py` reads them for the retail games' values (#28), which steps 2 and 3 add to. They need no build:
+each `.sym` comes from its `symbols` branch. In `/home/mih/Documents/Projects/pret/`:
+
+```sh
+for r in pokecrystal pokegold pokered pokeyellow; do
+    git clone https://github.com/pret/$r && git -C $r fetch origin symbols:symbols
+done
+```
+
+Each at the commit `kiwami/DEPENDENCIES.md` pins (`git -C <repo> checkout <commit>`; `SOURCES`' `[pret]` section has
+the full hashes): pokecrystal `3c813b0b` (symbols `3b13ca4f`), pokegold `f2cde36f` (`4b57c3aa`), pokered `0dbf95cd`
+(`bd77855a`), pokeyellow `b452f2ab` (`2dcc4b8f`). `pret-extract.py --check` against them must pass before step 2.
+
+### 4. rgbds, the Game Boy assembler (steps 4, 6 and 9)
+
+The toolchain that turns the hacks' sources into ROMs, and writes the `.sym` files that name their addresses. It is a
+tool for the extraction only, never in the image. Each hack's tag builds byte for byte only with the rgbds of its
+time. A newer one stops on syntax it removed, and an older one is refused by the hack's `rgbdscheck.asm`. Checked
+2026-11-13: Arch's `rgbds` package (1.0.4) fails on Crystal Legacy V1.3.1 at its first file ("Undefined macro
+`MAJOR`").
+
+- Two versions are built from source, each into a folder of its own, beside Arch's:
+
+  ```sh
+  sudo pacman -S --needed base-devel bison libpng pkgconf git
+  git clone https://github.com/gbdev/rgbds ~/src/rgbds
+  for v in 0.5.2 0.6.1; do
+      git -C ~/src/rgbds checkout v$v && make -C ~/src/rgbds clean &&
+      make -C ~/src/rgbds -j"$(nproc)" && make -C ~/src/rgbds install PREFIX="$HOME/opt/rgbds-$v"
+  done
+  ~/opt/rgbds-0.5.2/bin/rgbasm -V; ~/opt/rgbds-0.6.1/bin/rgbasm -V
+  ```
+
+  - 0.5.2 for Crystal Legacy (PokeDaisy: "`make pokecrystal.gbc` with rgbds 0.5.2 at tag V1.3.1").
+  - 0.6.1 for Yellow Legacy (PokeDaisy: "rgbds 0.6.1 at tag V1.0.10").
+- 1.0.x for PureRGB: Arch's `sudo pacman -S rgbds` (1.0.4), or 1.0.3 built as above if 1.0.4 doesn't give the
+  releases' SHA-1s (PokeDaisy built them with 1.0.3; step 9 checks).
+- A build names its rgbds by `make RGBDS=$HOME/opt/rgbds-<v>/bin/`. pret's Makefiles call `$(RGBDS)rgbasm`, so the
+  value ends in `bin/`. Without it, the `rgbasm` on the `PATH` (Arch's) is used.
+- A build with the wrong rgbds leaves files it generated (graphics, tools) that a later build would take as up to
+  date: `make clean` before building again.
+
+### 5. The hacks' sources, built at their tags (steps 4, 6 and 9)
+
+Beside pret's, in `/home/mih/Documents/Projects/pret/`. Each build's ROM must have its release's SHA-1, and the
+`.sym` beside it is what `pret-extract.py` reads:
+
+```sh
+cd /home/mih/Documents/Projects/pret
+git clone https://github.com/cRz-Shadows/Pokemon_Crystal_Legacy && git -C Pokemon_Crystal_Legacy checkout V1.3.1
+make -C Pokemon_Crystal_Legacy RGBDS=$HOME/opt/rgbds-0.5.2/bin/ pokecrystal.gbc
+sha1sum Pokemon_Crystal_Legacy/pokecrystal.gbc      # 74a6727e4406c35bc2d4f81347a5c5fdb8970663
+
+git clone https://github.com/cRz-Shadows/Pokemon_Yellow_Legacy && git -C Pokemon_Yellow_Legacy checkout V1.0.10
+make -C Pokemon_Yellow_Legacy RGBDS=$HOME/opt/rgbds-0.6.1/bin/ pokeyellow.gbc
+sha1sum Pokemon_Yellow_Legacy/pokeyellow.gbc        # 2ac87de42afc70ef6016805acb3b206644417f97
+
+for v in 2.7.6 2.7.7; do
+    git clone https://github.com/Vortyne/pureRGB pureRGB-$v && git -C pureRGB-$v checkout v$v
+    make -C pureRGB-$v red blue green               # Arch's rgbds 1.0.4, or RGBDS=$HOME/opt/rgbds-1.0.3/bin/
+done
+sha1sum pureRGB-2.7.6/poke{red,blue,green}.gbc pureRGB-2.7.7/poke{red,blue,green}.gbc
+```
+
+The tags' commits: Crystal Legacy `V1.3.1` `6394641e`, Yellow Legacy `V1.0.10` `3a5358e8`, PureRGB `v2.7.6`
+`9c6d40f6` and `v2.7.7` `b5a155eb`. A build's SHA-1 that isn't its ROM's below stops the step (the wrong rgbds, or a
+tag that isn't the release). Crystal Legacy is cloned at its tag on this machine (2026-11-13), not built yet.
+
+### 6. The ROMs (steps 1 on)
+
+`GB_ROMS`, by default `~/gb-companion/roms`. The ROM tests find a file by its SHA-1, whatever its name. They read
+`.gb` and `.gbc` files, unpacked, in the folder and, from step 4, in its subfolders one level down. Without the folder
+the ROM tests are skipped and pass, as in CI.
+
+- **The retail ROMs**, in the folder itself: the six required and the optional lines of
+  `kiwami/tests/gbpk/roms.sha1` (Red, Blue, Yellow, Gold, Silver, Crystal rev 1; Crystal USA and Australia, Fast Red,
+  Fast Blue). The hacks' patches need Red, Blue, Yellow, Crystal USA (rev 0) and Crystal rev 1 among them.
+- **The hacks**, in `~/gb-companion/roms/romhacks/`. Each is its release's BPS patch applied to a retail ROM, with any
+  BPS patcher (Flips: `flips --apply <patch>.bps <retail ROM> <hack ROM>`). The patches come from each hack's release
+  page. The user's folder keeps them beside the ROMs, and the tests pass over the `.bps` files.
+  - From Crystal (USA, Europe) (Rev 1): Crystal Legacy v1.3.1 `74a6727e`.
+  - From Yellow (USA, Europe): Yellow Legacy v1.0.10 `2ac87de4`.
+  - From Red: PureRed `2e94d09c` (v2.7.6), `60d445d5` (v2.7.7).
+  - From Blue: PureBlue `d419fe24`, `b96ee563`; PureGreen `fe4c63a6`, `258ec7fe` (v2.7.6, v2.7.7).
+  - From Crystal (USA), rev 0: Crystal Clear v2.5.11 `a1c4da6b`, Color Filter `6fc677bf`, SGB Mode `8be3dea8`, Color
+    Filter SGB Mode `913c49bd`; v2.6.0 `84d5c492`, `534876e4`, `059632e8`, `88c943e6`.
+
+  Checked on this machine (2026-11-13): each file is what its patch makes of the retail ROM it names, and each SHA-1
+  PokeDaisy lists matches. `sha1sum ~/gb-companion/roms/romhacks/*.gb*` against this list checks a copy. Every Crystal
+  Clear build has Crystal's header title and code (`PM_CRYSTAL`, `BYTE`), so `PM_CRYSTAL` names three games (step 1).
+  Each file gets its line in `roms.sha1` in step 4, 6, 9 or 13.
+- `GBA_ROMS` and `NDS_ROMS` (`~/gba-companion/roms`, `~/nds-companion/roms`) are #28's optional lists: not needed here.
+
+### 7. The device (the manual tests)
+
+- The RG DS Plus with a card of the fork's image built from the branch at the step a manual test names:
+  `make rgds-plus` (Buildroot downloads and builds everything the first time: an hour or more and several GB), then the
+  `.img.gz` in `output/rgds-plus/images/` written to the card. A card that already runs the fork can take the update
+  package instead (`banana-rgds-plus-<version>.update.tar`, `docs/ARCHITECTURE.md`, *A/B updates*).
+- The hacks' ROMs on the card, in its Game Boy Color folder (PureRed also in its Game Boy folder, for M3). Settings >
+  Other systems > Second screen: the Pokémon rows On.
+- SSH (Settings > Network > SSH) or a card reader, for `/data/banana/logs/`.
 
 ## Steps
 

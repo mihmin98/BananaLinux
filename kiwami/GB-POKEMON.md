@@ -226,7 +226,8 @@ and never asked, and upstream's `gamepanel` after it opening no Game Boy panel, 
 answer, sent on RetroArch's stdin or through BananaFront's shared memory. The data file's addresses are read in one
 set, neighbours merged into one read: Gen II is 10 or 11 reads, about 1.3 KB; Gen I 8 reads, about 1.2 KB. A set
 whose replies are all there makes a snapshot; an emulator that answers with no data (`-1 no memory map defined`) is
-reported, and nothing is shown.
+reported, and nothing is shown. With RetroAchievements' Hardcore mode on, which sends the game to RetroArch,
+RetroArch still answers the reads: the pages work (the plan's manual test M9, on the RG DS Plus, 2026-11-13).
 
 The snapshot becomes upstream's `nds::Live`, in the DS companion's conventions, so upstream's session, logic and pages
 take it. Gold, Silver and Crystal (pret's `macros/ram.asm`: `party_struct` 48 bytes, `battle_struct` 32):
@@ -765,7 +766,6 @@ In the repository, not the image: `ui/src/kiwami/gbpk/` 318 KB, `kiwami/tests/gb
 - **Gold's and Silver's guide** has no places or flags: the Elite Four and the Champion are done by a later milestone.
 - **Hidden items are always listed**, found or not, as upstream's companions list theirs.
 - **Swarms** aren't listed (*Reading the ROM*); critical hits, Reflect, Light Screen and weather aren't counted.
-- **RetroAchievements' Hardcore mode**: whether RetroArch answers the memory reads in it is the plan's manual test M9.
 
 If upstream ships a Game Boy companion of its own, the fork's is retired at that merge: its hooks, its rows and its
 data files go, and this file says what of it upstream's lacks (`docs/FORK.md`, *Taking in upstream*, point 3).

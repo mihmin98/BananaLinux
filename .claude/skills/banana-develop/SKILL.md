@@ -132,11 +132,18 @@ or accept it. When it all holds, mark the final check done in *Progress*, stage 
 
 ## 7. The pull request
 
-After the final check is committed, give the user the pull request's text: a **title** in the repository's style (it
-becomes the merge commit's subject, e.g. `7z ROMs: .7z games listed and played on the seven cartridge systems`) and a
-**description** (what the feature does, how, what was tested on which board, anything left for later), ending with
-`Closes #<issue>`. Give the **link** that opens the pull request with this fork's `kiwami` as its base and the
-feature's branch as its head:
+After the final check is committed, give the user the pull request's text, ready to paste into GitHub's form, in two
+separate blocks:
+
+- a **title** in the repository's style (it becomes the merge commit's subject, e.g. `7z ROMs: .7z games listed and
+  played on the seven cartridge systems`), in a plain code block of its own;
+- a **description**: what the feature does, how, what was tested on which board, anything left for later, ending with
+  `Closes #<issue>`. It is written as GitHub Markdown (a `##` heading for each part, lists, code spans for paths,
+  settings and commands, **bold** for what the reader must not miss) and given in a ```` ```markdown ```` code block,
+  so it is pasted with its formatting as is.
+
+No "Title:" or "Description:" labels inside the blocks, and no AI attribution lines. Give the **link** that opens the
+pull request with this fork's `kiwami` as its base and the feature's branch as its head:
 
 ```
 https://github.com/<owner>/<repo>/compare/kiwami...k/<NNNN>-<name>

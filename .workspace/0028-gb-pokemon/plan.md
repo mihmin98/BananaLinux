@@ -88,7 +88,8 @@ Found while reading the code, each a change to what the investigation proposed:
   items, wild encounters (Gen II by time of day), trainers, map names and Pokédex text come from it, and nothing of
   the games is in the repository or the image.
 - **A13**: the Dex and Party pages show each species' front sprite decoded from the ROM in its GBC palette, and in
-  Gen II the shiny palette for a shiny Pokémon.
+  Gen II the shiny palette for a shiny Pokémon; the white inside its outline is drawn white, only the white around it
+  clear (step 19, 2026-11-13).
 - **A14**: the Map page shows the game's own map from the ROM (Gen I's town map; Gen II's Pokégear Johto and Kanto) with
   the player's place lit. A map that can't be decoded falls back to the pages' squares.
 - **A15**: Red, Blue, Yellow and Crystal load their guide with no entry skipped; the Guide page's next milestone
@@ -980,7 +981,24 @@ derived bits, the gyms by their leaders' flags, no `opens`.)
 - **Commit**: `GB Pokémon companion: the Back button switches the game panel between its menu and the pages`
 - (*Deviations* 2026-11-13, step 18: added after the manual tests.)
 
-### 19. Final check
+### 19. The white inside a Pokémon's outline kept
+
+- **Files**: `ui/src/kiwami/gbpk/pics.h`, `pics.cpp`, `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp`,
+  `kiwami/GB-POKEMON.md` (changed)
+- **Change**: the Game Boy's colour 0 is both the white around a Pokémon and the white inside it (Gen I's bodies are
+  mostly white), and upstream's `nds::Sprite` draws index 0 clear, so Pikachu's body showed the page's box. In
+  `pictureFrame`, the white the picture's edge reaches through white, side by side, stays 0 (clear); the rest becomes
+  `PIC_INSIDE` (4), which both palette setters (Gen I's, Gen II's) set to the palette's white. Upstream's pages take
+  any index but 0 from the palette, so nothing of upstream's changes.
+- **Tests**: `gbpk-units`: a hand-made square outline's inside is `PIC_INSIDE` and its outside clear, one with a gap
+  lets the edge in, a diamond drawn corner to corner holds; the made-up ROMs' palettes have the fifth colour.
+  `gbpk-roms.sh`: every front picture of the nine ROMs has white inside its outline, Pikachu's at least 50 pixels
+  (Yellow's 620). A headless render of Yellow's and Crystal's battles from the ROMs, before and after.
+  `kiwami/tests/ci.sh .buildroot`, `make -C ui`.
+- **Commit**: `GB Pokémon companion: the white inside a Pokémon's outline drawn white, not clear`
+- (*Deviations* 2026-11-13, step 19: added after the manual tests.)
+
+### 20. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
 - The fork's tests: `gbpk-units`, `gbpk-ui.sh`, `gbpk-roms.sh` with `GB_ROMS` set to the user's folder (and the
@@ -1013,8 +1031,8 @@ derived bits, the gyms by their leaders' flags, no `opens`.)
 | Detection | `kiwami/tests/gbpk-units.cpp` | header titles, an unknown SHA-1 unsupported, another title none, the data files | A3, A4 |
 | The RAM reader | `gbpk-units.cpp` over `kiwami/tests/gbpk/fixtures/` (33 captures) | each README's party, bag, place and battle; the request pacing; error replies | A7, A8, A9 |
 | The rules | `gbpk-units.cpp` through `nds::effectiveness`, `damage`, `catchChance`, `Mon::shiny` | Gen I's chart, Special, the type items, no status counted twice, both catch formulas, DV shininess, gender, Hidden Power | A10 |
-| The ROM reader on made-up data | `gbpk-units.cpp` | every table read back from a made-up ROM for each generation; both decompressions on hand-built streams; the tile maps; refusals | A12, A13, A14 |
-| The ROM reader on the user's ROMs | `kiwami/tests/gbpk-roms.sh` (`GB_ROMS`, by default `~/gb-companion/roms`, skipped without; the files in `kiwami/tests/gbpk/roms.sha1`) | the nine releases' SHA-1s, species, moves, encounters, trainers, every sprite, the maps; PokeDaisy's reference tables | A3, A12, A13, A14, A16 |
+| The ROM reader on made-up data | `gbpk-units.cpp` | every table read back from a made-up ROM for each generation; both decompressions on hand-built streams; the tile maps; the white inside an outline kept (step 19); refusals | A12, A13, A14 |
+| The ROM reader on the user's ROMs | `kiwami/tests/gbpk-roms.sh` (`GB_ROMS`, by default `~/gb-companion/roms`, skipped without; the files in `kiwami/tests/gbpk/roms.sha1`) | the nine releases' SHA-1s, species, moves, encounters, trainers, every sprite (with white inside its outline), the maps; PokeDaisy's reference tables | A3, A12, A13, A14, A16 |
 | The guides | `gbpk-units.cpp` through `nds::loadGuideFile` | the four files load with nothing skipped; milestones follow badges and flags; hidden items' flags; the ROM-built guide | A15, A16 |
 | The panel, headless | `kiwami/tests/gbpk-ui.sh` at 640x480 and 1024x768 | the rows and their keys; the pages on a fixture, the battle's start and end, the Menu switch by the corner, Back and F, unsupported; the Gen-aware blocks' trace lines | A1, A3, A4, A9, A11, A24 |
 | Upstream unchanged | `make test` | upstream's GBA, DS, guide and logic tests pass; renders match `main`'s with the rows Off | A2, A23 |
@@ -1046,6 +1064,7 @@ Each run: Second screen on, the system's row On, the game started from the menu.
 | M13 | rgds-plus | A user definition for Red in `/data/banana/companions/gb/` with Game companion On and the `gb` row On (only if the user has one to hand; otherwise by the code's reading at review). | Upstream's game companion shows, not the fork's. | `banana-ui.log`: `game companion:` and no `gb companion:` | A6 | not run |
 | M14 | rgds-plus | Settings > Other systems > Second screen, and Settings > System > Credits. An Emerald game with upstream's row On. | The two rows after Pokémon companion, Off on a fresh card. The PokeDaisy line in the credits. The GBA companion as before. | none | A1, A20, A23 | not run |
 | M15 | rgds-plus | After step 18. A Game Boy and a Game Boy Color game with the companion on its pages: Back, Back; F; R2 alone during play; F + R2. | Back shows the menu, then the pages again. F shows the menu. R2 alone fast-forwards and the pages stay; F + R2 fast-forwards with the menu shown. | none | A24 | not run |
+| M16 | rgds-plus | After step 19. Yellow: Pikachu on the Battle and Party pages; a Gen II game: a few species on the Dex page. | Each Pokémon as in the game: Pikachu's body white with its shading, eyes' whites; the box shows around it, not through it. | a photo | A13 | not run |
 
 Notes from the runs (what the logs showed, what was fixed):
 
@@ -1054,6 +1073,8 @@ Notes from the runs (what the logs showed, what was fixed):
   the menu, and only a tap on the corner brings the pages back. F's menu is upstream's (as in a GBA game), and R2
   alone already fast-forwards in these games (upstream's template); what the GBA has and the Game Boy games lacked is
   the Back button to switch back: step 18.
+- The same day, a photo of Yellow's first rival battle: Pikachu's and Eevee's sprites looked bad on the Battle page's
+  boxes. Their bodies are the Game Boy's white, which the companion drew clear, so the dark box showed through: step 19.
 
 ## Deviations
 
@@ -1422,6 +1443,12 @@ Where the implementation turned out different from this plan, why, and what chan
   file (`settings_gamepanel.cpp`), placed in `gameButton` rather than `gameOpen` so it asks at the press whether the
   fork's panel is open, not depending on the order the panel and the game open in. No Settings row: Back has no other
   job in a Game Boy game, and it does nothing with the rows Off. A24 and M15 are new; the final check is step 19.
+- **2026-11-13, step 19: the white inside a Pokémon kept, a step added after the manual tests.** The user's photo of
+  Yellow's Battle page showed Pikachu and Eevee as outlines and shading on the box's colour: step 7 left every pixel 0
+  clear, as upstream's sprites' 0 is, but the Game Boy's 0 is also the white inside the outline (Gen I's bodies are
+  mostly white). The user chose to keep that white (a fill from the picture's edge, side by side) over a light box
+  behind the sprites, which would need a hook in upstream's page drawing. It changes the fork's files alone. A13 says
+  so, M16 is new, and the final check is step 20.
 
 ## Progress
 
@@ -1448,4 +1475,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 16. PokeDaisy's reference data for every mainline game | done | `GB Pokémon companion: PokeDaisy's reference data for the mainline games, Gen I to Gen V` |
 | 17. The documentation, and what the feature weighs | done | `GB Pokémon companion: its documentation, the merge checks for upstream's companion code, and its footprint` |
 | 18. Back switches the game panel in a Game Boy game | done | `GB Pokémon companion: the Back button switches the game panel between its menu and the pages` |
-| 19. Final check | todo | |
+| 19. The white inside a Pokémon's outline kept | done | `GB Pokémon companion: the white inside a Pokémon's outline drawn white, not clear` |
+| 20. Final check | todo | |

@@ -651,7 +651,7 @@ static void testRomTables()
 		int drawn = 0;
 		for (uint8_t v : f) drawn += v != 0;
 		CHECK(drawn == 4);
-		CHECK(bulbasaur->normal[0] == 0xFFFFFF && bulbasaur->normal[1] == 0xFF0000 && bulbasaur->normal[2] == 0x00FF00 && bulbasaur->normal[3] == 0);
+		CHECK(bulbasaur->normal[0] == 0xFFFFFF && bulbasaur->normal[1] == 0xFF0000 && bulbasaur->normal[2] == 0x00FF00 && bulbasaur->normal[3] == 0 && bulbasaur->normal[PIC_INSIDE] == 0xFFFFFF);
 		CHECK(bulbasaur->shiny[0] == 0xFFFFFF && bulbasaur->shiny[1] == 0x0000FF && bulbasaur->shiny[2] == 0xFFFF00 && bulbasaur->shiny[3] == 0);
 	}
 	CHECK(!r->sprite(2) && !r->sprite(3) && !r->sprite(0));
@@ -789,6 +789,38 @@ static void testPictureFormats()
 	CHECK(pictureFrame(tiles, 2, 1, s) && s.w == 16 && s.h == 8 && s.frames.size() == 1 && s.frames[0][8] == 2 && s.frames[0][0] == 1);
 	tiles.assign(8 * 16, 0);
 	CHECK(!pictureFrame(tiles, 8, 1, s));
+	// the white inside an outline (Gen I's bodies): a 0 the edge can't reach side by side is PIC_INSIDE, the white
+	// around it stays clear; an outline with a gap lets the edge in, one drawn corner to corner (a diamond) doesn't
+	{
+		auto put = [](std::vector<uint8_t>& t, int x, int y, int v)	// (a 2 x 2-tile picture, its tiles in columns)
+		{
+			uint8_t* tile = &t[(size_t)((x / 8) * 2 + y / 8) * 16];
+			if (v & 1) tile[2 * (y % 8)] |= 0x80 >> (x % 8);
+			if (v & 2) tile[2 * (y % 8) + 1] |= 0x80 >> (x % 8);
+		};
+		auto square = [&](bool gap)
+		{
+			std::vector<uint8_t> t(4 * 16, 0);
+			for (int k = 4; k <= 11; k++) { put(t, k, 4, 3); put(t, k, 11, 3); put(t, 4, k, 3); if (!gap || k != 8) put(t, 11, k, 3); }
+			nds::Sprite q;
+			CHECK(pictureFrame(t, 2, q));
+			return q;
+		};
+		nds::Sprite closed = square(false), open = square(true), diamond;
+		if (closed.frames.size() == 1 && closed.frames[0].size() == 256 && open.frames.size() == 1 && open.frames[0].size() == 256)
+		{
+			int inside = 0, clear = 0;
+			for (uint8_t v : closed.frames[0]) { inside += v == PIC_INSIDE; clear += v == 0; }
+			CHECK(inside == 36 && clear == 256 - 64 && closed.frames[0][8 * 16 + 8] == PIC_INSIDE && closed.frames[0][0] == 0);
+			CHECK(closed.frames[0][4 * 16 + 4] == 3);
+			for (uint8_t v : open.frames[0]) CHECK(v != PIC_INSIDE);
+		}
+		std::vector<uint8_t> t(4 * 16, 0);
+		for (int k = 0; k < 4; k++) { put(t, 8 + k, 4 + k, 2); put(t, 12 - k, 8 + k, 2); put(t, 8 - k, 12 - k, 2); put(t, 4 + k, 8 - k, 2); }
+		CHECK(pictureFrame(t, 2, diamond));
+		if (diamond.frames.size() == 1 && diamond.frames[0].size() == 256)
+			CHECK(diamond.frames[0][8 * 16 + 8] == PIC_INSIDE && diamond.frames[0][5 * 16 + 8] == PIC_INSIDE && diamond.frames[0][3 * 16 + 8] == 0);
+	}
 	CHECK(rgb555(0x7FFF) == 0xFFFFFF && rgb555(0) == 0 && rgb555(0x001F) == 0xFF0000 && rgb555(0x7C00) == 0x0000FF);
 	CHECK(rgb555(0x46DE) == 0xF7B58C);	// RGB 30, 22, 17: 247, 181, 140
 }
@@ -1677,7 +1709,7 @@ static void testGen1RomTables()
 		int drawn = 0;
 		for (uint8_t v : bulbasaur->frames[0]) drawn += v != 0;
 		CHECK(bulbasaur->frames[0][0] == 1 && drawn == 1);
-		CHECK(bulbasaur->normal[0] == 0xFFFFFF && bulbasaur->normal[1] == 0xFF0000 && bulbasaur->normal[2] == 0x00FF00 && bulbasaur->normal[3] == 0);
+		CHECK(bulbasaur->normal[0] == 0xFFFFFF && bulbasaur->normal[1] == 0xFF0000 && bulbasaur->normal[2] == 0x00FF00 && bulbasaur->normal[3] == 0 && bulbasaur->normal[PIC_INSIDE] == 0xFFFFFF);
 		CHECK(bulbasaur->shiny == bulbasaur->normal);
 	}
 	auto mew = r->sprite(3);

@@ -12,6 +12,7 @@
 // additional term under section 7(b): LICENSE and NOTICE in ui/src/kiwami/gbpk/. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "kiwami/gbpk/games.h"
+#include "kiwami/gbpk/pics.h"
 #include "kiwami/gbpk/rom.h"
 #include "kiwami/gbpk/gsguide.h"
 #include "nds/guide.h"
@@ -73,13 +74,13 @@ static void png(const std::string& path, const std::vector<uint32_t>& px, int w,
 // stream's own first byte), Chikorita's 5 x 5; Gen I's Bulbasaur 5 x 5 and Mewtwo 7 x 7 (pret's
 // gfx/pokemon/front/*.png), each with one palette (shiny the same); written as two sheets of 16 x 16 boxes of 7 x 7
 // tiles, each picture where the game puts it in its box (PadFrontpic, LoadUncompressedSpriteData: a column in, on the
-// box's bottom), on its own white
+// box's bottom), on its own white; the white inside each outline kept (PIC_INSIDE), Pikachu's body among it
 static void checkPics(const nds::RomData& r, const std::vector<uint8_t>& rom, const std::string& out, const std::string& key)
 {
 	const GbRomData& g = static_cast<const GbRomData&>(r);
 	const int box = 56, cols = 16, sheetW = cols * box, sheetH = 16 * box, count = (int)r.species.size() - 1;
 	std::vector<uint32_t> normal((size_t)sheetW * sheetH, 0xC0C0C0), shiny = normal;
-	int drawn = 0, sized = 0, same = 0;
+	int drawn = 0, sized = 0, same = 0, withInside = 0;
 	auto t0 = std::chrono::steady_clock::now();
 	for (int s = 1; s <= count; s++)
 	{
@@ -87,8 +88,10 @@ static void checkPics(const nds::RomData& r, const std::vector<uint8_t>& rom, co
 		if (!sp || sp->frames.size() != 1 || sp->w != sp->h) { fprintf(stderr, "gbpk-roms: %s: species %d's picture doesn't decode\n", current.c_str(), s); continue; }
 		const auto& f = sp->frames[0];
 		bool any = false;
-		for (uint8_t v : f) any |= v != 0;
+		bool inside = false;
+		for (uint8_t v : f) { any |= v != 0; inside |= v == PIC_INSIDE; }
 		drawn += any;
+		withInside += inside;
 		// (Gen II: BaseData's picture size, the record's byte 17, dn w, h, rom.h's GbRomData keeping where BaseData is;
 		// Gen I: the picture's own first byte, dn w, h)
 		const int size = g.gen == 1 ? rom[g.pics1.pic[s]] >> 4 : rom[g.pics.baseData + 32 * (s - 1) + 17] & 0xF;
@@ -116,7 +119,12 @@ static void checkPics(const nds::RomData& r, const std::vector<uint8_t>& rom, co
 		auto chikorita = r.sprite(152);
 		CHECK(chikorita && chikorita->w == 40 && chikorita->h == 40);
 	}
-	fprintf(stderr, "gbpk-roms: %s: %d front pictures decoded in %.1f ms\n", current.c_str(), drawn, ms);
+	auto pikachu = r.sprite(25);
+	int pikachuInside = 0;
+	if (pikachu && pikachu->frames.size() == 1) for (uint8_t v : pikachu->frames[0]) pikachuInside += v == PIC_INSIDE;
+	// (the white inside the outline kept, pics.h's PIC_INSIDE: every picture has some, eyes at least; Pikachu's body is)
+	CHECK(withInside == count && pikachuInside >= 50);
+	fprintf(stderr, "gbpk-roms: %s: %d front pictures decoded in %.1f ms, %d with white inside, Pikachu's %d px\n", current.c_str(), drawn, ms, withInside, pikachuInside);
 	if (out.empty()) return;
 	png(out + "/" + key + "-pics.png", normal, sheetW, sheetH);
 	if (g.gen == 2) png(out + "/" + key + "-shiny.png", shiny, sheetW, sheetH);

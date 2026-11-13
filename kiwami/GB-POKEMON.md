@@ -420,8 +420,12 @@ Gen II's, pokecrystal's and pokegold's; Gen I's, pokered's and pokeyellow's:
   `pics.cpp`; Gold and Silver: a list of pairs), its 5, 6 or 7 tiles square (`BaseData`'s picture size; any other
   as 7, `PadFrontpic`) in columns, at that size, not padded: the pages crop a picture to what is drawn. Its palettes
   are the game's: white, the species' two colours from `PokemonPalettes`, black, and the shiny's two after them.
-  Pixel 0 (white) is left clear, as the games' background. Crystal's animation frames, which follow the first in the
-  same stream, aren't read: the pages show a still picture.
+  Pixel 0 (white) is both the screen around the Pokémon and the white inside it, and upstream's pages draw their
+  pixel 0 clear: the white the picture's edge reaches through white, side by side, is left clear, and the rest (inside
+  the outline: eyes, highlights, Gen I's white bodies) is drawn white, a fifth colour (`PIC_INSIDE`, `pics.h`). So a
+  Pokémon looks as in the game on any of the pages' backgrounds, where with all white clear Pikachu's body showed the
+  box behind it. Crystal's animation frames, which follow the first in the same stream, aren't read: the pages show a
+  still picture.
 - **The Pokégear's Johto and Kanto maps** (`engine/pokegear/pokegear.asm`): the screen's 20 x 18 tiles
   (`JohtoMap`, `KantoMap`) over `TownMapGFX`'s 48 tiles (LZ), each tile in the palette `TownMapPals`' map gives its id,
   from Chris's Pokégear palettes (Kris's differ only in the cities' colour, and the map is read once, not by the save:
@@ -440,7 +444,7 @@ Gen II's, pokecrystal's and pokegold's; Gen I's, pokered's and pokeyellow's:
 - **A species' front picture** in Red, Blue and Yellow: its base data's pointer, in the bank `UncompressMonSprite`
   picks by its internal index ("Pics 1" below `TANGELA` + 1, "Pics 2" below `MOLTRES` + 1, "Pics 3" below
   `BEEDRILL` + 2, "Pics 4" below `STARMIE` + 1, "Pics 5" the rest; Red's and Blue's Mew, `cp MEW`, in its own), at its
-  own size (the stream's first byte), not padded to 7 x 7. One palette: `MonsterPalettes`' id for the species into
+  own size (the stream's first byte), not padded to 7 x 7, its white inside the outline kept as Gen II's. One palette: `MonsterPalettes`' id for the species into
   `SuperPalettes` (Red, Blue: the colours a Super Game Boy shows) or `CGBBasePalettes` (Yellow's own on a Game Boy
   Color), four colours; the shiny the same, Gen I having none. `readGen1` checks that Bulbasaur's decodes, at the size
   its base data gives.
@@ -702,7 +706,8 @@ each file and how long the read took. For Gold, Silver and Crystal it checks tha
 named; Chikorita's base stats, types, evolution, first move, Pokédex category, height and weight; the priorities of
 Quick Attack, Vital Throw and Protect; TM01 and HM01's moves; item names and prices; Route 29's morning grass with
 Pidgey and Sentret; fishing at New Bark Town and none on Route 29; Falkner's Pidgey Lv 7 and Pidgeotto Lv 9; every
-place with wild Pokémon named; every species' front picture drawn, at its base data's size, Chikorita's 5 x 5 tiles;
+place with wild Pokémon named; every species' front picture drawn, at its base data's size, Chikorita's 5 x 5 tiles,
+each with white inside its outline, Pikachu's at least 50 pixels;
 both Pokégear maps drawn, New Bark Town on Johto's with its cell naming it, Pallet Town on Kanto's, and every named
 place but the special landmark's rooms on a map; every hidden item on a named map with a named item, and more than
 50; the game's guide file (Crystal's) loaded with every place found by name and every boss's team the ROM's, at
@@ -714,7 +719,8 @@ and height and weight; Mew; Clefairy's Moon Stone and Kadabra's trade; Quick Att
 TM01 and HM01's moves; item names and prices; Route 1's grass with Pidgey and Rattata; the three rods at Pallet Town
 and none on Route 1; Brock's Geodude and Onix at Lv 12 and 14 (Yellow's 10 and 12), his Onix with Bide (Yellow's
 with Bind and Bide); Lorelei's Lapras with Blizzard; every place with wild Pokémon named; all 151 front pictures
-drawn at their own size, Bulbasaur's 5 x 5 tiles and Mewtwo's 7 x 7 (pret's PNGs), each with one palette; the town map
+drawn at their own size, Bulbasaur's 5 x 5 tiles and Mewtwo's 7 x 7 (pret's PNGs), each with one palette and white
+inside its outline (Pikachu's body); the town map
 drawn, Pallet Town's spot on it with its cell naming it, every named place on it; every hidden item on a named map
 with a named item, and more than 50; the game's guide file loaded with every place found by name and every boss's
 teams the ROM's, at its level cap (the Champion's three). Given PokeDaisy's checkout, every species' gender ratio and

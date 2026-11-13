@@ -115,6 +115,20 @@ namespace banana::kiwami::gbpk
 			for (int y = 0; y < 8; y++)
 				for (int x = 0; x < 8; x++) f[(size_t)(ty * 8 + y) * out.w + tx * 8 + x] = (uint8_t)tilePixel(&tiles[(size_t)t * 16], x, y);
 		}
+		// the white the edge reaches, side by side (an outline drawn corner to corner holds), stays clear; the rest is
+		// the inside's (marked OUT while the fill runs)
+		const uint8_t OUT = 0xFF;
+		std::vector<int> todo;
+		auto reach = [&](int x, int y) { if (x < 0 || y < 0 || x >= out.w || y >= out.h) return; uint8_t& v = f[(size_t)y * out.w + x]; if (v == 0) { v = OUT; todo.push_back(y * out.w + x); } };
+		for (int x = 0; x < out.w; x++) { reach(x, 0); reach(x, out.h - 1); }
+		for (int y = 0; y < out.h; y++) { reach(0, y); reach(out.w - 1, y); }
+		while (!todo.empty())
+		{
+			const int at = todo.back(), x = at % out.w, y = at / out.w;
+			todo.pop_back();
+			reach(x - 1, y); reach(x + 1, y); reach(x, y - 1); reach(x, y + 1);
+		}
+		for (uint8_t& v : f) v = v == OUT ? 0 : v == 0 ? PIC_INSIDE : v;
 		out.frames.assign(1, std::move(f));
 		return true;
 	}
@@ -153,7 +167,7 @@ namespace banana::kiwami::gbpk
 		// (GetMonNormalOrShinyPalettePointer)
 		const size_t pal = t.palettes + (size_t)PALETTE * species;
 		if (!r.has(pal, PALETTE)) return nullptr;
-		sp->normal[0] = sp->shiny[0] = WHITE;
+		sp->normal[0] = sp->shiny[0] = sp->normal[PIC_INSIDE] = sp->shiny[PIC_INSIDE] = WHITE;
 		sp->normal[3] = sp->shiny[3] = BLACK;
 		for (int k = 0; k < 2; k++)
 		{
@@ -280,6 +294,7 @@ namespace banana::kiwami::gbpk
 		auto sp = std::make_shared<nds::Sprite>();
 		if (!pic1(r.b.data() + o, end - o, w, h, tiles) || !pictureFrame(tiles, w, h, *sp)) return nullptr;
 		for (int k = 0; k < 4; k++) sp->normal[k] = sp->shiny[k] = rgb555(r.le16(pal + 2 * k));
+		sp->normal[PIC_INSIDE] = sp->shiny[PIC_INSIDE] = sp->normal[0];
 		return sp;
 	}
 }

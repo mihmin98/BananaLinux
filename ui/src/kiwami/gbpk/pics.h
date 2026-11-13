@@ -29,8 +29,14 @@ namespace banana::kiwami::gbpk
 		return (tile[2 * y] >> (7 - x) & 1) | (tile[2 * y + 1] >> (7 - x) & 1) << 1;
 	}
 
+	// the index of a picture's white inside its outline: the Game Boy's 0 is both the white around the Pokémon, which the
+	// game's white screen hides, and the white inside it (Gen I's bodies: Pikachu's, Eevee's). Upstream's pages draw 0
+	// as clear, so a 0 the picture's edge can't reach through other 0s, side by side, is this index, the palette's 0
+	const int PIC_INSIDE = 4;
+
 	// a w x h-tile picture, its tiles in columns as the games store a front picture, into out's first frame (8-bit
-	// indices, the pixel's value: 0 is clear); false when tiles is short or a side isn't 1-7 tiles
+	// indices, the pixel's value: 0 is clear, and the white inside the outline PIC_INSIDE, whose colour the caller sets
+	// as the palette's 0); false when tiles is short or a side isn't 1-7 tiles
 	bool pictureFrame(const std::vector<uint8_t>& tiles, int w, int h, nds::Sprite& out);
 	inline bool pictureFrame(const std::vector<uint8_t>& tiles, int size, nds::Sprite& out) { return pictureFrame(tiles, size, size, out); }
 

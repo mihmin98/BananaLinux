@@ -959,6 +959,7 @@ derived bits, the gyms by their leaders' flags, no `opens`.)
     builds it is GPL-3.0.
 - **Tests**: `kiwami/tests/ci.sh .buildroot`; the hook commands of `docs/FORK.md` list the hooks this plan names.
 - **Commit**: `GB Pokémon companion: its documentation, the merge checks for upstream's companion code, and its footprint`
+- (*Deviations* 2026-11-13, step 17: banana-ui grows by about 390 KB, not under 200 KB; measured on x86-64.)
 
 ### 18. Final check
 
@@ -1378,6 +1379,16 @@ Where the implementation turned out different from this plan, why, and what chan
     game files and `SOURCES` by the script. `SOURCES` is the folder's own file, not a section of the image's.
     `--reference` writes the reference data alone; `--check` covers both, with the checkout or without.
   - **Size**: 54 files, 1.2 MB, against "several MB" expected.
+- **2026-11-13, step 17: what it weighs, measured.** banana-ui's code grows by 396,335 bytes (`size`'s text; stripped
+  + 401,408), about twice the *Risks*' "under 200 KB": the host, the memory reader and Gen I's ROM tables are the
+  largest objects, and `game.cpp`'s headless test verbs (52 KB) are built into the device's binary, as upstream's
+  verbs are. The image's `gb-pokemon/` is 142,763 bytes (33 KB with `lz4 -9`; the rootfs is LZ4 squashfs), well under
+  the expected 400 KB. Both banana-ui builds are this machine's x86-64 `make -C ui` from `git archive` copies of
+  `kiwami` and this branch in `/tmp`, not the device's aarch64 build, which would need a second Buildroot output.
+  Nothing else changes: none of it runs with the rows Off. `kiwami/GB-POKEMON.md`'s *What it weighs* has the numbers.
+  Also beyond the plan's list for that file: *Taking in a newer PokeDaisy* (step by step), *The tests* (an overview)
+  and *What it doesn't do* (the limits, and the retirement if upstream ships its own). `docs/FORK.md` gets a third row
+  besides the plan's two, for a feature's code under another licence.
 
 ## Progress
 
@@ -1402,5 +1413,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 14. Gen I's ROM: the sprites and the town map | done | `GB Pokémon companion: Gen I's sprites and town map, decoded from the ROM` |
 | 15. Red, Blue and Yellow's guides | done | `GB Pokémon companion: Red, Blue and Yellow's guides, converted from PokeDaisy's tables` |
 | 16. PokeDaisy's reference data for every mainline game | done | `GB Pokémon companion: PokeDaisy's reference data for the mainline games, Gen I to Gen V` |
-| 17. The documentation, and what the feature weighs | todo | |
+| 17. The documentation, and what the feature weighs | done | `GB Pokémon companion: its documentation, the merge checks for upstream's companion code, and its footprint` |
 | 18. Final check | todo | |

@@ -32,8 +32,9 @@ code can go to upstream, which is MIT. Banana's MIT code is compatible with that
 Where the attribution is:
 
 - `NOTICE` and `LICENSE` (PokeDaisy's GPL-3.0 text) beside every GPL-3.0 folder: the image's
-  `/usr/share/banana/companions/gb-pokemon/` (`kiwami/rootfs/usr/share/banana/companions/gb-pokemon/`), and from later
-  steps `ui/src/kiwami/gbpk/`, `kiwami/tests/gbpk/` and `kiwami/data/pokedaisy/`.
+  `/usr/share/banana/companions/gb-pokemon/` (`kiwami/rootfs/usr/share/banana/companions/gb-pokemon/`),
+  `ui/src/kiwami/gbpk/` (every source there also starts with the GPL-3.0 header and the attribution line),
+  `kiwami/tests/gbpk/` and `kiwami/data/pokedaisy/`.
 - This file, the fork's documentation of the companion.
 - Settings > System > Credits: `kiwami/post-build.sh` adds the line under *Thanks* in the image's
   `/etc/banana/credits.txt`, once, and stops the build if that file has no `[Thanks]` section.
@@ -98,6 +99,26 @@ python3 -I kiwami/tools/pokedaisy-extract.py ~/Documents/Projects/pokedaisy --re
 
 writes the reference data (below) and its `SOURCES`; `pokedaisy-extract.py --check`, with or without the checkout,
 covers it too.
+
+### Taking in a newer PokeDaisy
+
+1. Check the new commit out in the PokeDaisy clone, and change `PIN` in `kiwami/tools/pokedaisy-extract.py`.
+2. Run the script three ways: `<checkout>` (the image's data files), `<checkout> --reference` (the reference data), then
+   `--check` alone. A run that stops names what it can't read (`unread:`): a config field, a guide's boss or rule of
+   a new shape. Each is either taken (a new key in the data files, which the C++ then reads or not) or left out by
+   name with why, never dropped silently.
+3. Read the diff: `git diff kiwami/rootfs/usr/share/banana/companions/gb-pokemon/ kiwami/data/pokedaisy/`. An address
+   that moved is a fix PokeDaisy made, or a disagreement with pret's, which the script refuses; a milestone or a
+   hidden item that changed shows in the guides; the reference data's `README.md` shows what is newly left out.
+   `SOURCES` records the commit and every file's hash, so the diff of its `in` lines names the PokeDaisy files that
+   changed.
+4. If PokeDaisy's RAM captures changed (`app/src/test/resources/fixtures/`), copy its English ones into
+   `kiwami/tests/gbpk/fixtures/` as they are, and update `gbpk-units.cpp`'s expected values from their READMEs.
+5. Run the tests (*The tests*), with `GB_ROMS` and the checkout given to `gbpk-roms.sh`, and change
+   `kiwami/DEPENDENCIES.md`'s PokeDaisy row (its version, commit and date) in the same commit.
+
+pret's four repositories are taken in the same way: their commits are `SOURCES`' `[pret]` lines, `pret-extract.py` is
+run first, then `pokedaisy-extract.py`, as its data files merge `gbpk-extra.json`.
 
 ## PokeDaisy's reference data
 
@@ -589,6 +610,30 @@ by the team or whose teams' top levels differ, a title that isn't a leader's, an
 a gym not done by its own badge, a flag outside the event flags and the cave guard, a trade it can't read, or one of a
 game's `<prefix>_...` constants it neither takes nor leaves out by name.
 
+## The tests
+
+All but the ROM tests run in `kiwami/tests/ci.sh`, without PokeDaisy, pret or the games:
+
+- **`gbpk-units`** (`kiwami/tests/gbpk-units.cpp`, built from `ui/src/kiwami/gbpk/` without the files that need
+  banana-ui's Settings and pages, with upstream's `nds/` logic, model, guide and JSON): which game a ROM is (made-up
+  ROMs, plain, in a `.zip` and a solid `.7z`); the data files and `roms.sha1`; the character sets; the memory reader
+  replayed over PokeDaisy's 33 captures (*The test captures*); the battle rules through upstream's entry points; the
+  ROM readers, the picture decompressions and the maps on made-up ROMs and streams; the guides through upstream's
+  loader and `nextMilestone`, and Gold's and Silver's built from a made-up trainer table.
+- **`gbpk-ui.sh`**: banana-ui headless at 640x480 and 1024x768, the Settings rows and the game panel (*On the game
+  panel*), the Gen-aware blocks by their trace lines, Gen I's and Gen II's captures.
+- **The data's checks**: each script's `--check` against `SOURCES`, the data files' addresses all WRAM or HRAM, the
+  reference data's licence files, JSON and absence from the overlay, the scan for the games' names, and the credits
+  line `post-build.sh` adds.
+- **`gbpk-roms.sh`** on made-up folders: the check of the ROMs' folder and of the hacks' patches.
+- **`ui-objects.sh`**: banana-ui built one object a file (`kiwami.mk`) is the same binary as upstream's one call.
+
+Upstream's own tests in `make test` (its GBA and DS pages, logic and guide tests) pass unchanged: the hooks change
+nothing for its games, and with both rows Off the renders are `main`'s.
+
+On the user's machine, with the games: `kiwami/tests/gbpk-roms.sh <pokedaisy checkout>` (*The ROMs for the tests*).
+On the device: the plan's manual tests, `.workspace/0028-gb-pokemon/plan.md`.
+
 ## The ROMs for the tests
 
 The companion's ROM reader is checked on the player's own ROMs, which are never added to this repository (it is
@@ -674,3 +719,43 @@ by flag and item, and Red's, Blue's and Yellow's with `GuideGen1Gen.kt`'s 53, 53
 the one on `UNUSED_MAP_6F` besides). The pictures and maps go to `GBPK_ROMS_OUT` (by default
 `ui/tests/out/gbpk-roms/`) as PNGs for looking at: a sheet of every species' picture, normal and (Gen II's) shiny, in
 the box the game draws it in, and each map.
+
+## What it weighs
+
+Measured at the end of the work (2026-11-13), on this machine's x86-64 build (`make -C ui`, `-O2`; the device's
+aarch64 build is of the same order):
+
+| | `kiwami` before | with the companion | |
+|---|---|---|---|
+| banana-ui, `size` text | 6,190,031 | 6,586,366 | + 396,335 bytes |
+| banana-ui, stripped | 6,254,088 | 6,655,496 | + 401,408 bytes |
+| the image's `gb-pokemon/` | | 142,763 bytes | 33 KB with `lz4 -9` (the rootfs is LZ4 squashfs) |
+
+The plan expected under 200 KB of code; it is about twice that. By object (`size`'s text, compiled alone), the largest
+are `host.cpp` (94 KB: the guides, the hidden items and the pages' glue), `reader.cpp` (71 KB), `rom1.cpp` (66 KB),
+`game.cpp` (52 KB, most of it the headless test verbs, built into the device's binary as upstream's are), `games.cpp`
+and `rom2.cpp` (50 KB each) and `gsguide.cpp` (41 KB). None of it runs unless a row is On and a Game Boy Pokémon game
+starts: the menu's frames, upstream's tests' benches and idle are as before.
+
+While a game plays, with its row On: the whole ROM kept for the pages' look-ups (1 MB for Gen I, 2 MB for Gen II), read
+once on its own thread in about a millisecond; one set of memory reads every 250 ms, about 1.2 KB (Gen I) or 1.3 KB
+(Gen II), the next only once the last is answered; upstream's session thread; the sprites decoded when a page shows
+them.
+
+In the repository, not the image: `ui/src/kiwami/gbpk/` 318 KB, `kiwami/tests/gbpk/` 931 KB (PokeDaisy's captures),
+`kiwami/data/pokedaisy/` 1.2 MB.
+
+## What it doesn't do
+
+- **Other releases and hacks**: the releases in other languages (the European Yellows' among them) and every ROM hack
+  but Fast Red and Fast Blue are "Not supported"; PokeDaisy's hacks (PureRed, Yellow Legacy, Crystal Legacy, Polished Crystal ...) are
+  later features.
+- **English labels**: the fork's new labels (DV, Stat exp., Special, the rows) show in English in every language.
+- **Gen I's Team score** counts 17 types (*The battle rules*).
+- **Gold's and Silver's guide** has no places or flags: the Elite Four and the Champion are done by a later milestone.
+- **Hidden items are always listed**, found or not, as upstream's companions list theirs.
+- **Swarms** aren't listed (*Reading the ROM*); critical hits, Reflect, Light Screen and weather aren't counted.
+- **RetroAchievements' Hardcore mode**: whether RetroArch answers the memory reads in it is the plan's manual test M9.
+
+If upstream ships a Game Boy companion of its own, the fork's is retired at that merge: its hooks, its rows and its
+data files go, and this file says what of it upstream's lacks (`docs/FORK.md`, *Taking in upstream*, point 3).

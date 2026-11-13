@@ -10,7 +10,8 @@ Map, Guide, Dex, Log):
 - Crystal Legacy v1.3.1;
 - Yellow Legacy v1.0.10;
 - PureRed, PureBlue and PureGreen at v2.7.6 and v2.7.7;
-- Crystal Clear v2.5.11 and v2.6.0, each in its Standard Colors and Color Filter builds.
+- Crystal Clear v2.5.11 and v2.6.0, each in its four builds: Standard Colors and Color Filter, each with and without
+  SGB Mode.
 
 They run under Settings' existing rows (Pokémon: Game Boy, Pokémon: Game Boy Color), by the folder they're started
 from.
@@ -97,14 +98,19 @@ Found while reading the code and the hacks' sources (2026-11-13), each agreed wi
 - **A detected title's log names every game that has it.** `Game::open` logs `gb companion: Crystal (or Crystal
   Legacy, Crystal Clear)` until the SHA-1 picks one. `gbpk-ui.sh`'s two assertions on that line change with it
   (step 1).
+- **Crystal Clear's SGB Mode builds are read too** (the user's request, 2026-11-13, after checking the ROMs). Each
+  version has four builds, not two, and the four SGB Mode ones are in no list of PokeDaisy's. Step 12 maps all eight,
+  and fails if a version's builds disagree on a value the companion reads.
+- **The ROM tests look one folder down** (the user's choice, 2026-11-13). The hacks are in `~/gb-companion/roms/romhacks/`,
+  and `gbpk-roms.sh` read only the folder itself. Step 4 makes it read subfolders one level deep.
 - **PokeDaisy stays at `135ac809`.** The user's checkout is at 1.5.1 (`0040e61f`), whose changes are German Gold,
   Silver and Crystal and nothing for these hacks. The extraction runs on a worktree at the pin (*Before the steps*).
 
 ## Acceptance criteria
 
-- **A1**: given a row On and Second screen on, when one of the twelve releases is started from that system (Crystal
+- **A1**: given a row On and Second screen on, when one of the sixteen releases is started from that system (Crystal
   Legacy v1.3.1; Yellow Legacy v1.0.10; PureRed, PureBlue and PureGreen at v2.7.6 and v2.7.7; Crystal Clear v2.5.11
-  and v2.6.0, Standard Colors and Color Filter), as `.gb`, `.gbc`, `.zip` or `.7z`, then the log says
+  and v2.6.0, Standard Colors and Color Filter, each with and without SGB Mode), as `.gb`, `.gbc`, `.zip` or `.7z`, then the log says
   `gb companion: <title> (<release>) read in N ms` with the hack's own title, and the pages show on the game panel.
 - **A2**: given a file whose header title one of the hacks shares (`PM_CRYSTAL`, `POKEMON YELLOW`, `POKEMON RED`,
   `POKEMON BLUE`, `POKEMON GREEN`, Crystal Clear's), with a SHA-1 that's none of the listed releases (another version
@@ -152,7 +158,7 @@ Found while reading the code and the hacks' sources (2026-11-13), each agreed wi
   `.gbc` from Game Boy Color).
 - **A15**: the pages lay out at 640x480 and 1024x768 for a hack's capture (`gbpk-ui.sh`), and on the device the pages
   follow each hack through BananaFront and RetroArch, with gambatte and SameBoy.
-- **A16**: nothing runs for a game that isn't one of the eighteen releases' titles, or with the rows Off. The image
+- **A16**: nothing runs for a game whose header title no data file has, or with the rows Off. The image
   grows by the hacks' data and guide files, and banana-ui by the new layouts, both measured in step 15. `kiwami/GB-POKEMON.md`
   says which hacks are read, where their data comes from, how a new version is added, and what isn't followed.
 
@@ -221,8 +227,17 @@ What the user sets up, once, before the step that needs it (none of it is commit
   - `Pokemon_Yellow_Legacy` at `V1.0.10` (`3a5358e8`): `make`;
   - `pureRGB-2.7.6` at `v2.7.6` (`9c6d40f6`) and `pureRGB-2.7.7` at `v2.7.7` (`b5a155eb`), two clones or worktrees:
     `make red blue green` in each.
-- **The hacks' ROMs** in `~/gb-companion/roms` (`GB_ROMS`): the twelve releases, as the release patches applied to the
-  user's retail ROMs (each listed in step 4, 6, 9 and 13's lines of `roms.sha1`).
+- **The hacks' ROMs** in `~/gb-companion/roms/romhacks/` (`GB_ROMS`' subfolder, which `gbpk-roms.sh` reads from step
+  4 on): the sixteen releases, there since 2026-11-13 and checked: each file is what its release's BPS patch makes of
+  the user's retail ROM (Crystal Legacy from Crystal rev 1, Crystal Clear from Crystal USA rev 0, Yellow Legacy from
+  Yellow, PureRed from Red, PureBlue and PureGreen from Blue). Their SHA-1s:
+  - Crystal Legacy `74a6727e`; Yellow Legacy `2ac87de4`;
+  - PureRed `2e94d09c` (v2.7.6), `60d445d5` (v2.7.7); PureBlue `d419fe24`, `b96ee563`; PureGreen `fe4c63a6`, `258ec7fe`;
+  - Crystal Clear v2.5.11 `a1c4da6b`, Color Filter `6fc677bf`, SGB Mode `8be3dea8`, Color Filter SGB Mode `913c49bd`;
+    v2.6.0 `84d5c492`, `534876e4`, `059632e8`, `88c943e6`.
+
+  Every Crystal Clear build has Crystal's header title and code (`PM_CRYSTAL`, `BYTE`), so `PM_CRYSTAL` names three
+  games (step 1). Each file gets its line in `roms.sha1` in step 4, 6, 9 or 13.
 
 ## Steps
 
@@ -290,7 +305,7 @@ Common to the steps (as #28's):
   - `gbpk-units`:
     - two made-up data files in a temporary `KIWAMI_GBPK_DIR` share a title. `detect` gives both, in `GAMES`' order;
       `confirmAny` picks each by its release's SHA-1, and gives -1 with both `romHash` set for a third SHA-1;
-    - `baseGame` for the twelve ids;
+    - `baseGame` for the twelve ids (100-111);
     - the fixture name mapping for `crystal_clear_v2_5_11_battle`, `crystal_battle`, `purered_battle_menu`,
       `yellow_legacy` and `red`;
     - a data file with `"dex_size": 151` and one without.
@@ -407,6 +422,7 @@ Common to the steps (as #28's):
   - `ui/src/kiwami/gbpk/guide-games.inc` (changed: the row)
   - `kiwami/tests/gbpk/fixtures/crystal_legacy{,_battle,_battle_menu,_battle_party}/` (new, PokeDaisy's, unchanged)
   - `kiwami/tests/gbpk/roms.sha1` (changed)
+  - `kiwami/tests/gbpk-roms.sh`, `kiwami/tests/ci.sh` (changed: the folder's subfolders)
   - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp` (changed)
   - `kiwami/DEPENDENCIES.md` (changed: Crystal Legacy's row, rgbds 0.5.2's)
   - `kiwami/GB-POKEMON.md` (changed: a *The ROM hacks* section)
@@ -435,7 +451,10 @@ Common to the steps (as #28's):
   - **`rom2.cpp`**: with `rom.dexEntryFar`, a species' page is the 3-byte entry's bank and address (Crystal Legacy's
     `DexEntryPointers`, PokeDaisy `Gen2Dex.kt:45`), instead of `dexEntryBanks`/`dexEntryFirst`.
   - **`guide-games.inc`**: `{ (GameId)106, "crystal-legacy", "BYTE", 251 }`.
-  - **`roms.sha1`**: `74a6727e... gb optional crystal-legacy Pokemon Crystal Legacy (v1.3.1).gbc`.
+  - **`roms.sha1`**: `74a6727e... gb optional crystal-legacy Pokemon Crystal - Legacy (v1.3.1) (TheSmithPlays).gbc`.
+  - **`gbpk-roms.sh`**: `hashes` reads the folder's files and those of its subfolders one level down (the user keeps the
+    hacks in `romhacks/`), each named by its path from the folder (`romhacks/<file>`). The rest is unchanged: `.bps`
+    and other files are passed over, and a file the list hasn't is named and left alone.
   - **`kiwami/DEPENDENCIES.md`**: a row for `cRz-Shadows/Pokemon_Crystal_Legacy`. Tag `V1.3.1`, commit `6394641e`,
     pinned in `gb-pokemon/SOURCES` (`[pret]`), no licence published; built by the user and read for its symbols and
     constants only, not shipped. A row for rgbds 0.5.2, a tool for that build only, not in the image.
@@ -451,6 +470,8 @@ Common to the steps (as #28's):
     - a Pokédex page through a far pointer.
   - `gbpk-ui.sh`: `crystal_legacy` through the panel at both sizes (Party, Battle shots), asserting `companion Crystal
     Legacy`.
+  - `ci.sh`'s made-up folders: a listed file in a subfolder is `ok (named romhacks/<file>)`, one two levels down isn't
+    looked at, and a `.bps` beside it isn't named.
   - By hand: `pret-extract.py` and `pokedaisy-extract.py` against the checkouts, and `--check` without them.
   - `make test`, `make -C ui`, `kiwami/tests/ci.sh .buildroot`, `kiwami/tests/gbpk-roms.sh`.
 - **Commit**: `GB Pokémon hacks: Crystal Legacy, from its build's symbols, its memory and its ROM`
@@ -749,16 +770,19 @@ Common to the steps (as #28's):
     - a symbol with no vote, or two values with votes, fails the run with its name. A table no code points at is found
       by its bytes (`--data`-style lines in the list), and must occur once.
   - **`gbpk-symbols.txt`**:
-    - four lines, one per build: `crystal-clear port pokecrystal pokecrystal11 <sha1> <name>`, with PokeDaisy's four
-      SHA-1s (`a1c4da6b`, `6fc677bf` v2.5.11; `84d5c492`, `534876e4` v2.6.0);
+    - eight lines, one per build: `crystal-clear port pokecrystal pokecrystal11 <sha1> <name>`, with PokeDaisy's four
+      SHA-1s (`a1c4da6b`, `6fc677bf` v2.5.11; `84d5c492`, `534876e4` v2.6.0) and the four SGB Mode builds' from the
+      user's files (`8be3dea8`, `913c49bd` v2.5.11; `059632e8`, `88c943e6` v2.6.0: the user's request, 2026-11-13);
     - `crystal-clear` on every `crystal` line;
     - `crystal-clear items|types from crystal`. Its species, moves and types are Crystal's byte for byte (PokeDaisy
       `gen_gen2_tables.py`, checked with `--base`), and its item ids are found by Crystal's item names in its
       `ItemNames` on the ROM (numbers only written).
   - **The output** `gbpk-port.json`: the values a build, each with its votes. Values that differ between the two
-    versions are kept per release (PokeDaisy: the move descriptions, 0x20 bytes apart). The Standard Colors and Color
-    Filter builds must agree on every value.
-  - **`SOURCES` `[port]`**: the four ROMs' and Crystal rev 1's SHA-1s, `pokecrystal11.sym`'s SHA-256, and the output's.
+    versions are kept per release (PokeDaisy: the move descriptions, 0x20 bytes apart). A version's four builds (Standard
+    Colors, Color Filter, each with and without SGB Mode) must agree on every value the companion reads, or the run
+    fails with the symbol and the builds (the SGB Mode builds differ in their palettes, which aren't read; a difference
+    elsewhere is a *Deviation*).
+  - **`SOURCES` `[port]`**: the eight ROMs' and Crystal rev 1's SHA-1s, `pokecrystal11.sym`'s SHA-256, and the output's.
     `--check` without the ROMs verifies the output against them.
   - **PokeDaisy's values** for Crystal Clear (`GEN2_CRYSTAL_CLEAR_*`, `GEN2_DEX_CRYSTAL_CLEAR_*`, `gen_gen2_tables.py`'s
     `crystal_clear`, read with `ast`) are compared by `pokedaisy-extract.py` in step 13. A disagreement fails there.
@@ -794,14 +818,14 @@ Common to the steps (as #28's):
   - **`rom2.cpp`**: Crystal Clear's landmarks past the Fast Ship take their region from `rom.landmarkRegions`
     (PokeDaisy `gen_gen2_tables.py`: `landmark_regions`). `maps.cpp` places them on the Pokégear map of that region.
   - **`guide-games.inc`**: `{ (GameId)111, "crystal-clear", "BYTE", 251 }`, or the code the user's ROMs give (step 12).
-  - **`roms.sha1`**: the four lines.
+  - **`roms.sha1`**: the eight lines.
 - **Tests**:
   - `gbpk-units`:
     - the six captures. `crystal_clear`: CHRIS, a Bulbasaur holding a Miracle Seed and a Sentret, Route 29
       (`wMapGroup` 24, `wMapNumber` 3 at `DA3A`) at (45, 11). The trainer capture is Mom's battle;
     - the release's own `rom` laid over the game's for v2.5.11 and not for v2.6.0;
     - a made-up dictionary decoding "with " and "#MON".
-  - `gbpk-roms.cpp`, for each of the four builds:
+  - `gbpk-roms.cpp`, for each of the eight builds:
     - names, Bulbasaur, Route 29, a gym leader's team, the hidden items, the pictures and the Pokégear maps;
     - a move description and a Pokédex page decoded with no unknown byte;
     - every landmark named and placed.
@@ -840,7 +864,7 @@ Common to the steps (as #28's):
   - `CLAUDE.md` (changed: the companion's line names the hacks)
 - **Change**:
   - **`kiwami/GB-POKEMON.md`**:
-    - *The ROM hacks*: the twelve releases and where each one's data comes from (the user's build at its tag with its
+    - *The ROM hacks*: the sixteen releases and where each one's data comes from (the user's build at its tag with its
       rgbds, or the port script on the ROMs);
     - *Adding a version*: clone or tag, build with the recorded rgbds, add the build or port line with the release's
       SHA-1, run the scripts, add the `roms.sha1` line, and PokeDaisy's captures if it has any;
@@ -855,7 +879,7 @@ Common to the steps (as #28's):
 ### 16. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
-- `kiwami/tests/gbpk-roms.sh` with all eighteen ROMs in `GB_ROMS`.
+- `kiwami/tests/gbpk-roms.sh` with every ROM `roms.sha1` lists in `GB_ROMS` (the retail ones and the sixteen hacks).
 - `gbpk-units` once with `-fsanitize=address,undefined` (step 8's run again).
 - The scripts: `pret-extract.py`, `pokedaisy-extract.py` and `gbpk-port.py` against the checkouts and ROMs give the
   committed files, and `--check` without them passes.
@@ -899,7 +923,7 @@ from the branch at the step named.
 | M1 | rgds-plus | After step 5. Crystal Legacy from Game Boy Color: Party, the bag, Dex, Map against the game's screens; a wild battle with balls, a trainer battle; the Guide page. | The hack's title in the log; the party, the 84-slot bag and the place match; damage ranges and a Ghost move's category hold; the guide's next milestone is the save's. | `banana-ui.log`: `gb companion: Crystal (or Crystal Legacy...)`, `Crystal Legacy (v1.3.1) read in N ms`, `guide: N milestones` | A1, A4, A9, A12 | not run |
 | M2 | rgds-plus | After step 7. Yellow Legacy: as M1, and Pikachu's summary. | As M1; Pikachu's friendship shown; the 59-slot bag. | `banana-ui.log` | A1, A5, A12 | not run |
 | M3 | rgds-plus | After step 11. PureRed v2.7.7 and PureGreen v2.7.6, each from Game Boy (`.gb`) and from Game Boy Color: Party, a battle against a Pokémon of one of its types (a Floating Weezing or a Hardened Onix if the save has one; Tri Attack otherwise), the type NPC switching a species back, the battle options' four matchups switched, a signature move, a Hyper Ball throw, the Guide page. | Chips name and colour the hack's types; the matchups and damage follow the options; the switched species shows its original types after the NPC; the signature move's power; the guide's levels are the ROM's. | `banana-ui.log`: `PureRGB: N species with their original types, matchups 0x...` after each switch | A1, A6, A10, A11, A12, A14 | not run |
-| M4 | rgds-plus | After step 14. Crystal Clear v2.6.0 and v2.5.11 (one Color Filter build among them): Party, Map (a landmark past the Fast Ship), a move description, a Dex page, a battle, the Guide page. | Text reads whole (no stray characters); the landmark placed on its region; the guide by region. | `banana-ui.log`: no `text: unknown routine` line | A1, A7, A8, A12 | not run |
+| M4 | rgds-plus | After step 14. Crystal Clear v2.6.0 and v2.5.11 (one Color Filter build and one SGB Mode build among them): Party, Map (a landmark past the Fast Ship), a move description, a Dex page, a battle, the Guide page. | Text reads whole (no stray characters); the landmark placed on its region; the guide by region. | `banana-ui.log`: no `text: unknown routine` line | A1, A7, A8, A12 | not run |
 | M5 | rgds-plus | A version of a hack that isn't listed (an older Crystal Legacy or PureRGB, if the user has one), then retail Crystal and Red. | "Not supported" alone for the first; retail as before. | `banana-ui.log`: `not a release the companion knows` | A2, A3 | not run |
 | M6 | rgds-plus | PureRed with its COLORS option on, Crystal Legacy and Crystal Clear: Frontend on Auto (BananaFront) and on RetroArch, the Game Boy Color core gambatte then SameBoy; a battle's start in each. | The pages follow the game in all; PureRed's party stays right through the battle's palette fade. | `banana-ui.log` | A15 | not run |
 | M7 | rgds-plus | One hack mid-battle: close the lid a minute, open it, fight on. A minute of walking with RetroArch's frame counter, row Off then On. | The pages resume and follow; the same frame rate both ways. | `banana-ui.log`, `/data/banana/logs/bananad.log` around the sleep | A15, A16 | not run |

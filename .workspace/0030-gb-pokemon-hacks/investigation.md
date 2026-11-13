@@ -398,3 +398,6 @@ at the NPC and a matchup option changed. Logs: `/data/banana/logs/banana-ui.log`
     the battle-state ones at their listed power.
 12. PureRGB's forms? *Answered*: their own types and stats on the Battle, Party and Team pages, the base species in the
     Dex.
+13. Crystal Clear's four SGB Mode builds (found in the user's ROMs, in no list of PokeDaisy's)? *Answered* (2026-11-13):
+    read too; Crystal Clear is eight releases.
+14. The hacks are in `~/gb-companion/roms/romhacks/`? *Answered*: `gbpk-roms.sh` reads subfolders one level deep.

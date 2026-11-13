@@ -1,0 +1,35 @@
+Game Boy Pokémon companion (the kiwami fork of BananaOS's banana-ui)
+
+The sources in this folder read Pokémon Red, Blue, Yellow, Gold, Silver and Crystal while they play, for the pages on
+the game panel. They are written with PokeDaisy's Kotlin readers as their model, so they are a work based on
+PokeDaisy, under its licence: the GNU General Public License version 3 (LICENSE) with the additional term below.
+The banana-ui the fork builds links them, so it is a GPL-3.0 work as a whole (kiwami/GB-POKEMON.md).
+
+PokeDaisy
+Copyright (C) 2026 Lidor Itzhari
+https://github.com/lidor30/pokedaisy
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+License as published by the Free Software Foundation, version 3 (see LICENSE), with the additional term below.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+ADDITIONAL TERM (GNU GPL version 3, section 7(b)), PokeDaisy's
+
+Anyone who conveys PokeDaisy, or any work based on it, in source or compiled form, must preserve the following
+attribution:
+
+    Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
+
+It must appear (1) in this NOTICE file, kept with the source; (2) in the work's README or equivalent documentation;
+and (3) where the work shows credits, an "About" screen or other Appropriate Legal Notices, there too.
+
+In the fork, (2) is kiwami/GB-POKEMON.md, and (3) is Settings > System > Credits, whose line kiwami/post-build.sh
+adds to /etc/banana/credits.txt.
+
+The games' layouts also follow pret's disassemblies (pokecrystal, pokegold, pokered, pokeyellow), which publish no
+license: only facts about the retail ROMs are taken from them (addresses, offsets, ids, the character set).
+
+Pokémon and all related names are trademarks of Nintendo, Game Freak, Creatures and The Pokémon Company. Nothing of
+the games is in these files: the companion reads it from the player's own ROM while it runs.

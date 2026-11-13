@@ -1,0 +1,88 @@
+# Where the files of the Game Boy Pokémon companion come from, written by the two scripts that make them:
+# kiwami/tools/pokedaisy-extract.py ([pokedaisy]) and kiwami/tools/pret-extract.py ([pret]). Each section names the
+# commits read, then a line a file: "in" for what was read, "out" for what was written, with its SHA-256. Paths are
+# the repository's, or the checkout's after its name. Each script's --check, without the checkouts, verifies the
+# "out" files and the repository's own "in" files against these hashes.
+
+[pokedaisy]
+commit pokedaisy 135ac809a597230c1fe3ad6359ae0fe81e233583
+in  67bcef02166ef76ff29ecf527b5f50d06659c9a3de702587bc566bd79b067a39  kiwami/tools/gbpk-extra.json
+in  e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  pokedaisy LICENSE
+in  02efcb677831c264613b4313be1c24e9e042f577636b20469fc3f984734c7085  pokedaisy app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt
+in  63c1c1e7c2fef1af92c3abe2235091fc3d41768fd590d68469594a974c51f286  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Art.kt
+in  447dd3d7708ea8c31a8761b0b075384d9995843468972e22be7a2607d3e71a1d  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Dex.kt
+in  850a25a6c445e71a38a487168e196e4dfeb0aa59e04ceed75676dde4c94b6057  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Reader.kt
+in  96a498f182ceea68d95040239dcd3c2faf4b02fbd103291cfa35036bd532f28e  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Art.kt
+in  ebfde8f4fc1bf6a4f2f411b8cb030dd7c8be36b23a08c2c9a04cb34932e51923  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Dex.kt
+in  f33fd7f41938deb6c1b29556669f643495bb4c42fb554ed849280ba2f6229d92  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Reader.kt
+in  aa78cc353530d524f44f4b168a72e1fcf65a7cbb957cc430b51a8b96a02d2211  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystal.kt
+in  816154d8b641ee466f82736eea9c40d086708fdd2399052ec8502bb6d29dcbe6  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt
+in  9beb7da6823cd96abef582dacf34d31972b4045a17be7f829d97fa297cf32ae8  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen1.kt
+in  cd54badd8a22eba6a86ab348b4bb2a0870a883ffa0c063b07178a577deb4ae5d  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen1Gen.kt
+out e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/LICENSE
+out 11b4ed90876ff042ebe01a95a2f92c8cd436138d31f90942cbb069758acaed7e  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/blue.json
+out 278136d896118c56d69c04341cee3ae4c3f11a5caceae6723567583f12ce6b39  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/blue.ram.json
+out 477bd98fc9e34e70ae72bb62bc38b42cf76633e0e7589c6213af7f4dbe9adba1  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.json
+out 1e98970db14a16238c9b41033d5f1a1c067c9acd7177b934225ba9444714c326  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.ram.json
+out a692e44aa7ff26d8eb70c67de2b8ee21aa17e2dba6b139d1412ed2f061318b53  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/gold.ram.json
+out 4b07e3bb9740c74cfded1346b1d77b302ff044eede08724830233c8f07c3dd32  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/red.json
+out 2567170586b5c6fa5a80326c97268e4f84b27627f3e89a4a5e130dc3f9787fbf  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/red.ram.json
+out 306fc0ab65638ed970241b092beda620187cbda6d863e5bab879eb15958991f6  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/silver.ram.json
+out cbf7f2a93a5172af3878580d795401d493b524f44b26410903d8639cec1ffd0e  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow.json
+out e6db56e0c94109ede8b3bb1c7e81870581693ea26a56e35af84558ad2d57cf54  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow.ram.json
+
+[pret]
+commit pokecrystal 3c813b0b4d82b39bf62185aceffb76fd6026c70b symbols 3b13ca4fa74171364afd6bba61a6e8560212860b
+commit pokegold f2cde36f49b994c143bfd18582182302fdc76492 symbols 4b57c3aa3169d7a077f9044d4bbdd1caabc10cc7
+commit pokered 0dbf95cd12f5b1511c62ce69efe283000f780a8f symbols bd77855a9f6407f47d61d94c5eefff7ac83c05a5
+commit pokeyellow b452f2ab07185075140061c5084ab866d5e4a794 symbols 2dcc4b8f9b3819a898ddaa8e03c70321e7fac446
+in  f2da302e02da44b349316aed74c40bdfa0e74c4331005e9e0db4f5b08759de9c  pokecrystal Makefile
+in  1042d8fa9bd22c499b4e1ecf44da4f1ded9077233abb3b89e0ed7c994273308d  pokecrystal constants/event_flags.asm
+in  3e38b9460ed7279ba8b3559dc087efd5a79598e4499bdf63451513dfd3ad7415  pokecrystal constants/landmark_constants.asm
+in  daab043684123a9942a476928a69a84aa9231305831fa780d7f41660f1a8cd67  pokecrystal constants/move_constants.asm
+in  a6203404f6113da199fd68a94e04409e6cfd8c5b69d16a60d100615b11964440  pokecrystal constants/pokemon_constants.asm
+in  17f571eb1a56d17f198d925b225cd5be41a13c66ee2fe49edc5ccfd645e94751  pokecrystal constants/trainer_constants.asm
+in  85f8042b02a0bde356a6b62b374d28b4caae5547d43882a0e7979da31d0264e0  pokecrystal roms.sha1
+in  b87af0d8e67ba85d37f2af227a4dc065d5540421f4089986785ef4ed2f6dc1d4  pokecrystal symbols:pokecrystal.sym
+in  70648bb46af4aa7bcbbce30ed064337aab544af6115d3de6ab9892401328832b  pokecrystal symbols:pokecrystal11.sym
+in  1ceabdbd66db3f3f7c5976eb53295f7ea0139633189da3113f3bf9ce84e3cc26  pokecrystal symbols:pokecrystal_au.sym
+in  173fb698d41760d0bd908b461ef3ac32ca7d97e83595a164c2c45d067e5b3749  pokegold Makefile
+in  42d002bce24e847f61d6058a758168f9122fe0c301b5538d9c052e48d9246d31  pokegold constants/event_flags.asm
+in  bc147168e444e894cc08a0b31a522ccad43b73b7250070dfe01fa817d5f6f093  pokegold constants/landmark_constants.asm
+in  04a75d66372ce9322818bc5161b921a5d448aeb830ec25640b55dc15a1d83127  pokegold constants/move_constants.asm
+in  f3a3e507508994775ec8c7a1818f77b7f678d88399568c0ce062f27b6c61dd62  pokegold constants/pokemon_constants.asm
+in  b4ce7fd857e3f912f32dbf657e7641e2d04b57a25582b99a298f6fd6dcaf9a62  pokegold constants/ram_constants.asm
+in  46e4d07fc0d2af1c5a1d61772f7e849137d2e5607cd2a38ba66932713cf12fe8  pokegold constants/trainer_constants.asm
+in  d5741b6b16d8e7803ba37a394ae508620eff7982cebce4f6e27bc6c7f5bdd76b  pokegold roms.sha1
+in  06e1c0361fd9a4979ea6f2e86442fc119d7bf66fe0e922bd99ecdce00398af1b  pokegold symbols:pokegold.sym
+in  1aa458eaa3d36619da5d368942e3f10d9c06a49cf5e9717d14e40f475c480a61  pokegold symbols:pokesilver.sym
+in  ae29c23b88a65bc5a734296ebb45cee2e1fb6cba2663e3d29c81e3e1461cfec7  pokered Makefile
+in  691a373649740af5ea340d09e816b0966e9164d5f78ded57b1759e76ada57455  pokered constants/event_constants.asm
+in  b5a1db015fbf0de637381eb39350f21f35a436a8088e2f6657f65c79f118f97f  pokered constants/item_constants.asm
+in  4129ef4e6908267e554c0308254f2269f1fb8f75b5c529faad6fd14c92119271  pokered constants/map_constants.asm
+in  fbd0e91bd6ac5f8a491a4d5df3ccbc4438f34c234ce9be684f82b2537c6022ac  pokered constants/menu_constants.asm
+in  e8ac9263abd68b85c1292893b7a55d0664005e52ffc832fe8f6abe2c9d48c74d  pokered constants/move_constants.asm
+in  95dce1244a31e454e8a1147a448a8cd16bb33b99b056fdc9bec060d91b78848a  pokered constants/palette_constants.asm
+in  cddea6d35fd356a2982b50af10122225b46273e5e0f7f0ea04a7a31c5e93cfef  pokered constants/pokedex_constants.asm
+in  0914f9edb2bb72788d0e7b1e4ae7dedef2bb2f29533363375f8d874fec41e604  pokered constants/pokemon_constants.asm
+in  b028dd3cbcc2e6ef0135ab282d7fbf5ed41213f83555466d5d96b4c9d5e3812b  pokered constants/toggle_constants.asm
+in  27d774417a45f20d127d96fcb07b4625f2fc92fe4ffbc79efebee86c90b79a58  pokered constants/trainer_constants.asm
+in  5c1e4c3e2e599c5f5f3e8da150f6c132b55dd209ff824b7ae18fd9c749326350  pokered roms.sha1
+in  5bd501451d312dca515123ba4a486e60f4b04607916414b728258f9577fd71fc  pokered symbols:pokeblue.sym
+in  629dd64fef42b750890524b853b28c486457b81018c3f76f2bc1e567f8d2a5cb  pokered symbols:pokered.sym
+in  830ac3e3e09def88f20dd9be5c00c4d43243415896d5be573af8cae2b8a2abb0  pokeyellow Makefile
+in  4ee9e7c4a8731a26e973d192b8e7f3a3cdce1c5438489a25f0e93042c5ecf032  pokeyellow constants/event_constants.asm
+in  17837f53ed3a59bb54717068f0ecd9271bb52166dd694521695cbfc00132c5f1  pokeyellow constants/item_constants.asm
+in  3e21ca97d230113817fd8765c256d620efae1c64da986305116a0cfeb7bf3b82  pokeyellow constants/map_constants.asm
+in  fbd0e91bd6ac5f8a491a4d5df3ccbc4438f34c234ce9be684f82b2537c6022ac  pokeyellow constants/menu_constants.asm
+in  e8ac9263abd68b85c1292893b7a55d0664005e52ffc832fe8f6abe2c9d48c74d  pokeyellow constants/move_constants.asm
+in  71e01b710889d20e685a203ea839be97ac45a7404cd1425eec9341b4a56240fe  pokeyellow constants/palette_constants.asm
+in  cddea6d35fd356a2982b50af10122225b46273e5e0f7f0ea04a7a31c5e93cfef  pokeyellow constants/pokedex_constants.asm
+in  629b60d9e5a6265ee82d31f918d63d2de73bb582e5454f054df3986260c63d3b  pokeyellow constants/pokemon_constants.asm
+in  b396acadd44b46ea6c6387c93577ae861ee37178746db6e5b97290c1f8c499fe  pokeyellow constants/toggle_constants.asm
+in  27d774417a45f20d127d96fcb07b4625f2fc92fe4ffbc79efebee86c90b79a58  pokeyellow constants/trainer_constants.asm
+in  1b95202b710dbd8e5f5b71165be519e25ff0227dec3f22d347e6bdb5a9ae9390  pokeyellow roms.sha1
+in  ec6ef2f4e5fc0b8b503eeaf61ab0d8444020fb2276e6912fe46583b003219f85  pokeyellow symbols:pokeyellow.sym
+in  a519f69ea8decdea19601e3175897a8515aca614a529710b2f1decd928cd25ad  kiwami/tools/gbpk-symbols.txt
+in  8347055098f870e8067f2945f057833f1bcb7c6f9e85ee600dc2aa5df421fbe1  kiwami/tests/gbpk/roms.patches
+out 67bcef02166ef76ff29ecf527b5f50d06659c9a3de702587bc566bd79b067a39  kiwami/tools/gbpk-extra.json

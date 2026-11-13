@@ -1,0 +1,3619 @@
+{
+  "areas": {
+    "GUIDE_AREAS_CRYSTAL_RAW": [
+      {
+        "flag": 124,
+        "id": 1,
+        "kind": "GIFT",
+        "place": 1,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 5,
+        "kind": "GIFT",
+        "place": 1,
+        "qty": 5,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 18,
+        "kind": "GIFT",
+        "place": 1,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 36,
+        "id": 68,
+        "kind": "GIFT",
+        "place": 1,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 86,
+        "id": 112,
+        "kind": "GIFT",
+        "place": 1,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 29,
+        "id": 152,
+        "kind": "MON",
+        "place": 1,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 27,
+        "id": 155,
+        "kind": "MON",
+        "place": 1,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 28,
+        "id": 158,
+        "kind": "MON",
+        "place": 1,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 101,
+        "id": 104,
+        "kind": "GIFT",
+        "place": 2,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1709,
+        "id": 18,
+        "kind": "ITEM",
+        "place": 2,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 77,
+        "id": 95,
+        "kind": "GIFT",
+        "place": 3,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 614,
+        "id": 26,
+        "kind": "GIFT",
+        "place": 4,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 31,
+        "id": 57,
+        "kind": "GIFT",
+        "place": 4,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 30,
+        "id": 69,
+        "kind": "GIFT",
+        "place": 4,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 39,
+        "id": 173,
+        "kind": "GIFT",
+        "place": 4,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 164,
+        "id": 18,
+        "kind": "HIDDEN",
+        "place": 4,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1976,
+        "id": 9,
+        "kind": "ITEM",
+        "place": 4,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 814,
+        "id": 74,
+        "kind": "GIFT",
+        "place": 5,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 814,
+        "id": 78,
+        "kind": "GIFT",
+        "place": 5,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 814,
+        "id": 83,
+        "kind": "GIFT",
+        "place": 5,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 814,
+        "id": 173,
+        "kind": "GIFT",
+        "place": 5,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 83,
+        "id": 242,
+        "kind": "GIFT",
+        "place": 5,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1711,
+        "id": 5,
+        "kind": "ITEM",
+        "place": 5,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1710,
+        "id": 18,
+        "kind": "ITEM",
+        "place": 5,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 45,
+        "id": 175,
+        "kind": "EGG",
+        "place": 6,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 8,
+        "id": 223,
+        "kind": "GIFT",
+        "place": 6,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 176,
+        "id": 16,
+        "kind": "HIDDEN",
+        "place": 6,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1604,
+        "id": 32,
+        "kind": "ITEM",
+        "place": 6,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1603,
+        "id": 62,
+        "kind": "ITEM",
+        "place": 6,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 131073,
+        "id": 95,
+        "kind": "TRADE",
+        "place": 6,
+        "qty": 1,
+        "wants": 69
+      },
+      {
+        "flag": 1607,
+        "id": 13,
+        "kind": "ITEM",
+        "place": 7,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1609,
+        "id": 18,
+        "kind": "ITEM",
+        "place": 7,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1610,
+        "id": 19,
+        "kind": "ITEM",
+        "place": 7,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1608,
+        "id": 33,
+        "kind": "ITEM",
+        "place": 7,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 20,
+        "id": 247,
+        "kind": "KEY",
+        "place": 7,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 23,
+        "id": 58,
+        "kind": "GIFT",
+        "place": 8,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 99,
+        "id": 81,
+        "kind": "GIFT",
+        "place": 8,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 93,
+        "id": 117,
+        "kind": "GIFT",
+        "place": 8,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 78,
+        "id": 196,
+        "kind": "GIFT",
+        "place": 8,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 165,
+        "id": 4,
+        "kind": "HIDDEN",
+        "place": 8,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 166,
+        "id": 17,
+        "kind": "HIDDEN",
+        "place": 8,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1712,
+        "id": 4,
+        "kind": "ITEM",
+        "place": 8,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1713,
+        "id": 20,
+        "kind": "ITEM",
+        "place": 8,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1953,
+        "id": 8,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1945,
+        "id": 74,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1949,
+        "id": 95,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1947,
+        "id": 121,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1955,
+        "id": 122,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1946,
+        "id": 123,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1954,
+        "id": 123,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1942,
+        "id": 124,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1950,
+        "id": 131,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1951,
+        "id": 132,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1943,
+        "id": 138,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1941,
+        "id": 150,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1948,
+        "id": 150,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1944,
+        "id": 173,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1940,
+        "id": 174,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1952,
+        "id": 174,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1626,
+        "id": 4,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1629,
+        "id": 12,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1633,
+        "id": 16,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1628,
+        "id": 18,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1627,
+        "id": 49,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1631,
+        "id": 51,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1632,
+        "id": 65,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1630,
+        "id": 231,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1771,
+        "id": 115,
+        "kind": "GIFT",
+        "place": 12,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 94,
+        "id": 138,
+        "kind": "GIFT",
+        "place": 12,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 53,
+        "id": 160,
+        "kind": "GIFT",
+        "place": 12,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 9,
+        "id": 241,
+        "kind": "GIFT",
+        "place": 12,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 177,
+        "id": 38,
+        "kind": "HIDDEN",
+        "place": 12,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 115,
+        "id": 82,
+        "kind": "GIFT",
+        "place": 13,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1634,
+        "id": 17,
+        "kind": "ITEM",
+        "place": 13,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1635,
+        "id": 209,
+        "kind": "ITEM",
+        "place": 13,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 95,
+        "id": 192,
+        "kind": "GIFT",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 137,
+        "id": 17,
+        "kind": "HIDDEN",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 138,
+        "id": 38,
+        "kind": "HIDDEN",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 136,
+        "id": 63,
+        "kind": "HIDDEN",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1978,
+        "id": 9,
+        "kind": "ITEM",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1649,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1977,
+        "id": 49,
+        "kind": "ITEM",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1979,
+        "id": 63,
+        "kind": "ITEM",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 16,
+        "id": 243,
+        "kind": "KEY",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 112,
+        "id": 76,
+        "kind": "GIFT",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 122,
+        "id": 203,
+        "kind": "GIFT",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 168,
+        "id": 17,
+        "kind": "HIDDEN",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 167,
+        "id": 32,
+        "kind": "HIDDEN",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1980,
+        "id": 36,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 256,
+        "id": 34,
+        "kind": "KEY",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 91,
+        "id": 7,
+        "kind": "GIFT",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 39,
+        "kind": "GIFT",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 832,
+        "id": 115,
+        "kind": "GIFT",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 74,
+        "id": 127,
+        "kind": "GIFT",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 92,
+        "id": 175,
+        "kind": "GIFT",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 185,
+        "kind": "GIFT",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 212,
+        "kind": "GIFT",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 218,
+        "kind": "GIFT",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 11,
+        "id": 237,
+        "kind": "GIFT",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 141,
+        "id": 9,
+        "kind": "HIDDEN",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 139,
+        "id": 13,
+        "kind": "HIDDEN",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 142,
+        "id": 15,
+        "kind": "HIDDEN",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 140,
+        "id": 17,
+        "kind": "HIDDEN",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 143,
+        "id": 39,
+        "kind": "HIDDEN",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1621,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1656,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1655,
+        "id": 10,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1652,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1650,
+        "id": 54,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1653,
+        "id": 63,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1657,
+        "id": 64,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1654,
+        "id": 91,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1651,
+        "id": 106,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1658,
+        "id": 227,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 63,
+        "kind": "MON",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 104,
+        "kind": "MON",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 79,
+        "id": 133,
+        "kind": "MON",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 202,
+        "kind": "MON",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 131072,
+        "id": 66,
+        "kind": "TRADE",
+        "place": 16,
+        "qty": 1,
+        "wants": 63
+      },
+      {
+        "flag": 0,
+        "id": 1,
+        "kind": "GIFT",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 57,
+        "kind": "GIFT",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 62,
+        "kind": "GIFT",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 120,
+        "id": 70,
+        "kind": "GIFT",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 72,
+        "id": 104,
+        "kind": "GIFT",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 116,
+        "kind": "GIFT",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1395,
+        "id": 133,
+        "kind": "GIFT",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 71,
+        "id": 202,
+        "kind": "GIFT",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1997,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 82,
+        "id": 26,
+        "kind": "GIFT",
+        "place": 18,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1714,
+        "id": 194,
+        "kind": "ITEM",
+        "place": 18,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 80,
+        "id": 21,
+        "kind": "MON",
+        "place": 18,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 609,
+        "id": 36,
+        "kind": "GIFT",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 87,
+        "id": 73,
+        "kind": "GIFT",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 132,
+        "id": 38,
+        "kind": "HIDDEN",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 132,
+        "id": 38,
+        "kind": "HIDDEN",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1624,
+        "id": 13,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1624,
+        "id": 13,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1625,
+        "id": 219,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1625,
+        "id": 219,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 257,
+        "id": 22,
+        "kind": "GIFT",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 790,
+        "id": 112,
+        "kind": "GIFT",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 103,
+        "id": 125,
+        "kind": "GIFT",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 790,
+        "id": 169,
+        "kind": "GIFT",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 173,
+        "kind": "GIFT",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 790,
+        "id": 174,
+        "kind": "GIFT",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 75,
+        "id": 199,
+        "kind": "GIFT",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 105,
+        "id": 108,
+        "kind": "GIFT",
+        "place": 21,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 169,
+        "id": 63,
+        "kind": "HIDDEN",
+        "place": 21,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 90,
+        "id": 55,
+        "kind": "GIFT",
+        "place": 22,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 12,
+        "id": 222,
+        "kind": "GIFT",
+        "place": 22,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 180,
+        "id": 16,
+        "kind": "HIDDEN",
+        "place": 22,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 18,
+        "id": 245,
+        "kind": "KEY",
+        "place": 22,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 822,
+        "id": 178,
+        "kind": "GIFT",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 126,
+        "id": 14,
+        "kind": "HIDDEN",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 125,
+        "id": 15,
+        "kind": "HIDDEN",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 127,
+        "id": 29,
+        "kind": "HIDDEN",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1612,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1619,
+        "id": 14,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1990,
+        "id": 15,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1614,
+        "id": 19,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1618,
+        "id": 21,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1991,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1615,
+        "id": 32,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1617,
+        "id": 36,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1611,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1616,
+        "id": 40,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1613,
+        "id": 62,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 255,
+        "id": 2,
+        "kind": "HIDDEN",
+        "place": 24,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 128,
+        "id": 63,
+        "kind": "HIDDEN",
+        "place": 24,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1622,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 24,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1623,
+        "id": 211,
+        "kind": "ITEM",
+        "place": 24,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 258,
+        "id": 23,
+        "kind": "GIFT",
+        "place": 25,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 653,
+        "id": 36,
+        "kind": "GIFT",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 62,
+        "id": 204,
+        "kind": "GIFT",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 170,
+        "id": 36,
+        "kind": "HIDDEN",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 24,
+        "id": 59,
+        "kind": "GIFT",
+        "place": 27,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 13,
+        "id": 214,
+        "kind": "GIFT",
+        "place": 27,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 234,
+        "id": 27,
+        "kind": "HIDDEN",
+        "place": 27,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 19,
+        "id": 246,
+        "kind": "KEY",
+        "place": 27,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 131074,
+        "id": 100,
+        "kind": "TRADE",
+        "place": 27,
+        "qty": 1,
+        "wants": 98
+      },
+      {
+        "flag": 613,
+        "id": 27,
+        "kind": "GIFT",
+        "place": 28,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 133,
+        "id": 16,
+        "kind": "HIDDEN",
+        "place": 28,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1640,
+        "id": 17,
+        "kind": "ITEM",
+        "place": 28,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1637,
+        "id": 32,
+        "kind": "ITEM",
+        "place": 28,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1638,
+        "id": 42,
+        "kind": "ITEM",
+        "place": 28,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1636,
+        "id": 63,
+        "kind": "ITEM",
+        "place": 28,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1639,
+        "id": 226,
+        "kind": "ITEM",
+        "place": 28,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 111,
+        "id": 77,
+        "kind": "GIFT",
+        "place": 30,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 171,
+        "id": 16,
+        "kind": "HIDDEN",
+        "place": 30,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 152,
+        "id": 2,
+        "kind": "HIDDEN",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 153,
+        "id": 14,
+        "kind": "HIDDEN",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 151,
+        "id": 32,
+        "kind": "HIDDEN",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1679,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1680,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1681,
+        "id": 14,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1686,
+        "id": 14,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1685,
+        "id": 19,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1688,
+        "id": 21,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1682,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1683,
+        "id": 31,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1684,
+        "id": 36,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1687,
+        "id": 40,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 172,
+        "id": 64,
+        "kind": "HIDDEN",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 35,
+        "id": 67,
+        "kind": "GIFT",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 10,
+        "id": 191,
+        "kind": "GIFT",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 178,
+        "id": 39,
+        "kind": "HIDDEN",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 179,
+        "id": 64,
+        "kind": "HIDDEN",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 17,
+        "id": 244,
+        "kind": "KEY",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 259,
+        "id": 24,
+        "kind": "GIFT",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 173,
+        "id": 15,
+        "kind": "HIDDEN",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1715,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1716,
+        "id": 17,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 146,
+        "id": 14,
+        "kind": "HIDDEN",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 144,
+        "id": 16,
+        "kind": "HIDDEN",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 147,
+        "id": 40,
+        "kind": "HIDDEN",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 145,
+        "id": 43,
+        "kind": "HIDDEN",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1993,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1994,
+        "id": 14,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1664,
+        "id": 15,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1958,
+        "id": 15,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1663,
+        "id": 16,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1670,
+        "id": 16,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1661,
+        "id": 19,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1669,
+        "id": 19,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1992,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1671,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1665,
+        "id": 32,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1959,
+        "id": 36,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1660,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1662,
+        "id": 40,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1996,
+        "id": 62,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1659,
+        "id": 63,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1995,
+        "id": 64,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1668,
+        "id": 65,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1667,
+        "id": 151,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1666,
+        "id": 232,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 97,
+        "id": 236,
+        "kind": "MON",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 14,
+        "id": 207,
+        "kind": "GIFT",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 135,
+        "id": 38,
+        "kind": "HIDDEN",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 134,
+        "id": 39,
+        "kind": "HIDDEN",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1620,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1648,
+        "id": 11,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1641,
+        "id": 16,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1645,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1642,
+        "id": 36,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1647,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1643,
+        "id": 41,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1646,
+        "id": 53,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1644,
+        "id": 238,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 21,
+        "id": 248,
+        "kind": "KEY",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 260,
+        "id": 104,
+        "kind": "GIFT",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 89,
+        "id": 228,
+        "kind": "GIFT",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1717,
+        "id": 64,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 65,
+        "kind": "GIFT",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 66,
+        "kind": "GIFT",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 107,
+        "id": 98,
+        "kind": "GIFT",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 88,
+        "id": 201,
+        "kind": "GIFT",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 181,
+        "id": 14,
+        "kind": "HIDDEN",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 183,
+        "id": 15,
+        "kind": "HIDDEN",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 182,
+        "id": 32,
+        "kind": "HIDDEN",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1605,
+        "id": 65,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1606,
+        "id": 235,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 817,
+        "id": 2,
+        "kind": "GIFT",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 817,
+        "id": 4,
+        "kind": "GIFT",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 817,
+        "id": 5,
+        "kind": "GIFT",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 615,
+        "id": 29,
+        "kind": "GIFT",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 174,
+        "id": 65,
+        "kind": "HIDDEN",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1719,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1718,
+        "id": 40,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1981,
+        "id": 43,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 150,
+        "id": 11,
+        "kind": "HIDDEN",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 148,
+        "id": 15,
+        "kind": "HIDDEN",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 149,
+        "id": 29,
+        "kind": "HIDDEN",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1676,
+        "id": 15,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1982,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1674,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1675,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1673,
+        "id": 62,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1678,
+        "id": 107,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1677,
+        "id": 236,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1672,
+        "id": 249,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 109,
+        "id": 113,
+        "kind": "GIFT",
+        "place": 41,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 15,
+        "id": 215,
+        "kind": "GIFT",
+        "place": 41,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 131075,
+        "id": 85,
+        "kind": "TRADE",
+        "place": 41,
+        "qty": 1,
+        "wants": 148
+      },
+      {
+        "flag": 0,
+        "id": 144,
+        "kind": "GIFT",
+        "place": 42,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 15,
+        "id": 215,
+        "kind": "GIFT",
+        "place": 42,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 161,
+        "id": 15,
+        "kind": "HIDDEN",
+        "place": 42,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 162,
+        "id": 21,
+        "kind": "HIDDEN",
+        "place": 42,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 160,
+        "id": 39,
+        "kind": "HIDDEN",
+        "place": 42,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1984,
+        "id": 21,
+        "kind": "ITEM",
+        "place": 42,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1983,
+        "id": 31,
+        "kind": "ITEM",
+        "place": 42,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 189,
+        "id": 147,
+        "kind": "MON",
+        "place": 42,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 616,
+        "id": 28,
+        "kind": "GIFT",
+        "place": 43,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 618,
+        "id": 62,
+        "kind": "GIFT",
+        "place": 43,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 175,
+        "id": 62,
+        "kind": "HIDDEN",
+        "place": 43,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1723,
+        "id": 15,
+        "kind": "ITEM",
+        "place": 43,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1720,
+        "id": 36,
+        "kind": "ITEM",
+        "place": 43,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1721,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 43,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1722,
+        "id": 65,
+        "kind": "ITEM",
+        "place": 43,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 114,
+        "id": 102,
+        "kind": "GIFT",
+        "place": 44,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 157,
+        "id": 65,
+        "kind": "HIDDEN",
+        "place": 44,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1696,
+        "id": 16,
+        "kind": "ITEM",
+        "place": 44,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1694,
+        "id": 18,
+        "kind": "ITEM",
+        "place": 44,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1695,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 44,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1697,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 44,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1998,
+        "id": 44,
+        "kind": "ITEM",
+        "place": 44,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1698,
+        "id": 204,
+        "kind": "ITEM",
+        "place": 44,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 617,
+        "id": 31,
+        "kind": "GIFT",
+        "place": 45,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1724,
+        "id": 52,
+        "kind": "ITEM",
+        "place": 45,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 155,
+        "id": 2,
+        "kind": "HIDDEN",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 184,
+        "id": 14,
+        "kind": "HIDDEN",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 156,
+        "id": 15,
+        "kind": "HIDDEN",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 154,
+        "id": 44,
+        "kind": "HIDDEN",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1985,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1987,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1693,
+        "id": 14,
+        "kind": "ITEM",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1691,
+        "id": 19,
+        "kind": "ITEM",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1689,
+        "id": 21,
+        "kind": "ITEM",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1690,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1986,
+        "id": 31,
+        "kind": "ITEM",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1692,
+        "id": 40,
+        "kind": "ITEM",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1988,
+        "id": 62,
+        "kind": "ITEM",
+        "place": 46,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 224,
+        "id": 234,
+        "kind": "GIFT",
+        "place": 49,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 200,
+        "id": 36,
+        "kind": "GIFT",
+        "place": 50,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 239,
+        "id": 14,
+        "kind": "HIDDEN",
+        "place": 50,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 238,
+        "id": 38,
+        "kind": "HIDDEN",
+        "place": 50,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 240,
+        "id": 39,
+        "kind": "HIDDEN",
+        "place": 50,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 237,
+        "id": 64,
+        "kind": "HIDDEN",
+        "place": 50,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1924,
+        "id": 15,
+        "kind": "ITEM",
+        "place": 50,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1925,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 50,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1923,
+        "id": 44,
+        "kind": "ITEM",
+        "place": 50,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1926,
+        "id": 65,
+        "kind": "ITEM",
+        "place": 50,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 121,
+        "id": 71,
+        "kind": "GIFT",
+        "place": 51,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 131076,
+        "id": 178,
+        "kind": "TRADE",
+        "place": 51,
+        "qty": 1,
+        "wants": 93
+      },
+      {
+        "flag": 236,
+        "id": 8,
+        "kind": "HIDDEN",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 241,
+        "id": 2,
+        "kind": "HIDDEN",
+        "place": 54,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1927,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 54,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 251,
+        "id": 128,
+        "kind": "HIDDEN",
+        "place": 55,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 250,
+        "id": 152,
+        "kind": "HIDDEN",
+        "place": 55,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 803,
+        "id": 22,
+        "kind": "GIFT",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 804,
+        "id": 23,
+        "kind": "GIFT",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 802,
+        "id": 24,
+        "kind": "GIFT",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 216,
+        "id": 36,
+        "kind": "GIFT",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 800,
+        "id": 112,
+        "kind": "GIFT",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 248,
+        "id": 18,
+        "kind": "HIDDEN",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1931,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 801,
+        "id": 34,
+        "kind": "KEY",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 219,
+        "id": 94,
+        "kind": "GIFT",
+        "place": 58,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 229,
+        "id": 14,
+        "kind": "HIDDEN",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 230,
+        "id": 53,
+        "kind": "HIDDEN",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 226,
+        "id": 26,
+        "kind": "GIFT",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 212,
+        "id": 32,
+        "kind": "GIFT",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 210,
+        "id": 130,
+        "kind": "GIFT",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 235,
+        "id": 28,
+        "kind": "HIDDEN",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 252,
+        "id": 38,
+        "kind": "HIDDEN",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 228,
+        "id": 40,
+        "kind": "HIDDEN",
+        "place": 62,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 242,
+        "id": 63,
+        "kind": "HIDDEN",
+        "place": 65,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 233,
+        "id": 15,
+        "kind": "HIDDEN",
+        "place": 66,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 231,
+        "id": 33,
+        "kind": "HIDDEN",
+        "place": 66,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 232,
+        "id": 51,
+        "kind": "HIDDEN",
+        "place": 66,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1920,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 66,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1922,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 66,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1921,
+        "id": 62,
+        "kind": "ITEM",
+        "place": 66,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1918,
+        "id": 65,
+        "kind": "ITEM",
+        "place": 66,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1919,
+        "id": 239,
+        "kind": "ITEM",
+        "place": 66,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 223,
+        "id": 198,
+        "kind": "GIFT",
+        "place": 68,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 131078,
+        "id": 82,
+        "kind": "TRADE",
+        "place": 68,
+        "qty": 1,
+        "wants": 51
+      },
+      {
+        "flag": 249,
+        "id": 146,
+        "kind": "GIFT",
+        "place": 71,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 218,
+        "id": 193,
+        "kind": "GIFT",
+        "place": 71,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 220,
+        "id": 210,
+        "kind": "GIFT",
+        "place": 71,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 253,
+        "id": 62,
+        "kind": "HIDDEN",
+        "place": 71,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 25,
+        "kind": "MON",
+        "place": 71,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 137,
+        "kind": "MON",
+        "place": 71,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 0,
+        "id": 246,
+        "kind": "MON",
+        "place": 71,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 209,
+        "id": 134,
+        "kind": "GIFT",
+        "place": 72,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 222,
+        "id": 172,
+        "kind": "GIFT",
+        "place": 72,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 227,
+        "id": 221,
+        "kind": "GIFT",
+        "place": 72,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1917,
+        "id": 119,
+        "kind": "ITEM",
+        "place": 72,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 245,
+        "id": 39,
+        "kind": "HIDDEN",
+        "place": 73,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 25,
+        "id": 61,
+        "kind": "GIFT",
+        "place": 74,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 243,
+        "id": 65,
+        "kind": "HIDDEN",
+        "place": 74,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1928,
+        "id": 31,
+        "kind": "ITEM",
+        "place": 74,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1929,
+        "id": 36,
+        "kind": "ITEM",
+        "place": 74,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 244,
+        "id": 31,
+        "kind": "HIDDEN",
+        "place": 75,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 131077,
+        "id": 142,
+        "kind": "TRADE",
+        "place": 76,
+        "qty": 1,
+        "wants": 113
+      },
+      {
+        "flag": 1930,
+        "id": 62,
+        "kind": "ITEM",
+        "place": 77,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 247,
+        "id": 21,
+        "kind": "HIDDEN",
+        "place": 79,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 246,
+        "id": 64,
+        "kind": "HIDDEN",
+        "place": 79,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 221,
+        "id": 197,
+        "kind": "GIFT",
+        "place": 81,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 254,
+        "id": 32,
+        "kind": "HIDDEN",
+        "place": 85,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 158,
+        "id": 15,
+        "kind": "HIDDEN",
+        "place": 88,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 159,
+        "id": 38,
+        "kind": "HIDDEN",
+        "place": 88,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1701,
+        "id": 14,
+        "kind": "ITEM",
+        "place": 88,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1703,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 88,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1702,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 88,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1700,
+        "id": 40,
+        "kind": "ITEM",
+        "place": 88,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1699,
+        "id": 217,
+        "kind": "ITEM",
+        "place": 88,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1706,
+        "id": 21,
+        "kind": "ITEM",
+        "place": 91,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 68,
+        "id": 132,
+        "kind": "GIFT",
+        "place": 92,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 117,
+        "id": 229,
+        "kind": "GIFT",
+        "place": 92,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1708,
+        "id": 32,
+        "kind": "ITEM",
+        "place": 92,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1707,
+        "id": 213,
+        "kind": "ITEM",
+        "place": 92,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1705,
+        "id": 8,
+        "kind": "ITEM",
+        "place": 93,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 116,
+        "id": 239,
+        "kind": "GIFT",
+        "place": 94,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 163,
+        "id": 32,
+        "kind": "HIDDEN",
+        "place": 94,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 113,
+        "id": 143,
+        "kind": "GIFT",
+        "place": 95,
+        "qty": 1,
+        "wants": 0
+      }
+    ]
+  },
+  "bossTables": {
+    "CR_BOSSES_RAW": [
+      {
+        "class": 1,
+        "key": "FALKNER",
+        "name": "FALKNER",
+        "party": 1
+      },
+      {
+        "class": 3,
+        "key": "BUGSY",
+        "name": "BUGSY",
+        "party": 1
+      },
+      {
+        "class": 2,
+        "key": "WHITNEY",
+        "name": "WHITNEY",
+        "party": 1
+      },
+      {
+        "class": 4,
+        "key": "MORTY",
+        "name": "MORTY",
+        "party": 1
+      },
+      {
+        "class": 7,
+        "key": "CHUCK",
+        "name": "CHUCK",
+        "party": 1
+      },
+      {
+        "class": 6,
+        "key": "JASMINE",
+        "name": "JASMINE",
+        "party": 1
+      },
+      {
+        "class": 5,
+        "key": "PRYCE",
+        "name": "PRYCE",
+        "party": 1
+      },
+      {
+        "class": 8,
+        "key": "CLAIR",
+        "name": "CLAIR",
+        "party": 1
+      },
+      {
+        "class": 11,
+        "key": "WILL",
+        "name": "WILL",
+        "party": 1
+      },
+      {
+        "class": 15,
+        "key": "KOGA",
+        "name": "KOGA",
+        "party": 1
+      },
+      {
+        "class": 13,
+        "key": "BRUNO",
+        "name": "BRUNO",
+        "party": 1
+      },
+      {
+        "class": 14,
+        "key": "KAREN",
+        "name": "KAREN",
+        "party": 1
+      },
+      {
+        "class": 16,
+        "key": "LANCE",
+        "name": "LANCE",
+        "party": 1
+      },
+      {
+        "class": 17,
+        "key": "BROCK",
+        "name": "BROCK",
+        "party": 1
+      },
+      {
+        "class": 18,
+        "key": "MISTY",
+        "name": "MISTY",
+        "party": 1
+      },
+      {
+        "class": 19,
+        "key": "LT_SURGE",
+        "name": "LT.SURGE",
+        "party": 1
+      },
+      {
+        "class": 21,
+        "key": "ERIKA",
+        "name": "ERIKA",
+        "party": 1
+      },
+      {
+        "class": 26,
+        "key": "JANINE",
+        "name": "JANINE",
+        "party": 1
+      },
+      {
+        "class": 35,
+        "key": "SABRINA",
+        "name": "SABRINA",
+        "party": 1
+      },
+      {
+        "class": 46,
+        "key": "BLAINE",
+        "name": "BLAINE",
+        "party": 1
+      },
+      {
+        "class": 64,
+        "key": "BLUE",
+        "name": "BLUE",
+        "party": 1
+      },
+      {
+        "class": 63,
+        "key": "RED",
+        "name": "RED",
+        "party": 1
+      }
+    ]
+  },
+  "consts": {
+    "CR_BADGES": "0xD857",
+    "CR_BADGE_FLAG": "0x10000",
+    "CR_DAY": 1,
+    "CR_EVENT_BEAT_BLAINE": 1227,
+    "CR_EVENT_BEAT_BLUE": 1228,
+    "CR_EVENT_BEAT_BROCK": 1221,
+    "CR_EVENT_BEAT_BUGSY": 1214,
+    "CR_EVENT_BEAT_CHAMPION_LANCE": 1468,
+    "CR_EVENT_BEAT_CHUCK": 1218,
+    "CR_EVENT_BEAT_CLAIR": 1220,
+    "CR_EVENT_BEAT_ELITE_4_BRUNO": 1466,
+    "CR_EVENT_BEAT_ELITE_4_KAREN": 1467,
+    "CR_EVENT_BEAT_ELITE_4_KOGA": 1465,
+    "CR_EVENT_BEAT_ELITE_4_WILL": 1464,
+    "CR_EVENT_BEAT_ELITE_FOUR": 68,
+    "CR_EVENT_BEAT_ERIKA": 1224,
+    "CR_EVENT_BEAT_FALKNER": 1213,
+    "CR_EVENT_BEAT_JANINE": 1225,
+    "CR_EVENT_BEAT_JASMINE": 1217,
+    "CR_EVENT_BEAT_LTSURGE": 1223,
+    "CR_EVENT_BEAT_MISTY": 1222,
+    "CR_EVENT_BEAT_MORTY": 1216,
+    "CR_EVENT_BEAT_PRYCE": 1219,
+    "CR_EVENT_BEAT_SABRINA": 1226,
+    "CR_EVENT_BEAT_WHITNEY": 1215,
+    "CR_EVENT_FLAGS": "0xDA72",
+    "CR_EVENT_FLAG_BYTES": 256,
+    "CR_EVENT_RED_IN_MT_SILVER": 1890,
+    "CR_MORN": 0,
+    "CR_NITE": 2,
+    "CR_TIME_OF_DAY": "0xD269",
+    "CR_TRADE_FLAG": "0x20000",
+    "CR_TRADE_FLAGS": "0xD960",
+    "CR_TRADE_FLAG_BYTES": 1,
+    "CR_VAR_TIME_OF_DAY": "0x10000"
+  },
+  "game": "crystal",
+  "guides": {
+    "CRYSTAL": {
+      "bosses": [
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1213,
+          "title": "LEADER FALKNER",
+          "where": "VIOLET CITY GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1214,
+          "title": "LEADER BUGSY",
+          "where": "AZALEA TOWN GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1215,
+          "title": "LEADER WHITNEY",
+          "where": "GOLDENROD CITY GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1216,
+          "title": "LEADER MORTY",
+          "where": "ECRUTEAK CITY GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1218,
+          "title": "LEADER CHUCK",
+          "where": "CIANWOOD CITY GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1217,
+          "title": "LEADER JASMINE",
+          "where": "OLIVINE CITY GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1219,
+          "title": "LEADER PRYCE",
+          "where": "MAHOGANY TOWN GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1220,
+          "title": "LEADER CLAIR",
+          "where": "BLACKTHORN CITY GYM"
+        },
+        {
+          "by_code": [
+            "doneIf",
+            "trainer"
+          ],
+          "done": 0,
+          "title": "ELITE FOUR WILL",
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "by_code": [
+            "doneIf",
+            "trainer"
+          ],
+          "done": 0,
+          "title": "ELITE FOUR KOGA",
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "by_code": [
+            "doneIf",
+            "trainer"
+          ],
+          "done": 0,
+          "title": "ELITE FOUR BRUNO",
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "by_code": [
+            "doneIf",
+            "trainer"
+          ],
+          "done": 0,
+          "title": "ELITE FOUR KAREN",
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 68,
+          "title": "CHAMPION LANCE",
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1221,
+          "title": "LEADER BROCK",
+          "where": "PEWTER CITY GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1222,
+          "title": "LEADER MISTY",
+          "where": "CERULEAN CITY GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1223,
+          "title": "LEADER LT. SURGE",
+          "where": "VERMILION CITY GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1224,
+          "title": "LEADER ERIKA",
+          "where": "CELADON CITY GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1225,
+          "title": "LEADER JANINE",
+          "where": "FUCHSIA CITY GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1226,
+          "title": "LEADER SABRINA",
+          "where": "SAFFRON CITY GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1227,
+          "title": "LEADER BLAINE",
+          "where": "SEAFOAM ISLANDS GYM"
+        },
+        {
+          "by_code": [
+            "trainer"
+          ],
+          "done": 1228,
+          "title": "LEADER BLUE",
+          "where": "VIRIDIAN CITY GYM"
+        },
+        {
+          "by_code": [
+            "doneIf",
+            "trainer"
+          ],
+          "done": 0,
+          "title": "RED",
+          "where": "MT. SILVER"
+        }
+      ],
+      "verified": false
+    }
+  },
+  "kind": "pokedaisy-reference-guide",
+  "schema": 1,
+  "title": "Crystal"
+}

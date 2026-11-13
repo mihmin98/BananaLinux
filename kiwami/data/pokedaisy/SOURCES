@@ -1,0 +1,126 @@
+# Where kiwami/data/pokedaisy/ comes from, written by kiwami/tools/pokedaisy-extract.py <checkout> --reference: the
+# PokeDaisy commit read, then a line a file: "in" for what was read, "out" for what was written, with its SHA-256.
+# --check without the checkout verifies the "out" files against these hashes.
+
+commit pokedaisy 135ac809a597230c1fe3ad6359ae0fe81e233583
+in  e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  pokedaisy LICENSE
+in  02efcb677831c264613b4313be1c24e9e042f577636b20469fc3f984734c7085  pokedaisy app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt
+in  63c1c1e7c2fef1af92c3abe2235091fc3d41768fd590d68469594a974c51f286  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Art.kt
+in  104a61b32ac0abd021764de36aa6e5669d8b579d0ac3d6a0e599f225ddc89d42  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Charset.kt
+in  447dd3d7708ea8c31a8761b0b075384d9995843468972e22be7a2607d3e71a1d  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Dex.kt
+in  850a25a6c445e71a38a487168e196e4dfeb0aa59e04ceed75676dde4c94b6057  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Reader.kt
+in  96a498f182ceea68d95040239dcd3c2faf4b02fbd103291cfa35036bd532f28e  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Art.kt
+in  ebfde8f4fc1bf6a4f2f411b8cb030dd7c8be36b23a08c2c9a04cb34932e51923  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Dex.kt
+in  f33fd7f41938deb6c1b29556669f643495bb4c42fb554ed849280ba2f6229d92  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Reader.kt
+in  fd1f9b98f1e723486431f3ce2fda51e55a8e829638e9a2fc363e8bea40afe898  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen3Mon.kt
+in  f624212b1e4a982ca4e0723f03ad878d40f8c94d1f38542432e567c67e4d458c  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen4Dex.kt
+in  58916e324e0a955ec0b71ae9e3605ba71704ec038da7e4d857ec99f5576bd025  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen4Reader.kt
+in  bfa67d40e83da2d488fe72e5f14f452ae6b354c13934c36293b149c56251b391  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen5DexBlack.kt
+in  36c5658e29fc80aadff5f6a624231628f3ca0d6e4722607e847557a274f0ad70  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen5Reader.kt
+in  a54badd3d7cb7e8237f773c9cde411726aaa0e757f5563faddee68fccf73faa8  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Guide.kt
+in  9da5ce1cca33984e4d011abdac3494bc02e0dd59c0438fc28421372ac483c9c0  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideAreas.kt
+in  f48fa85219f5e3b120171c2f806d3ae7d4b58b903c17aeffd25be4b3ea0ef9ff  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideAreasEmeraldGen.kt
+in  a78e4fa11d596644090c2cc0af0fe4608f18ec5364c06d655ce3149bf3fb41dc  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideAreasFireRedGen.kt
+in  db743406939d87badafcbeaf95f0598616334dacc79ca6b81ffa6fd34c8c0d7a  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideAreasLeafGreenGen.kt
+in  8aab9928a3f9133ceffc93915e098887e3f1cdf44cd9619ed47698c4a51095c2  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideAreasRubySapphireGen.kt
+in  283343901d552074e82e0123c62564f628b7ddd4c89bd7bd40ef0f84a91b7713  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideBlack.kt
+in  365354ef5545cb52b4bda3a4c7e6395de0eddc386053f2187b79763adb717426  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideBlack2.kt
+in  aa78cc353530d524f44f4b168a72e1fcf65a7cbb957cc430b51a8b96a02d2211  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystal.kt
+in  816154d8b641ee466f82736eea9c40d086708fdd2399052ec8502bb6d29dcbe6  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt
+in  2112fca1354d84bc5f6accea4d26184d784c965fad8309d062677b30e494043c  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideEmerald.kt
+in  bdd4f3685769cdf1af0285b66afe0cc6f9d4a9beb30faea9ebb4ec1d27db72ab  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideFireRed.kt
+in  9beb7da6823cd96abef582dacf34d31972b4045a17be7f829d97fa297cf32ae8  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen1.kt
+in  cd54badd8a22eba6a86ab348b4bb2a0870a883ffa0c063b07178a577deb4ae5d  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen1Gen.kt
+in  a67853044d26021115d2bd914f647c417ce598231e436600a7f781096427490c  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen4.kt
+in  6d7c6a743fd5d5ff55b937fa092c79d07fa6016605c1d316ad5d91c29ecd0671  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen4HeartGoldGen.kt
+in  155844cc3a68d6b7d8ec2e117249cf08c8614647cf2f671cfeef6190b9e7bb11  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen4PlatinumGen.kt
+in  b26e4391743c417bf34632f697ba3df5cbce9d5eb3fc5c722927a0476c82526d  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen5.kt
+in  fb87c92eea9a879f91cd42d433dddfcdc17ddc3c8cd60b2e3b6a2dee73200d41  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen5Black2Gen.kt
+in  e0ad937ddce05173a82b1c4f3eeed630240d4aa476514c212d29cb57c536c32a  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen5BlackGen.kt
+in  f3bdf21a76642f9b5793057b5cda700b2846d282f9d9aa6b35a1e4a6a90ccaee  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen5White2Gen.kt
+in  cb58bc12444dfdd5a42a0eea8d3b9a2fa56d95cba7c6e78d26007d9815f670a8  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen5WhiteGen.kt
+in  1578d9c0ba41b2ef67a95e0a2a0a6b52b1f8d9d3c8e6c4f7c790a69ca77f78ea  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideHeartGold.kt
+in  44b3e17cede56f0a28f9832098f5cdcc27b5084003930c48d0927017f6fdead4  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuidePlatinum.kt
+in  52aa2d5916b5e915398519efe9121860c525529b117ca7c23ace87e247ad1aab  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt
+in  e120bf35179fccdc897d0cbc40d091211856de19395a42a34acd3a6ba55743d9  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRubySapphire.kt
+in  5dca10ba968de1e2ea27694e80bd689d7b804962515f6f08441a2b7ceb9b20ba  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/ItemDescriptionsYellow.kt
+in  4b7695f26e7f8b34f735bb796068cbf16fd21f0ede3a3b321a4afd252b59f449  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/NativeReader.kt
+in  c0f294309a01b3567c9bd56a5e2da796669829c61bc2c8c67738f5f4d831b69a  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt
+in  1c833815f664c48edba592f849f5da4a6dbf7bed5915f27ee767fb89d6e22fdc  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/RomItemText.kt
+in  4b6e7d9111766da9a33cd602a2fdbc3e23eb5ff6067bbc2f4a4bc95c441d8453  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Telemetry.kt
+in  545b3f34e6df9c8d9c253ebdc696f385ca4a0d2f5662e7b6e068578a1a880239  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt
+in  0d4c97fbd206fc2e33790fddaac6f20649e2245b3e57534f906d93a1d278695f  pokedaisy gamedata/gen3/records/emerald.toml
+in  c332130d3068c768d6d965421ec33c94b90f2353cc3f0f45c95f60eb8593ae98  pokedaisy gamedata/gen3/records/firered.toml
+in  1823997b729f4a6eda6c83d10ad7b82a5d953e58fb2ddd69b92c4f00237938b1  pokedaisy gamedata/gen3/retail/emerald.toml
+in  f582ba759a840d7ffbb8c2a1c4b1f97880f23a7e275e7de944eb8c0c147ee8c8  pokedaisy gamedata/gen3/retail/firered.toml
+in  5398b9b0c0aadd81e416922358a3ca14028766277bfdec87ac38088d657cc9da  pokedaisy gamedata/gen3/retail/leafgreen.toml
+in  e453490b2acb0eb538607c2c465ec057af22ae7485c93443ae3f79efb003b5b6  pokedaisy gamedata/gen3/retail/ruby_sapphire.toml
+in  f35c77518af2e7b9554e3d4de786d9c98585f74956834e2dcae75af6b2502078  pokedaisy gamedata/schema/gen3_card.toml
+in  26a8e9eea3abbe12b37d1bdda4a9b80ab0a3f7eb41c4f224150fdd91749818cb  pokedaisy gamedata/schema/gen3_config.toml
+in  10471bdffcf1810b2771bc41cb2b680e5f60e90257cc9c6efd82142ec43b292b  pokedaisy gamedata/schema/gen3_dexflags.toml
+in  b60700a64b4f8f348ff48957a4f343e6e04d9df391abfb16a80e76c00d74c6b0  pokedaisy gamedata/schema/gen3_field_items.toml
+in  5d329b6115e44458b0cf2a27792555b008bd9b0043d85ffc548a9551db410bb1  pokedaisy gamedata/schema/gen3_flash.toml
+in  ff5c470bed438002aa7121d220d591b09526b6a9b0cee294399cc688dd1b4d6f  pokedaisy gamedata/schema/gen3_fly.toml
+in  4660c9a019e1ae923deb933cb60ae0542737eb8abd572e2bded1f6fc9f5b41b3  pokedaisy gamedata/schema/gen3_guide.toml
+in  8a64dde94b44ca590da3c391cc878ef07088c9cca02b6b2c5d34282e7dd19797  pokedaisy gamedata/schema/gen3_heal_warp.toml
+in  0818d9f7b238c386155b2dcab7f03e58ed95371a2678f3ad1763f0eb63df6c08  pokedaisy gamedata/schema/gen3_party_items.toml
+in  445878e0a94fa2efa0bc3fee25fef2376afb4bc9310d2c95eaeb24e8c8f11396  pokedaisy gamedata/schema/gen3_pc.toml
+in  be587b46abc579d1315d4085d12f95e304341e5db52ba880e0179638887f563f  pokedaisy gamedata/schema/gen3_pokedex.toml
+in  be6544a530009cc95aad5784c679cc2b83867fb3185a80c9ae20899c2d438a61  pokedaisy gamedata/schema/gen3_speciesinfo.toml
+in  5f8e57c5a64365dad9a3f29869864afb4759a79c5cc8a6ef928e12e9de7c29fb  pokedaisy gamedata/schema/gen3_tm.toml
+in  ef48498ca9340a6ddf861d140b9ea42f00d3115098136b4195a50c75872a38fe  pokedaisy gamedata/schema/gen3_trade_evo.toml
+in  2f7ba6e5d6fcc78e4d4c75eb8c061092ee77dbeadeb6114e280256323f9ca862  pokedaisy gamedata/schema/gen3_trainer_mon.toml
+out e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  kiwami/data/pokedaisy/LICENSE
+out 8e77a9b8905f53fe96160126fbe4ae2b3d608b7029ca92007f22db63291427b2  kiwami/data/pokedaisy/README.md
+out 57b274795696fd07562f0dc08f458a95967dcd77884c0f2d01f4e18d4d930237  kiwami/data/pokedaisy/black-white/guide.json
+out dab07640047895453d60e710e051f46817215fafc2e68c40eb3c0496d26f2e0d  kiwami/data/pokedaisy/black-white/ram.json
+out dc910fbcd8d3dcb35e6acc7c1a2607609ab6e4a2721641afdf0d59bd6ff75de3  kiwami/data/pokedaisy/black-white/releases.json
+out 3f0412e9f04f0c2e29b420ea38efadd5cfd4bfaf2b3e307e0f25b61840e95b6b  kiwami/data/pokedaisy/black-white/rom.json
+out aa8a891c6e75db6d84be3c1024c5983b6652aa7889ab0e058e3261a44672f249  kiwami/data/pokedaisy/black-white/text.json
+out 0b025a071912cd745cd2698fe137eb5457205eb9a72c41d75444e4f266523686  kiwami/data/pokedaisy/black2-white2/guide.json
+out 32e77922ae481c14e7f89753324571326bccb7d3b763353a8ca2fa707e2e98bd  kiwami/data/pokedaisy/black2-white2/ram.json
+out d9bfcf7abfe20fe78526cda6d8f781087448c70536820a55ee9d282430612e27  kiwami/data/pokedaisy/black2-white2/releases.json
+out 0a00290ff026e6916114a8985827483c07bdca988c8eff24e4d295548091f821  kiwami/data/pokedaisy/black2-white2/rom.json
+out 88e8658b2d39aac91dd2575aa11c159fd1e87bc2a707e25722f389fbbb93dc64  kiwami/data/pokedaisy/black2-white2/text.json
+out 9cee77ae5f225b30278be4069ba3a05b1053877a83d73732796065dec33110b6  kiwami/data/pokedaisy/crystal/guide.json
+out 465dbf045b8ca33275624b57bbcda4895921694f59dbb6b554ab1ebbd1e463fa  kiwami/data/pokedaisy/crystal/ram.json
+out af33e9d9b973005ef5acb924ee3d5bb1aa580d482f2ca580bc3040afa5c5842a  kiwami/data/pokedaisy/crystal/releases.json
+out 50284e9e539f0ab71df35d718415cc6f1999ad9e9e2c9e29326960a1430db8fa  kiwami/data/pokedaisy/crystal/rom.json
+out ca8ede58e13e7c227d0f2d80d658cb520094e351faa2884b7774178abea76a80  kiwami/data/pokedaisy/crystal/text.json
+out d5e72dccf544da281bbbc432e076d1a09aae4b081ffd4eb3aaa7d259384dcfda  kiwami/data/pokedaisy/emerald/guide.json
+out 701f7521838c1f8d6b91764266ab6d3a477dc61c6bc9a9dc87cf826dc45cfce8  kiwami/data/pokedaisy/emerald/ram.json
+out 6112e13e07c36e8e7f755c349a0899bd75d5783250ff99576ad9bc0c6db8f80f  kiwami/data/pokedaisy/emerald/releases.json
+out 603ae8a3a57740fbf2433556f4750387e6c7132910b5d08785d061240476b364  kiwami/data/pokedaisy/emerald/rom.json
+out 6d0e3c167402b2ab9a4cafb6bad63ac2c2e0492f7661e273fbf1e1fc65126719  kiwami/data/pokedaisy/emerald/text.json
+out 483bcd3b8725a2807fe4c68d8787932496f463b622958e0ca2b1b6047791bc98  kiwami/data/pokedaisy/firered-leafgreen/guide.json
+out 6bf0ae83e5baa4b80eb237a9b89587ae94044072a1473d53d722d18360692dec  kiwami/data/pokedaisy/firered-leafgreen/ram.json
+out 0a58991cf3a5776b6bac49df81d8c8a1c4896cd3f6c3f6590536d8c75536fe86  kiwami/data/pokedaisy/firered-leafgreen/releases.json
+out 5ef940a98dcbc2b4a87cd471565129b574c44ce15d980c081db7794bde9d987d  kiwami/data/pokedaisy/firered-leafgreen/rom.json
+out e1ac34efadcd5613202ca21159e2c717462b213b161d7667408538b37796a51d  kiwami/data/pokedaisy/firered-leafgreen/text.json
+out c8c166c84001f4065757544ae9eadf9330c51c5cd0fac244cba2ab066524270a  kiwami/data/pokedaisy/gold-silver/ram.json
+out 147ca6d3490a29f4901a29bb75e90a1351b3027aadf364f4d7f69cb7e5957bb4  kiwami/data/pokedaisy/gold-silver/releases.json
+out a4f1af5d004518ab248f774352cc2e8dc0f37c78e2d5f3c2601d0c9ab8dc3981  kiwami/data/pokedaisy/gold-silver/rom.json
+out 947459def9b010e9882424f4fbe44e86ea8ebddd9c96819ab4ac081ec5ab61b3  kiwami/data/pokedaisy/heartgold-soulsilver/guide.json
+out 41cdc6bdc53cd8c29736e2884d4c369b989ddf9408db8aca34436a813bfc483c  kiwami/data/pokedaisy/heartgold-soulsilver/ram.json
+out 709ee3ed637e82368ee457370d1488899148d0b9a8babefdf5fc3b8df86a0b5c  kiwami/data/pokedaisy/heartgold-soulsilver/releases.json
+out c880b171b8c7e3afd6a13abc9987f3437fb916d1628ffa0dd5adeafeb32685e1  kiwami/data/pokedaisy/heartgold-soulsilver/rom.json
+out d9bb6b72e5ee0705becf8b329fb28e24f21c2021d9550f1c0505af7bb22763ce  kiwami/data/pokedaisy/heartgold-soulsilver/text.json
+out dd0b1e944f573d77b845a0a91b614deef6aeba926239f6e938e0f383d763b124  kiwami/data/pokedaisy/platinum/guide.json
+out bde5a0e5ffb040c246c57c638e89c27bef467b8b971fcdcfcb949d82acadf7a7  kiwami/data/pokedaisy/platinum/ram.json
+out 7ca9c2ec4e208e2d5409e6b58b05155b98380842ccbf11a70fe3dd5e2e43af53  kiwami/data/pokedaisy/platinum/releases.json
+out fa4ab317c3890b65890328dd641424cd697026632b989a5d0d5ce56274aabab8  kiwami/data/pokedaisy/platinum/rom.json
+out f30aea01fdd9a5a756742cf6784149b1e1fed86824083c8c1ee0f0c3cb1cb68c  kiwami/data/pokedaisy/platinum/text.json
+out 3b0ea03b351a42a675ea231adeda6f24935043c1ce7a93a2f74cbd4b719a92c6  kiwami/data/pokedaisy/red-blue/guide.json
+out de3cc04631ec142b20f18df6259a2c186375063f55de3c022cd85b882442b597  kiwami/data/pokedaisy/red-blue/ram.json
+out b13941203efb0d315142f32cec17f208dd2275a33d5bf2d6f8ea454bad27f020  kiwami/data/pokedaisy/red-blue/releases.json
+out 1875ccf0dfe2ccec67c5eab9edc9f2d9816a3f45c9367ceb316ceb1104d6a0b2  kiwami/data/pokedaisy/red-blue/rom.json
+out cea5747b7587e05145008c58939f77954417f590935200b55d6843522e0f406f  kiwami/data/pokedaisy/ruby-sapphire/guide.json
+out 8d46762bb8e271824b240394ff5afa274e02180d0d52f7f9f37111665ee2150d  kiwami/data/pokedaisy/ruby-sapphire/ram.json
+out 89158df92348925aec372d3eb9920e62b0cb8a5712b75625bef82d512e8aa982  kiwami/data/pokedaisy/ruby-sapphire/releases.json
+out fbeccf5bd049c81186c94b7f2aaa5f7fd9c1d746116bbd0d81631f1151e6866e  kiwami/data/pokedaisy/ruby-sapphire/rom.json
+out 6e358facb7b365ac414128e8b4bb8d3aeac07f5e77734514508008fdec2f07d8  kiwami/data/pokedaisy/ruby-sapphire/text.json
+out 3d64d0a1e2e63cc3158464278fd2fa4b53f6ba1956dc0ca79c63e326fdeba1ed  kiwami/data/pokedaisy/yellow/guide.json
+out 394b09ee7b45077eb91012c1a297d3bb64b412f2af30c9a4f93adc91e3a0da24  kiwami/data/pokedaisy/yellow/ram.json
+out 0280fc7b8b941309559d27c100c43be630894d8fe160550042b4de974a9a4de1  kiwami/data/pokedaisy/yellow/releases.json
+out be1887fafd504cede8de2112b2940c1d397a9502cf8871bf5564c60c3bebf8a9  kiwami/data/pokedaisy/yellow/rom.json
+out 97e67c3c5ba5d0ab758922d5f39565bcee0074a38b53abcd6aece1213b3320a4  kiwami/data/pokedaisy/yellow/text.json

@@ -149,6 +149,7 @@ namespace banana::nds
 		uint32_t exp = 0;
 		uint16_t hp = 0, maxHp = 0, stats[5] = {};	// Atk, Def, Speed, SpA, SpD
 		uint8_t ivs[6] = {}, evs[6] = {};			// HP, Atk, Def, Speed, SpA, SpD
+		uint16_t statExp[5] = {};	// kiwami: Gen I/II's stat experience: HP, Atk, Def, Speed, Special (ui/src/kiwami/gbpk/)
 		uint16_t moves[4] = {};
 		uint8_t pp[4] = {}, ppUps[4] = {};
 		uint32_t status = 0;						// the games' status word (sleep turns, PSN, BRN, FRZ, PAR, TOX)

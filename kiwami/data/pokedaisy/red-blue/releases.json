@@ -1,0 +1,16 @@
+{
+  "game": "red-blue",
+  "kind": "pokedaisy-reference-releases",
+  "releases": [
+    {
+      "sha1": "ea9bcae617fdf159b045185467ae58b2e4a48b9a",
+      "title": "Pokémon Red"
+    },
+    {
+      "sha1": "d7037c83e1ae5b39bde3c30787637ba1d4c48ce2",
+      "title": "Pokémon Blue"
+    }
+  ],
+  "schema": 1,
+  "title": "Red and Blue"
+}

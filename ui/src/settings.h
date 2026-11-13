@@ -21,6 +21,7 @@
 #include "pokemon.h"
 #include "gamecomp.h"
 #include "gba/panel.h"
+#include "kiwami/gbpk/panel.h"	// kiwami: the GB Pokémon companion's panel
 #include "lang.h"
 #include <map>
 #include <memory>
@@ -715,7 +716,7 @@ namespace banana
 		int gSeen = -1;						// the watch's generation last drawn
 		int awardsSeen = 0; bool wake = false;	// (gameWake)
 		std::map<std::string, rnds::TexPtr> gBadges;	// badge textures by file
-		gba::Panel gbaPanel;		// the GBA Pokémon companion's pages
+		kiwami::gbpk::PanelSwitch gbaPanel;	// kiwami: gba::Panel, or the GB Pokémon companion's (ui/src/kiwami/gbpk/)
 		// the companion's switch (either companion): the icon on the menu's header, the button that switches
 		std::vector<int> gCompKeys;	// (the buttons whose job is Companion: evdev codes, read at gameOpen)
 		rnds::TexPtr gIconTex;

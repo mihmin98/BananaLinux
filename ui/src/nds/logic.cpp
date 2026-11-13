@@ -1,5 +1,6 @@
 // banana-ui: the DS Pokémon companion's advice (logic.h).
 #include "nds/logic.h"
+#include "kiwami/gbpk/rules.h"	// kiwami: Gen I/II's damage, speed and catch (ui/src/kiwami/gbpk/)
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -97,6 +98,7 @@ namespace banana::nds
 
 	DamageRange damage(Gen g, const MoveData& mv, const Fighter& a, const Fighter& d, Weather w)
 	{
+		if (kiwami::gbpk::oldGen(g)) return kiwami::gbpk::damage(g, mv, a, d, w);	// kiwami:
 		DamageRange r;
 		if (mv.cat == MoveCategory::STATUS || mv.power == 0) { r.note = "no damage"; r.quarters = 4; return r; }
 		Type t = a.ability == A_NORMALIZE ? NORMAL : mv.type;
@@ -198,6 +200,7 @@ namespace banana::nds
 
 	int effectiveSpeed(Gen, const Fighter& f, Weather w)
 	{
+		if (kiwami::gbpk::oldRules()) return kiwami::gbpk::speed(f);	// kiwami:
 		int s = staged(f.stats[2], f.stages[3]);
 		if (f.item == I_CHOICE_SCARF) s = s * 3 / 2;
 		if ((f.ability == A_SWIFT_SWIM && w == Weather::RAIN) || (f.ability == A_CHLOROPHYLL && w == Weather::SUN)) s *= 2;
@@ -215,6 +218,7 @@ namespace banana::nds
 	// ---- catching -------------------------------------------------------------------------------------------------
 	float catchChance(Gen g, const RomData& rom, const Mon& wild, uint16_t ball, const CatchContext& c, float* mult)
 	{
+		if (kiwami::gbpk::oldGen(g)) return kiwami::gbpk::catchChance(g, rom, wild, ball, c, mult);	// kiwami:
 		const Species* s = sp(rom, wild.species);
 		if (!s || !wild.maxHp) return 0;
 		Type t1 = s->types[0], t2 = s->types[1];

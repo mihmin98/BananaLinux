@@ -1,6 +1,7 @@
 // banana-ui: the DS Pokémon companion's shared helpers (model.h): the game in a ROM header, the type chart of the DS
 // games (Generations IV and V: no Fairy; Steel resists Ghost and Dark), a Pokémon's shininess and Hidden Power.
 #include "nds/model.h"
+#include "kiwami/gbpk/rules.h"	// kiwami: Gen I's type chart (ui/src/kiwami/gbpk/)
 #include <atomic>
 #include <algorithm>
 #include <iterator>
@@ -85,6 +86,7 @@ namespace banana::nds
 	int numTypes() { return modernChart ? (int)NUM_TYPES : (int)FAIRY; }
 	static int one(Type a, Type d)
 	{
+		if (int q = kiwami::gbpk::chart(a, d); q >= 0) return q;	// kiwami: Gen I's chart (Red, Blue, Yellow)
 		const bool m = modernChart;
 		if (a >= NUM_TYPES || d >= NUM_TYPES) return 4;
 		if (a == FAIRY || d == FAIRY)

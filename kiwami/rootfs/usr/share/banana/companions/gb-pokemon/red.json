@@ -1,0 +1,282 @@
+{
+  "code": "PKRD",
+  "evolutions": [
+    {
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1Gen.kt (G1R_AREAS_RAW)",
+      "species": 122,
+      "text": "From an in-game trade in the Route 2 Trade House."
+    },
+    {
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1Gen.kt (G1R_AREAS_RAW)",
+      "species": 124,
+      "text": "From an in-game trade in the Cerulean Trade House."
+    },
+    {
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1Gen.kt (G1R_AREAS_RAW)",
+      "species": 29,
+      "text": "From an in-game trade in the Underground Path Route 5."
+    },
+    {
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1Gen.kt (G1R_AREAS_RAW)",
+      "species": 30,
+      "text": "From an in-game trade in the Route 11 Gate 2F."
+    },
+    {
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1Gen.kt (G1R_AREAS_RAW)",
+      "species": 101,
+      "text": "From an in-game trade in the Cinnabar Lab Trade Room."
+    },
+    {
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1Gen.kt (G1R_AREAS_RAW)",
+      "species": 114,
+      "text": "From an in-game trade in the Cinnabar Lab Trade Room."
+    },
+    {
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1Gen.kt (G1R_AREAS_RAW)",
+      "species": 86,
+      "text": "From an in-game trade in the Cinnabar Lab Fossil Room."
+    },
+    {
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1Gen.kt (G1R_AREAS_RAW)",
+      "species": 108,
+      "text": "From an in-game trade in the Route 18 Gate 2F."
+    },
+    {
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1Gen.kt (G1R_AREAS_RAW)",
+      "species": 83,
+      "text": "From an in-game trade in the Vermilion Trade House."
+    }
+  ],
+  "game": "red",
+  "kind": "nds-pokemon-guide",
+  "milestones": [
+    {
+      "done_when": "badge:1",
+      "foe": {
+        "ace_level": 14,
+        "name": "Brock"
+      },
+      "id": "gym-1-brock",
+      "kind": "gym",
+      "level_cap": 14,
+      "name": "Gym 1: Brock",
+      "place": "pewter-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW BROCK)"
+    },
+    {
+      "done_when": "badge:2",
+      "foe": {
+        "ace_level": 21,
+        "name": "Misty"
+      },
+      "id": "gym-2-misty",
+      "kind": "gym",
+      "level_cap": 21,
+      "name": "Gym 2: Misty",
+      "place": "cerulean-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW MISTY)"
+    },
+    {
+      "done_when": "badge:3",
+      "foe": {
+        "ace_level": 24,
+        "name": "Lt. Surge"
+      },
+      "id": "gym-3-lt-surge",
+      "kind": "gym",
+      "level_cap": 24,
+      "name": "Gym 3: Lt. Surge",
+      "place": "vermilion-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW LT. SURGE)"
+    },
+    {
+      "done_when": "badge:4",
+      "foe": {
+        "ace_level": 29,
+        "name": "Erika"
+      },
+      "id": "gym-4-erika",
+      "kind": "gym",
+      "level_cap": 29,
+      "name": "Gym 4: Erika",
+      "place": "celadon-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW ERIKA)"
+    },
+    {
+      "done_when": "badge:5",
+      "foe": {
+        "ace_level": 43,
+        "name": "Koga"
+      },
+      "id": "gym-5-koga",
+      "kind": "gym",
+      "level_cap": 43,
+      "name": "Gym 5: Koga",
+      "place": "fuchsia-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW KOGA)"
+    },
+    {
+      "done_when": "badge:6",
+      "foe": {
+        "ace_level": 43,
+        "name": "Sabrina"
+      },
+      "id": "gym-6-sabrina",
+      "kind": "gym",
+      "level_cap": 43,
+      "name": "Gym 6: Sabrina",
+      "place": "saffron-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW SABRINA)"
+    },
+    {
+      "done_when": "badge:7",
+      "foe": {
+        "ace_level": 47,
+        "name": "Blaine"
+      },
+      "id": "gym-7-blaine",
+      "kind": "gym",
+      "level_cap": 47,
+      "name": "Gym 7: Blaine",
+      "place": "cinnabar-island",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW BLAINE)"
+    },
+    {
+      "done_when": "badge:8",
+      "foe": {
+        "ace_level": 50,
+        "name": "Giovanni"
+      },
+      "id": "gym-8-giovanni",
+      "kind": "gym",
+      "level_cap": 50,
+      "name": "Gym 8: Giovanni",
+      "place": "viridian-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW GIOVANNI)"
+    },
+    {
+      "done_when": "flag:2816",
+      "foe": {
+        "ace_level": 56,
+        "name": "Lorelei"
+      },
+      "id": "e4-lorelei",
+      "kind": "elite4",
+      "level_cap": 56,
+      "name": "Elite Four: Lorelei",
+      "place": "indigo-plateau",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW LORELEI)"
+    },
+    {
+      "done_when": "flag:2817",
+      "foe": {
+        "ace_level": 58,
+        "name": "Bruno"
+      },
+      "id": "e4-bruno",
+      "kind": "elite4",
+      "level_cap": 58,
+      "name": "Elite Four: Bruno",
+      "place": "indigo-plateau",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW BRUNO)"
+    },
+    {
+      "done_when": "flag:2818",
+      "foe": {
+        "ace_level": 60,
+        "name": "Agatha"
+      },
+      "id": "e4-agatha",
+      "kind": "elite4",
+      "level_cap": 60,
+      "name": "Elite Four: Agatha",
+      "place": "indigo-plateau",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW AGATHA)"
+    },
+    {
+      "done_when": "flag:2819",
+      "foe": {
+        "ace_level": 62,
+        "name": "Lance"
+      },
+      "id": "e4-lance",
+      "kind": "elite4",
+      "level_cap": 62,
+      "name": "Elite Four: Lance",
+      "place": "indigo-plateau",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW LANCE)"
+    },
+    {
+      "done_when": "flag:2820",
+      "foe": {
+        "ace_level": 65,
+        "name": "Rival3"
+      },
+      "id": "champion-your-rival",
+      "kind": "champion",
+      "leader": "your rival",
+      "level_cap": 65,
+      "name": "Champion: your rival",
+      "place": "indigo-plateau",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (G1R_BOSSES_RAW CHAMPION)"
+    }
+  ],
+  "places": {
+    "celadon-city": {
+      "name": "Celadon City"
+    },
+    "cerulean-city": {
+      "name": "Cerulean City"
+    },
+    "cinnabar-island": {
+      "name": "Cinnabar Island"
+    },
+    "fuchsia-city": {
+      "name": "Fuchsia City"
+    },
+    "indigo-plateau": {
+      "name": "Indigo Plateau"
+    },
+    "pewter-city": {
+      "name": "Pewter City"
+    },
+    "saffron-city": {
+      "name": "Saffron City"
+    },
+    "vermilion-city": {
+      "name": "Vermilion City"
+    },
+    "viridian-city": {
+      "name": "Viridian City"
+    }
+  },
+  "revision": 1,
+  "schema": 1,
+  "sources": [
+    "PokeDaisy by Lidor Itzhari, 135ac809 (GPL-3.0): GuideGen1.kt's rules; GuideGen1Gen.kt's bosses, their order and flags, and the in-game trades, generated there from pret/pokered and pret/pokeyellow",
+    "The player's ROM: the trainers' teams, the places' maps and the hidden items, read when the game starts (kiwami/GB-POKEMON.md)"
+  ],
+  "title": "Pokémon Red"
+}

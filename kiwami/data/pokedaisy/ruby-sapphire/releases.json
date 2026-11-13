@@ -1,0 +1,32 @@
+{
+  "game": "ruby-sapphire",
+  "kind": "pokedaisy-reference-releases",
+  "releases": [
+    {
+      "sha1": "5b64eacf892920518db4ec664e62a086dd5f5bc8",
+      "title": "Pokémon Ruby"
+    },
+    {
+      "sha1": "610b96a9c9a7d03d2bafb655e7560ccff1a6d894",
+      "title": "Pokémon Ruby"
+    },
+    {
+      "sha1": "f28b6ffc97847e94a6c21a63cacf633ee5c8df1e",
+      "title": "Pokémon Ruby"
+    },
+    {
+      "sha1": "3ccbbd45f8553c36463f13b938e833f652b793e4",
+      "title": "Pokémon Sapphire"
+    },
+    {
+      "sha1": "4722efb8cd45772ca32555b98fd3b9719f8e60a9",
+      "title": "Pokémon Sapphire"
+    },
+    {
+      "sha1": "89b45fb172e6b55d51fc0e61989775187f6fe63c",
+      "title": "Pokémon Sapphire"
+    }
+  ],
+  "schema": 1,
+  "title": "Ruby and Sapphire"
+}

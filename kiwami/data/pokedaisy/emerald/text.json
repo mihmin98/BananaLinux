@@ -1,0 +1,666 @@
+{
+  "game": "emerald",
+  "guides": {
+    "EMERALD": {
+      "pages": [
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "HERE, NEXT BOSS, EVOLUTIONS and the DEX read the randomizer's POKéMON, teams, moves and items from the game itself. The gift and legendary POKéMON it moved aren't listed: the guide can't know them.",
+                  "randomized": "Randomized.ANY",
+                  "title": "This game is randomized"
+                }
+              ],
+              "heading": "RANDOMIZED",
+              "randomized": "Randomized.ONLY"
+            },
+            {
+              "entries": [
+                {
+                  "answer": "The MACH BIKE is the fast one - fast enough to cross cracked floors before they give way. The ACRO BIKE can hop and ride narrow rails. RYDEL in MAUVILLE CITY swaps one for the other.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Two bikes"
+                },
+                {
+                  "answer": "Trainers you've beaten can register you in the POKéNAV's MATCH CALL. Once you have five badges, walking around makes some of them want a rematch.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Rematches"
+                }
+              ],
+              "heading": "CONTROLS",
+              "randomized": {
+                "answer": "Hold B to run once you have the RUNNING SHOES.",
+                "randomized": "Randomized.ANY",
+                "title": "Running"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Traded POKéMON obey up to Lv10 with no badges, Lv30 with the KNUCKLE BADGE, Lv50 with the HEAT BADGE, Lv70 with the FEATHER BADGE, and always with the RAIN BADGE.",
+                  "hint": "It's about badges.",
+                  "randomized": "Randomized.ANY",
+                  "title": "A traded POKéMON won't listen"
+                },
+                {
+                  "answer": "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Poison outside battle"
+                }
+              ],
+              "heading": "BATTLES",
+              "randomized": {
+                "answer": "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.",
+                "randomized": "Randomized.ANY",
+                "title": "Physical or special?"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "HM moves can't be forgotten normally. The MOVE DELETER in LILYCOVE CITY removes them.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Getting rid of an HM move"
+                },
+                {
+                  "answer": "The MOVE TUTOR in FALLARBOR TOWN teaches a forgotten move for one HEART SCALE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Relearning moves"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "CUT: STONE. FLASH: KNUCKLE. ROCK SMASH: DYNAMO. STRENGTH: HEAT. SURF: BALANCE. FLY: FEATHER. DIVE: MIND. WATERFALL: RAIN. A POKéMON in the party must know the move too.",
+                "randomized": "Randomized.ANY",
+                "title": "Which badge unlocks which HM?"
+              }
+            },
+            {
+              "heading": "SAFARI ZONE",
+              "randomized": {
+                "answer": "500 steps per visit. You can't use your own POKéMON - throw POKéBLOCKS, then SAFARI BALLS.",
+                "randomized": "Randomized.ANY",
+                "title": "How long do I have?"
+              }
+            }
+          ],
+          "title": "TIPS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "MR. STONE on DEVON CORP. 3F in RUSTBORO CITY, after you bring back the stolen DEVON GOODS.",
+                  "areas": [
+                    "RUSTBORO CITY"
+                  ],
+                  "have": {
+                    "flag": "0xBC"
+                  },
+                  "hint": "The company in RUSTBORO CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "POKéNAV"
+                },
+                {
+                  "answer": "RYDEL's bike shop in MAUVILLE CITY - pick the MACH or the ACRO BIKE.",
+                  "areas": [
+                    "MAUVILLE CITY"
+                  ],
+                  "have": {
+                    "flag": "0x5A"
+                  },
+                  "hint": "A shop in MAUVILLE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "BIKE"
+                },
+                {
+                  "answer": "A fisherman in DEWFORD TOWN.",
+                  "areas": [
+                    "DEWFORD TOWN"
+                  ],
+                  "have": {
+                    "itemId": 262
+                  },
+                  "hint": "An island town.",
+                  "randomized": "Randomized.ANY",
+                  "title": "OLD ROD"
+                },
+                {
+                  "answer": "A fisherman on ROUTE 118.",
+                  "areas": [
+                    "ROUTE 118"
+                  ],
+                  "have": {
+                    "itemId": 263
+                  },
+                  "hint": "East of MAUVILLE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "GOOD ROD"
+                },
+                {
+                  "answer": "A fisherman's house in MOSSDEEP CITY.",
+                  "areas": [
+                    "MOSSDEEP CITY"
+                  ],
+                  "have": {
+                    "itemId": 264
+                  },
+                  "hint": "An island city in the east.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SUPER ROD"
+                },
+                {
+                  "answer": "Your rival gives it to you after your battle on ROUTE 110.",
+                  "areas": [
+                    "ROUTE 110"
+                  ],
+                  "have": {
+                    "itemId": 261
+                  },
+                  "hint": "North of SLATEPORT CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "ITEMFINDER"
+                },
+                {
+                  "answer": "MR. STONE at DEVON CORP. 3F, once you've delivered his letter to STEVEN in GRANITE CAVE.",
+                  "areas": [
+                    "RUSTBORO CITY",
+                    "GRANITE CAVE"
+                  ],
+                  "have": {
+                    "flag": "0x110"
+                  },
+                  "hint": "A reward for a delivery.",
+                  "randomized": "Randomized.ANY",
+                  "title": "EXP. SHARE"
+                },
+                {
+                  "answer": "Your rival gives them to you in LAVARIDGE TOWN after you beat FLANNERY. The ROUTE 111 desert is closed without them.",
+                  "areas": [
+                    "LAVARIDGE TOWN",
+                    "ROUTE 111"
+                  ],
+                  "have": {
+                    "itemId": 279
+                  },
+                  "hint": "After the fourth gym.",
+                  "randomized": "Randomized.ANY",
+                  "title": "GO-GOGGLES"
+                },
+                {
+                  "answer": "STEVEN on ROUTE 120, after the invisible POKéMON on the bridge.",
+                  "areas": [
+                    "ROUTE 120",
+                    "FORTREE CITY"
+                  ],
+                  "have": {
+                    "itemId": 288
+                  },
+                  "hint": "East of FORTREE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "DEVON SCOPE"
+                },
+                {
+                  "answer": "The PRETTY PETAL flower shop on ROUTE 104.",
+                  "areas": [
+                    "ROUTE 104"
+                  ],
+                  "have": {
+                    "itemId": 268
+                  },
+                  "hint": "A shop between PETALBURG CITY and RUSTBORO CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "WAILMER PAIL"
+                },
+                {
+                  "answer": "The GLASS WORKSHOP on ROUTE 113. Walk through the falling ash to collect it.",
+                  "areas": [
+                    "ROUTE 113"
+                  ],
+                  "have": {
+                    "itemId": 270
+                  },
+                  "hint": "Where it rains ash.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SOOT SACK"
+                },
+                {
+                  "answer": "A woman in a MAUVILLE CITY house trades it for a HARBOR MAIL.",
+                  "areas": [
+                    "MAUVILLE CITY"
+                  ],
+                  "have": {
+                    "itemId": 260
+                  },
+                  "hint": "A trade in MAUVILLE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "COIN CASE"
+                }
+              ],
+              "heading": "KEY ITEMS",
+              "randomized": {
+                "answer": "MOM gives them to you in LITTLEROOT TOWN, on your way out after PROF. BIRCH hands you the POKéDEX.",
+                "areas": [
+                  "LITTLEROOT TOWN"
+                ],
+                "have": {
+                  "flag": "0x8C0"
+                },
+                "hint": "Someone at home.",
+                "randomized": "Randomized.ANY",
+                "title": "RUNNING SHOES"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Your rival, after your battle on ROUTE 119.",
+                  "areas": [
+                    "ROUTE 119"
+                  ],
+                  "have": {
+                    "itemId": 340
+                  },
+                  "hint": "North of FORTREE CITY's route.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM02 FLY"
+                },
+                {
+                  "answer": "WALLY's father in PETALBURG CITY, after you beat NORMAN.",
+                  "areas": [
+                    "PETALBURG CITY"
+                  ],
+                  "have": {
+                    "itemId": 341
+                  },
+                  "hint": "After the fifth gym.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM03 SURF"
+                },
+                {
+                  "answer": "WANDA's boyfriend in RUSTURF TUNNEL, once you break the boulder there with ROCK SMASH.",
+                  "areas": [
+                    "RUSTURF TUNNEL"
+                  ],
+                  "have": {
+                    "itemId": 342
+                  },
+                  "hint": "The tunnel east of RUSTBORO CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM04 STRENGTH"
+                },
+                {
+                  "answer": "A hiker just inside GRANITE CAVE on DEWFORD's island.",
+                  "areas": [
+                    "GRANITE CAVE"
+                  ],
+                  "have": {
+                    "itemId": 343
+                  },
+                  "hint": "A dark cave.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM05 FLASH"
+                },
+                {
+                  "answer": "The ROCK SMASH GUY in a MAUVILLE CITY house.",
+                  "areas": [
+                    "MAUVILLE CITY"
+                  ],
+                  "have": {
+                    "itemId": 344
+                  },
+                  "hint": "MAUVILLE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM06 ROCK SMASH"
+                },
+                {
+                  "answer": "WALLACE in SOOTOPOLIS CITY, after the two ancient POKéMON are calmed.",
+                  "areas": [
+                    "SOOTOPOLIS CITY"
+                  ],
+                  "have": {
+                    "itemId": 345
+                  },
+                  "hint": "Late in the story, SOOTOPOLIS CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM07 WATERFALL"
+                },
+                {
+                  "answer": "STEVEN at his house in MOSSDEEP CITY, after the SPACE CENTER.",
+                  "areas": [
+                    "MOSSDEEP CITY"
+                  ],
+                  "have": {
+                    "itemId": 346
+                  },
+                  "hint": "MOSSDEEP CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM08 DIVE"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "The CUTTER's house in RUSTBORO CITY.",
+                "areas": [
+                  "RUSTBORO CITY"
+                ],
+                "have": {
+                  "itemId": 339
+                },
+                "hint": "RUSTBORO CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "HM01 CUT"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "A house in LILYCOVE CITY.",
+                  "areas": [
+                    "LILYCOVE CITY"
+                  ],
+                  "randomized": "Randomized.ANY",
+                  "title": "MOVE DELETER"
+                },
+                {
+                  "answer": "A house in FALLARBOR TOWN. Bring a HEART SCALE.",
+                  "areas": [
+                    "FALLARBOR TOWN"
+                  ],
+                  "randomized": "Randomized.ANY",
+                  "title": "MOVE TUTOR"
+                }
+              ],
+              "heading": "SHOPS & SERVICES",
+              "randomized": {
+                "answer": "The TREASURE HUNTER's house on ROUTE 124 swaps shards found by DIVING: RED for a FIRE STONE, YELLOW for THUNDER, BLUE for WATER, GREEN for LEAF. Some lie around too: FIERY PATH (FIRE), ROUTE 119 (LEAF), NEW MAUVILLE (THUNDER), the ABANDONED SHIP (WATER), METEOR FALLS (MOON).",
+                "areas": [
+                  "ROUTE 124"
+                ],
+                "hint": "Diving treasure.",
+                "randomized": "Randomized.HIDE",
+                "title": "Evolution stones"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "The WEATHER INSTITUTE on ROUTE 119 gives it to you after you drive TEAM AQUA out.",
+                  "areas": [
+                    "ROUTE 119"
+                  ],
+                  "have": {
+                    "national": 351
+                  },
+                  "hint": "A research building.",
+                  "randomized": "Randomized.ANY",
+                  "title": "CASTFORM"
+                },
+                {
+                  "answer": "An old woman in LAVARIDGE TOWN.",
+                  "areas": [
+                    "LAVARIDGE TOWN"
+                  ],
+                  "have": {
+                    "national": 360
+                  },
+                  "hint": "A hot-spring town.",
+                  "randomized": "Randomized.ANY",
+                  "title": "WYNAUT (egg)"
+                },
+                {
+                  "answer": "Pick the ROOT or CLAW FOSSIL at the top of the MIRAGE TOWER in the ROUTE 111 desert; DEVON CORP. 2F in RUSTBORO CITY revives it.",
+                  "areas": [
+                    "MIRAGE TOWER",
+                    "ROUTE 111",
+                    "RUSTBORO CITY"
+                  ],
+                  "have": {
+                    "national": [
+                      345,
+                      347
+                    ]
+                  },
+                  "hint": "A tower in the desert.",
+                  "randomized": "Randomized.ANY",
+                  "title": "LILEEP / ANORITH"
+                },
+                {
+                  "answer": "STEVEN's house in MOSSDEEP CITY, after the HALL OF FAME.",
+                  "areas": [
+                    "MOSSDEEP CITY"
+                  ],
+                  "have": {
+                    "national": 374
+                  },
+                  "hint": "Post-game.",
+                  "randomized": "Randomized.ANY",
+                  "title": "BELDUM"
+                },
+                {
+                  "answer": "After the HALL OF FAME, catch every HOENN POKéMON (not JIRACHI or DEOXYS); PROF. BIRCH then lets you pick one.",
+                  "areas": [
+                    "LITTLEROOT TOWN"
+                  ],
+                  "have": {
+                    "national": [
+                      152,
+                      155,
+                      158
+                    ]
+                  },
+                  "hint": "Post-game, and a full HOENN DEX.",
+                  "randomized": "Randomized.ANY",
+                  "title": "CHIKORITA / CYNDAQUIL / TOTODILE"
+                }
+              ],
+              "heading": "GIFT POKéMON",
+              "randomized": "Randomized.HIDE"
+            },
+            {
+              "entries": [
+                {
+                  "answer": "The top of the SKY PILLAR on ROUTE 131, once the story's SOOTOPOLIS CITY crisis is over. Some floors crack: ride the MACH BIKE across them.",
+                  "areas": [
+                    "SKY PILLAR",
+                    "ROUTE 131"
+                  ],
+                  "have": {
+                    "national": 384
+                  },
+                  "hint": "A tower in the sea near PACIFIDLOG TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "RAYQUAZA"
+                },
+                {
+                  "answer": "After the HALL OF FAME, a scientist at the WEATHER INSTITUTE reports a drought or heavy rain on some route. A drought leads to TERRA CAVE (GROUDON), heavy rain to MARINE CAVE underwater (KYOGRE, use DIVE).",
+                  "areas": [
+                    "ROUTE 119",
+                    "TERRA CAVE",
+                    "MARINE CAVE"
+                  ],
+                  "have": {
+                    "national": [
+                      382,
+                      383
+                    ]
+                  },
+                  "hint": "Post-game - watch the weather reports.",
+                  "randomized": "Randomized.ANY",
+                  "title": "GROUDON / KYOGRE"
+                },
+                {
+                  "answer": "First open the doors: put WAILORD first and RELICANTH last in your party and read the braille in the SEALED CHAMBER (DIVE on ROUTE 134). Then, after reading each ruin's braille: DESERT RUINS (ROUTE 111) - use ROCK SMASH; ANCIENT TOMB (ROUTE 120) - use FLASH; ISLAND CAVE (ROUTE 105) - walk one full lap along the walls.",
+                  "areas": [
+                    "SEALED CHAMBER",
+                    "ROUTE 134",
+                    "DESERT RUINS",
+                    "ANCIENT TOMB",
+                    "ISLAND CAVE"
+                  ],
+                  "have": {
+                    "national": [
+                      377,
+                      378,
+                      379
+                    ]
+                  },
+                  "hint": "It starts under the sea, with two particular POKéMON.",
+                  "randomized": "Randomized.ANY",
+                  "title": "REGIROCK / REGICE / REGISTEEL"
+                },
+                {
+                  "answer": "After the HALL OF FAME, go home: a TV news flash asks the colour. RED makes LATIAS roam HOENN, BLUE makes LATIOS.",
+                  "areas": [
+                    "LITTLEROOT TOWN"
+                  ],
+                  "have": {
+                    "national": [
+                      380,
+                      381
+                    ]
+                  },
+                  "hint": "Post-game, at home.",
+                  "randomized": "Randomized.ANY",
+                  "title": "LATIAS / LATIOS"
+                },
+                {
+                  "answer": "Invisible ones sit on ROUTES 119 and 120 and in FORTREE CITY. The DEVON SCOPE reveals them.",
+                  "areas": [
+                    "ROUTE 119",
+                    "ROUTE 120",
+                    "FORTREE CITY"
+                  ],
+                  "have": {
+                    "national": 352
+                  },
+                  "hint": "You can't see it.",
+                  "randomized": "Randomized.ANY",
+                  "title": "KECLEON"
+                }
+              ],
+              "heading": "LEGENDARY POKéMON",
+              "randomized": "Randomized.HIDE"
+            }
+          ],
+          "title": "WHERE IS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "A TEAM AQUA grunt fled into RUSTURF TUNNEL, east of RUSTBORO CITY. Beat him there.",
+                  "areas": [
+                    "RUSTBORO CITY",
+                    "RUSTURF TUNNEL"
+                  ],
+                  "hint": "Follow the thief east.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Where are the stolen DEVON GOODS?"
+                },
+                {
+                  "answer": "Your father NORMAN battles you once you have four badges.",
+                  "areas": [
+                    "PETALBURG CITY"
+                  ],
+                  "hint": "Come back with more badges.",
+                  "randomized": "Randomized.ANY",
+                  "title": "PETALBURG CITY's gym won't let me in"
+                }
+              ],
+              "heading": "EARLY GAME",
+              "randomized": {
+                "answer": "MR. BRINEY sails you from his cottage on ROUTE 104 once you've rescued his PEEKO from TEAM AQUA in RUSTURF TUNNEL.",
+                "areas": [
+                  "ROUTE 104",
+                  "RUSTURF TUNNEL"
+                ],
+                "hint": "An old sailor lost his pet.",
+                "randomized": "Randomized.ANY",
+                "title": "How do I get to DEWFORD TOWN?"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "You need the GO-GOGGLES, from your rival in LAVARIDGE TOWN after the fourth badge.",
+                  "areas": [
+                    "ROUTE 111"
+                  ],
+                  "hint": "Protect your eyes.",
+                  "randomized": "Randomized.ANY",
+                  "title": "A sandstorm keeps pushing me back on ROUTE 111"
+                },
+                {
+                  "answer": "It's a KECLEON. Get the DEVON SCOPE from STEVEN on ROUTE 120, then use it on the blocked spot.",
+                  "areas": [
+                    "FORTREE CITY",
+                    "ROUTE 120"
+                  ],
+                  "hint": "Look east of FORTREE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Something invisible blocks FORTREE CITY's gym"
+                }
+              ],
+              "heading": "MID GAME",
+              "randomized": {
+                "answer": "They leave after the scene at METEOR FALLS - go north from MAUVILLE CITY on ROUTE 111, then west on ROUTE 113 to FALLARBOR TOWN and ROUTE 114.",
+                "areas": [
+                  "ROUTE 112",
+                  "METEOR FALLS",
+                  "MT. CHIMNEY"
+                ],
+                "hint": "Go around the mountain.",
+                "randomized": "Randomized.ANY",
+                "title": "TEAM MAGMA blocks the cable car on ROUTE 112"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Calm the two ancient POKéMON first: WALLACE sends you to the SKY PILLAR on ROUTE 131.",
+                  "areas": [
+                    "SOOTOPOLIS CITY",
+                    "SKY PILLAR"
+                  ],
+                  "hint": "Someone in SOOTOPOLIS CITY knows what to do.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SOOTOPOLIS CITY's gym is closed"
+                },
+                {
+                  "answer": "It's up a waterfall: you need HM07 WATERFALL (from WALLACE) and the RAIN BADGE.",
+                  "areas": [
+                    "EVER GRANDE CITY",
+                    "ROUTE 128"
+                  ],
+                  "hint": "Go up.",
+                  "randomized": "Randomized.ANY",
+                  "title": "How do I reach EVER GRANDE CITY?"
+                }
+              ],
+              "heading": "LATE GAME",
+              "randomized": {
+                "answer": "It sits inside a crater: DIVE down on ROUTE 126 and surface inside.",
+                "areas": [
+                  "SOOTOPOLIS CITY",
+                  "ROUTE 126"
+                ],
+                "hint": "From below.",
+                "randomized": "Randomized.ANY",
+                "title": "How do I get into SOOTOPOLIS CITY?"
+              }
+            }
+          ],
+          "title": "STUCK?"
+        }
+      ]
+    }
+  },
+  "kind": "pokedaisy-reference-text",
+  "schema": 1,
+  "title": "Emerald"
+}

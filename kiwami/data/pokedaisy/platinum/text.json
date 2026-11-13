@@ -1,0 +1,309 @@
+{
+  "game": "platinum",
+  "guides": {
+    "PLATINUM": {
+      "pages": [
+        {
+          "sections": [
+            {
+              "heading": "WILD POKéMON",
+              "randomized": {
+                "answer": "Two of the grass's slots follow the clock: one pair of POKéMON in the morning (4 AM to 10 AM), another by day (until 8 PM) and another at night. HERE shows the list for the time on your DS clock, which is your device's.",
+                "hint": "Look at the clock.",
+                "randomized": "Randomized.ANY",
+                "title": "Why did the POKéMON in this grass change?"
+              }
+            },
+            {
+              "heading": "FIELD MOVES",
+              "randomized": {
+                "answer": "ROCK SMASH needs the COAL BADGE (ROARK), CUT the FOREST BADGE (GARDENIA), DEFOG the RELIC BADGE (FANTINA), FLY the COBBLE BADGE (MAYLENE), SURF the FEN BADGE (CRASHER WAKE), STRENGTH the MINE BADGE (BYRON), ROCK CLIMB the ICICLE BADGE (CANDICE) and WATERFALL the BEACON BADGE (VOLKNER).",
+                "hint": "Each one has its own badge.",
+                "randomized": "Randomized.ANY",
+                "title": "Which badge lets me use each HM outside battle?"
+              }
+            }
+          ],
+          "title": "TIPS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "It's an item ball inside the GALACTIC WAREHOUSE in VEILSTONE CITY.",
+                  "areas": [
+                    "VEILSTONE CITY"
+                  ],
+                  "have": {
+                    "itemId": 421
+                  },
+                  "hint": "VEILSTONE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM02 FLY"
+                },
+                {
+                  "answer": "The elder gives it to you in the cave in CELESTIC TOWN.",
+                  "areas": [
+                    "CELESTIC TOWN"
+                  ],
+                  "have": {
+                    "itemId": 422
+                  },
+                  "hint": "CELESTIC TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM03 SURF"
+                },
+                {
+                  "answer": "RILEY gives it to you on IRON ISLAND.",
+                  "areas": [
+                    "IRON ISLAND"
+                  ],
+                  "have": {
+                    "itemId": 423
+                  },
+                  "hint": "IRON ISLAND.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM04 STRENGTH"
+                },
+                {
+                  "answer": "It's an item ball deep in the SOLACEON RUINS.",
+                  "areas": [
+                    "SOLACEON RUINS",
+                    "SOLACEON TOWN"
+                  ],
+                  "have": {
+                    "itemId": 424
+                  },
+                  "hint": "SOLACEON RUINS.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM05 DEFOG"
+                },
+                {
+                  "answer": "A hiker gives it to you in OREBURGH GATE.",
+                  "areas": [
+                    "OREBURGH GATE"
+                  ],
+                  "have": {
+                    "itemId": 425
+                  },
+                  "hint": "OREBURGH GATE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM06 ROCK SMASH"
+                },
+                {
+                  "answer": "JASMINE gives it to you in SUNYSHORE CITY.",
+                  "areas": [
+                    "SUNYSHORE CITY"
+                  ],
+                  "have": {
+                    "itemId": 426
+                  },
+                  "hint": "SUNYSHORE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM07 WATERFALL"
+                },
+                {
+                  "answer": "It's an item ball on ROUTE 217, in the snow.",
+                  "areas": [
+                    "ROUTE 217"
+                  ],
+                  "have": {
+                    "itemId": 427
+                  },
+                  "hint": "ROUTE 217.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM08 ROCK CLIMB"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "CYNTHIA hands it to you in ETERNA CITY.",
+                "areas": [
+                  "ETERNA CITY"
+                ],
+                "have": {
+                  "itemId": 420
+                },
+                "hint": "ETERNA CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "HM01 CUT"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "A fisherman in the gate between ROUTE 218 and JUBILIFE CITY.",
+                  "areas": [
+                    "ROUTE 218",
+                    "JUBILIFE CITY"
+                  ],
+                  "have": {
+                    "itemId": 445
+                  },
+                  "hint": "Near JUBILIFE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "OLD ROD"
+                },
+                {
+                  "answer": "A fisherman on ROUTE 209.",
+                  "areas": [
+                    "ROUTE 209"
+                  ],
+                  "have": {
+                    "itemId": 446
+                  },
+                  "hint": "ROUTE 209.",
+                  "randomized": "Randomized.ANY",
+                  "title": "GOOD ROD"
+                },
+                {
+                  "answer": "A fisherman in the FIGHT AREA, after the LEAGUE.",
+                  "areas": [
+                    "FIGHT AREA"
+                  ],
+                  "have": {
+                    "itemId": 447
+                  },
+                  "hint": "The FIGHT AREA.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SUPER ROD"
+                },
+                {
+                  "answer": "PROF. ROWAN's assistant gives it to you on ROUTE 207.",
+                  "areas": [
+                    "ROUTE 207"
+                  ],
+                  "have": {
+                    "itemId": 443
+                  },
+                  "hint": "ROUTE 207.",
+                  "randomized": "Randomized.ANY",
+                  "title": "VS SEEKER"
+                },
+                {
+                  "answer": "The UNDERGROUND MAN gives it to you in his house in ETERNA CITY.",
+                  "areas": [
+                    "ETERNA CITY"
+                  ],
+                  "have": {
+                    "itemId": 428
+                  },
+                  "hint": "ETERNA CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "EXPLORER KIT"
+                },
+                {
+                  "answer": "PROF. ROWAN gives it to you in SANDGEM TOWN once you've seen every POKéMON in the SINNOH DEX.",
+                  "areas": [
+                    "SANDGEM TOWN"
+                  ],
+                  "have": {
+                    "itemId": 431
+                  },
+                  "hint": "SANDGEM TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "POKé RADAR"
+                }
+              ],
+              "heading": "KEY ITEMS",
+              "randomized": {
+                "answer": "The cycle shop's owner in ETERNA CITY gives it to you once you've freed him from the top floor of TEAM GALACTIC's building there.",
+                "areas": [
+                  "ETERNA CITY"
+                ],
+                "have": {
+                  "itemId": 450
+                },
+                "hint": "ETERNA CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "BICYCLE"
+              }
+            }
+          ],
+          "title": "WHERE IS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Use DEFOG (HM05, from the SOLACEON RUINS; it needs the RELIC BADGE).",
+                  "areas": [
+                    "ROUTE 210"
+                  ],
+                  "have": {
+                    "itemId": 424
+                  },
+                  "hint": "A field move clears it.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Thick fog on ROUTE 210"
+                },
+                {
+                  "answer": "Beat the grunts in FLOAROMA MEADOW: one of them drops the WORKS KEY there.",
+                  "areas": [
+                    "VALLEY WINDWORKS",
+                    "FLOAROMA MEADOW"
+                  ],
+                  "have": {
+                    "itemId": 438
+                  },
+                  "hint": "Somebody has the key.",
+                  "randomized": "Randomized.ANY",
+                  "title": "The VALLEY WINDWORKS is locked"
+                },
+                {
+                  "answer": "It opens with the STORAGE KEY. After what happens at LAKE ACUITY, a grunt turns up in VEILSTONE CITY: talk to him and he drops it.",
+                  "areas": [
+                    "VEILSTONE CITY"
+                  ],
+                  "have": {
+                    "itemId": 463
+                  },
+                  "hint": "A key in VEILSTONE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Can't get into the GALACTIC WAREHOUSE"
+                },
+                {
+                  "answer": "The GALACTIC KEY is an item ball on the HQ's B2F.",
+                  "areas": [
+                    "VEILSTONE CITY"
+                  ],
+                  "have": {
+                    "itemId": 440
+                  },
+                  "hint": "Look downstairs.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Locked doors in the GALACTIC HQ"
+                },
+                {
+                  "answer": "Small cracked rocks break with ROCK SMASH, big round ones move with STRENGTH, rocky walls are climbed with ROCK CLIMB. WHERE IS has each HM.",
+                  "hint": "A field move.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Rocks in the way"
+                }
+              ],
+              "heading": "BLOCKED PATHS",
+              "randomized": {
+                "answer": "They need the SECRETPOTION, which CYNTHIA gives you at VALOR LAKEFRONT. Talk to them with it in your bag.",
+                "areas": [
+                  "ROUTE 210"
+                ],
+                "have": {
+                  "itemId": 464
+                },
+                "hint": "A medicine.",
+                "randomized": "Randomized.ANY",
+                "title": "PSYDUCK block ROUTE 210"
+              }
+            }
+          ],
+          "title": "STUCK?"
+        }
+      ]
+    }
+  },
+  "kind": "pokedaisy-reference-text",
+  "schema": 1,
+  "title": "Platinum"
+}

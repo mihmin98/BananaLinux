@@ -1,0 +1,12 @@
+{
+  "game": "platinum",
+  "kind": "pokedaisy-reference-releases",
+  "releases": [
+    {
+      "sha1": "0862ec35b24de5c7e2dcb88c9eea0873110d755c",
+      "title": "Pokémon Platinum"
+    }
+  ],
+  "schema": 1,
+  "title": "Platinum"
+}

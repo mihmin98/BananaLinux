@@ -640,6 +640,7 @@ namespace banana
 			add(SS, "gamepad", "Pokémon companion", "The GBA Pokémon games' pages on the second screen, as on the DS. Inspired by PokeDaisy by Lidor Itzhari.",
 				menu, "pokemon_companion", { "Off", "On" }, { "off", "on" });
 			items.back().hints = { "No companion.", "Battle, party, a guide, the map and more, in Ruby, Sapphire, Emerald, FireRed, LeafGreen and the ROM hacks Unbound, Gaia, Glazed, Heart & Soul, Lazarus, Seaglass and SoulGold. Needs Second screen on." };
+			Kiwami::rows(*this, SS);	// kiwami: the Pokémon companion for the Game Boy and the Game Boy Color
 			// (the DS companion's challenge mode for the GBA games: gba/host.h's Session, read at each game's start)
 			add(SS, "gamepad", "Challenge mode", "For a Nuzlocke-style run: the companion keeps your first encounter in each area and the Pokémon you lost, as the DS one does (Here and Log pages). Needs the Pokémon companion on.",
 				menu, "gba_challenge", { "Off", "On" }, { "off", "on" });

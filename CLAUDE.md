@@ -159,6 +159,12 @@ manual dispatch.
 - `ui/rnds/` — ROCKNIXDS Pixel's engine, **imported** from ROCKNIXDS by `tools/import-rnds.sh`. Treat as vendored:
   `ui/rnds/UPSTREAM` lists the local changes that must be carried into ROCKNIXDS before re-importing (re-import
   overwrites them). `ui/assets/overrides/` is copied over the imported assets.
+- `ui/src/kiwami/gbpk/` — the fork's Game Boy Pokémon companion (Red to Crystal on the game panel, `kiwami/GB-POKEMON.md`).
+  It is **GPL-3.0** with PokeDaisy's 7(b) attribution term (its own `LICENSE` and `NOTICE`, the header in every file),
+  so **banana-ui as the fork builds it is a GPL-3.0 work as a whole**, and none of it can go to upstream (MIT). It plugs
+  into upstream's DS companion (`ui/src/nds/`) through `kiwami:` hooks whose callees are header-only. Its data files are
+  made by `kiwami/tools/pokedaisy-extract.py` and `pret-extract.py`, never edited by hand; `kiwami/data/pokedaisy/` is
+  reference data that isn't in the image.
 - `system/bananad/` — `bananad.c` (single C file: sleep/lid/power key, LEDs, ALSA routing, volume/brightness keys,
   battery guard, dimming) and `banana-panel-tune.c`. Config `/etc/banana/bananad.conf`, overridden by
   `/data/banana/bananad.conf`; reloaded on SIGHUP. Wakes banana-ui with SIGUSR1 after resume.

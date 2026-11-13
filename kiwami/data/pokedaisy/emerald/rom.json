@@ -1,0 +1,423 @@
+{
+  "game": "emerald",
+  "kind": "pokedaisy-reference-rom",
+  "schema": 1,
+  "tables": {
+    "EMERALD_DEX_FLAGS": {
+      "block": "DexFlagBlock.SAVE_BLOCK_2",
+      "bytes": 52,
+      "caught": "0x28",
+      "seen": "0x5C",
+      "seenCopies": [
+        2440,
+        15140
+      ]
+    },
+    "FIELD_ITEMS_EMERALD": {
+      "checkBagHasItem": "0x80D6724",
+      "codeCrcs": [
+        "0x7D0D07B6",
+        "0x519C39C0",
+        "0x312F6576",
+        "0x379EF742",
+        "0x2532A407"
+      ],
+      "fieldControlsLocked": "0x8098E6C",
+      "fly": {
+        "badgeFlag": 2156,
+        "codeCrcs": [
+          "0xBCF97BF3",
+          "0x13BE1A7A",
+          "0x4B625BC4",
+          "0xF9959006",
+          "0xB9FB85A7",
+          "0xB037C8AF",
+          "0x74DBCE3A",
+          "0x2F1D18CA",
+          "0xA284286D"
+        ],
+        "count": 50,
+        "destinations": "0x85A1E3C",
+        "extraMapsecs": [
+          58
+        ],
+        "fadeScreen": "0x80ABCD0",
+        "firstMapsec": 0,
+        "flagGet": "0x809D790",
+        "flyTypes": [
+          2,
+          4
+        ],
+        "getMapsecType": "0x8123D58",
+        "healWarp": {
+          "femaleHeal": 13,
+          "genderMapsec": 0,
+          "maleHeal": 12,
+          "returnToField": "0x80B69DC",
+          "saveBlock2Ptr": "0x3005D90",
+          "special": [
+            [
+              15,
+              11
+            ],
+            [
+              58,
+              22
+            ]
+          ],
+          "toHealLocation": "0x8084CCC",
+          "toMapWarp": "0x8084C28"
+        },
+        "lockControls": "0x8098E54",
+        "partyMenuSlotId": "0x203CED1",
+        "setFlyWarpDestination": "0x0",
+        "setUpFieldMoveFly": "0x81B5884",
+        "unlockControls": "0x8098E60"
+      },
+      "items": "0x85839A0",
+      "party": {
+        "addBagItem": "0x80D6928",
+        "codeCrcs": [
+          "0x9670EBDE",
+          "0x8D555FF8",
+          "0xEADAC6C9",
+          "0x75BC5970"
+        ],
+        "getMonData": "0x806A518",
+        "itemCount": 377,
+        "itemEffect": "0x806BD04",
+        "party": "0x20244EC",
+        "partyCount": "0x20244E9",
+        "scratch": "0x203FFF0",
+        "setMonData": "0x806ACAC",
+        "unholdablePockets": [
+          5,
+          3
+        ],
+        "useFuncs": [
+          "0x80FDEA0",
+          "0x80FDEF4",
+          "0x80FDF10",
+          "0x80FE0BC"
+        ]
+      },
+      "pc": {
+        "codeCrcs": [
+          "0xEF3698BA",
+          "0x81188148"
+        ],
+        "pcFn": "0x80C7579",
+        "setupScript": "0x8098EF8",
+        "special": 63,
+        "specials": "0x81DBA64"
+      },
+      "removeBagItem": "0x80D6AA4",
+      "repelVar": 16417,
+      "varGet": "0x809D694",
+      "varSet": "0x809D6B0"
+    },
+    "FLASH_EMERALD": {
+      "badgeFlag": 2152,
+      "codeCrcs": [
+        "0xBCF97BF3",
+        "0x532E8E01",
+        "0x39FAB5C6",
+        "0x698BF3CB"
+      ],
+      "fieldCallbacks": [
+        "0x8137178",
+        "0x8179918"
+      ],
+      "flagGet": "0x809D790",
+      "litFlag": 2184,
+      "mapHeader": "0x2037318",
+      "menuFieldCallback": "0x3005DB0",
+      "partyMenuSlotId": "0x203CED1",
+      "postMenuFieldCallback": "0x203CEEC",
+      "setUpFieldMoveFlash": "0x81370FC"
+    },
+    "FLY_EMERALD": {
+      "badgeFlag": 2156,
+      "codeCrcs": [
+        "0xBCF97BF3",
+        "0x13BE1A7A",
+        "0x4B625BC4",
+        "0xF9959006",
+        "0xB9FB85A7",
+        "0xB037C8AF",
+        "0x74DBCE3A",
+        "0x2F1D18CA",
+        "0xA284286D"
+      ],
+      "count": 50,
+      "destinations": "0x85A1E3C",
+      "extraMapsecs": [
+        58
+      ],
+      "fadeScreen": "0x80ABCD0",
+      "firstMapsec": 0,
+      "flagGet": "0x809D790",
+      "flyTypes": [
+        2,
+        4
+      ],
+      "getMapsecType": "0x8123D58",
+      "healWarp": {
+        "femaleHeal": 13,
+        "genderMapsec": 0,
+        "maleHeal": 12,
+        "returnToField": "0x80B69DC",
+        "saveBlock2Ptr": "0x3005D90",
+        "special": [
+          [
+            15,
+            11
+          ],
+          [
+            58,
+            22
+          ]
+        ],
+        "toHealLocation": "0x8084CCC",
+        "toMapWarp": "0x8084C28"
+      },
+      "lockControls": "0x8098E54",
+      "partyMenuSlotId": "0x203CED1",
+      "setFlyWarpDestination": "0x0",
+      "setUpFieldMoveFly": "0x81B5884",
+      "unlockControls": "0x8098E60"
+    },
+    "GUIDE_TABLES_EMERALD": {
+      "flagBytes": 300,
+      "guide": "GuideId.EMERALD",
+      "learnsets": "0x832937C",
+      "mapGroups": "0x8486578",
+      "probeTrainer": 265,
+      "sb1FlagsOff": "0x1270",
+      "sb1VarsOff": "0x139C",
+      "trainers": "0x8310030",
+      "wildHeaders": "0x8552D48"
+    },
+    "HEAL_WARP_EMERALD": {
+      "femaleHeal": 13,
+      "genderMapsec": 0,
+      "maleHeal": 12,
+      "returnToField": "0x80B69DC",
+      "saveBlock2Ptr": "0x3005D90",
+      "special": [
+        [
+          15,
+          11
+        ],
+        [
+          58,
+          22
+        ]
+      ],
+      "toHealLocation": "0x8084CCC",
+      "toMapWarp": "0x8084C28"
+    },
+    "PARTY_ITEMS_EMERALD": {
+      "addBagItem": "0x80D6928",
+      "codeCrcs": [
+        "0x9670EBDE",
+        "0x8D555FF8",
+        "0xEADAC6C9",
+        "0x75BC5970"
+      ],
+      "getMonData": "0x806A518",
+      "itemCount": 377,
+      "itemEffect": "0x806BD04",
+      "party": "0x20244EC",
+      "partyCount": "0x20244E9",
+      "scratch": "0x203FFF0",
+      "setMonData": "0x806ACAC",
+      "unholdablePockets": [
+        5,
+        3
+      ],
+      "useFuncs": [
+        "0x80FDEA0",
+        "0x80FDEF4",
+        "0x80FDF10",
+        "0x80FE0BC"
+      ]
+    },
+    "PC_EMERALD": {
+      "codeCrcs": [
+        "0xEF3698BA",
+        "0x81188148"
+      ],
+      "pcFn": "0x80C7579",
+      "setupScript": "0x8098EF8",
+      "special": 63,
+      "specials": "0x81DBA64"
+    },
+    "POKEDEX_EMERALD": {
+      "abilityNames": "0x831B6DB",
+      "entries": "0x856B5B0",
+      "entryStride": 32,
+      "evolutions": "0x832531C",
+      "flags": {
+        "block": "DexFlagBlock.SAVE_BLOCK_2",
+        "bytes": 52,
+        "caught": "0x28",
+        "seen": "0x5C",
+        "seenCopies": [
+          2440,
+          15140
+        ]
+      },
+      "footprints": "0x856E694",
+      "frontPics": "0x830A18C",
+      "nationalMagic": 218,
+      "nationalMagicOff": 2,
+      "palettes": "0x8303678",
+      "regionalCount": 202,
+      "regionalOrder": "0x831DFB8",
+      "speciesInfo": "0x83203CC",
+      "speciesToNational": "0x831DC82",
+      "tmhmLearnsets": "0x831E898",
+      "tmhmMoves": "0x8615B94"
+    },
+    "TM_EMERALD": {
+      "cleanupOverworld": "0x8085D34",
+      "codeCrcs": [
+        "0xF253CF6E",
+        "0x34D2BE1C",
+        "0x99B75656",
+        "0x6228571D",
+        "0x224FD691",
+        "0x4A3D66F5",
+        "0xF9959006",
+        "0xB9FB85A7",
+        "0xB037C8AF"
+      ],
+      "fadeScreen": "0x80ABCD0",
+      "initPartyMenu": "0x81B01E0",
+      "itemUseCb": "0x3006328",
+      "itemUseCbTmhm": "0x81B6DC4",
+      "lockControls": "0x8098E54",
+      "mainCallback2": "0x30022C4",
+      "partyMenu": "0x203CEC8",
+      "partyMenuSlotOff": 9,
+      "returnToField": "0x80860C8",
+      "setMainCallback2": "0x8000540",
+      "showPartyMenuForItemUse": "0x81B617C",
+      "specialVarItemId": "0x203CE7C",
+      "unlockControls": "0x8098E60"
+    },
+    "TRADE_EVO_EMERALD": {
+      "afterEvolution": "0x30061E8",
+      "beginEvolutionScene": "0x813DA40",
+      "codeCrcs": [
+        "0xA970F637",
+        "0x74E72426",
+        "0x224FD691",
+        "0xB9FB85A7"
+      ],
+      "getEvolutionTarget": "0x806D098",
+      "lockControls": "0x8098E54",
+      "returnToField": "0x80860C8"
+    },
+    "TRAINER_CARD_EMERALD": {
+      "badgeFlag": 2151,
+      "dexFlags": {
+        "block": "DexFlagBlock.SAVE_BLOCK_2",
+        "bytes": 52,
+        "caught": "0x28",
+        "seen": "0x5C",
+        "seenCopies": [
+          2440,
+          15140
+        ]
+      },
+      "flagsOff": "0x1270",
+      "frontierBpOff": "0xEBA",
+      "frontierSymbolFlag": 2244,
+      "gameStatsOff": "0x159C",
+      "museumWinnersOff": "0x2F90",
+      "nationalFlag": 2198,
+      "nationalMagic": 218,
+      "nationalMagicOff": "0x1A",
+      "nationalVar": 16454,
+      "nationalVarValue": 770,
+      "pokedexFlag": 2145,
+      "style": "CardStyle.HOENN",
+      "varsOff": "0x139C"
+    },
+    "emerald.itemDescs": {
+      "base": "0x85839A0",
+      "preset": "vanilla"
+    },
+    "emerald_retail.guideTables": {
+      "flagBytes": 300,
+      "guide": "GuideId.EMERALD",
+      "learnsets": "0x832937C",
+      "mapGroups": "0x8486578",
+      "probeTrainer": 265,
+      "sb1FlagsOff": "0x1270",
+      "sb1VarsOff": "0x139C",
+      "trainers": "0x8310030",
+      "wildHeaders": "0x8552D48"
+    },
+    "emerald_retail.itemDescs": {
+      "base": "0x85839A0",
+      "preset": "vanilla"
+    },
+    "emerald_retail.pokedex": {
+      "abilityNames": "0x831B6DB",
+      "entries": "0x856B5B0",
+      "entryStride": 32,
+      "evolutions": "0x832531C",
+      "flags": {
+        "block": "DexFlagBlock.SAVE_BLOCK_2",
+        "bytes": 52,
+        "caught": "0x28",
+        "seen": "0x5C",
+        "seenCopies": [
+          2440,
+          15140
+        ]
+      },
+      "footprints": "0x856E694",
+      "frontPics": "0x830A18C",
+      "nationalMagic": 218,
+      "nationalMagicOff": 2,
+      "palettes": "0x8303678",
+      "regionalCount": 202,
+      "regionalOrder": "0x831DFB8",
+      "speciesInfo": "0x83203CC",
+      "speciesToNational": "0x831DC82",
+      "tmhmLearnsets": "0x831E898",
+      "tmhmMoves": "0x8615B94"
+    },
+    "emerald_retail.trainerCard": {
+      "badgeFlag": 2151,
+      "dexFlags": {
+        "block": "DexFlagBlock.SAVE_BLOCK_2",
+        "bytes": 52,
+        "caught": "0x28",
+        "seen": "0x5C",
+        "seenCopies": [
+          2440,
+          15140
+        ]
+      },
+      "flagsOff": "0x1270",
+      "frontierBpOff": "0xEBA",
+      "frontierSymbolFlag": 2244,
+      "gameStatsOff": "0x159C",
+      "museumWinnersOff": "0x2F90",
+      "nationalFlag": 2198,
+      "nationalMagic": 218,
+      "nationalMagicOff": "0x1A",
+      "nationalVar": 16454,
+      "nationalVarValue": 770,
+      "pokedexFlag": 2145,
+      "style": "CardStyle.HOENN",
+      "varsOff": "0x139C"
+    }
+  },
+  "title": "Emerald"
+}

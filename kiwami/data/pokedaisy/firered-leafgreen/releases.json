@@ -1,0 +1,24 @@
+{
+  "game": "firered-leafgreen",
+  "kind": "pokedaisy-reference-releases",
+  "releases": [
+    {
+      "sha1": "41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
+      "title": "Pokémon FireRed"
+    },
+    {
+      "sha1": "dd5945db9b930750cb39d00c84da8571feebf417",
+      "title": "Pokémon FireRed"
+    },
+    {
+      "sha1": "574fa542ffebb14be69902d1d36f1ec0a4afd71e",
+      "title": "Pokémon LeafGreen"
+    },
+    {
+      "sha1": "7862c67bdecbe21d1d69ce082ce34327e1c6ed5e",
+      "title": "Pokémon LeafGreen"
+    }
+  ],
+  "schema": 1,
+  "title": "FireRed and LeafGreen"
+}

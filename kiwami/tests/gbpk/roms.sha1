@@ -1,0 +1,43 @@
+# The ROMs the Game Boy Pokémon companion's ROM tests expect (kiwami/GB-POKEMON.md, "The ROMs for the tests"), checked
+# in the player's own folders by kiwami/tests/gbpk-roms.sh. None of them is in the repository. One line a file:
+#   <sha1> <system> <required|optional> <game> <file name: No-Intro's for a dump, the file's own for a hack>
+# system is the folder the file is looked for in: gb in GB_ROMS (~/gb-companion/roms), gba in GBA_ROMS
+# (~/gba-companion/roms), nds in NDS_ROMS (~/nds-companion/roms). A file is found by its SHA-1, whatever its name. The
+# SHA-1s are PokeDaisy's (GameTitles.kt at 135ac809): pret's roms.sha1 for pokered, pokeyellow, pokegold, pokecrystal,
+# pokeruby, pokefirered, pokeemerald, pokeplatinum and pokeheartgold, No-Intro's for Black, White, Black 2 and White 2;
+# the ROM hacks' are their files' own.
+# The gb lines' games are the data files' keys, and their SHA-1s those files' releases (gbpk-units checks both ways).
+
+# Game Boy and Game Boy Color: what the companion's ROM tests read
+ea9bcae617fdf159b045185467ae58b2e4a48b9a gb required red Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb
+d7037c83e1ae5b39bde3c30787637ba1d4c48ce2 gb required blue Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb
+cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1 gb required yellow Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb
+d8b8a3600a465308c9953dfa04f0081c05bdcb94 gb required gold Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc
+49b163f7e57702bc939d642a18f591de55d92dae gb required silver Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc
+f2f52230b536214ef7c9924f483392993e226cfb gb required crystal Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc
+f4cd194bdee0d04ca4eac29e09b8e4e9d818c133 gb optional crystal Pokemon - Crystal Version (USA).gbc
+a0fc810f1d4e124434f7be2c989ab5b5892ddf36 gb optional crystal Pokemon - Crystal Version (Australia).gbc
+# ROM hacks read as the retail game they patch: roms.patches says what each changes, and gbpk-roms.sh checks it
+e7bfd2c2245597da5016e682fca8f19665c6cfd0 gb optional red Pokemon - Red Version (USA, Europe) (Fast Red) (v1.0) (80C).gb
+5030c1114554207191f2e6ffb1f2920cf3d7c668 gb optional blue Pokemon - Blue Version (USA, Europe) (Fast Blue) (v1.0) (80C).gb
+
+# Game Boy Advance and DS: the other mainline games PokeDaisy supports (English releases), for a later comparison of
+# upstream's guides with PokeDaisy's tables; nothing reads them yet, and none is required
+f28b6ffc97847e94a6c21a63cacf633ee5c8df1e gba optional ruby Pokemon - Ruby Version (USA).gba
+610b96a9c9a7d03d2bafb655e7560ccff1a6d894 gba optional ruby Pokemon - Ruby Version (USA, Europe) (Rev 1).gba
+5b64eacf892920518db4ec664e62a086dd5f5bc8 gba optional ruby Pokemon - Ruby Version (USA, Europe) (Rev 2).gba
+3ccbbd45f8553c36463f13b938e833f652b793e4 gba optional sapphire Pokemon - Sapphire Version (USA).gba
+4722efb8cd45772ca32555b98fd3b9719f8e60a9 gba optional sapphire Pokemon - Sapphire Version (USA, Europe) (Rev 1).gba
+89b45fb172e6b55d51fc0e61989775187f6fe63c gba optional sapphire Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba
+f3ae088181bf583e55daf962a92bb46f4f1d07b7 gba optional emerald Pokemon - Emerald Version (USA, Europe).gba
+41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc gba optional firered Pokemon - FireRed Version (USA).gba
+dd5945db9b930750cb39d00c84da8571feebf417 gba optional firered Pokemon - FireRed Version (USA, Europe) (Rev 1).gba
+574fa542ffebb14be69902d1d36f1ec0a4afd71e gba optional leafgreen Pokemon - LeafGreen Version (USA).gba
+7862c67bdecbe21d1d69ce082ce34327e1c6ed5e gba optional leafgreen Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba
+0862ec35b24de5c7e2dcb88c9eea0873110d755c nds optional platinum Pokemon - Platinum Version (USA) (Rev 1).nds
+4fcded0e2713dc03929845de631d0932ea2b5a37 nds optional heartgold Pokemon - HeartGold Version (USA).nds
+f8dc38ea20c17541a43b58c5e6d18c1732c7e582 nds optional soulsilver Pokemon - SoulSilver Version (USA).nds
+26ad0b9967aa279c4a266ee69f52b9b2332399a5 nds optional black Pokemon - Black Version (USA, Europe) (NDSi Enhanced).nds
+bc696a0dfb448c7b3a8a206f0f8214411a039208 nds optional white Pokemon - White Version (USA, Europe) (NDSi Enhanced).nds
+e51e6dfb8678a3d19dcd2a10691b96a569ca0abb nds optional black2 Pokemon - Black Version 2 (USA, Europe) (NDSi Enhanced).nds
+b5d7490be7b415b8f1e672a53e978a9cc667e56a nds optional white2 Pokemon - White Version 2 (USA, Europe) (NDSi Enhanced).nds

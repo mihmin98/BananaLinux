@@ -1,0 +1,954 @@
+{
+  "game": "heartgold-soulsilver",
+  "guides": {
+    "HEARTGOLD": {
+      "pages": [
+        {
+          "sections": [
+            {
+              "heading": "WILD POKéMON",
+              "randomized": {
+                "answer": "The grass has a list for the morning (4 AM to 10 AM), the day (until 8 PM) and the night. At night the GOOD and SUPER ROD can also hook a night fish. HERE shows the list for the time on your DS clock, which is your device's.",
+                "hint": "Look at the clock.",
+                "randomized": "Randomized.ANY",
+                "title": "Why did the POKéMON on this route change?"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Beating her only lets you into the DRAGON'S DEN behind her gym. The elder in its shrine gives you the RISING BADGE once you've answered his questions; a wrong answer just gets the question again.",
+                  "hint": "Behind her gym.",
+                  "randomized": "Randomized.ANY",
+                  "title": "CLAIR didn't give me a badge"
+                }
+              ],
+              "heading": "FIELD MOVES",
+              "randomized": {
+                "answer": "ROCK SMASH needs the ZEPHYR BADGE (FALKNER), CUT the HIVE BADGE (BUGSY), STRENGTH the PLAIN BADGE (WHITNEY), SURF the FOG BADGE (MORTY), FLY the STORM BADGE (CHUCK), WHIRLPOOL the GLACIER BADGE (PRYCE), WATERFALL the RISING BADGE (CLAIR) and ROCK CLIMB the EARTH BADGE (BLUE).",
+                "hint": "Each one has its own badge.",
+                "randomized": "Randomized.ANY",
+                "title": "Which badge lets me use each HM outside battle?"
+              }
+            }
+          ],
+          "title": "TIPS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "A woman outside the gym in CIANWOOD CITY, as you leave after beating CHUCK.",
+                  "areas": [
+                    "CIANWOOD CITY"
+                  ],
+                  "have": {
+                    "itemId": 421
+                  },
+                  "hint": "CIANWOOD CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM02 FLY"
+                },
+                {
+                  "answer": "A gentleman in ECRUTEAK's DANCE THEATER, once you've beaten the grunt bothering the dancers there.",
+                  "areas": [
+                    "ECRUTEAK CITY"
+                  ],
+                  "have": {
+                    "itemId": 422
+                  },
+                  "hint": "ECRUTEAK CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM03 SURF"
+                },
+                {
+                  "answer": "A hiker runs into you the first time you walk onto ROUTE 42 from ECRUTEAK CITY.",
+                  "areas": [
+                    "ROUTE 42"
+                  ],
+                  "have": {
+                    "itemId": 423
+                  },
+                  "hint": "ROUTE 42.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM04 STRENGTH"
+                },
+                {
+                  "answer": "LANCE gives it to you in TEAM ROCKET's hideout in MAHOGANY TOWN, after the three ELECTRODE on B2F.",
+                  "areas": [
+                    "MAHOGANY TOWN"
+                  ],
+                  "have": {
+                    "itemId": 424
+                  },
+                  "hint": "MAHOGANY TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM05 WHIRLPOOL"
+                },
+                {
+                  "answer": "A man on ROUTE 36, just east of the odd tree.",
+                  "areas": [
+                    "ROUTE 36"
+                  ],
+                  "have": {
+                    "itemId": 425
+                  },
+                  "hint": "ROUTE 36.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM06 ROCK SMASH"
+                },
+                {
+                  "answer": "An item ball on the ICE PATH's first floor.",
+                  "areas": [
+                    "ICE PATH"
+                  ],
+                  "have": {
+                    "itemId": 426
+                  },
+                  "hint": "ICE PATH.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM07 WATERFALL"
+                },
+                {
+                  "answer": "PROF. OAK in PALLET TOWN, after you've beaten BLUE in VIRIDIAN CITY and he's called you.",
+                  "areas": [
+                    "PALLET TOWN"
+                  ],
+                  "have": {
+                    "itemId": 427
+                  },
+                  "hint": "PALLET TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM08 ROCK CLIMB"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "The charcoal man in ILEX FOREST, once you've herded both FARFETCH'D back to his apprentice. The FARFETCH'D only wander off after you've cleared SLOWPOKE WELL.",
+                "areas": [
+                  "ILEX FOREST"
+                ],
+                "have": {
+                  "itemId": 420
+                },
+                "hint": "ILEX FOREST.",
+                "randomized": "Randomized.ANY",
+                "title": "HM01 CUT"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "A man in ROUTE 32's POKéMON CENTER.",
+                  "areas": [
+                    "ROUTE 32"
+                  ],
+                  "have": {
+                    "itemId": 445
+                  },
+                  "hint": "ROUTE 32.",
+                  "randomized": "Randomized.ANY",
+                  "title": "OLD ROD"
+                },
+                {
+                  "answer": "A house in OLIVINE CITY's north-west.",
+                  "areas": [
+                    "OLIVINE CITY"
+                  ],
+                  "have": {
+                    "itemId": 446
+                  },
+                  "hint": "OLIVINE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "GOOD ROD"
+                },
+                {
+                  "answer": "The fishing brother's house on ROUTE 12, in KANTO.",
+                  "areas": [
+                    "ROUTE 12"
+                  ],
+                  "have": {
+                    "itemId": 447
+                  },
+                  "hint": "ROUTE 12.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SUPER ROD"
+                },
+                {
+                  "answer": "The flower shop in GOLDENROD CITY, once you have the PLAIN BADGE.",
+                  "areas": [
+                    "GOLDENROD CITY"
+                  ],
+                  "have": {
+                    "itemId": 477
+                  },
+                  "hint": "GOLDENROD CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SQUIRTBOTTLE"
+                },
+                {
+                  "answer": "A house in ECRUTEAK CITY: say yes.",
+                  "areas": [
+                    "ECRUTEAK CITY"
+                  ],
+                  "have": {
+                    "itemId": 471
+                  },
+                  "hint": "ECRUTEAK CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "DOWSING MCHN"
+                },
+                {
+                  "answer": "Someone in the GOLDENROD or CELADON game corner.",
+                  "areas": [
+                    "GOLDENROD CITY",
+                    "CELADON CITY"
+                  ],
+                  "have": {
+                    "itemId": 444
+                  },
+                  "hint": "A game corner.",
+                  "randomized": "Randomized.ANY",
+                  "title": "COIN CASE"
+                },
+                {
+                  "answer": "Answer the quiz on the RADIO TOWER's first floor in GOLDENROD CITY.",
+                  "areas": [
+                    "GOLDENROD CITY"
+                  ],
+                  "have": {
+                    "flag": "0x8A"
+                  },
+                  "hint": "GOLDENROD CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "RADIO CARD"
+                },
+                {
+                  "answer": "The director of LAVENDER TOWN's radio station, once the power's back on.",
+                  "areas": [
+                    "LAVENDER TOWN"
+                  ],
+                  "have": {
+                    "flag": "0x11F"
+                  },
+                  "hint": "LAVENDER TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "EXPN CARD"
+                },
+                {
+                  "answer": "The director on the RADIO TOWER's top floor, once TEAM ROCKET is gone from it. The SILVER WING comes later, from an old man in PEWTER CITY.",
+                  "areas": [
+                    "GOLDENROD CITY"
+                  ],
+                  "have": {
+                    "itemId": 483
+                  },
+                  "hint": "GOLDENROD CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "RAINBOW WING"
+                },
+                {
+                  "answer": "Beat the five dancers in a row in ECRUTEAK's DANCE THEATER.",
+                  "areas": [
+                    "ECRUTEAK CITY"
+                  ],
+                  "have": {
+                    "itemId": 474
+                  },
+                  "hint": "ECRUTEAK CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "CLEAR BELL"
+                },
+                {
+                  "answer": "PROF. ELM in NEW BARK TOWN, once you've entered the HALL OF FAME.",
+                  "areas": [
+                    "NEW BARK TOWN"
+                  ],
+                  "have": {
+                    "itemId": 456
+                  },
+                  "hint": "NEW BARK TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "S.S. TICKET"
+                },
+                {
+                  "answer": "COPYCAT in SAFFRON CITY trades it for the LOST ITEM, which VERMILION's fan club has once you've talked to her after the power's back.",
+                  "areas": [
+                    "SAFFRON CITY",
+                    "VERMILION CITY"
+                  ],
+                  "have": {
+                    "itemId": 480
+                  },
+                  "hint": "SAFFRON CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "PASS"
+                }
+              ],
+              "heading": "KEY ITEMS",
+              "randomized": {
+                "answer": "The bike shop in GOLDENROD CITY lends you one: just say yes.",
+                "areas": [
+                  "GOLDENROD CITY"
+                ],
+                "have": {
+                  "itemId": 450
+                },
+                "hint": "GOLDENROD CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "BICYCLE"
+              }
+            }
+          ],
+          "title": "WHERE IS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Go down into the BURNED TOWER first: the gym opens after what happens on its lowest floor.",
+                  "areas": [
+                    "ECRUTEAK CITY"
+                  ],
+                  "hint": "The tower in town.",
+                  "randomized": "Randomized.ANY",
+                  "title": "ECRUTEAK's gym won't let me in"
+                },
+                {
+                  "answer": "She's at the top of the lighthouse with a sick AMPHAROS. Talk to her, get the SECRETPOTION from CIANWOOD's pharmacy, and bring it back to her.",
+                  "areas": [
+                    "OLIVINE CITY",
+                    "CIANWOOD CITY"
+                  ],
+                  "have": {
+                    "itemId": 464
+                  },
+                  "hint": "The lighthouse.",
+                  "randomized": "Randomized.ANY",
+                  "title": "JASMINE isn't in OLIVINE's gym"
+                },
+                {
+                  "answer": "Over the sea west of OLIVINE CITY: you need SURF.",
+                  "areas": [
+                    "OLIVINE CITY"
+                  ],
+                  "hint": "Across the water.",
+                  "randomized": "Randomized.ANY",
+                  "title": "How do I get to CIANWOOD CITY?"
+                },
+                {
+                  "answer": "After the red GYARADOS at the LAKE OF RAGE, talk to LANCE there, then go into MAHOGANY's souvenir shop. Clearing TEAM ROCKET's hideout behind it moves him (and ends ROUTE 43's toll).",
+                  "areas": [
+                    "MAHOGANY TOWN",
+                    "LAKE OF RAGE",
+                    "ROUTE 43"
+                  ],
+                  "have": {
+                    "flag": "0xCA"
+                  },
+                  "hint": "The LAKE OF RAGE first.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Someone blocks PRYCE's gym in MAHOGANY TOWN"
+                },
+                {
+                  "answer": "It starts once you hold the FOG, STORM, MINERAL and GLACIER BADGES. The fake director on the top floor drops the BASEMENT KEY; it opens a door in the GOLDENROD TUNNEL, where the real director gives you the CARD KEY for the tower's third floor.",
+                  "areas": [
+                    "GOLDENROD CITY"
+                  ],
+                  "have": {
+                    "flag": "0xC6"
+                  },
+                  "hint": "Two keys.",
+                  "randomized": "Randomized.ANY",
+                  "title": "TEAM ROCKET took the RADIO TOWER"
+                },
+                {
+                  "answer": "Both clear once TEAM ROCKET is out of the RADIO TOWER.",
+                  "areas": [
+                    "MAHOGANY TOWN",
+                    "BLACKTHORN CITY"
+                  ],
+                  "have": {
+                    "flag": "0xC6"
+                  },
+                  "hint": "GOLDENROD first.",
+                  "randomized": "Randomized.ANY",
+                  "title": "The road east of MAHOGANY TOWN, or BLACKTHORN's gym, is blocked"
+                },
+                {
+                  "answer": "After the RISING BADGE, see PROF. ELM, then go to ECRUTEAK, get the CLEAR BELL in the DANCE THEATER and face HO-OH on the roof of the BELL TOWER. The road to the LEAGUE opens after that.",
+                  "areas": [
+                    "NEW BARK TOWN"
+                  ],
+                  "hint": "A legendary POKéMON.",
+                  "randomized": "Randomized.ANY",
+                  "title": "I'm stopped at NEW BARK TOWN's east exit"
+                }
+              ],
+              "heading": "JOHTO",
+              "randomized": {
+                "answer": "Water it with the SQUIRTBOTTLE, from GOLDENROD's flower shop once you have WHITNEY's badge. It's a POKéMON, and the battle starts.",
+                "areas": [
+                  "ROUTE 36"
+                ],
+                "have": {
+                  "itemId": 477
+                },
+                "hint": "It wants water.",
+                "randomized": "Randomized.ANY",
+                "title": "An odd tree blocks ROUTE 36"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Win seven of KANTO's badges, then find BLUE on CINNABAR ISLAND and talk to him.",
+                  "areas": [
+                    "VIRIDIAN CITY",
+                    "CINNABAR ISLAND"
+                  ],
+                  "hint": "CINNABAR ISLAND.",
+                  "randomized": "Randomized.ANY",
+                  "title": "VIRIDIAN's gym is locked"
+                },
+                {
+                  "answer": "Play the POKé FLUTE station on your POKéGEAR's radio (it needs the EXPN CARD) and talk to it.",
+                  "areas": [
+                    "ROUTE 11"
+                  ],
+                  "have": {
+                    "flag": "0x11F"
+                  },
+                  "hint": "Music wakes it.",
+                  "randomized": "Randomized.ANY",
+                  "title": "A big POKéMON sleeps by DIGLETT'S CAVE"
+                },
+                {
+                  "answer": "Beat BLUE in VIRIDIAN CITY, then see PROF. OAK in PALLET TOWN: he gives you ROCK CLIMB and has the guard at the LEAGUE's gate let you through to ROUTE 28.",
+                  "areas": [
+                    "PALLET TOWN",
+                    "ROUTE 28"
+                  ],
+                  "have": {
+                    "flag": "0x12B"
+                  },
+                  "hint": "PROF. OAK.",
+                  "randomized": "Randomized.ANY",
+                  "title": "How do I get to MT. SILVER?"
+                },
+                {
+                  "answer": "Once you're in the HALL OF FAME and have the S.S. TICKET. After the first trip it leaves OLIVINE on Monday and Friday, VERMILION on Sunday and Wednesday.",
+                  "areas": [
+                    "OLIVINE CITY",
+                    "VERMILION CITY"
+                  ],
+                  "have": {
+                    "itemId": 456
+                  },
+                  "hint": "Weekdays.",
+                  "randomized": "Randomized.ANY",
+                  "title": "When does the S.S. AQUA sail?"
+                }
+              ],
+              "heading": "KANTO",
+              "randomized": {
+                "answer": "Talk to the POWER PLANT's manager, then go into CERULEAN's gym, follow MISTY to ROUTE 25, and beat the grunt on ROUTE 24. The MACHINE PART then turns up in CERULEAN's gym: bring it back to the manager.",
+                "areas": [
+                  "ROUTE 10",
+                  "CERULEAN CITY",
+                  "ROUTE 24",
+                  "ROUTE 25"
+                ],
+                "have": {
+                  "flag": "0x118"
+                },
+                "hint": "CERULEAN CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "The power is out"
+              }
+            }
+          ],
+          "title": "STUCK?"
+        }
+      ]
+    },
+    "SOULSILVER": {
+      "pages": [
+        {
+          "sections": [
+            {
+              "heading": "WILD POKéMON",
+              "randomized": {
+                "answer": "The grass has a list for the morning (4 AM to 10 AM), the day (until 8 PM) and the night. At night the GOOD and SUPER ROD can also hook a night fish. HERE shows the list for the time on your DS clock, which is your device's.",
+                "hint": "Look at the clock.",
+                "randomized": "Randomized.ANY",
+                "title": "Why did the POKéMON on this route change?"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Beating her only lets you into the DRAGON'S DEN behind her gym. The elder in its shrine gives you the RISING BADGE once you've answered his questions; a wrong answer just gets the question again.",
+                  "hint": "Behind her gym.",
+                  "randomized": "Randomized.ANY",
+                  "title": "CLAIR didn't give me a badge"
+                }
+              ],
+              "heading": "FIELD MOVES",
+              "randomized": {
+                "answer": "ROCK SMASH needs the ZEPHYR BADGE (FALKNER), CUT the HIVE BADGE (BUGSY), STRENGTH the PLAIN BADGE (WHITNEY), SURF the FOG BADGE (MORTY), FLY the STORM BADGE (CHUCK), WHIRLPOOL the GLACIER BADGE (PRYCE), WATERFALL the RISING BADGE (CLAIR) and ROCK CLIMB the EARTH BADGE (BLUE).",
+                "hint": "Each one has its own badge.",
+                "randomized": "Randomized.ANY",
+                "title": "Which badge lets me use each HM outside battle?"
+              }
+            }
+          ],
+          "title": "TIPS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "A woman outside the gym in CIANWOOD CITY, as you leave after beating CHUCK.",
+                  "areas": [
+                    "CIANWOOD CITY"
+                  ],
+                  "have": {
+                    "itemId": 421
+                  },
+                  "hint": "CIANWOOD CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM02 FLY"
+                },
+                {
+                  "answer": "A gentleman in ECRUTEAK's DANCE THEATER, once you've beaten the grunt bothering the dancers there.",
+                  "areas": [
+                    "ECRUTEAK CITY"
+                  ],
+                  "have": {
+                    "itemId": 422
+                  },
+                  "hint": "ECRUTEAK CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM03 SURF"
+                },
+                {
+                  "answer": "A hiker runs into you the first time you walk onto ROUTE 42 from ECRUTEAK CITY.",
+                  "areas": [
+                    "ROUTE 42"
+                  ],
+                  "have": {
+                    "itemId": 423
+                  },
+                  "hint": "ROUTE 42.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM04 STRENGTH"
+                },
+                {
+                  "answer": "LANCE gives it to you in TEAM ROCKET's hideout in MAHOGANY TOWN, after the three ELECTRODE on B2F.",
+                  "areas": [
+                    "MAHOGANY TOWN"
+                  ],
+                  "have": {
+                    "itemId": 424
+                  },
+                  "hint": "MAHOGANY TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM05 WHIRLPOOL"
+                },
+                {
+                  "answer": "A man on ROUTE 36, just east of the odd tree.",
+                  "areas": [
+                    "ROUTE 36"
+                  ],
+                  "have": {
+                    "itemId": 425
+                  },
+                  "hint": "ROUTE 36.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM06 ROCK SMASH"
+                },
+                {
+                  "answer": "An item ball on the ICE PATH's first floor.",
+                  "areas": [
+                    "ICE PATH"
+                  ],
+                  "have": {
+                    "itemId": 426
+                  },
+                  "hint": "ICE PATH.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM07 WATERFALL"
+                },
+                {
+                  "answer": "PROF. OAK in PALLET TOWN, after you've beaten BLUE in VIRIDIAN CITY and he's called you.",
+                  "areas": [
+                    "PALLET TOWN"
+                  ],
+                  "have": {
+                    "itemId": 427
+                  },
+                  "hint": "PALLET TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM08 ROCK CLIMB"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "The charcoal man in ILEX FOREST, once you've herded both FARFETCH'D back to his apprentice. The FARFETCH'D only wander off after you've cleared SLOWPOKE WELL.",
+                "areas": [
+                  "ILEX FOREST"
+                ],
+                "have": {
+                  "itemId": 420
+                },
+                "hint": "ILEX FOREST.",
+                "randomized": "Randomized.ANY",
+                "title": "HM01 CUT"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "A man in ROUTE 32's POKéMON CENTER.",
+                  "areas": [
+                    "ROUTE 32"
+                  ],
+                  "have": {
+                    "itemId": 445
+                  },
+                  "hint": "ROUTE 32.",
+                  "randomized": "Randomized.ANY",
+                  "title": "OLD ROD"
+                },
+                {
+                  "answer": "A house in OLIVINE CITY's north-west.",
+                  "areas": [
+                    "OLIVINE CITY"
+                  ],
+                  "have": {
+                    "itemId": 446
+                  },
+                  "hint": "OLIVINE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "GOOD ROD"
+                },
+                {
+                  "answer": "The fishing brother's house on ROUTE 12, in KANTO.",
+                  "areas": [
+                    "ROUTE 12"
+                  ],
+                  "have": {
+                    "itemId": 447
+                  },
+                  "hint": "ROUTE 12.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SUPER ROD"
+                },
+                {
+                  "answer": "The flower shop in GOLDENROD CITY, once you have the PLAIN BADGE.",
+                  "areas": [
+                    "GOLDENROD CITY"
+                  ],
+                  "have": {
+                    "itemId": 477
+                  },
+                  "hint": "GOLDENROD CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SQUIRTBOTTLE"
+                },
+                {
+                  "answer": "A house in ECRUTEAK CITY: say yes.",
+                  "areas": [
+                    "ECRUTEAK CITY"
+                  ],
+                  "have": {
+                    "itemId": 471
+                  },
+                  "hint": "ECRUTEAK CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "DOWSING MCHN"
+                },
+                {
+                  "answer": "Someone in the GOLDENROD or CELADON game corner.",
+                  "areas": [
+                    "GOLDENROD CITY",
+                    "CELADON CITY"
+                  ],
+                  "have": {
+                    "itemId": 444
+                  },
+                  "hint": "A game corner.",
+                  "randomized": "Randomized.ANY",
+                  "title": "COIN CASE"
+                },
+                {
+                  "answer": "Answer the quiz on the RADIO TOWER's first floor in GOLDENROD CITY.",
+                  "areas": [
+                    "GOLDENROD CITY"
+                  ],
+                  "have": {
+                    "flag": "0x8A"
+                  },
+                  "hint": "GOLDENROD CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "RADIO CARD"
+                },
+                {
+                  "answer": "The director of LAVENDER TOWN's radio station, once the power's back on.",
+                  "areas": [
+                    "LAVENDER TOWN"
+                  ],
+                  "have": {
+                    "flag": "0x11F"
+                  },
+                  "hint": "LAVENDER TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "EXPN CARD"
+                },
+                {
+                  "answer": "The director on the RADIO TOWER's top floor, once TEAM ROCKET is gone from it. The RAINBOW WING comes later, from an old man in PEWTER CITY.",
+                  "areas": [
+                    "GOLDENROD CITY"
+                  ],
+                  "have": {
+                    "itemId": 482
+                  },
+                  "hint": "GOLDENROD CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SILVER WING"
+                },
+                {
+                  "answer": "Beat the five dancers in a row in ECRUTEAK's DANCE THEATER.",
+                  "areas": [
+                    "ECRUTEAK CITY"
+                  ],
+                  "have": {
+                    "itemId": 503
+                  },
+                  "hint": "ECRUTEAK CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "TIDAL BELL"
+                },
+                {
+                  "answer": "PROF. ELM in NEW BARK TOWN, once you've entered the HALL OF FAME.",
+                  "areas": [
+                    "NEW BARK TOWN"
+                  ],
+                  "have": {
+                    "itemId": 456
+                  },
+                  "hint": "NEW BARK TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "S.S. TICKET"
+                },
+                {
+                  "answer": "COPYCAT in SAFFRON CITY trades it for the LOST ITEM, which VERMILION's fan club has once you've talked to her after the power's back.",
+                  "areas": [
+                    "SAFFRON CITY",
+                    "VERMILION CITY"
+                  ],
+                  "have": {
+                    "itemId": 480
+                  },
+                  "hint": "SAFFRON CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "PASS"
+                }
+              ],
+              "heading": "KEY ITEMS",
+              "randomized": {
+                "answer": "The bike shop in GOLDENROD CITY lends you one: just say yes.",
+                "areas": [
+                  "GOLDENROD CITY"
+                ],
+                "have": {
+                  "itemId": 450
+                },
+                "hint": "GOLDENROD CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "BICYCLE"
+              }
+            }
+          ],
+          "title": "WHERE IS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Go down into the BURNED TOWER first: the gym opens after what happens on its lowest floor.",
+                  "areas": [
+                    "ECRUTEAK CITY"
+                  ],
+                  "hint": "The tower in town.",
+                  "randomized": "Randomized.ANY",
+                  "title": "ECRUTEAK's gym won't let me in"
+                },
+                {
+                  "answer": "She's at the top of the lighthouse with a sick AMPHAROS. Talk to her, get the SECRETPOTION from CIANWOOD's pharmacy, and bring it back to her.",
+                  "areas": [
+                    "OLIVINE CITY",
+                    "CIANWOOD CITY"
+                  ],
+                  "have": {
+                    "itemId": 464
+                  },
+                  "hint": "The lighthouse.",
+                  "randomized": "Randomized.ANY",
+                  "title": "JASMINE isn't in OLIVINE's gym"
+                },
+                {
+                  "answer": "Over the sea west of OLIVINE CITY: you need SURF.",
+                  "areas": [
+                    "OLIVINE CITY"
+                  ],
+                  "hint": "Across the water.",
+                  "randomized": "Randomized.ANY",
+                  "title": "How do I get to CIANWOOD CITY?"
+                },
+                {
+                  "answer": "After the red GYARADOS at the LAKE OF RAGE, talk to LANCE there, then go into MAHOGANY's souvenir shop. Clearing TEAM ROCKET's hideout behind it moves him (and ends ROUTE 43's toll).",
+                  "areas": [
+                    "MAHOGANY TOWN",
+                    "LAKE OF RAGE",
+                    "ROUTE 43"
+                  ],
+                  "have": {
+                    "flag": "0xCA"
+                  },
+                  "hint": "The LAKE OF RAGE first.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Someone blocks PRYCE's gym in MAHOGANY TOWN"
+                },
+                {
+                  "answer": "It starts once you hold the FOG, STORM, MINERAL and GLACIER BADGES. The fake director on the top floor drops the BASEMENT KEY; it opens a door in the GOLDENROD TUNNEL, where the real director gives you the CARD KEY for the tower's third floor.",
+                  "areas": [
+                    "GOLDENROD CITY"
+                  ],
+                  "have": {
+                    "flag": "0xC6"
+                  },
+                  "hint": "Two keys.",
+                  "randomized": "Randomized.ANY",
+                  "title": "TEAM ROCKET took the RADIO TOWER"
+                },
+                {
+                  "answer": "Both clear once TEAM ROCKET is out of the RADIO TOWER.",
+                  "areas": [
+                    "MAHOGANY TOWN",
+                    "BLACKTHORN CITY"
+                  ],
+                  "have": {
+                    "flag": "0xC6"
+                  },
+                  "hint": "GOLDENROD first.",
+                  "randomized": "Randomized.ANY",
+                  "title": "The road east of MAHOGANY TOWN, or BLACKTHORN's gym, is blocked"
+                },
+                {
+                  "answer": "After the RISING BADGE, see PROF. ELM, then go to ECRUTEAK, get the TIDAL BELL in the DANCE THEATER and face LUGIA at the bottom of the WHIRL ISLANDS. The road to the LEAGUE opens after that.",
+                  "areas": [
+                    "NEW BARK TOWN"
+                  ],
+                  "hint": "A legendary POKéMON.",
+                  "randomized": "Randomized.ANY",
+                  "title": "I'm stopped at NEW BARK TOWN's east exit"
+                }
+              ],
+              "heading": "JOHTO",
+              "randomized": {
+                "answer": "Water it with the SQUIRTBOTTLE, from GOLDENROD's flower shop once you have WHITNEY's badge. It's a POKéMON, and the battle starts.",
+                "areas": [
+                  "ROUTE 36"
+                ],
+                "have": {
+                  "itemId": 477
+                },
+                "hint": "It wants water.",
+                "randomized": "Randomized.ANY",
+                "title": "An odd tree blocks ROUTE 36"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Win seven of KANTO's badges, then find BLUE on CINNABAR ISLAND and talk to him.",
+                  "areas": [
+                    "VIRIDIAN CITY",
+                    "CINNABAR ISLAND"
+                  ],
+                  "hint": "CINNABAR ISLAND.",
+                  "randomized": "Randomized.ANY",
+                  "title": "VIRIDIAN's gym is locked"
+                },
+                {
+                  "answer": "Play the POKé FLUTE station on your POKéGEAR's radio (it needs the EXPN CARD) and talk to it.",
+                  "areas": [
+                    "ROUTE 11"
+                  ],
+                  "have": {
+                    "flag": "0x11F"
+                  },
+                  "hint": "Music wakes it.",
+                  "randomized": "Randomized.ANY",
+                  "title": "A big POKéMON sleeps by DIGLETT'S CAVE"
+                },
+                {
+                  "answer": "Beat BLUE in VIRIDIAN CITY, then see PROF. OAK in PALLET TOWN: he gives you ROCK CLIMB and has the guard at the LEAGUE's gate let you through to ROUTE 28.",
+                  "areas": [
+                    "PALLET TOWN",
+                    "ROUTE 28"
+                  ],
+                  "have": {
+                    "flag": "0x12B"
+                  },
+                  "hint": "PROF. OAK.",
+                  "randomized": "Randomized.ANY",
+                  "title": "How do I get to MT. SILVER?"
+                },
+                {
+                  "answer": "Once you're in the HALL OF FAME and have the S.S. TICKET. After the first trip it leaves OLIVINE on Monday and Friday, VERMILION on Sunday and Wednesday.",
+                  "areas": [
+                    "OLIVINE CITY",
+                    "VERMILION CITY"
+                  ],
+                  "have": {
+                    "itemId": 456
+                  },
+                  "hint": "Weekdays.",
+                  "randomized": "Randomized.ANY",
+                  "title": "When does the S.S. AQUA sail?"
+                }
+              ],
+              "heading": "KANTO",
+              "randomized": {
+                "answer": "Talk to the POWER PLANT's manager, then go into CERULEAN's gym, follow MISTY to ROUTE 25, and beat the grunt on ROUTE 24. The MACHINE PART then turns up in CERULEAN's gym: bring it back to the manager.",
+                "areas": [
+                  "ROUTE 10",
+                  "CERULEAN CITY",
+                  "ROUTE 24",
+                  "ROUTE 25"
+                ],
+                "have": {
+                  "flag": "0x118"
+                },
+                "hint": "CERULEAN CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "The power is out"
+              }
+            }
+          ],
+          "title": "STUCK?"
+        }
+      ]
+    }
+  },
+  "kind": "pokedaisy-reference-text",
+  "schema": 1,
+  "title": "HeartGold and SoulSilver"
+}

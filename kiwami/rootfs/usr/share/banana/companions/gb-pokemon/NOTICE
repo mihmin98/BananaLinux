@@ -1,0 +1,38 @@
+Game Boy Pokémon companion data (the kiwami fork of BananaOS)
+
+The *.ram.json files in this folder hold what the companion on the game panel reads from Pokémon Red, Blue, Yellow,
+Gold, Silver and Crystal while they play: the RAM addresses of the party, the bag, the battle and the rest, and the
+releases' SHA-1s. They are extracted from PokeDaisy by the fork's kiwami/tools/pokedaisy-extract.py, merged with
+addresses, ROM offsets and constants from pret's disassemblies (pokecrystal, pokegold, pokered, pokeyellow), which
+publish no license, taken by kiwami/tools/pret-extract.py as facts about the retail ROMs. SOURCES names the commits
+read and the SHA-256 of every file read and written. Nothing of the games themselves (their names, text, pictures or
+tables) is here: the companion reads those from the player's own ROM while it runs.
+
+PokeDaisy
+Copyright (C) 2026 Lidor Itzhari
+https://github.com/lidor30/pokedaisy
+
+These files are free software: you can redistribute them and/or modify them under the terms of the GNU General
+Public License as published by the Free Software Foundation, version 3 (see LICENSE), with the additional term below.
+
+They are distributed in the hope that they will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+ADDITIONAL TERM (GNU GPL version 3, section 7(b)), PokeDaisy's
+
+Anyone who conveys PokeDaisy, or any work based on it, in source or compiled form, must preserve the following
+attribution:
+
+    Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
+
+It must appear (1) in this NOTICE file, kept with the source; (2) in the work's README or equivalent documentation;
+and (3) where the work shows credits, an "About" screen or other Appropriate Legal Notices, there too.
+
+In the fork, (2) is kiwami/GB-POKEMON.md, and (3) is Settings > System > Credits, whose line kiwami/post-build.sh
+adds to /etc/banana/credits.txt.
+
+GAMES AND TRADEMARKS
+
+Pokémon and all related names are trademarks of Nintendo, Game Freak, Creatures and The Pokémon Company. Game Boy and
+Game Boy Color are trademarks of Nintendo. Neither PokeDaisy nor BananaOS nor its kiwami fork is affiliated with or
+endorsed by them.

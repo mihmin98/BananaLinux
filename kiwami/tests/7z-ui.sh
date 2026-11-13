@@ -14,7 +14,7 @@ R=$OUT/roms
 SEVEN="gba gb gbc nes snes megadrive n64"
 rm -rf "$OUT"; mkdir -p "$OUT/target/etc/banana" "$OUT/target/usr/libexec/banana" "$OUT/data"
 cp system/rootfs/usr/libexec/banana/share "$OUT/target/usr/libexec/banana/"
-cp system/rootfs/etc/banana/systems.conf "$OUT/target/etc/banana/"
+cp system/rootfs/etc/banana/systems.conf system/rootfs/etc/banana/credits.txt "$OUT/target/etc/banana/"
 sh kiwami/post-build.sh "$OUT/target" rgds
 for s in gba gb gbc nes n64 nds psx; do mkdir -p "$R/$s"; : > "$R/$s/Game $s.7z"; done
 mkdir -p "$R/snes" "$R/megadrive/sub"

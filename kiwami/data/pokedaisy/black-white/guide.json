@@ -1,0 +1,4830 @@
+{
+  "areas": {
+    "BLACK_AREAS_RAW": [
+      {
+        "flag": 1256,
+        "id": 3,
+        "kind": "ITEM",
+        "place": 6,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1362,
+        "id": 59,
+        "kind": "ITEM",
+        "place": 6,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1383,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 8,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1211,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 8,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1157,
+        "id": 57,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1232,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1233,
+        "id": 84,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1231,
+        "id": 89,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1263,
+        "id": 385,
+        "kind": "ITEM",
+        "place": 11,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1326,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 12,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1230,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1143,
+        "id": 88,
+        "kind": "ITEM",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1107,
+        "id": 17,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1114,
+        "id": 17,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1109,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1110,
+        "id": 3,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1106,
+        "id": 4,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1108,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1144,
+        "id": 18,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1398,
+        "id": 21,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1145,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1119,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1149,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1120,
+        "id": 3,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1150,
+        "id": 45,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1118,
+        "id": 79,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1160,
+        "id": 19,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1248,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1122,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1250,
+        "id": 368,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1159,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1158,
+        "id": 3,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1155,
+        "id": 60,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1117,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 18,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1115,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 18,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1249,
+        "id": 3,
+        "kind": "ITEM",
+        "place": 18,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1116,
+        "id": 52,
+        "kind": "ITEM",
+        "place": 18,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1170,
+        "id": 251,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1171,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1235,
+        "id": 40,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1234,
+        "id": 411,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1169,
+        "id": 85,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1174,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1177,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1176,
+        "id": 408,
+        "kind": "ITEM",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1175,
+        "id": 51,
+        "kind": "ITEM",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1185,
+        "id": 245,
+        "kind": "ITEM",
+        "place": 21,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1186,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 21,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1408,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 21,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1268,
+        "id": 363,
+        "kind": "ITEM",
+        "place": 21,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1188,
+        "id": 23,
+        "kind": "ITEM",
+        "place": 22,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1187,
+        "id": 45,
+        "kind": "ITEM",
+        "place": 22,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1190,
+        "id": 109,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1281,
+        "id": 23,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1385,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1191,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1189,
+        "id": 332,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1201,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 24,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1203,
+        "id": 321,
+        "kind": "ITEM",
+        "place": 24,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1202,
+        "id": 377,
+        "kind": "ITEM",
+        "place": 24,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1204,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 25,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1206,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 25,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1205,
+        "id": 380,
+        "kind": "ITEM",
+        "place": 25,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1208,
+        "id": 227,
+        "kind": "ITEM",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1381,
+        "id": 322,
+        "kind": "ITEM",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1209,
+        "id": 326,
+        "kind": "ITEM",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1210,
+        "id": 356,
+        "kind": "ITEM",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1207,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1200,
+        "id": 537,
+        "kind": "ITEM",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1212,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 27,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1213,
+        "id": 325,
+        "kind": "ITEM",
+        "place": 27,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1215,
+        "id": 252,
+        "kind": "ITEM",
+        "place": 28,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1216,
+        "id": 336,
+        "kind": "ITEM",
+        "place": 28,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1393,
+        "id": 249,
+        "kind": "ITEM",
+        "place": 29,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1218,
+        "id": 393,
+        "kind": "ITEM",
+        "place": 29,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1219,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 29,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1221,
+        "id": 226,
+        "kind": "ITEM",
+        "place": 30,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1220,
+        "id": 333,
+        "kind": "ITEM",
+        "place": 30,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1224,
+        "id": 235,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1223,
+        "id": 346,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1225,
+        "id": 41,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1226,
+        "id": 424,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1366,
+        "id": 93,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1112,
+        "id": 17,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1111,
+        "id": 22,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1407,
+        "id": 248,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1148,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1146,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1406,
+        "id": 412,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1147,
+        "id": 4,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1397,
+        "id": 58,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1113,
+        "id": 79,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1152,
+        "id": 18,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1214,
+        "id": 18,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1128,
+        "id": 222,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1129,
+        "id": 22,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1247,
+        "id": 239,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1246,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1153,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1399,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1130,
+        "id": 296,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1132,
+        "id": 349,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1154,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1328,
+        "id": 3,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1131,
+        "id": 413,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1151,
+        "id": 6,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1251,
+        "id": 240,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1134,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1161,
+        "id": 30,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1252,
+        "id": 366,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1162,
+        "id": 82,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1163,
+        "id": 90,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1133,
+        "id": 93,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1156,
+        "id": 24,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1121,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1192,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1173,
+        "id": 353,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1164,
+        "id": 357,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1165,
+        "id": 51,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1166,
+        "id": 80,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1135,
+        "id": 20,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1400,
+        "id": 246,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1136,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1167,
+        "id": 382,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1193,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1194,
+        "id": 46,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1253,
+        "id": 6,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1168,
+        "id": 93,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1172,
+        "id": 10,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1137,
+        "id": 14,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1142,
+        "id": 213,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1401,
+        "id": 22,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1140,
+        "id": 242,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1402,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1404,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1138,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1139,
+        "id": 47,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1403,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1141,
+        "id": 83,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1182,
+        "id": 233,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1181,
+        "id": 24,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1178,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1285,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1267,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1195,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1266,
+        "id": 417,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1183,
+        "id": 418,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1180,
+        "id": 51,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1179,
+        "id": 81,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1236,
+        "id": 92,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1277,
+        "id": 107,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1411,
+        "id": 250,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1237,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1279,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1184,
+        "id": 390,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1217,
+        "id": 41,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1270,
+        "id": 90,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1280,
+        "id": 90,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1275,
+        "id": 91,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1410,
+        "id": 92,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1124,
+        "id": 23,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1388,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1196,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1127,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1198,
+        "id": 329,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1123,
+        "id": 339,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1199,
+        "id": 49,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1197,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1125,
+        "id": 618,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1126,
+        "id": 92,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1317,
+        "id": 581,
+        "kind": "ITEM",
+        "place": 42,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1390,
+        "id": 23,
+        "kind": "ITEM",
+        "place": 45,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1395,
+        "id": 24,
+        "kind": "ITEM",
+        "place": 45,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1405,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 45,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1409,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 45,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1243,
+        "id": 243,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1238,
+        "id": 373,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1245,
+        "id": 374,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1241,
+        "id": 379,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1240,
+        "id": 40,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1239,
+        "id": 78,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1244,
+        "id": 7,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1259,
+        "id": 238,
+        "kind": "ITEM",
+        "place": 54,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1255,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 54,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1257,
+        "id": 407,
+        "kind": "ITEM",
+        "place": 54,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1258,
+        "id": 47,
+        "kind": "ITEM",
+        "place": 54,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1254,
+        "id": 77,
+        "kind": "ITEM",
+        "place": 54,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1229,
+        "id": 247,
+        "kind": "ITEM",
+        "place": 56,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1228,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 56,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1265,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 56,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1227,
+        "id": 388,
+        "kind": "ITEM",
+        "place": 56,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1264,
+        "id": 392,
+        "kind": "ITEM",
+        "place": 56,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1311,
+        "id": 24,
+        "kind": "ITEM",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1303,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1315,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1314,
+        "id": 41,
+        "kind": "ITEM",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1307,
+        "id": 48,
+        "kind": "ITEM",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1322,
+        "id": 51,
+        "kind": "ITEM",
+        "place": 58,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1278,
+        "id": 10,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1274,
+        "id": 110,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1276,
+        "id": 241,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1273,
+        "id": 398,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1272,
+        "id": 46,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1271,
+        "id": 51,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1269,
+        "id": 92,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1377,
+        "id": 24,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1376,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1373,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1380,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1378,
+        "id": 330,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1375,
+        "id": 340,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1379,
+        "id": 41,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1374,
+        "id": 48,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1284,
+        "id": 583,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1282,
+        "id": 91,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1283,
+        "id": 91,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1392,
+        "id": 324,
+        "kind": "ITEM",
+        "place": 63,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1222,
+        "id": 351,
+        "kind": "ITEM",
+        "place": 63,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1396,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 67,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1394,
+        "id": 49,
+        "kind": "ITEM",
+        "place": 67,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1389,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 70,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1386,
+        "id": 327,
+        "kind": "ITEM",
+        "place": 70,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1387,
+        "id": 362,
+        "kind": "ITEM",
+        "place": 70,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1382,
+        "id": 419,
+        "kind": "ITEM",
+        "place": 70,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1384,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 70,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1242,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 72,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1391,
+        "id": 87,
+        "kind": "ITEM",
+        "place": 72,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1260,
+        "id": 108,
+        "kind": "ITEM",
+        "place": 74,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1261,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 74,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1262,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 74,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1286,
+        "id": 298,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1287,
+        "id": 300,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1288,
+        "id": 301,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1297,
+        "id": 302,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1290,
+        "id": 303,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1291,
+        "id": 304,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1308,
+        "id": 305,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1293,
+        "id": 306,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1294,
+        "id": 307,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1295,
+        "id": 308,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1296,
+        "id": 309,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1309,
+        "id": 310,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1298,
+        "id": 312,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1299,
+        "id": 313,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1300,
+        "id": 584,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1301,
+        "id": 584,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1302,
+        "id": 584,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1304,
+        "id": 584,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1318,
+        "id": 584,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1319,
+        "id": 584,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1289,
+        "id": 585,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1305,
+        "id": 585,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1306,
+        "id": 585,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1320,
+        "id": 585,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1321,
+        "id": 585,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1363,
+        "id": 585,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1310,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1312,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1313,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1323,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1324,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1325,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1364,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1292,
+        "id": 587,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1327,
+        "id": 587,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1365,
+        "id": 587,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1367,
+        "id": 587,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1329,
+        "id": 588,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1330,
+        "id": 588,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1368,
+        "id": 588,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1369,
+        "id": 588,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1370,
+        "id": 588,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1316,
+        "id": 589,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1361,
+        "id": 589,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1371,
+        "id": 589,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1372,
+        "id": 590,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      }
+    ],
+    "WHITE_AREAS_RAW": [
+      {
+        "flag": 1256,
+        "id": 3,
+        "kind": "ITEM",
+        "place": 6,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1362,
+        "id": 59,
+        "kind": "ITEM",
+        "place": 6,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1383,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 8,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1211,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 8,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1157,
+        "id": 57,
+        "kind": "ITEM",
+        "place": 9,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1232,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1233,
+        "id": 84,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1231,
+        "id": 89,
+        "kind": "ITEM",
+        "place": 10,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1263,
+        "id": 385,
+        "kind": "ITEM",
+        "place": 11,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1326,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 12,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1230,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1143,
+        "id": 88,
+        "kind": "ITEM",
+        "place": 14,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1107,
+        "id": 17,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1114,
+        "id": 17,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1109,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1110,
+        "id": 3,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1106,
+        "id": 4,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1108,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 15,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1144,
+        "id": 18,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1398,
+        "id": 21,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1145,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1119,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1149,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1120,
+        "id": 3,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1150,
+        "id": 45,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1118,
+        "id": 79,
+        "kind": "ITEM",
+        "place": 16,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1160,
+        "id": 19,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1248,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1122,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1250,
+        "id": 368,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1159,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1158,
+        "id": 3,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1155,
+        "id": 60,
+        "kind": "ITEM",
+        "place": 17,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1117,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 18,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1115,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 18,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1249,
+        "id": 3,
+        "kind": "ITEM",
+        "place": 18,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1116,
+        "id": 52,
+        "kind": "ITEM",
+        "place": 18,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1170,
+        "id": 251,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1171,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1235,
+        "id": 40,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1234,
+        "id": 411,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1169,
+        "id": 85,
+        "kind": "ITEM",
+        "place": 19,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1174,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1177,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1176,
+        "id": 408,
+        "kind": "ITEM",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1175,
+        "id": 51,
+        "kind": "ITEM",
+        "place": 20,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1185,
+        "id": 245,
+        "kind": "ITEM",
+        "place": 21,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1186,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 21,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1408,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 21,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1268,
+        "id": 363,
+        "kind": "ITEM",
+        "place": 21,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1188,
+        "id": 23,
+        "kind": "ITEM",
+        "place": 22,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1187,
+        "id": 45,
+        "kind": "ITEM",
+        "place": 22,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1190,
+        "id": 109,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1281,
+        "id": 23,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1385,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1191,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1189,
+        "id": 332,
+        "kind": "ITEM",
+        "place": 23,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1201,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 24,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1203,
+        "id": 321,
+        "kind": "ITEM",
+        "place": 24,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1202,
+        "id": 377,
+        "kind": "ITEM",
+        "place": 24,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1204,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 25,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1206,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 25,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1205,
+        "id": 380,
+        "kind": "ITEM",
+        "place": 25,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1208,
+        "id": 227,
+        "kind": "ITEM",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1381,
+        "id": 322,
+        "kind": "ITEM",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1209,
+        "id": 326,
+        "kind": "ITEM",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1210,
+        "id": 356,
+        "kind": "ITEM",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1207,
+        "id": 39,
+        "kind": "ITEM",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1200,
+        "id": 537,
+        "kind": "ITEM",
+        "place": 26,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1212,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 27,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1213,
+        "id": 325,
+        "kind": "ITEM",
+        "place": 27,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1215,
+        "id": 252,
+        "kind": "ITEM",
+        "place": 28,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1216,
+        "id": 336,
+        "kind": "ITEM",
+        "place": 28,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1393,
+        "id": 249,
+        "kind": "ITEM",
+        "place": 29,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1218,
+        "id": 393,
+        "kind": "ITEM",
+        "place": 29,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1219,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 29,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1221,
+        "id": 226,
+        "kind": "ITEM",
+        "place": 30,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1220,
+        "id": 333,
+        "kind": "ITEM",
+        "place": 30,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1224,
+        "id": 235,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1223,
+        "id": 346,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1225,
+        "id": 41,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1226,
+        "id": 424,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1366,
+        "id": 93,
+        "kind": "ITEM",
+        "place": 31,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1112,
+        "id": 17,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1111,
+        "id": 22,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1407,
+        "id": 248,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1148,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1146,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1406,
+        "id": 412,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1147,
+        "id": 4,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1397,
+        "id": 58,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1113,
+        "id": 79,
+        "kind": "ITEM",
+        "place": 32,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1152,
+        "id": 18,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1214,
+        "id": 18,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1128,
+        "id": 222,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1129,
+        "id": 22,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1247,
+        "id": 239,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1246,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1153,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1399,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1130,
+        "id": 296,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1132,
+        "id": 349,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1154,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1328,
+        "id": 3,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1131,
+        "id": 413,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1151,
+        "id": 6,
+        "kind": "ITEM",
+        "place": 33,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1251,
+        "id": 240,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1134,
+        "id": 26,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1161,
+        "id": 30,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1252,
+        "id": 366,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1162,
+        "id": 82,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1163,
+        "id": 90,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1133,
+        "id": 93,
+        "kind": "ITEM",
+        "place": 34,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1156,
+        "id": 24,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1121,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1192,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1173,
+        "id": 353,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1164,
+        "id": 357,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1165,
+        "id": 51,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1166,
+        "id": 80,
+        "kind": "ITEM",
+        "place": 35,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1135,
+        "id": 20,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1400,
+        "id": 246,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1136,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1167,
+        "id": 382,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1193,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1194,
+        "id": 46,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1253,
+        "id": 6,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1168,
+        "id": 93,
+        "kind": "ITEM",
+        "place": 36,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1172,
+        "id": 10,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1137,
+        "id": 14,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1142,
+        "id": 213,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1401,
+        "id": 22,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1140,
+        "id": 242,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1402,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1404,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1138,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1139,
+        "id": 47,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1403,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1141,
+        "id": 83,
+        "kind": "ITEM",
+        "place": 37,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1182,
+        "id": 233,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1181,
+        "id": 24,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1178,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1285,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1267,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1195,
+        "id": 38,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1266,
+        "id": 417,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1183,
+        "id": 418,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1180,
+        "id": 51,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1179,
+        "id": 81,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1236,
+        "id": 92,
+        "kind": "ITEM",
+        "place": 38,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1277,
+        "id": 107,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1411,
+        "id": 250,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1237,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1279,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1184,
+        "id": 390,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1217,
+        "id": 41,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1270,
+        "id": 90,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1280,
+        "id": 90,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1275,
+        "id": 91,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1410,
+        "id": 92,
+        "kind": "ITEM",
+        "place": 39,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1124,
+        "id": 23,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1388,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1196,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1127,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1198,
+        "id": 329,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1123,
+        "id": 339,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1199,
+        "id": 49,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1197,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1125,
+        "id": 618,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1126,
+        "id": 92,
+        "kind": "ITEM",
+        "place": 40,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1317,
+        "id": 581,
+        "kind": "ITEM",
+        "place": 42,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1390,
+        "id": 23,
+        "kind": "ITEM",
+        "place": 45,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1395,
+        "id": 24,
+        "kind": "ITEM",
+        "place": 45,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1405,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 45,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1409,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 45,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1243,
+        "id": 243,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1238,
+        "id": 373,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1245,
+        "id": 374,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1241,
+        "id": 379,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1240,
+        "id": 40,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1239,
+        "id": 78,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1244,
+        "id": 7,
+        "kind": "ITEM",
+        "place": 53,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1259,
+        "id": 238,
+        "kind": "ITEM",
+        "place": 54,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1255,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 54,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1257,
+        "id": 407,
+        "kind": "ITEM",
+        "place": 54,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1258,
+        "id": 47,
+        "kind": "ITEM",
+        "place": 54,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1254,
+        "id": 77,
+        "kind": "ITEM",
+        "place": 54,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1229,
+        "id": 247,
+        "kind": "ITEM",
+        "place": 56,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1228,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 56,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1265,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 56,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1227,
+        "id": 388,
+        "kind": "ITEM",
+        "place": 56,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1264,
+        "id": 392,
+        "kind": "ITEM",
+        "place": 56,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1311,
+        "id": 24,
+        "kind": "ITEM",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1303,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1315,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1314,
+        "id": 41,
+        "kind": "ITEM",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1307,
+        "id": 48,
+        "kind": "ITEM",
+        "place": 57,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1322,
+        "id": 51,
+        "kind": "ITEM",
+        "place": 58,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1278,
+        "id": 10,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1274,
+        "id": 110,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1276,
+        "id": 241,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1273,
+        "id": 398,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1272,
+        "id": 46,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1271,
+        "id": 51,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1269,
+        "id": 92,
+        "kind": "ITEM",
+        "place": 59,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1377,
+        "id": 24,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1376,
+        "id": 27,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1373,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1380,
+        "id": 29,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1378,
+        "id": 330,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1375,
+        "id": 340,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1379,
+        "id": 41,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1374,
+        "id": 48,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1284,
+        "id": 583,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1282,
+        "id": 91,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1283,
+        "id": 91,
+        "kind": "ITEM",
+        "place": 61,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1392,
+        "id": 324,
+        "kind": "ITEM",
+        "place": 63,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1222,
+        "id": 351,
+        "kind": "ITEM",
+        "place": 63,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1396,
+        "id": 2,
+        "kind": "ITEM",
+        "place": 67,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1394,
+        "id": 49,
+        "kind": "ITEM",
+        "place": 67,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1389,
+        "id": 25,
+        "kind": "ITEM",
+        "place": 70,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1386,
+        "id": 327,
+        "kind": "ITEM",
+        "place": 70,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1387,
+        "id": 362,
+        "kind": "ITEM",
+        "place": 70,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1382,
+        "id": 419,
+        "kind": "ITEM",
+        "place": 70,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1384,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 70,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1242,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 72,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1391,
+        "id": 87,
+        "kind": "ITEM",
+        "place": 72,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1260,
+        "id": 108,
+        "kind": "ITEM",
+        "place": 74,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1261,
+        "id": 28,
+        "kind": "ITEM",
+        "place": 74,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1262,
+        "id": 50,
+        "kind": "ITEM",
+        "place": 74,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1286,
+        "id": 298,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1287,
+        "id": 300,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1288,
+        "id": 301,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1297,
+        "id": 302,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1290,
+        "id": 303,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1291,
+        "id": 304,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1308,
+        "id": 305,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1293,
+        "id": 306,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1294,
+        "id": 307,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1295,
+        "id": 308,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1296,
+        "id": 309,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1309,
+        "id": 310,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1298,
+        "id": 312,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1299,
+        "id": 313,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1300,
+        "id": 584,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1301,
+        "id": 584,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1302,
+        "id": 584,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1304,
+        "id": 584,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1318,
+        "id": 584,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1319,
+        "id": 584,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1289,
+        "id": 585,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1305,
+        "id": 585,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1306,
+        "id": 585,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1320,
+        "id": 585,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1321,
+        "id": 585,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1363,
+        "id": 585,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1310,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1312,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1313,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1323,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1324,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1325,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1364,
+        "id": 586,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1292,
+        "id": 587,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1327,
+        "id": 587,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1365,
+        "id": 587,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1367,
+        "id": 587,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1329,
+        "id": 588,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1330,
+        "id": 588,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1368,
+        "id": 588,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1369,
+        "id": 588,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1370,
+        "id": 588,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1316,
+        "id": 589,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1361,
+        "id": 589,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1371,
+        "id": 589,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      },
+      {
+        "flag": 1372,
+        "id": 590,
+        "kind": "ITEM",
+        "place": 116,
+        "qty": 1,
+        "wants": 0
+      }
+    ]
+  },
+  "bossTables": {
+    "BLACK_BOSSES_RAW": [
+      {
+        "key": "CHILI",
+        "trainer": 11
+      },
+      {
+        "key": "CILAN",
+        "trainer": 12
+      },
+      {
+        "key": "CRESS",
+        "trainer": 13
+      },
+      {
+        "key": "LENORA",
+        "trainer": 21
+      },
+      {
+        "key": "BURGH",
+        "trainer": 22
+      },
+      {
+        "key": "ELESA",
+        "trainer": 23
+      },
+      {
+        "key": "CLAY",
+        "trainer": 24
+      },
+      {
+        "key": "SKYLA",
+        "trainer": 25
+      },
+      {
+        "key": "BRYCEN",
+        "trainer": 131
+      },
+      {
+        "key": "DRAYDEN",
+        "trainer": 133
+      },
+      {
+        "key": "SHAUNTAL",
+        "trainer": 228
+      },
+      {
+        "key": "MARSHAL",
+        "trainer": 229
+      },
+      {
+        "key": "GRIMSLEY",
+        "trainer": 230
+      },
+      {
+        "key": "CAITLIN",
+        "trainer": 231
+      },
+      {
+        "key": "N",
+        "trainer": 587
+      },
+      {
+        "key": "GHETSIS",
+        "trainer": 232
+      },
+      {
+        "key": "ALDER",
+        "trainer": 407
+      },
+      {
+        "key": "SHAUNTAL_2",
+        "trainer": 563
+      },
+      {
+        "key": "MARSHAL_2",
+        "trainer": 564
+      },
+      {
+        "key": "GRIMSLEY_2",
+        "trainer": 565
+      },
+      {
+        "key": "CAITLIN_2",
+        "trainer": 566
+      }
+    ],
+    "WHITE_BOSSES_RAW": [
+      {
+        "key": "CHILI",
+        "trainer": 11
+      },
+      {
+        "key": "CILAN",
+        "trainer": 12
+      },
+      {
+        "key": "CRESS",
+        "trainer": 13
+      },
+      {
+        "key": "LENORA",
+        "trainer": 21
+      },
+      {
+        "key": "BURGH",
+        "trainer": 22
+      },
+      {
+        "key": "ELESA",
+        "trainer": 23
+      },
+      {
+        "key": "CLAY",
+        "trainer": 24
+      },
+      {
+        "key": "SKYLA",
+        "trainer": 25
+      },
+      {
+        "key": "BRYCEN",
+        "trainer": 131
+      },
+      {
+        "key": "IRIS",
+        "trainer": 132
+      },
+      {
+        "key": "SHAUNTAL",
+        "trainer": 228
+      },
+      {
+        "key": "MARSHAL",
+        "trainer": 229
+      },
+      {
+        "key": "GRIMSLEY",
+        "trainer": 230
+      },
+      {
+        "key": "CAITLIN",
+        "trainer": 231
+      },
+      {
+        "key": "N",
+        "trainer": 586
+      },
+      {
+        "key": "GHETSIS",
+        "trainer": 232
+      },
+      {
+        "key": "ALDER",
+        "trainer": 407
+      },
+      {
+        "key": "SHAUNTAL_2",
+        "trainer": 563
+      },
+      {
+        "key": "MARSHAL_2",
+        "trainer": 564
+      },
+      {
+        "key": "GRIMSLEY_2",
+        "trainer": 565
+      },
+      {
+        "key": "CAITLIN_2",
+        "trainer": 566
+      }
+    ]
+  },
+  "consts": {
+    "BW_BICYCLE": 450,
+    "BW_DOWSING_MCHN": 471,
+    "BW_FLAG_E4": "0x969",
+    "BW_HM01": 420,
+    "BW_SUPER_ROD": 447,
+    "BW_TRAINER_FLAGS": 1420
+  },
+  "game": "black-white",
+  "guides": {
+    "BLACK": {
+      "bosses": [
+        {
+          "done": "0x20000",
+          "title": "STRIATON GYM LEADER",
+          "trainer": 11,
+          "variants": [
+            [
+              "CHILI",
+              11
+            ],
+            [
+              "CRESS",
+              13
+            ],
+            [
+              "CILAN",
+              12
+            ]
+          ],
+          "where": "STRIATON CITY GYM"
+        },
+        {
+          "done": "0x20001",
+          "title": "LEADER LENORA",
+          "trainer": 21,
+          "where": "NACRENE CITY GYM"
+        },
+        {
+          "done": "0x20002",
+          "title": "LEADER BURGH",
+          "trainer": 22,
+          "where": "CASTELIA CITY GYM"
+        },
+        {
+          "done": "0x20003",
+          "title": "LEADER ELESA",
+          "trainer": 23,
+          "where": "NIMBASA CITY GYM"
+        },
+        {
+          "done": "0x20004",
+          "title": "LEADER CLAY",
+          "trainer": 24,
+          "where": "DRIFTVEIL CITY GYM"
+        },
+        {
+          "done": "0x20005",
+          "title": "LEADER SKYLA",
+          "trainer": 25,
+          "where": "MISTRALTON CITY GYM"
+        },
+        {
+          "done": "0x20006",
+          "title": "LEADER BRYCEN",
+          "trainer": 131,
+          "where": "ICIRRUS CITY GYM"
+        },
+        {
+          "done": "0x20007",
+          "title": "LEADER DRAYDEN",
+          "trainer": 133,
+          "where": "OPELUCID CITY GYM"
+        },
+        {
+          "done": "0x969",
+          "title": "ELITE FOUR SHAUNTAL",
+          "trainer": 228,
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "done": "0x96A",
+          "title": "ELITE FOUR GRIMSLEY",
+          "trainer": 230,
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "done": "0x96B",
+          "title": "ELITE FOUR MARSHAL",
+          "trainer": 229,
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "done": "0x96C",
+          "title": "ELITE FOUR CAITLIN",
+          "trainer": 231,
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "by_code": [
+            "doneIf"
+          ],
+          "done": 0,
+          "title": "N",
+          "trainer": 587,
+          "where": "N's CASTLE"
+        },
+        {
+          "by_code": [
+            "doneIf"
+          ],
+          "done": 0,
+          "title": "GHETSIS",
+          "trainer": 232,
+          "where": "N's CASTLE"
+        }
+      ],
+      "verified": false
+    },
+    "WHITE": {
+      "bosses": [
+        {
+          "done": "0x20000",
+          "title": "STRIATON GYM LEADER",
+          "trainer": 11,
+          "variants": [
+            [
+              "CHILI",
+              11
+            ],
+            [
+              "CRESS",
+              13
+            ],
+            [
+              "CILAN",
+              12
+            ]
+          ],
+          "where": "STRIATON CITY GYM"
+        },
+        {
+          "done": "0x20001",
+          "title": "LEADER LENORA",
+          "trainer": 21,
+          "where": "NACRENE CITY GYM"
+        },
+        {
+          "done": "0x20002",
+          "title": "LEADER BURGH",
+          "trainer": 22,
+          "where": "CASTELIA CITY GYM"
+        },
+        {
+          "done": "0x20003",
+          "title": "LEADER ELESA",
+          "trainer": 23,
+          "where": "NIMBASA CITY GYM"
+        },
+        {
+          "done": "0x20004",
+          "title": "LEADER CLAY",
+          "trainer": 24,
+          "where": "DRIFTVEIL CITY GYM"
+        },
+        {
+          "done": "0x20005",
+          "title": "LEADER SKYLA",
+          "trainer": 25,
+          "where": "MISTRALTON CITY GYM"
+        },
+        {
+          "done": "0x20006",
+          "title": "LEADER BRYCEN",
+          "trainer": 131,
+          "where": "ICIRRUS CITY GYM"
+        },
+        {
+          "done": "0x20007",
+          "title": "LEADER IRIS",
+          "trainer": 132,
+          "where": "OPELUCID CITY GYM"
+        },
+        {
+          "done": "0x969",
+          "title": "ELITE FOUR SHAUNTAL",
+          "trainer": 228,
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "done": "0x96A",
+          "title": "ELITE FOUR GRIMSLEY",
+          "trainer": 230,
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "done": "0x96B",
+          "title": "ELITE FOUR MARSHAL",
+          "trainer": 229,
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "done": "0x96C",
+          "title": "ELITE FOUR CAITLIN",
+          "trainer": 231,
+          "where": "POKéMON LEAGUE"
+        },
+        {
+          "by_code": [
+            "doneIf"
+          ],
+          "done": 0,
+          "title": "N",
+          "trainer": 586,
+          "where": "N's CASTLE"
+        },
+        {
+          "by_code": [
+            "doneIf"
+          ],
+          "done": 0,
+          "title": "GHETSIS",
+          "trainer": 232,
+          "where": "N's CASTLE"
+        }
+      ],
+      "verified": false
+    }
+  },
+  "kind": "pokedaisy-reference-guide",
+  "schema": 1,
+  "title": "Black and White"
+}

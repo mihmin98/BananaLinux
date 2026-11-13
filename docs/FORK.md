@@ -55,6 +55,9 @@ The rule: a new file of the fork's own wherever the build allows one; an upstrea
 | Additions to upstream's files in the image (`systems.conf`, the theme's `systems.cfg`) | `kiwami/post-build.sh`, appending or inserting into the copy in `$TARGET_DIR`, rather than a whole replacement in the overlay |
 | Boot and network services | hook folders that run every file in them: `/etc/banana/sleep.d/` (around a suspend), `/usr/share/udhcpc/default.script.d/` (on an address from DHCP) |
 | banana-ui | `ui/src/kiwami/` (inside `ui/`: the package builds only that folder): its own theme behind `banana::Menu`, its own settings rows, its own handlers for the host's events. C libraries it vendors go unchanged in `ui/src/kiwami/third_party/<library>/`, each with the `SHA256SUMS` of its pinned version's files (checked by `kiwami/tests/ci.sh`) and a `VENDORED` note, and are built by `ui/src/kiwami/kiwami.mk` (the `ui/Makefile`'s third `kiwami:` line), which also compiles banana-ui's own sources one file per call (*How the build takes in the fork*) |
+| A feature's code under another licence | its own folder with its `LICENSE` and `NOTICE`: the Game Boy Pokémon companion's `ui/src/kiwami/gbpk/` (GPL-3.0 with PokeDaisy's 7(b) attribution term, `kiwami/GB-POKEMON.md`). What upstream's files' hooks call there is header-only (`gbpk.h`, `rules.h`, the `.inc` files), as upstream's test binaries link `ui/src/nds/` without the fork's sources |
+| Scripts that make the fork's committed data | `kiwami/tools/` (`pokedaisy-extract.py`, `pret-extract.py`), each with a `--check` that `kiwami/tests/ci.sh` runs against the `SOURCES` it writes |
+| Data kept for reference, not built or installed | `kiwami/data/` (PokeDaisy's reference data in `kiwami/data/pokedaisy/`), outside `kiwami/rootfs/` so nothing of it reaches the image |
 | Tests of the fork's features | `kiwami/tests/` (a one-line `kiwami:` hook if `make test` has to run them) |
 | A feature's investigation and plan | `.workspace/<NNNN>-<name>/` |
 | The skills of the feature workflow and of taking in upstream | `.claude/skills/banana-*/` |
@@ -214,7 +217,8 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
        system/rootfs/usr/libexec/banana/run-retroarch system/rootfs/usr/libexec/banana/run-bananafront \
        system/rootfs/etc/banana/retroarch.cfg \
        system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
-       buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update ui/Makefile
+       buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update ui/Makefile \
+       ui/src/nds/ ui/src/gba/ ui/src/pokemon.h ui/src/pokemon.cpp ui/src/settings_gamepanel.cpp
    ```
    (the systems list, whose N64 `ext` line `kiwami/post-build.sh` adds `7z` to (upstream lists it on the other six
    cartridge systems; the build stops if N64's line is gone; a new cartridge system without it may want it too), the defconfigs the fork adds to, the share script
@@ -267,7 +271,58 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    `ui/Makefile`: `kiwami.mk` compiles its `SRC` one file per call with the rule's command, so a change to that command
    (a flag, a variable, how it reads `SRC`) is followed in `kiwami.mk`'s object rules. `kiwami/tests/ui-objects.sh`
    (in `ci.sh`) fails when the two no longer make the same binary. A source upstream adds to `SRC` is compiled as an
-   object with no change; one added after `kiwami.mk`'s include line stays in the link's own call.
+   object with no change; one added after `kiwami.mk`'s include line stays in the link's own call. And the Game Boy
+   Pokémon companion's rules in upstream's DS companion (`kiwami/GB-POKEMON.md`): `model.cpp`'s first line of `one()`
+   gives Gen I's type chart cells while a Red, Blue or Yellow is read, and `logic.cpp`'s first lines of `damage()`,
+   `effectiveSpeed()` and `catchChance()` hand Gen I and II (`kiwami::gbpk::GEN_I`/`GEN_II`, values of upstream's
+   `nds::Gen`) to the fork's own formulas in `ui/src/kiwami/gbpk/rules.h` (`effectiveSpeed`'s `Gen` isn't named, so its
+   hook asks `oldRules()`, which the companion's host turns on and off with the game); `model.h`'s `statExp` line
+   carries Gen I/II's stat experience in `nds::Mon`. What they call stays header-only: upstream's test binaries
+   (`ui/Makefile`'s `tests/nds-*`, `gba-*`, `guide-test`) link `ui/src/nds/` without the fork's sources. A change
+   upstream makes to these functions' signatures, `Fighter`, `DamageRange`, `CatchContext` or `Mon` breaks the fork at
+   compile time; a rule upstream adds inside them (a held item, a ball) doesn't reach the Game Boy games, which take
+   the fork's alone; a new upstream `switch` on `Gen` with no default falls through for the fork's values.
+   `kiwami/tests/gbpk-units.cpp` checks the rules through upstream's entry points. And the same companion on the game
+   panel: Settings' `gbaPanel` (`settings.h`) is the fork's `kiwami::gbpk::PanelSwitch`, which holds upstream's
+   `gba::Panel` and the Game Boy one and forwards every member `settings_gamepanel.cpp` and `settings.h` call (upstream's
+   first). A member upstream starts calling on `gbaPanel`, or a change to one's signature in `gba/panel.h`, fails to
+   compile until `ui/src/kiwami/gbpk/panel.h` forwards it. `Settings::gameButton`'s line after F's sends Back
+   (`BTN_Z`) to `compToggle()` while the Game Boy panel is open; if upstream gives the Game Boy systems a Companion
+   button of their own (their Buttons page, `gCompKeys` in `gameOpen`), the line goes. In `main.cpp`, the hooks follow the game's companion
+   wiring: `gbGame.open` after the block that makes the reply pipe for upstream's Pokémon and game companions (it
+   makes its own when they didn't), `attach` just before `gbaAttach`, the requests after upstream's `r = ...` line, the
+   two feeds as an `if (...) {} else` before upstream's `if (companion.active())` (the replies of BananaFront's shared
+   memory and of RetroArch's stdout), `release` after the game's pidfd closes and `close` beside `companion.close()`
+   at the game's end, and the headless verbs before the script's `unknown command`. If upstream moves the pipe or the
+   feeds, or a third companion joins them, the hooks move with them; `kiwami/tests/gbpk-ui.sh` drives the panel through
+   the headless verbs, and the Settings rows (the hook after upstream's Pokémon companion row in Second screen, a page
+   not in `ORDER`, so the rows stay where they are added). And the same companion's pages: `ui/src/nds/pages.cpp`
+   includes `ui/src/kiwami/gbpk/pages-decl.inc` as the last members of `struct Pages::Impl` and
+   `pages-impl.inc` after the file's closing brace, and eight lines hand Gen I/II's blocks to them, each by the
+   statement it sits beside: the Battle page's wild box (`if (kiwamiWild(...)) return;` before its
+   `box("bubble", 360, ...)`), the Party page's Nature/Ability/Item rows (`if (kiwamiSummary(...)) {} else` before
+   `if (!m.egg)`), its Friendship block (`if (kiwamiNoFriendship(m)) {} else` before the block's `{`), its Stats block
+   with the Effort points total (`if (!kiwamiStats(...)) {` before `heading(tr("Stats")...)`, the closing `}` before
+   `// moves with PP`), the Dex page's Ability lines (`if (kiwamiNoAbilities()) ay -= 15; else` before
+   `text(tr("Ability")...)`) and its Base stats block (`if (!kiwamiBaseStats(...)) {` before
+   `heading(tr("Base stats")...)`, the `}` after its `y += 26;`). Upstream's lines between a `{` and its `}` keep their
+   indentation. The `.inc` files draw with `Pages::Impl`'s own helpers and constants (`text`, `textR`, `bar`, `fill`,
+   `box`, `heading`, `typeChip`, `measure`, `tr`, `STAT_NAMES`, `GOOD`, ...): one upstream renames or reshapes fails to
+   compile and is followed there. A block upstream reworks moves its hook with it; one upstream adds that shows natures,
+   IVs, EVs or abilities draws empty or upstream's values for the Game Boy games until a hook skips it, which
+   `kiwami/tests/gbpk-ui.sh`'s shots and its trace lines (`KIWAMI_GBPK_TRACE=1`) show. And the same companion's guides:
+   `ui/src/nds/guide.cpp` includes `ui/src/kiwami/gbpk/guide-games.inc` as the last rows of its `GAMES` table (the six
+   games' ids as literals, keys and codes), so `loadGuideFile` takes their files; the fork's host loads them itself
+   from `gb-pokemon/`. A change upstream makes to `GameRow`'s fields breaks the rows at compile time; a schema upstream
+   adds to the guide files (a field, a `done_when` rule) is the fork's to use or not, and `kiwami/tests/gbpk-units.cpp`
+   loads Crystal's file through upstream's loader and follows its milestones through upstream's `nextMilestone`.
+   In upstream's companion code (`ui/src/nds/`, `ui/src/gba/`, `ui/src/pokemon.*`) as a whole, what to look for: a
+   member added to `nds::Live`, `Mon`, `RomData`, `PageData` or `gba::Panel`, which the fork's reader, ROM reader or
+   `PanelSwitch` may have to fill or forward (a `Live` field left empty shows as nothing on the pages, or as wrong
+   advice); a new use of `Gen` in the logic or the pages, which takes the Gen III/IV path for the fork's `GEN_I` and
+   `GEN_II` unless a hook skips it; `pkmn::parseReply` or the request pacing reworked, which the fork's reader uses as
+   upstream's GBA companion does. And upstream adding a Game Boy or Game Boy Color companion of its own: the fork's is
+   then retired at that merge, its hooks, rows and data files removed (`kiwami/GB-POKEMON.md`, *What it doesn't do*).
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

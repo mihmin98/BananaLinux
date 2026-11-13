@@ -1,0 +1,15 @@
+# The ROM hacks the Game Boy Pokémon companion reads as the retail game they patch (kiwami/GB-POKEMON.md, "The ROMs
+# for the tests"), because the patch moves nothing it reads. kiwami/tests/gbpk-roms.sh checks each hack in GB_ROMS
+# against its retail ROM: the same size, and every byte that differs inside one of the ranges. One line a hack:
+#   <the hack's sha1> <its retail ROM's sha1> <start-end>...      (file offsets in hex, the end excluded)
+# Both SHA-1s are lines of roms.sha1.
+#
+# Fast Red and Fast Blue (v1.0): the same 72-byte patch on Red and on Blue, running with B held and a faster bike.
+#   00d0-00f7  the speed-up routine, in the empty space before the header (zeros in retail)
+#   014e-0150  the header's global checksum
+#   05cc-05dc  OverworldLoopLessDelay.moveAhead2 (pret's home/overworld.asm): calls DoBikeSpeedup when walking too
+#   06a1-06b1  DoBikeSpeedup: walking, to the new routine; surfing, no speed-up; the bike, Cycling Road's check there
+# The routine keeps a flag in WRAM D711, a byte pret's pokered leaves unused (ds 2 after wFossilMon). No RAM address
+# or ROM table the companion reads moves.
+e7bfd2c2245597da5016e682fca8f19665c6cfd0 ea9bcae617fdf159b045185467ae58b2e4a48b9a 00d0-00f7 014e-0150 05cc-05dc 06a1-06b1
+5030c1114554207191f2e6ffb1f2920cf3d7c668 d7037c83e1ae5b39bde3c30787637ba1d4c48ce2 00d0-00f7 014e-0150 05cc-05dc 06a1-06b1

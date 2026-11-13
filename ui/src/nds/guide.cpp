@@ -26,6 +26,7 @@ namespace banana::nds
 			{ GameId::HACK, "heart-and-soul", "BPEE", 1500 }, { GameId::HACK, "lazarus", "BPEE", 1500 },
 			{ GameId::HACK, "seaglass", "BPEE", 1500 }, { GameId::HACK, "soulgold", "BPEE", 1500 },
 			{ GameId::HACK, "unbound", "BPRE", 1500 },
+#include "../kiwami/gbpk/guide-games.inc"	// kiwami: the GB and GBC Pokémon games (their files in gb-pokemon/)
 		};
 		const GameRow* rowFor(GameId id)
 		{

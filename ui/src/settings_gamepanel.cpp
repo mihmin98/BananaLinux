@@ -554,6 +554,7 @@ namespace banana
 		now = nowMs;	// (a press can come long after the last update: the pages' notices and animations from now)
 		const bool onComp = gbaPanel.active() ? gbaPanel.pagesShown() : gcView != GC_GAME;
 		if (code == BTN_MODE) { if (!onComp) return false; compMenu(); return true; }	// (F: the menu, where its combos are)
+		if (code == BTN_Z && gbaPanel.gameBoy()) { compToggle(); return true; }	// kiwami: Back, in a Game Boy game with the fork's companion
 		if (std::find(gCompKeys.begin(), gCompKeys.end(), code) == gCompKeys.end()) return false;
 		compToggle();
 		return true;

@@ -1,0 +1,62 @@
+{
+  "configs": {
+    "GEN4_PLATINUM_US": {
+      "bagOff": "0x630",
+      "battle": {
+        "battleMonSize": "0xC0",
+        "battleTemplate": "0x20EA358",
+        "fieldSystemPtr": "0x21C07DC",
+        "offAppData": "0x1C",
+        "offBattleCtx": "0x30",
+        "offBattleInput": "0x19C",
+        "offBattleMons": "0x2D40",
+        "offBattleType": "0x2C",
+        "offChild": 4,
+        "offCommand": "0x8",
+        "offPanelShown": "0x4D0",
+        "offParties": "0x68"
+      },
+      "bodyOff": "0x14",
+      "dexFlagBytes": "0x40",
+      "flagsOff": -1,
+      "kantoBadgesOff": -1,
+      "locationOff": "0x1280",
+      "maxSpecies": 493,
+      "nationalDexOff": "0x31B",
+      "numVars": 288,
+      "partyOff": "0x98",
+      "pocketSizes": [
+        165,
+        50,
+        100,
+        12,
+        40,
+        64,
+        15,
+        30
+      ],
+      "pokedexOff": "0x1328",
+      "pokegearWordOff": -1,
+      "repelStepsOff": "0x8073",
+      "saveDataPtr": "0x21C0794",
+      "townMap": {
+        "fieldSystemPtr": "0x21C07DC",
+        "firstArrivalFlag": 2480,
+        "numVars": 288,
+        "offAvatarMapObject": "0x30",
+        "offExitLocation": "0x50",
+        "offLocation": "0x1C",
+        "offObjectX": "0x64",
+        "offObjectZ": "0x6C",
+        "offPlayerAvatar": "0x3C",
+        "varsOff": "0xDAC"
+      },
+      "trainerOff": "0x68",
+      "varsFlagsOff": "0xDAC"
+    }
+  },
+  "game": "platinum",
+  "kind": "pokedaisy-reference-ram",
+  "schema": 1,
+  "title": "Platinum"
+}

@@ -97,6 +97,49 @@ for f in sys.argv[1:]:
 print('gb-pokemon: %d data files checked' % (len(sys.argv) - 1))
 EOF
 
+# PokeDaisy's reference data (kiwami/data/pokedaisy/, written by pokedaisy-extract.py --reference, checked against its
+# SOURCES above): its LICENSE and NOTICE, every file JSON, none of it in the image's overlay, and none of twenty of the
+# games' species, move and item names (in capitals and in title case) in it or in the image's data, but where a guide
+# names its bosses and places, and in text.json, PokeDaisy's own words, which name what they talk about
+P=kiwami/data/pokedaisy
+for f in LICENSE NOTICE README.md SOURCES; do [ -s "$P/$f" ] || { echo "pokedaisy: no $f in $P" >&2; exit 1; }; done
+grep -qF 'Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy' "$P/NOTICE" ||
+    { echo "pokedaisy: $P/NOTICE hasn't PokeDaisy's attribution line" >&2; exit 1; }
+[ -z "$(find kiwami/rootfs -path '*pokedaisy*')" ] || { echo "pokedaisy: the reference data is in the overlay" >&2; exit 1; }
+python3 -I - "$P"/*/*.json "$G"/*.json <<'EOF'
+import json, os, re, sys
+NAMES = ['BULBASAUR', 'CHARMANDER', 'PIKACHU', 'MEWTWO', 'CHIKORITA', 'LUGIA', 'TREECKO', 'RAYQUAZA', 'TURTWIG', 'SNIVY',
+         'THUNDERBOLT', 'FLAMETHROWER', 'EARTHQUAKE', 'HYPER BEAM', 'TACKLE', 'MASTER BALL', 'RARE CANDY', 'LEFTOVERS',
+         'FULL RESTORE', 'NUGGET']
+NAMES += [n.title() for n in NAMES]
+FOUND = re.compile(r'\b(%s)\b' % '|'.join(re.escape(n) for n in NAMES))
+GUIDE_NAMES = {'title', 'where', 'name', 'foe', 'places'}     # a guide's bosses and places
+
+
+def walk(v, path, guide):
+    if isinstance(v, dict):
+        for k, x in v.items():
+            if not (guide and k in GUIDE_NAMES):
+                walk(x, path + '.' + k, guide)
+    elif isinstance(v, list):
+        for i, x in enumerate(v):
+            walk(x, '%s[%d]' % (path, i), guide)
+    elif isinstance(v, str) and FOUND.search(v):
+        sys.exit('pokedaisy: %s%s names %s, one of the games\' own' % (f, path, FOUND.search(v).group()))
+
+
+n = 0
+for f in sys.argv[1:]:
+    d = json.load(open(f, encoding='utf-8'))
+    base = os.path.basename(f)
+    if base == 'text.json':
+        continue
+    walk(d, '', base == 'guide.json' or d.get('kind') == 'nds-pokemon-guide')
+    n += 1
+print('pokedaisy: %d files parse, none names the games\' content (%d text.json kept whole)' %
+      (n, sum(os.path.basename(f) == 'text.json' for f in sys.argv[1:])))
+EOF
+
 # ... and the check of the player's ROMs, then the ROM reader on them (kiwami/tests/gbpk-roms.sh; skipped without
 # ~/gb-companion/roms, as here), then the check on made-up folders: none is skipped; an empty one fails naming the six required files; a file
 # with a listed name and other bytes is a wrong file, and six of them can't pass; and, with a made-up list, a file

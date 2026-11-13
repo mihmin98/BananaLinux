@@ -1,0 +1,36 @@
+{
+  "configs": {
+    "GEN1_YELLOW": {
+      "badges": "0xD355",
+      "bagCount": "0xD31C",
+      "bagSlots": 20,
+      "battleMenuLeftX": "0x9",
+      "battleMenuRightX": "0xF",
+      "battleMon": "0xD013",
+      "battlePartyMenu": 2,
+      "curMap": "0xD35D",
+      "enemyMon": "0xCFE4",
+      "enemyMonPartyPos": "0xCFE7",
+      "enemyMons": "0xD8A3",
+      "enemyPartyCount": "0xD89B",
+      "gameCode": "",
+      "isInBattle": "0xD056",
+      "language": "E",
+      "money": "0xD346",
+      "moveMenuType": "0xCCDB",
+      "partyCount": "0xD162",
+      "partyMenuType": "0xD07C",
+      "partyMons": "0xD16A",
+      "playTime": "0xDA40",
+      "playerMonNumber": "0xCC2F",
+      "tileMap": "0xC3A0",
+      "topMenuItemY": "0xCC24",
+      "xCoord": "0xD361",
+      "yCoord": "0xD360"
+    }
+  },
+  "game": "yellow",
+  "kind": "pokedaisy-reference-ram",
+  "schema": 1,
+  "title": "Yellow"
+}

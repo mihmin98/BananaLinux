@@ -1,0 +1,38 @@
+PokeDaisy's reference data (the kiwami fork of BananaOS)
+
+The files in this folder hold what PokeDaisy knows about every mainline Pokémon game it supports, English releases
+only: the RAM addresses and layouts its readers read, where the ROM's tables are, its guides' bosses and areas by ids
+and flags, and its own words (its guide pages, its item descriptions). They are extracted from PokeDaisy by the fork's
+kiwami/tools/pokedaisy-extract.py (--reference); README.md lists what each file holds and what was left out, and
+SOURCES names the commit read and the SHA-256 of every file read and written. They are reference data: nothing here is
+installed in the image or read by banana-ui. Nothing of the games themselves (their names, text, pictures or tables)
+is here, but for the place and boss names a guide names its bosses by and what PokeDaisy's own words name.
+
+PokeDaisy
+Copyright (C) 2026 Lidor Itzhari
+https://github.com/lidor30/pokedaisy
+
+These files are free software: you can redistribute them and/or modify them under the terms of the GNU General
+Public License as published by the Free Software Foundation, version 3 (see LICENSE), with the additional term below.
+
+They are distributed in the hope that they will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+ADDITIONAL TERM (GNU GPL version 3, section 7(b)), PokeDaisy's
+
+Anyone who conveys PokeDaisy, or any work based on it, in source or compiled form, must preserve the following
+attribution:
+
+    Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
+
+It must appear (1) in this NOTICE file, kept with the source; (2) in the work's README or equivalent documentation;
+and (3) where the work shows credits, an "About" screen or other Appropriate Legal Notices, there too.
+
+In the fork, (2) is README.md here and kiwami/GB-POKEMON.md, and (3) is Settings > System > Credits, whose line
+kiwami/post-build.sh adds to /etc/banana/credits.txt.
+
+GAMES AND TRADEMARKS
+
+Pokémon and all related names are trademarks of Nintendo, Game Freak, Creatures and The Pokémon Company. Game Boy, Game
+Boy Color, Game Boy Advance and Nintendo DS are trademarks of Nintendo. Neither PokeDaisy nor BananaOS nor its kiwami
+fork is affiliated with or endorsed by them.

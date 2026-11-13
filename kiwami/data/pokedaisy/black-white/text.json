@@ -1,0 +1,324 @@
+{
+  "game": "black-white",
+  "guides": {
+    "BLACK": {
+      "pages": [
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Dark grass, grass that shakes and water that ripples each hold POKéMON of their own, often stronger or rarer than the plain grass around them.",
+                  "hint": "They're not the plain grass.",
+                  "randomized": "Randomized.ANY",
+                  "title": "What about the dark grass and the grass that shakes?"
+                }
+              ],
+              "heading": "WILD POKéMON",
+              "randomized": {
+                "answer": "Some places change their POKéMON with the seasons, and the seasons follow the month: January, May and September are spring, February, June and October summer, March, July and November autumn, April, August and December winter. HERE shows this month's list, by your DS clock (your device's).",
+                "hint": "Look at the calendar.",
+                "randomized": "Randomized.ANY",
+                "title": "Why did the POKéMON here change?"
+              }
+            },
+            {
+              "heading": "GYMS",
+              "randomized": {
+                "answer": "The one whose type beats your first POKéMON's: CHILI (fire) if you picked SNIVY, CRESS (water) if you picked TEPIG, CILAN (grass) if you picked OSHAWOTT. NEXT BOSS shows all three teams.",
+                "hint": "It depends on your first POKéMON.",
+                "randomized": "Randomized.ANY",
+                "title": "Which STRIATON CITY leader will I battle?"
+              }
+            }
+          ],
+          "title": "TIPS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Someone hands it to you in DRIFTVEIL CITY.",
+                  "areas": [
+                    "DRIFTVEIL CITY"
+                  ],
+                  "have": {
+                    "itemId": 421
+                  },
+                  "hint": "DRIFTVEIL CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM02 FLY"
+                },
+                {
+                  "answer": "Someone hands it to you in TWIST MOUNTAIN.",
+                  "areas": [
+                    "TWIST MOUNTAIN"
+                  ],
+                  "have": {
+                    "itemId": 422
+                  },
+                  "hint": "TWIST MOUNTAIN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM03 SURF"
+                },
+                {
+                  "answer": "Someone in NIMBASA CITY gives it to you.",
+                  "areas": [
+                    "NIMBASA CITY"
+                  ],
+                  "have": {
+                    "itemId": 423
+                  },
+                  "hint": "NIMBASA CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM04 STRENGTH"
+                },
+                {
+                  "answer": "It's an item ball on ROUTE 18.",
+                  "areas": [
+                    "ROUTE 18"
+                  ],
+                  "have": {
+                    "itemId": 424
+                  },
+                  "hint": "ROUTE 18.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM05 WATERFALL"
+                },
+                {
+                  "answer": "Someone in UNDELLA TOWN gives it to you.",
+                  "areas": [
+                    "UNDELLA TOWN"
+                  ],
+                  "have": {
+                    "itemId": 425
+                  },
+                  "hint": "UNDELLA TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM06 DIVE"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "Someone hands it to you in STRIATON CITY.",
+                "areas": [
+                  "STRIATON CITY"
+                ],
+                "have": {
+                  "itemId": 420
+                },
+                "hint": "STRIATON CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "HM01 CUT"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Someone hands it to you in NACRENE CITY.",
+                  "areas": [
+                    "NACRENE CITY"
+                  ],
+                  "have": {
+                    "itemId": 471
+                  },
+                  "hint": "NACRENE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "DOWSING MCHN"
+                },
+                {
+                  "answer": "Someone in NUVEMA TOWN gives it to you.",
+                  "areas": [
+                    "NUVEMA TOWN"
+                  ],
+                  "have": {
+                    "itemId": 447
+                  },
+                  "hint": "NUVEMA TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SUPER ROD"
+                }
+              ],
+              "heading": "KEY ITEMS",
+              "randomized": {
+                "answer": "Someone hands it to you in NIMBASA CITY.",
+                "areas": [
+                  "NIMBASA CITY"
+                ],
+                "have": {
+                  "itemId": 450
+                },
+                "hint": "NIMBASA CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "BICYCLE"
+              }
+            }
+          ],
+          "title": "WHERE IS"
+        }
+      ]
+    },
+    "WHITE": {
+      "pages": [
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Dark grass, grass that shakes and water that ripples each hold POKéMON of their own, often stronger or rarer than the plain grass around them.",
+                  "hint": "They're not the plain grass.",
+                  "randomized": "Randomized.ANY",
+                  "title": "What about the dark grass and the grass that shakes?"
+                }
+              ],
+              "heading": "WILD POKéMON",
+              "randomized": {
+                "answer": "Some places change their POKéMON with the seasons, and the seasons follow the month: January, May and September are spring, February, June and October summer, March, July and November autumn, April, August and December winter. HERE shows this month's list, by your DS clock (your device's).",
+                "hint": "Look at the calendar.",
+                "randomized": "Randomized.ANY",
+                "title": "Why did the POKéMON here change?"
+              }
+            },
+            {
+              "heading": "GYMS",
+              "randomized": {
+                "answer": "The one whose type beats your first POKéMON's: CHILI (fire) if you picked SNIVY, CRESS (water) if you picked TEPIG, CILAN (grass) if you picked OSHAWOTT. NEXT BOSS shows all three teams.",
+                "hint": "It depends on your first POKéMON.",
+                "randomized": "Randomized.ANY",
+                "title": "Which STRIATON CITY leader will I battle?"
+              }
+            }
+          ],
+          "title": "TIPS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Someone hands it to you in DRIFTVEIL CITY.",
+                  "areas": [
+                    "DRIFTVEIL CITY"
+                  ],
+                  "have": {
+                    "itemId": 421
+                  },
+                  "hint": "DRIFTVEIL CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM02 FLY"
+                },
+                {
+                  "answer": "Someone hands it to you in TWIST MOUNTAIN.",
+                  "areas": [
+                    "TWIST MOUNTAIN"
+                  ],
+                  "have": {
+                    "itemId": 422
+                  },
+                  "hint": "TWIST MOUNTAIN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM03 SURF"
+                },
+                {
+                  "answer": "Someone in NIMBASA CITY gives it to you.",
+                  "areas": [
+                    "NIMBASA CITY"
+                  ],
+                  "have": {
+                    "itemId": 423
+                  },
+                  "hint": "NIMBASA CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM04 STRENGTH"
+                },
+                {
+                  "answer": "It's an item ball on ROUTE 18.",
+                  "areas": [
+                    "ROUTE 18"
+                  ],
+                  "have": {
+                    "itemId": 424
+                  },
+                  "hint": "ROUTE 18.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM05 WATERFALL"
+                },
+                {
+                  "answer": "Someone in UNDELLA TOWN gives it to you.",
+                  "areas": [
+                    "UNDELLA TOWN"
+                  ],
+                  "have": {
+                    "itemId": 425
+                  },
+                  "hint": "UNDELLA TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM06 DIVE"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "Someone hands it to you in STRIATON CITY.",
+                "areas": [
+                  "STRIATON CITY"
+                ],
+                "have": {
+                  "itemId": 420
+                },
+                "hint": "STRIATON CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "HM01 CUT"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Someone hands it to you in NACRENE CITY.",
+                  "areas": [
+                    "NACRENE CITY"
+                  ],
+                  "have": {
+                    "itemId": 471
+                  },
+                  "hint": "NACRENE CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "DOWSING MCHN"
+                },
+                {
+                  "answer": "Someone in NUVEMA TOWN gives it to you.",
+                  "areas": [
+                    "NUVEMA TOWN"
+                  ],
+                  "have": {
+                    "itemId": 447
+                  },
+                  "hint": "NUVEMA TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SUPER ROD"
+                }
+              ],
+              "heading": "KEY ITEMS",
+              "randomized": {
+                "answer": "Someone hands it to you in NIMBASA CITY.",
+                "areas": [
+                  "NIMBASA CITY"
+                ],
+                "have": {
+                  "itemId": 450
+                },
+                "hint": "NIMBASA CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "BICYCLE"
+              }
+            }
+          ],
+          "title": "WHERE IS"
+        }
+      ]
+    }
+  },
+  "kind": "pokedaisy-reference-text",
+  "schema": 1,
+  "title": "Black and White"
+}

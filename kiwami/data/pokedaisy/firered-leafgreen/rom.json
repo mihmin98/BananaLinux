@@ -1,0 +1,877 @@
+{
+  "game": "firered-leafgreen",
+  "kind": "pokedaisy-reference-rom",
+  "schema": 1,
+  "tables": {
+    "FIELD_ITEMS_FIRERED_REV1": {
+      "checkBagHasItem": "0x8099F54",
+      "codeCrcs": [
+        "0xE6DE47BA",
+        "0x6E7CC2BE",
+        "0xD30D656E",
+        "0xC40BF208",
+        "0x9C26CCA4"
+      ],
+      "fieldControlsLocked": "0x806996C",
+      "fly": {
+        "badgeFlag": 2082,
+        "codeCrcs": [
+          "0x7BEBC3A",
+          "0xCD8961DF",
+          "0x348C5B9F",
+          "0xF9959006",
+          17934446,
+          "0xBAB654BA",
+          "0x70EA1DFC"
+        ],
+        "count": 108,
+        "destinations": "0x83F2F50",
+        "fadeScreen": "0x807A82C",
+        "firstMapsec": 88,
+        "flagGet": "0x806E6E4",
+        "getMapsecType": "0x80C35F0",
+        "lockControls": "0x8069954",
+        "partyMenuSlotId": "0x203B0A9",
+        "setFlyWarpDestination": "0x80C5290",
+        "setUpFieldMoveFly": "0x8124B04",
+        "unlockControls": "0x8069960"
+      },
+      "items": "0x83DB098",
+      "party": {
+        "addBagItem": "0x809A098",
+        "codeCrcs": [
+          "0xA73A32CD",
+          "0x71F5A020",
+          "0x788AB547",
+          "0xEADAC6C9",
+          "0xC316CD20"
+        ],
+        "getMonData": "0x803FBFC",
+        "itemCount": 375,
+        "itemEffect": "0x80413D4",
+        "itemNoEffect": "0x8042428",
+        "party": "0x2024284",
+        "partyCount": "0x2024029",
+        "scratch": "0x203FFF0",
+        "setMonData": "0x8040390",
+        "unholdablePockets": [
+          2,
+          4
+        ],
+        "useFuncs": [
+          "0x80A16F4",
+          "0x80A1710",
+          "0x80A172C",
+          "0x80A19AC"
+        ]
+      },
+      "pc": {
+        "codeCrcs": [
+          "0xAAC00946",
+          "0x9662F022"
+        ],
+        "pcFn": "0x808C6BD",
+        "setupScript": "0x8069AF8",
+        "special": 60,
+        "specials": "0x815FDD8"
+      },
+      "removeBagItem": "0x809A1EC",
+      "repelVar": 16416,
+      "varGet": "0x806E57C",
+      "varSet": "0x806E598"
+    },
+    "FIELD_ITEMS_LEAFGREEN_REV0": {
+      "checkBagHasItem": "0x8099F14",
+      "codeCrcs": [
+        "0xE6DE47BA",
+        "0x6E7CC2BE",
+        "0xD30D656E",
+        "0xC40BF208",
+        "0x9C26CCA4"
+      ],
+      "fieldControlsLocked": "0x8069958",
+      "fly": {
+        "badgeFlag": 2082,
+        "codeCrcs": [
+          "0x7BEBC3A",
+          "0x5B68C93A",
+          "0xE4D65E08",
+          "0xF9959006",
+          17934446,
+          "0xBAB654BA",
+          "0x59815BF"
+        ],
+        "count": 108,
+        "destinations": "0x83F2D1C",
+        "fadeScreen": "0x807A7EC",
+        "firstMapsec": 88,
+        "flagGet": "0x806E6D0",
+        "getMapsecType": "0x80C35B0",
+        "lockControls": "0x8069940",
+        "partyMenuSlotId": "0x203B0A9",
+        "setFlyWarpDestination": "0x80C5250",
+        "setUpFieldMoveFly": "0x8124A64",
+        "unlockControls": "0x806994C"
+      },
+      "items": "0x83DAE64",
+      "party": {
+        "addBagItem": "0x809A058",
+        "codeCrcs": [
+          "0x7841F205",
+          "0x9B11B0A6",
+          "0x788AB547",
+          "0xEADAC6C9",
+          "0xC316CD20"
+        ],
+        "getMonData": "0x803FBE8",
+        "itemCount": 375,
+        "itemEffect": "0x80413C0",
+        "itemNoEffect": "0x8042414",
+        "party": "0x2024284",
+        "partyCount": "0x2024029",
+        "scratch": "0x203FFF0",
+        "setMonData": "0x804037C",
+        "unholdablePockets": [
+          2,
+          4
+        ],
+        "useFuncs": [
+          "0x80A16B4",
+          "0x80A16D0",
+          "0x80A16EC",
+          "0x80A196C"
+        ]
+      },
+      "pc": {
+        "codeCrcs": [
+          "0xAAC00946",
+          "0x5333E53E"
+        ],
+        "pcFn": "0x808C67D",
+        "setupScript": "0x8069AE4",
+        "special": 60,
+        "specials": "0x815FD3C"
+      },
+      "removeBagItem": "0x809A1AC",
+      "repelVar": 16416,
+      "varGet": "0x806E568",
+      "varSet": "0x806E584"
+    },
+    "FIELD_ITEMS_LEAFGREEN_REV1": {
+      "checkBagHasItem": "0x8099F28",
+      "codeCrcs": [
+        "0xE6DE47BA",
+        "0x6E7CC2BE",
+        "0xD30D656E",
+        "0xC40BF208",
+        "0x9C26CCA4"
+      ],
+      "fieldControlsLocked": "0x806996C",
+      "fly": {
+        "badgeFlag": 2082,
+        "codeCrcs": [
+          "0x7BEBC3A",
+          "0xDBE480BD",
+          "0x50C0C136",
+          "0xF9959006",
+          17934446,
+          "0xBAB654BA",
+          "0x59815BF"
+        ],
+        "count": 108,
+        "destinations": "0x83F2D8C",
+        "fadeScreen": "0x807A800",
+        "firstMapsec": 88,
+        "flagGet": "0x806E6E4",
+        "getMapsecType": "0x80C35C4",
+        "lockControls": "0x8069954",
+        "partyMenuSlotId": "0x203B0A9",
+        "setFlyWarpDestination": "0x80C5264",
+        "setUpFieldMoveFly": "0x8124ADC",
+        "unlockControls": "0x8069960"
+      },
+      "items": "0x83DAED4",
+      "party": {
+        "addBagItem": "0x809A06C",
+        "codeCrcs": [
+          "0xA73A32CD",
+          "0x71F5A020",
+          "0x788AB547",
+          "0xEADAC6C9",
+          "0xC316CD20"
+        ],
+        "getMonData": "0x803FBFC",
+        "itemCount": 375,
+        "itemEffect": "0x80413D4",
+        "itemNoEffect": "0x8042428",
+        "party": "0x2024284",
+        "partyCount": "0x2024029",
+        "scratch": "0x203FFF0",
+        "setMonData": "0x8040390",
+        "unholdablePockets": [
+          2,
+          4
+        ],
+        "useFuncs": [
+          "0x80A16C8",
+          "0x80A16E4",
+          "0x80A1700",
+          "0x80A1980"
+        ]
+      },
+      "pc": {
+        "codeCrcs": [
+          "0xAAC00946",
+          "0x5333E53E"
+        ],
+        "pcFn": "0x808C691",
+        "setupScript": "0x8069AF8",
+        "special": 60,
+        "specials": "0x815FDB4"
+      },
+      "removeBagItem": "0x809A1C0",
+      "repelVar": 16416,
+      "varGet": "0x806E57C",
+      "varSet": "0x806E598"
+    },
+    "FIRERED_DEX_FLAGS": {
+      "block": "DexFlagBlock.SAVE_BLOCK_2",
+      "bytes": 52,
+      "caught": "0x28",
+      "seen": "0x5C",
+      "seenCopies": [
+        1528,
+        14872
+      ]
+    },
+    "FLASH_FIRERED_REV0": {
+      "badgeCheck": "0x812461C",
+      "badgeCheckCrc": "0xD3F21DE4",
+      "badgeFlag": 2080,
+      "codeCrcs": [
+        "0x7BEBC3A",
+        "0x95A07BD8",
+        "0xEFB4F176"
+      ],
+      "fieldCallbacks": [
+        "0x80C9B74"
+      ],
+      "flagGet": "0x806E6D0",
+      "litFlag": 2054,
+      "mapHeader": "0x2036DFC",
+      "menuFieldCallback": "0x3005024",
+      "partyMenuSlotId": "0x203B0A9",
+      "postMenuFieldCallback": "0x203B0C4",
+      "setUpFieldMoveFlash": "0x80C9B2C"
+    },
+    "FLASH_FIRERED_REV1": {
+      "badgeFlag": 2080,
+      "codeCrcs": [
+        "0x7BEBC3A",
+        "0x95A07BD8",
+        "0x99857EDD"
+      ],
+      "fieldCallbacks": [
+        "0x80C9B88"
+      ],
+      "flagGet": "0x806E6E4",
+      "litFlag": 2054,
+      "mapHeader": "0x2036DFC",
+      "menuFieldCallback": "0x3005024",
+      "partyMenuSlotId": "0x203B0A9",
+      "postMenuFieldCallback": "0x203B0C4",
+      "setUpFieldMoveFlash": "0x80C9B40"
+    },
+    "FLASH_LEAFGREEN_REV0": {
+      "badgeFlag": 2080,
+      "codeCrcs": [
+        "0x7BEBC3A",
+        "0xDA630667",
+        "0xEA609AF5"
+      ],
+      "fieldCallbacks": [
+        "0x80C9B48"
+      ],
+      "flagGet": "0x806E6D0",
+      "litFlag": 2054,
+      "mapHeader": "0x2036DFC",
+      "menuFieldCallback": "0x3005024",
+      "partyMenuSlotId": "0x203B0A9",
+      "postMenuFieldCallback": "0x203B0C4",
+      "setUpFieldMoveFlash": "0x80C9B00"
+    },
+    "FLASH_LEAFGREEN_REV1": {
+      "badgeFlag": 2080,
+      "codeCrcs": [
+        "0x7BEBC3A",
+        "0xDA630667",
+        "0x80A86C54"
+      ],
+      "fieldCallbacks": [
+        "0x80C9B5C"
+      ],
+      "flagGet": "0x806E6E4",
+      "litFlag": 2054,
+      "mapHeader": "0x2036DFC",
+      "menuFieldCallback": "0x3005024",
+      "partyMenuSlotId": "0x203B0A9",
+      "postMenuFieldCallback": "0x203B0C4",
+      "setUpFieldMoveFlash": "0x80C9B14"
+    },
+    "FLY_FIRERED_REV1": {
+      "badgeFlag": 2082,
+      "codeCrcs": [
+        "0x7BEBC3A",
+        "0xCD8961DF",
+        "0x348C5B9F",
+        "0xF9959006",
+        17934446,
+        "0xBAB654BA",
+        "0x70EA1DFC"
+      ],
+      "count": 108,
+      "destinations": "0x83F2F50",
+      "fadeScreen": "0x807A82C",
+      "firstMapsec": 88,
+      "flagGet": "0x806E6E4",
+      "getMapsecType": "0x80C35F0",
+      "lockControls": "0x8069954",
+      "partyMenuSlotId": "0x203B0A9",
+      "setFlyWarpDestination": "0x80C5290",
+      "setUpFieldMoveFly": "0x8124B04",
+      "unlockControls": "0x8069960"
+    },
+    "FLY_LEAFGREEN_REV0": {
+      "badgeFlag": 2082,
+      "codeCrcs": [
+        "0x7BEBC3A",
+        "0x5B68C93A",
+        "0xE4D65E08",
+        "0xF9959006",
+        17934446,
+        "0xBAB654BA",
+        "0x59815BF"
+      ],
+      "count": 108,
+      "destinations": "0x83F2D1C",
+      "fadeScreen": "0x807A7EC",
+      "firstMapsec": 88,
+      "flagGet": "0x806E6D0",
+      "getMapsecType": "0x80C35B0",
+      "lockControls": "0x8069940",
+      "partyMenuSlotId": "0x203B0A9",
+      "setFlyWarpDestination": "0x80C5250",
+      "setUpFieldMoveFly": "0x8124A64",
+      "unlockControls": "0x806994C"
+    },
+    "FLY_LEAFGREEN_REV1": {
+      "badgeFlag": 2082,
+      "codeCrcs": [
+        "0x7BEBC3A",
+        "0xDBE480BD",
+        "0x50C0C136",
+        "0xF9959006",
+        17934446,
+        "0xBAB654BA",
+        "0x59815BF"
+      ],
+      "count": 108,
+      "destinations": "0x83F2D8C",
+      "fadeScreen": "0x807A800",
+      "firstMapsec": 88,
+      "flagGet": "0x806E6E4",
+      "getMapsecType": "0x80C35C4",
+      "lockControls": "0x8069954",
+      "partyMenuSlotId": "0x203B0A9",
+      "setFlyWarpDestination": "0x80C5264",
+      "setUpFieldMoveFly": "0x8124ADC",
+      "unlockControls": "0x8069960"
+    },
+    "GUIDE_TABLES_FIRERED_REV1": {
+      "learnsets": "0x825D824",
+      "mapGroups": "0x8352718",
+      "trainers": "0x823EB38",
+      "wildHeaders": "0x83C9D28"
+    },
+    "GUIDE_TABLES_LEAFGREEN_REV0": {
+      "guide": "GuideId.LEAFGREEN",
+      "learnsets": "0x825D794",
+      "mapGroups": "0x8352688",
+      "trainers": "0x823EAA4",
+      "wildHeaders": "0x83C9AF4"
+    },
+    "GUIDE_TABLES_LEAFGREEN_REV1": {
+      "guide": "GuideId.LEAFGREEN",
+      "learnsets": "0x825D804",
+      "mapGroups": "0x83526F8",
+      "trainers": "0x823EB14",
+      "wildHeaders": "0x83C9B64"
+    },
+    "PARTY_ITEMS_FIRERED_REV1": {
+      "addBagItem": "0x809A098",
+      "codeCrcs": [
+        "0xA73A32CD",
+        "0x71F5A020",
+        "0x788AB547",
+        "0xEADAC6C9",
+        "0xC316CD20"
+      ],
+      "getMonData": "0x803FBFC",
+      "itemCount": 375,
+      "itemEffect": "0x80413D4",
+      "itemNoEffect": "0x8042428",
+      "party": "0x2024284",
+      "partyCount": "0x2024029",
+      "scratch": "0x203FFF0",
+      "setMonData": "0x8040390",
+      "unholdablePockets": [
+        2,
+        4
+      ],
+      "useFuncs": [
+        "0x80A16F4",
+        "0x80A1710",
+        "0x80A172C",
+        "0x80A19AC"
+      ]
+    },
+    "PARTY_ITEMS_LEAFGREEN_REV0": {
+      "addBagItem": "0x809A058",
+      "codeCrcs": [
+        "0x7841F205",
+        "0x9B11B0A6",
+        "0x788AB547",
+        "0xEADAC6C9",
+        "0xC316CD20"
+      ],
+      "getMonData": "0x803FBE8",
+      "itemCount": 375,
+      "itemEffect": "0x80413C0",
+      "itemNoEffect": "0x8042414",
+      "party": "0x2024284",
+      "partyCount": "0x2024029",
+      "scratch": "0x203FFF0",
+      "setMonData": "0x804037C",
+      "unholdablePockets": [
+        2,
+        4
+      ],
+      "useFuncs": [
+        "0x80A16B4",
+        "0x80A16D0",
+        "0x80A16EC",
+        "0x80A196C"
+      ]
+    },
+    "PARTY_ITEMS_LEAFGREEN_REV1": {
+      "addBagItem": "0x809A06C",
+      "codeCrcs": [
+        "0xA73A32CD",
+        "0x71F5A020",
+        "0x788AB547",
+        "0xEADAC6C9",
+        "0xC316CD20"
+      ],
+      "getMonData": "0x803FBFC",
+      "itemCount": 375,
+      "itemEffect": "0x80413D4",
+      "itemNoEffect": "0x8042428",
+      "party": "0x2024284",
+      "partyCount": "0x2024029",
+      "scratch": "0x203FFF0",
+      "setMonData": "0x8040390",
+      "unholdablePockets": [
+        2,
+        4
+      ],
+      "useFuncs": [
+        "0x80A16C8",
+        "0x80A16E4",
+        "0x80A1700",
+        "0x80A1980"
+      ]
+    },
+    "PC_FIRERED_REV1": {
+      "codeCrcs": [
+        "0xAAC00946",
+        "0x9662F022"
+      ],
+      "pcFn": "0x808C6BD",
+      "setupScript": "0x8069AF8",
+      "special": 60,
+      "specials": "0x815FDD8"
+    },
+    "PC_LEAFGREEN_REV0": {
+      "codeCrcs": [
+        "0xAAC00946",
+        "0x5333E53E"
+      ],
+      "pcFn": "0x808C67D",
+      "setupScript": "0x8069AE4",
+      "special": 60,
+      "specials": "0x815FD3C"
+    },
+    "PC_LEAFGREEN_REV1": {
+      "codeCrcs": [
+        "0xAAC00946",
+        "0x5333E53E"
+      ],
+      "pcFn": "0x808C691",
+      "setupScript": "0x8069AF8",
+      "special": 60,
+      "specials": "0x815FDB4"
+    },
+    "POKEDEX_FIRERED_REV1": {
+      "abilityNames": "0x824FCB0",
+      "entries": "0x844E8B0",
+      "evolutions": "0x82597C4",
+      "footprints": "0x843FB20",
+      "frontPics": "0x823511C",
+      "palettes": "0x823737C",
+      "speciesInfo": "0x82547F4",
+      "speciesToNational": "0x825205E",
+      "tmhmLearnsets": "0x8252C38",
+      "tmhmMoves": "0x845A604"
+    },
+    "POKEDEX_LEAFGREEN_REV0": {
+      "abilityNames": "0x824FC1C",
+      "entries": "0x844E270",
+      "evolutions": "0x8259734",
+      "footprints": "0x843F8EC",
+      "frontPics": "0x8235088",
+      "palettes": "0x82372E8",
+      "speciesInfo": "0x8254760",
+      "speciesToNational": "0x8251FCA",
+      "tmhmLearnsets": "0x8252BA4",
+      "tmhmMoves": "0x8459FC4"
+    },
+    "POKEDEX_LEAFGREEN_REV1": {
+      "abilityNames": "0x824FC8C",
+      "entries": "0x844E2E0",
+      "evolutions": "0x82597A4",
+      "footprints": "0x843F95C",
+      "frontPics": "0x82350F8",
+      "palettes": "0x8237358",
+      "speciesInfo": "0x82547D0",
+      "speciesToNational": "0x825203A",
+      "tmhmLearnsets": "0x8252C14",
+      "tmhmMoves": "0x845A034"
+    },
+    "TM_FIRERED_REV0": {
+      "cleanupOverworld": "0x80563F0",
+      "codeCrcs": [
+        "0x9CA850AA",
+        "0xAA3B20FF",
+        "0x3099DC9B",
+        "0x7FD43C20",
+        "0xB892BBB7",
+        "0xE67BC364",
+        "0xF9959006",
+        17934446,
+        "0xBAB654BA"
+      ],
+      "fadeScreen": "0x807A818",
+      "initPartyMenu": "0x811EBD0",
+      "itemUseCb": "0x3005E98",
+      "itemUseCbTmhm": "0x8125B40",
+      "lockControls": "0x8069940",
+      "mainCallback2": "0x30030F4",
+      "partyMenu": "0x203B0A0",
+      "partyMenuSlotOff": 9,
+      "returnToField": "0x80567DC",
+      "setMainCallback2": "0x8000544",
+      "showPartyMenuForItemUse": "0x8124C8C",
+      "specialVarItemId": "0x203AD30",
+      "unlockControls": "0x806994C"
+    },
+    "TM_FIRERED_REV1": {
+      "cleanupOverworld": "0x8056404",
+      "codeCrcs": [
+        "0xEA99DF01",
+        "0xAA3B20FF",
+        "0x1655AE08",
+        "0x7FD43C20",
+        "0x95CA9A3E",
+        "0xCE27BF5A",
+        "0xF9959006",
+        17934446,
+        "0xBAB654BA"
+      ],
+      "fadeScreen": "0x807A82C",
+      "initPartyMenu": "0x811EC48",
+      "itemUseCb": "0x3005E98",
+      "itemUseCbTmhm": "0x8125BB8",
+      "lockControls": "0x8069954",
+      "mainCallback2": "0x30030F4",
+      "partyMenu": "0x203B0A0",
+      "partyMenuSlotOff": 9,
+      "returnToField": "0x80567F0",
+      "setMainCallback2": "0x8000558",
+      "showPartyMenuForItemUse": "0x8124D04",
+      "specialVarItemId": "0x203AD30",
+      "unlockControls": "0x8069960"
+    },
+    "TM_LEAFGREEN_REV0": {
+      "cleanupOverworld": "0x80563F0",
+      "codeCrcs": [
+        "0x679AE1F0",
+        "0xAA3B20FF",
+        "0x1DE165E1",
+        "0x7FD43C20",
+        "0xB892BBB7",
+        "0xAD9CEAC8",
+        "0xF9959006",
+        17934446,
+        "0xBAB654BA"
+      ],
+      "fadeScreen": "0x807A7EC",
+      "initPartyMenu": "0x811EBA8",
+      "itemUseCb": "0x3005E98",
+      "itemUseCbTmhm": "0x8125B18",
+      "lockControls": "0x8069940",
+      "mainCallback2": "0x30030F4",
+      "partyMenu": "0x203B0A0",
+      "partyMenuSlotOff": 9,
+      "returnToField": "0x80567DC",
+      "setMainCallback2": "0x8000544",
+      "showPartyMenuForItemUse": "0x8124C64",
+      "specialVarItemId": "0x203AD30",
+      "unlockControls": "0x806994C"
+    },
+    "TM_LEAFGREEN_REV1": {
+      "cleanupOverworld": "0x8056404",
+      "codeCrcs": [
+        "0xAB261E3B",
+        "0xAA3B20FF",
+        "0xBF379CB9",
+        "0x7FD43C20",
+        "0x95CA9A3E",
+        "0xD3AF9AFE",
+        "0xF9959006",
+        17934446,
+        "0xBAB654BA"
+      ],
+      "fadeScreen": "0x807A800",
+      "initPartyMenu": "0x811EC20",
+      "itemUseCb": "0x3005E98",
+      "itemUseCbTmhm": "0x8125B90",
+      "lockControls": "0x8069954",
+      "mainCallback2": "0x30030F4",
+      "partyMenu": "0x203B0A0",
+      "partyMenuSlotOff": 9,
+      "returnToField": "0x80567F0",
+      "setMainCallback2": "0x8000558",
+      "showPartyMenuForItemUse": "0x8124CDC",
+      "specialVarItemId": "0x203AD30",
+      "unlockControls": "0x8069960"
+    },
+    "TRADE_EVO_FIRERED_REV1": {
+      "afterEvolution": "0x300537C",
+      "beginEvolutionScene": "0x80CDDBC",
+      "codeCrcs": [
+        "0xA970F637",
+        "0xB9EDBA19",
+        "0x95CA9A3E",
+        17934446
+      ],
+      "getEvolutionTarget": "0x8042ED8",
+      "lockControls": "0x8069954",
+      "returnToField": "0x80567F0"
+    },
+    "TRADE_EVO_LEAFGREEN_REV0": {
+      "afterEvolution": "0x300537C",
+      "beginEvolutionScene": "0x80CDD7C",
+      "codeCrcs": [
+        "0xA970F637",
+        "0x8B13D433",
+        "0xB892BBB7",
+        17934446
+      ],
+      "getEvolutionTarget": "0x8042EC4",
+      "lockControls": "0x8069940",
+      "returnToField": "0x80567DC"
+    },
+    "TRADE_EVO_LEAFGREEN_REV1": {
+      "afterEvolution": "0x300537C",
+      "beginEvolutionScene": "0x80CDD90",
+      "codeCrcs": [
+        "0xA970F637",
+        "0x8B13D433",
+        "0x95CA9A3E",
+        17934446
+      ],
+      "getEvolutionTarget": "0x8042ED8",
+      "lockControls": "0x8069954",
+      "returnToField": "0x80567F0"
+    },
+    "TRAINER_CARD_FIRERED": {
+      "badgeFlag": 2080,
+      "dexFlags": {
+        "block": "DexFlagBlock.SAVE_BLOCK_2",
+        "bytes": 52,
+        "caught": "0x28",
+        "seen": "0x5C",
+        "seenCopies": [
+          1528,
+          14872
+        ]
+      },
+      "flagsOff": "0xEE0",
+      "gameStatsOff": "0x1200",
+      "nationalFlag": 2112,
+      "nationalMagic": 185,
+      "nationalMagicOff": "0x1B",
+      "nationalVar": 16462,
+      "nationalVarValue": 25176,
+      "pokedexFlag": 2089,
+      "stickerVar": 16457,
+      "style": "CardStyle.KANTO",
+      "varsOff": "0x1000"
+    },
+    "firered_rev0.itemDescs": {
+      "base": "0x83DB028",
+      "preset": "vanilla"
+    },
+    "firered_rev1.guideTables": {
+      "learnsets": "0x825D824",
+      "mapGroups": "0x8352718",
+      "trainers": "0x823EB38",
+      "wildHeaders": "0x83C9D28"
+    },
+    "firered_rev1.itemDescs": {
+      "base": "0x83DB098",
+      "preset": "vanilla"
+    },
+    "firered_rev1.pokedex": {
+      "abilityNames": "0x824FCB0",
+      "entries": "0x844E8B0",
+      "evolutions": "0x82597C4",
+      "footprints": "0x843FB20",
+      "frontPics": "0x823511C",
+      "palettes": "0x823737C",
+      "speciesInfo": "0x82547F4",
+      "speciesToNational": "0x825205E",
+      "tmhmLearnsets": "0x8252C38",
+      "tmhmMoves": "0x845A604"
+    },
+    "firered_rev1.trainerCard": {
+      "badgeFlag": 2080,
+      "dexFlags": {
+        "block": "DexFlagBlock.SAVE_BLOCK_2",
+        "bytes": 52,
+        "caught": "0x28",
+        "seen": "0x5C",
+        "seenCopies": [
+          1528,
+          14872
+        ]
+      },
+      "flagsOff": "0xEE0",
+      "gameStatsOff": "0x1200",
+      "nationalFlag": 2112,
+      "nationalMagic": 185,
+      "nationalMagicOff": "0x1B",
+      "nationalVar": 16462,
+      "nationalVarValue": 25176,
+      "pokedexFlag": 2089,
+      "stickerVar": 16457,
+      "style": "CardStyle.KANTO",
+      "varsOff": "0x1000"
+    },
+    "leafgreen_rev0.guideTables": {
+      "guide": "GuideId.LEAFGREEN",
+      "learnsets": "0x825D794",
+      "mapGroups": "0x8352688",
+      "trainers": "0x823EAA4",
+      "wildHeaders": "0x83C9AF4"
+    },
+    "leafgreen_rev0.itemDescs": {
+      "base": "0x83DAE64",
+      "preset": "vanilla"
+    },
+    "leafgreen_rev0.pokedex": {
+      "abilityNames": "0x824FC1C",
+      "entries": "0x844E270",
+      "evolutions": "0x8259734",
+      "footprints": "0x843F8EC",
+      "frontPics": "0x8235088",
+      "palettes": "0x82372E8",
+      "speciesInfo": "0x8254760",
+      "speciesToNational": "0x8251FCA",
+      "tmhmLearnsets": "0x8252BA4",
+      "tmhmMoves": "0x8459FC4"
+    },
+    "leafgreen_rev0.trainerCard": {
+      "badgeFlag": 2080,
+      "dexFlags": {
+        "block": "DexFlagBlock.SAVE_BLOCK_2",
+        "bytes": 52,
+        "caught": "0x28",
+        "seen": "0x5C",
+        "seenCopies": [
+          1528,
+          14872
+        ]
+      },
+      "flagsOff": "0xEE0",
+      "gameStatsOff": "0x1200",
+      "nationalFlag": 2112,
+      "nationalMagic": 185,
+      "nationalMagicOff": "0x1B",
+      "nationalVar": 16462,
+      "nationalVarValue": 25176,
+      "pokedexFlag": 2089,
+      "stickerVar": 16457,
+      "style": "CardStyle.KANTO",
+      "varsOff": "0x1000"
+    },
+    "leafgreen_rev1.guideTables": {
+      "guide": "GuideId.LEAFGREEN",
+      "learnsets": "0x825D804",
+      "mapGroups": "0x83526F8",
+      "trainers": "0x823EB14",
+      "wildHeaders": "0x83C9B64"
+    },
+    "leafgreen_rev1.itemDescs": {
+      "base": "0x83DAED4",
+      "preset": "vanilla"
+    },
+    "leafgreen_rev1.pokedex": {
+      "abilityNames": "0x824FC8C",
+      "entries": "0x844E2E0",
+      "evolutions": "0x82597A4",
+      "footprints": "0x843F95C",
+      "frontPics": "0x82350F8",
+      "palettes": "0x8237358",
+      "speciesInfo": "0x82547D0",
+      "speciesToNational": "0x825203A",
+      "tmhmLearnsets": "0x8252C14",
+      "tmhmMoves": "0x845A034"
+    },
+    "leafgreen_rev1.trainerCard": {
+      "badgeFlag": 2080,
+      "dexFlags": {
+        "block": "DexFlagBlock.SAVE_BLOCK_2",
+        "bytes": 52,
+        "caught": "0x28",
+        "seen": "0x5C",
+        "seenCopies": [
+          1528,
+          14872
+        ]
+      },
+      "flagsOff": "0xEE0",
+      "gameStatsOff": "0x1200",
+      "nationalFlag": 2112,
+      "nationalMagic": 185,
+      "nationalMagicOff": "0x1B",
+      "nationalVar": 16462,
+      "nationalVarValue": 25176,
+      "pokedexFlag": 2089,
+      "stickerVar": 16457,
+      "style": "CardStyle.KANTO",
+      "varsOff": "0x1000"
+    }
+  },
+  "title": "FireRed and LeafGreen"
+}

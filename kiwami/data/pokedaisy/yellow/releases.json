@@ -1,0 +1,12 @@
+{
+  "game": "yellow",
+  "kind": "pokedaisy-reference-releases",
+  "releases": [
+    {
+      "sha1": "cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1",
+      "title": "Pokémon Yellow"
+    }
+  ],
+  "schema": 1,
+  "title": "Yellow"
+}

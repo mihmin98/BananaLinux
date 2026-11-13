@@ -1,0 +1,16 @@
+{
+  "game": "black-white",
+  "kind": "pokedaisy-reference-releases",
+  "releases": [
+    {
+      "sha1": "26ad0b9967aa279c4a266ee69f52b9b2332399a5",
+      "title": "Pokémon Black"
+    },
+    {
+      "sha1": "bc696a0dfb448c7b3a8a206f0f8214411a039208",
+      "title": "Pokémon White"
+    }
+  ],
+  "schema": 1,
+  "title": "Black and White"
+}

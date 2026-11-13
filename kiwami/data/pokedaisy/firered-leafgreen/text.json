@@ -1,0 +1,1272 @@
+{
+  "game": "firered-leafgreen",
+  "guides": {
+    "FIRERED": {
+      "pages": [
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "HERE, NEXT BOSS, EVOLUTIONS and the DEX read the randomizer's POKéMON, teams, moves and items from the game itself. The gift and legendary POKéMON it moved aren't listed: the guide can't know them.",
+                  "randomized": "Randomized.ANY",
+                  "title": "This game is randomized"
+                }
+              ],
+              "heading": "RANDOMIZED",
+              "randomized": "Randomized.ONLY"
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Hold B to run once you have the RUNNING SHOES.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Running"
+                },
+                {
+                  "answer": "The VS SEEKER finds trainers who want a rematch. It recharges as you walk.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Rematches"
+                }
+              ],
+              "heading": "CONTROLS",
+              "randomized": {
+                "answer": "Press L or R almost anywhere for the game's own HELP menu (OPTION: BUTTON MODE = HELP, the default).",
+                "randomized": "Randomized.ANY",
+                "title": "In-game help"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Poison outside battle"
+                }
+              ],
+              "heading": "BATTLES",
+              "randomized": {
+                "answer": "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.",
+                "randomized": "Randomized.ANY",
+                "title": "Physical or special?"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "HM moves can't be forgotten normally. The MOVE DELETER in FUCHSIA CITY removes them.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Getting rid of an HM move"
+                },
+                {
+                  "answer": "The MOVE RELEARNER on TWO ISLAND teaches a forgotten move for a BIG MUSHROOM or two TINY MUSHROOMS.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Relearning moves"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "FLASH: BOULDER. CUT: CASCADE. FLY: THUNDER. STRENGTH: RAINBOW. SURF: SOUL. ROCK SMASH: MARSH. WATERFALL: VOLCANO. A POKéMON in the party must know the move too.",
+                "randomized": "Randomized.ANY",
+                "title": "Which badge unlocks which HM?"
+              }
+            },
+            {
+              "heading": "SAFARI ZONE",
+              "randomized": {
+                "answer": "600 steps per visit. You can't use your own POKéMON - throw bait or rocks, then SAFARI BALLS.",
+                "randomized": "Randomized.ANY",
+                "title": "How long do I have?"
+              }
+            }
+          ],
+          "title": "TIPS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Get a BIKE VOUCHER from the chairman of the POKéMON FAN CLUB in VERMILION CITY, then trade it at CERULEAN CITY's bike shop.",
+                  "areas": [
+                    "VERMILION CITY",
+                    "CERULEAN CITY"
+                  ],
+                  "have": {
+                    "itemId": 360
+                  },
+                  "hint": "Someone in VERMILION CITY loves to talk about his POKéMON.",
+                  "randomized": "Randomized.ANY",
+                  "title": "BICYCLE"
+                },
+                {
+                  "answer": "An AIDE in the VERMILION CITY POKéMON CENTER.",
+                  "areas": [
+                    "VERMILION CITY"
+                  ],
+                  "have": {
+                    "flag": "0x292"
+                  },
+                  "hint": "In a POKéMON CENTER.",
+                  "randomized": "Randomized.ANY",
+                  "title": "VS SEEKER"
+                },
+                {
+                  "answer": "The FISHING GURU in a house in VERMILION CITY.",
+                  "areas": [
+                    "VERMILION CITY"
+                  ],
+                  "have": {
+                    "itemId": 262
+                  },
+                  "hint": "A port town.",
+                  "randomized": "Randomized.ANY",
+                  "title": "OLD ROD"
+                },
+                {
+                  "answer": "A fisherman's house in FUCHSIA CITY.",
+                  "areas": [
+                    "FUCHSIA CITY"
+                  ],
+                  "have": {
+                    "itemId": 263
+                  },
+                  "hint": "The city with the SAFARI ZONE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "GOOD ROD"
+                },
+                {
+                  "answer": "The FISHING HOUSE on ROUTE 12.",
+                  "areas": [
+                    "ROUTE 12"
+                  ],
+                  "have": {
+                    "itemId": 264
+                  },
+                  "hint": "On the long pier south of LAVENDER TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SUPER ROD"
+                },
+                {
+                  "answer": "PROF. OAK's AIDE upstairs in the ROUTE 11 gate, once you've caught 30 kinds of POKéMON.",
+                  "areas": [
+                    "ROUTE 11"
+                  ],
+                  "have": {
+                    "flag": "0x252"
+                  },
+                  "hint": "An AIDE east of VERMILION CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "ITEMFINDER"
+                },
+                {
+                  "answer": "PROF. OAK's AIDE upstairs in the ROUTE 15 gate, once you've caught 50 kinds of POKéMON.",
+                  "areas": [
+                    "ROUTE 15"
+                  ],
+                  "have": {
+                    "flag": "0x256"
+                  },
+                  "hint": "An AIDE west of FUCHSIA CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "EXP. SHARE"
+                }
+              ],
+              "heading": "KEY ITEMS",
+              "randomized": {
+                "answer": "PROF. OAK's AIDE gives them to you as you leave PEWTER CITY after beating BROCK.",
+                "areas": [
+                  "PEWTER CITY"
+                ],
+                "have": {
+                  "flag": "0x82F"
+                },
+                "hint": "After the first gym.",
+                "randomized": "Randomized.ANY",
+                "title": "RUNNING SHOES"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "A house on ROUTE 16, behind a small tree (use CUT).",
+                  "areas": [
+                    "ROUTE 16"
+                  ],
+                  "have": {
+                    "itemId": 340
+                  },
+                  "hint": "West of CELADON CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM02 FLY"
+                },
+                {
+                  "answer": "The SECRET HOUSE deep in the SAFARI ZONE.",
+                  "areas": [
+                    "KANTO SAFARI ZONE"
+                  ],
+                  "have": {
+                    "itemId": 341
+                  },
+                  "hint": "In the SAFARI ZONE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM03 SURF"
+                },
+                {
+                  "answer": "Find the GOLD TEETH in the SAFARI ZONE's west area and return them to the WARDEN in FUCHSIA CITY.",
+                  "areas": [
+                    "FUCHSIA CITY",
+                    "KANTO SAFARI ZONE"
+                  ],
+                  "have": {
+                    "itemId": 342
+                  },
+                  "hint": "Someone in FUCHSIA CITY lost something in the SAFARI ZONE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM04 STRENGTH"
+                },
+                {
+                  "answer": "PROF. OAK's AIDE in the building on ROUTE 2, once you've caught 10 kinds of POKéMON.",
+                  "areas": [
+                    "ROUTE 2"
+                  ],
+                  "have": {
+                    "itemId": 343
+                  },
+                  "hint": "An AIDE near DIGLETT's CAVE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM05 FLASH"
+                },
+                {
+                  "answer": "The EMBER SPA on KINDLE ROAD (ONE ISLAND).",
+                  "areas": [
+                    "KINDLE ROAD",
+                    "EMBER SPA"
+                  ],
+                  "have": {
+                    "itemId": 344
+                  },
+                  "hint": "A hot spring on the SEVII ISLANDS.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM06 ROCK SMASH"
+                },
+                {
+                  "answer": "Inside ICEFALL CAVE on FOUR ISLAND.",
+                  "areas": [
+                    "ICEFALL CAVE",
+                    "FOUR ISLAND"
+                  ],
+                  "have": {
+                    "itemId": 345
+                  },
+                  "hint": "A frozen cave on the SEVII ISLANDS.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM07 WATERFALL"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "The captain of the S.S. ANNE in VERMILION CITY - visit him before the ship leaves.",
+                "areas": [
+                  "VERMILION CITY",
+                  "S.S. ANNE"
+                ],
+                "have": {
+                  "itemId": 339
+                },
+                "hint": "Someone seasick.",
+                "randomized": "Randomized.ANY",
+                "title": "HM01 CUT"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "A house in FUCHSIA CITY.",
+                  "areas": [
+                    "FUCHSIA CITY"
+                  ],
+                  "randomized": "Randomized.ANY",
+                  "title": "MOVE DELETER"
+                },
+                {
+                  "answer": "A house on TWO ISLAND. Bring a BIG MUSHROOM or two TINY MUSHROOMS.",
+                  "areas": [
+                    "TWO ISLAND"
+                  ],
+                  "randomized": "Randomized.ANY",
+                  "title": "MOVE RELEARNER"
+                }
+              ],
+              "heading": "SHOPS & SERVICES",
+              "randomized": {
+                "answer": "CELADON DEPT. STORE 4F sells FIRE, THUNDER, WATER and LEAF STONES. MOON STONES are found, e.g. in MT. MOON.",
+                "areas": [
+                  "CELADON CITY"
+                ],
+                "hint": "The big store.",
+                "randomized": "Randomized.HIDE",
+                "title": "Evolution stones"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "The rooftop room of the CELADON CONDOMINIUMS - reached by the back entrance.",
+                  "areas": [
+                    "CELADON CITY"
+                  ],
+                  "have": {
+                    "national": 133
+                  },
+                  "hint": "CELADON CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "EEVEE"
+                },
+                {
+                  "answer": "An employee on SILPH CO. 7F, after you reach him during the ROCKET takeover.",
+                  "areas": [
+                    "SILPH CO"
+                  ],
+                  "have": {
+                    "national": 131
+                  },
+                  "hint": "SAFFRON CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "LAPRAS"
+                },
+                {
+                  "answer": "Beat the FIGHTING DOJO in SAFFRON CITY and pick one.",
+                  "areas": [
+                    "SAFFRON CITY"
+                  ],
+                  "have": {
+                    "national": [
+                      106,
+                      107
+                    ]
+                  },
+                  "hint": "Next to a gym.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HITMONLEE / HITMONCHAN"
+                },
+                {
+                  "answer": "Pick the HELIX or DOME FOSSIL in MT. MOON; the OLD AMBER is in the back of PEWTER's museum. The CINNABAR ISLAND lab revives them.",
+                  "areas": [
+                    "MT MOON",
+                    "PEWTER CITY",
+                    "CINNABAR ISLAND"
+                  ],
+                  "have": {
+                    "national": [
+                      138,
+                      140,
+                      142
+                    ]
+                  },
+                  "hint": "A cave, a museum, and a lab.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Fossils"
+                },
+                {
+                  "answer": "The prize corner next to the CELADON CITY GAME CORNER trades coins for POKéMON: ABRA Lv9 (180 coins), CLEFAIRY Lv8 (500), DRATINI Lv18 (2800), SCYTHER Lv25 (5500), PORYGON Lv26 (9999). A man in the CELADON CITY restaurant gives you the COIN CASE.",
+                  "areas": [
+                    "CELADON CITY"
+                  ],
+                  "hint": "Win coins in CELADON CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "GAME CORNER prizes"
+                }
+              ],
+              "heading": "GIFT POKéMON",
+              "randomized": "Randomized.HIDE"
+            },
+            {
+              "entries": [
+                {
+                  "answer": "The bottom of the SEAFOAM ISLANDS. Push boulders with STRENGTH to slow the currents.",
+                  "areas": [
+                    "SEAFOAM ISLANDS"
+                  ],
+                  "have": {
+                    "national": 144
+                  },
+                  "hint": "Between FUCHSIA CITY and CINNABAR ISLAND.",
+                  "randomized": "Randomized.ANY",
+                  "title": "ARTICUNO"
+                },
+                {
+                  "answer": "The POWER PLANT - SURF from ROUTE 10.",
+                  "areas": [
+                    "POWER PLANT",
+                    "ROUTE 10"
+                  ],
+                  "have": {
+                    "national": 145
+                  },
+                  "hint": "An abandoned building.",
+                  "randomized": "Randomized.ANY",
+                  "title": "ZAPDOS"
+                },
+                {
+                  "answer": "The top of MT. EMBER on ONE ISLAND.",
+                  "areas": [
+                    "MT EMBER"
+                  ],
+                  "have": {
+                    "national": 146
+                  },
+                  "hint": "A volcano on the SEVII ISLANDS.",
+                  "randomized": "Randomized.ANY",
+                  "title": "MOLTRES"
+                },
+                {
+                  "answer": "The bottom of CERULEAN CAVE, which opens after the SEVII ISLANDS story is finished.",
+                  "areas": [
+                    "CERULEAN CAVE"
+                  ],
+                  "have": {
+                    "national": 150
+                  },
+                  "hint": "Post-game, near CERULEAN CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "MEWTWO"
+                },
+                {
+                  "answer": "Two block ROUTE 12 and ROUTE 16. Wake them with the POKé FLUTE.",
+                  "areas": [
+                    "ROUTE 12",
+                    "ROUTE 16"
+                  ],
+                  "have": {
+                    "national": 143
+                  },
+                  "hint": "Sleeping in the way.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SNORLAX"
+                }
+              ],
+              "heading": "LEGENDARY POKéMON",
+              "randomized": "Randomized.HIDE"
+            }
+          ],
+          "title": "WHERE IS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "It's the last gym - it opens once you have the other seven badges.",
+                  "areas": [
+                    "VIRIDIAN CITY"
+                  ],
+                  "hint": "Come back much later.",
+                  "randomized": "Randomized.ANY",
+                  "title": "VIRIDIAN CITY's gym is locked"
+                },
+                {
+                  "answer": "BILL gives it to you after you help him in his cottage at the end of ROUTE 25, north of CERULEAN CITY.",
+                  "areas": [
+                    "CERULEAN CITY",
+                    "ROUTE 25",
+                    "VERMILION CITY"
+                  ],
+                  "hint": "Cross the bridge north of CERULEAN CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Where's the S.S. TICKET?"
+                },
+                {
+                  "answer": "FLASH lights it up (HM05, see WHERE IS), but you can walk through without it.",
+                  "areas": [
+                    "ROCK TUNNEL",
+                    "ROUTE 10"
+                  ],
+                  "hint": "An HM helps, but it's optional.",
+                  "randomized": "Randomized.ANY",
+                  "title": "ROCK TUNNEL is pitch black"
+                }
+              ],
+              "heading": "EARLY GAME",
+              "randomized": {
+                "answer": "Pick up OAK's PARCEL at the VIRIDIAN CITY POKé MART and deliver it to PROF. OAK in PALLET TOWN. He moves after that.",
+                "areas": [
+                  "VIRIDIAN CITY",
+                  "PALLET TOWN"
+                ],
+                "hint": "PROF. OAK is waiting for something from VIRIDIAN CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "An old man blocks the road north of VIRIDIAN"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "You need the SILPH SCOPE. It's on ROCKET HIDEOUT B4F, under the CELADON GAME CORNER - a switch behind a poster opens the entrance.",
+                  "areas": [
+                    "POKEMON TOWER",
+                    "LAVENDER TOWN",
+                    "CELADON CITY",
+                    "ROCKET HIDEOUT"
+                  ],
+                  "hint": "TEAM ROCKET has it, somewhere in CELADON CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "I can't identify the ghosts in POKéMON TOWER"
+                },
+                {
+                  "answer": "It needs the LIFT KEY, which a ROCKET on B4F drops. Take the stairs down to reach him.",
+                  "areas": [
+                    "ROCKET HIDEOUT"
+                  ],
+                  "hint": "Someone downstairs has a key.",
+                  "randomized": "Randomized.ANY",
+                  "title": "The hideout's elevator won't move"
+                },
+                {
+                  "answer": "Rescue MR. FUJI from the top of POKéMON TOWER; he gives you the POKé FLUTE at his house in LAVENDER TOWN.",
+                  "areas": [
+                    "ROUTE 12",
+                    "ROUTE 16",
+                    "LAVENDER TOWN"
+                  ],
+                  "hint": "Something in LAVENDER TOWN wakes it.",
+                  "randomized": "Randomized.HIDE",
+                  "title": "A SNORLAX blocks the road"
+                },
+                {
+                  "answer": "Ride CYCLING ROAD south from CELADON CITY (BICYCLE needed), or go down ROUTES 12-15 from LAVENDER TOWN after waking the SNORLAX.",
+                  "areas": [
+                    "CELADON CITY",
+                    "LAVENDER TOWN",
+                    "ROUTE 12",
+                    "ROUTE 16"
+                  ],
+                  "hint": "There are two ways - one needs wheels.",
+                  "randomized": "Randomized.ANY",
+                  "title": "How do I get to FUCHSIA CITY?"
+                },
+                {
+                  "answer": "Find the CARD KEY on 5F; it opens every locked door in the building.",
+                  "areas": [
+                    "SILPH CO"
+                  ],
+                  "hint": "Somewhere in the middle floors.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SILPH CO.'s doors are locked"
+                }
+              ],
+              "heading": "MID GAME",
+              "randomized": {
+                "answer": "The gate guards are thirsty. Get TEA from the old woman on the ground floor of the CELADON CONDOMINIUMS and any guard lets you through.",
+                "areas": [
+                  "SAFFRON CITY",
+                  "CELADON CITY",
+                  "ROUTE 5",
+                  "ROUTE 6",
+                  "ROUTE 7",
+                  "ROUTE 8"
+                ],
+                "hint": "They'd like a drink - ask around CELADON CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "How do I get into SAFFRON CITY?"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Teach STRENGTH and push boulders onto the floor switches to open the way.",
+                  "areas": [
+                    "KANTO VICTORY ROAD"
+                  ],
+                  "hint": "An HM moves them.",
+                  "randomized": "Randomized.ANY",
+                  "title": "VICTORY ROAD's boulders"
+                }
+              ],
+              "heading": "LATE GAME",
+              "randomized": {
+                "answer": "The SECRET KEY is in the basement of the POKéMON MANSION on the same island.",
+                "areas": [
+                  "CINNABAR ISLAND",
+                  "POKEMON MANSION"
+                ],
+                "hint": "Search the burned-out building.",
+                "randomized": "Randomized.ANY",
+                "title": "CINNABAR ISLAND's gym is locked"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "After beating BLAINE, BILL is waiting at CINNABAR ISLAND and takes you to ONE ISLAND.",
+                  "areas": [
+                    "CINNABAR ISLAND"
+                  ],
+                  "hint": "After the seventh badge, someone on CINNABAR ISLAND.",
+                  "randomized": "Randomized.ANY",
+                  "title": "How do I reach the SEVII ISLANDS?"
+                },
+                {
+                  "answer": "Finish the SEVII ISLANDS story: bring the RUBY (MT. EMBER) and SAPPHIRE to CELIO on ONE ISLAND.",
+                  "areas": [
+                    "CERULEAN CITY",
+                    "ONE ISLAND"
+                  ],
+                  "hint": "Two gems for CELIO.",
+                  "randomized": "Randomized.ANY",
+                  "title": "CERULEAN CAVE is guarded"
+                }
+              ],
+              "heading": "POST-GAME",
+              "randomized": {
+                "answer": "Beat the POKéMON LEAGUE, catch 60 kinds of KANTO POKéMON, then talk to PROF. OAK.",
+                "areas": [
+                  "PALLET TOWN"
+                ],
+                "hint": "Finish the League and keep catching.",
+                "randomized": "Randomized.ANY",
+                "title": "How do I get the National Dex?"
+              }
+            }
+          ],
+          "title": "STUCK?"
+        }
+      ]
+    },
+    "LEAFGREEN": {
+      "pages": [
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "HERE, NEXT BOSS, EVOLUTIONS and the DEX read the randomizer's POKéMON, teams, moves and items from the game itself. The gift and legendary POKéMON it moved aren't listed: the guide can't know them.",
+                  "randomized": "Randomized.ANY",
+                  "title": "This game is randomized"
+                }
+              ],
+              "heading": "RANDOMIZED",
+              "randomized": "Randomized.ONLY"
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Hold B to run once you have the RUNNING SHOES.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Running"
+                },
+                {
+                  "answer": "The VS SEEKER finds trainers who want a rematch. It recharges as you walk.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Rematches"
+                }
+              ],
+              "heading": "CONTROLS",
+              "randomized": {
+                "answer": "Press L or R almost anywhere for the game's own HELP menu (OPTION: BUTTON MODE = HELP, the default).",
+                "randomized": "Randomized.ANY",
+                "title": "In-game help"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Poison outside battle"
+                }
+              ],
+              "heading": "BATTLES",
+              "randomized": {
+                "answer": "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.",
+                "randomized": "Randomized.ANY",
+                "title": "Physical or special?"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "HM moves can't be forgotten normally. The MOVE DELETER in FUCHSIA CITY removes them.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Getting rid of an HM move"
+                },
+                {
+                  "answer": "The MOVE RELEARNER on TWO ISLAND teaches a forgotten move for a BIG MUSHROOM or two TINY MUSHROOMS.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Relearning moves"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "FLASH: BOULDER. CUT: CASCADE. FLY: THUNDER. STRENGTH: RAINBOW. SURF: SOUL. ROCK SMASH: MARSH. WATERFALL: VOLCANO. A POKéMON in the party must know the move too.",
+                "randomized": "Randomized.ANY",
+                "title": "Which badge unlocks which HM?"
+              }
+            },
+            {
+              "heading": "SAFARI ZONE",
+              "randomized": {
+                "answer": "600 steps per visit. You can't use your own POKéMON - throw bait or rocks, then SAFARI BALLS.",
+                "randomized": "Randomized.ANY",
+                "title": "How long do I have?"
+              }
+            }
+          ],
+          "title": "TIPS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Get a BIKE VOUCHER from the chairman of the POKéMON FAN CLUB in VERMILION CITY, then trade it at CERULEAN CITY's bike shop.",
+                  "areas": [
+                    "VERMILION CITY",
+                    "CERULEAN CITY"
+                  ],
+                  "have": {
+                    "itemId": 360
+                  },
+                  "hint": "Someone in VERMILION CITY loves to talk about his POKéMON.",
+                  "randomized": "Randomized.ANY",
+                  "title": "BICYCLE"
+                },
+                {
+                  "answer": "An AIDE in the VERMILION CITY POKéMON CENTER.",
+                  "areas": [
+                    "VERMILION CITY"
+                  ],
+                  "have": {
+                    "flag": "0x292"
+                  },
+                  "hint": "In a POKéMON CENTER.",
+                  "randomized": "Randomized.ANY",
+                  "title": "VS SEEKER"
+                },
+                {
+                  "answer": "The FISHING GURU in a house in VERMILION CITY.",
+                  "areas": [
+                    "VERMILION CITY"
+                  ],
+                  "have": {
+                    "itemId": 262
+                  },
+                  "hint": "A port town.",
+                  "randomized": "Randomized.ANY",
+                  "title": "OLD ROD"
+                },
+                {
+                  "answer": "A fisherman's house in FUCHSIA CITY.",
+                  "areas": [
+                    "FUCHSIA CITY"
+                  ],
+                  "have": {
+                    "itemId": 263
+                  },
+                  "hint": "The city with the SAFARI ZONE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "GOOD ROD"
+                },
+                {
+                  "answer": "The FISHING HOUSE on ROUTE 12.",
+                  "areas": [
+                    "ROUTE 12"
+                  ],
+                  "have": {
+                    "itemId": 264
+                  },
+                  "hint": "On the long pier south of LAVENDER TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SUPER ROD"
+                },
+                {
+                  "answer": "PROF. OAK's AIDE upstairs in the ROUTE 11 gate, once you've caught 30 kinds of POKéMON.",
+                  "areas": [
+                    "ROUTE 11"
+                  ],
+                  "have": {
+                    "flag": "0x252"
+                  },
+                  "hint": "An AIDE east of VERMILION CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "ITEMFINDER"
+                },
+                {
+                  "answer": "PROF. OAK's AIDE upstairs in the ROUTE 15 gate, once you've caught 50 kinds of POKéMON.",
+                  "areas": [
+                    "ROUTE 15"
+                  ],
+                  "have": {
+                    "flag": "0x256"
+                  },
+                  "hint": "An AIDE west of FUCHSIA CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "EXP. SHARE"
+                }
+              ],
+              "heading": "KEY ITEMS",
+              "randomized": {
+                "answer": "PROF. OAK's AIDE gives them to you as you leave PEWTER CITY after beating BROCK.",
+                "areas": [
+                  "PEWTER CITY"
+                ],
+                "have": {
+                  "flag": "0x82F"
+                },
+                "hint": "After the first gym.",
+                "randomized": "Randomized.ANY",
+                "title": "RUNNING SHOES"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "A house on ROUTE 16, behind a small tree (use CUT).",
+                  "areas": [
+                    "ROUTE 16"
+                  ],
+                  "have": {
+                    "itemId": 340
+                  },
+                  "hint": "West of CELADON CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM02 FLY"
+                },
+                {
+                  "answer": "The SECRET HOUSE deep in the SAFARI ZONE.",
+                  "areas": [
+                    "KANTO SAFARI ZONE"
+                  ],
+                  "have": {
+                    "itemId": 341
+                  },
+                  "hint": "In the SAFARI ZONE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM03 SURF"
+                },
+                {
+                  "answer": "Find the GOLD TEETH in the SAFARI ZONE's west area and return them to the WARDEN in FUCHSIA CITY.",
+                  "areas": [
+                    "FUCHSIA CITY",
+                    "KANTO SAFARI ZONE"
+                  ],
+                  "have": {
+                    "itemId": 342
+                  },
+                  "hint": "Someone in FUCHSIA CITY lost something in the SAFARI ZONE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM04 STRENGTH"
+                },
+                {
+                  "answer": "PROF. OAK's AIDE in the building on ROUTE 2, once you've caught 10 kinds of POKéMON.",
+                  "areas": [
+                    "ROUTE 2"
+                  ],
+                  "have": {
+                    "itemId": 343
+                  },
+                  "hint": "An AIDE near DIGLETT's CAVE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM05 FLASH"
+                },
+                {
+                  "answer": "The EMBER SPA on KINDLE ROAD (ONE ISLAND).",
+                  "areas": [
+                    "KINDLE ROAD",
+                    "EMBER SPA"
+                  ],
+                  "have": {
+                    "itemId": 344
+                  },
+                  "hint": "A hot spring on the SEVII ISLANDS.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM06 ROCK SMASH"
+                },
+                {
+                  "answer": "Inside ICEFALL CAVE on FOUR ISLAND.",
+                  "areas": [
+                    "ICEFALL CAVE",
+                    "FOUR ISLAND"
+                  ],
+                  "have": {
+                    "itemId": 345
+                  },
+                  "hint": "A frozen cave on the SEVII ISLANDS.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM07 WATERFALL"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "The captain of the S.S. ANNE in VERMILION CITY - visit him before the ship leaves.",
+                "areas": [
+                  "VERMILION CITY",
+                  "S.S. ANNE"
+                ],
+                "have": {
+                  "itemId": 339
+                },
+                "hint": "Someone seasick.",
+                "randomized": "Randomized.ANY",
+                "title": "HM01 CUT"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "A house in FUCHSIA CITY.",
+                  "areas": [
+                    "FUCHSIA CITY"
+                  ],
+                  "randomized": "Randomized.ANY",
+                  "title": "MOVE DELETER"
+                },
+                {
+                  "answer": "A house on TWO ISLAND. Bring a BIG MUSHROOM or two TINY MUSHROOMS.",
+                  "areas": [
+                    "TWO ISLAND"
+                  ],
+                  "randomized": "Randomized.ANY",
+                  "title": "MOVE RELEARNER"
+                }
+              ],
+              "heading": "SHOPS & SERVICES",
+              "randomized": {
+                "answer": "CELADON DEPT. STORE 4F sells FIRE, THUNDER, WATER and LEAF STONES. MOON STONES are found, e.g. in MT. MOON.",
+                "areas": [
+                  "CELADON CITY"
+                ],
+                "hint": "The big store.",
+                "randomized": "Randomized.HIDE",
+                "title": "Evolution stones"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "The rooftop room of the CELADON CONDOMINIUMS - reached by the back entrance.",
+                  "areas": [
+                    "CELADON CITY"
+                  ],
+                  "have": {
+                    "national": 133
+                  },
+                  "hint": "CELADON CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "EEVEE"
+                },
+                {
+                  "answer": "An employee on SILPH CO. 7F, after you reach him during the ROCKET takeover.",
+                  "areas": [
+                    "SILPH CO"
+                  ],
+                  "have": {
+                    "national": 131
+                  },
+                  "hint": "SAFFRON CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "LAPRAS"
+                },
+                {
+                  "answer": "Beat the FIGHTING DOJO in SAFFRON CITY and pick one.",
+                  "areas": [
+                    "SAFFRON CITY"
+                  ],
+                  "have": {
+                    "national": [
+                      106,
+                      107
+                    ]
+                  },
+                  "hint": "Next to a gym.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HITMONLEE / HITMONCHAN"
+                },
+                {
+                  "answer": "Pick the HELIX or DOME FOSSIL in MT. MOON; the OLD AMBER is in the back of PEWTER's museum. The CINNABAR ISLAND lab revives them.",
+                  "areas": [
+                    "MT MOON",
+                    "PEWTER CITY",
+                    "CINNABAR ISLAND"
+                  ],
+                  "have": {
+                    "national": [
+                      138,
+                      140,
+                      142
+                    ]
+                  },
+                  "hint": "A cave, a museum, and a lab.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Fossils"
+                },
+                {
+                  "answer": "The prize corner next to the CELADON CITY GAME CORNER trades coins for POKéMON: ABRA Lv7 (120 coins), CLEFAIRY Lv12 (750), PINSIR Lv18 (2500), DRATINI Lv24 (4600), PORYGON Lv18 (6500). A man in the CELADON CITY restaurant gives you the COIN CASE.",
+                  "areas": [
+                    "CELADON CITY"
+                  ],
+                  "hint": "Win coins in CELADON CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "GAME CORNER prizes"
+                }
+              ],
+              "heading": "GIFT POKéMON",
+              "randomized": "Randomized.HIDE"
+            },
+            {
+              "entries": [
+                {
+                  "answer": "The bottom of the SEAFOAM ISLANDS. Push boulders with STRENGTH to slow the currents.",
+                  "areas": [
+                    "SEAFOAM ISLANDS"
+                  ],
+                  "have": {
+                    "national": 144
+                  },
+                  "hint": "Between FUCHSIA CITY and CINNABAR ISLAND.",
+                  "randomized": "Randomized.ANY",
+                  "title": "ARTICUNO"
+                },
+                {
+                  "answer": "The POWER PLANT - SURF from ROUTE 10.",
+                  "areas": [
+                    "POWER PLANT",
+                    "ROUTE 10"
+                  ],
+                  "have": {
+                    "national": 145
+                  },
+                  "hint": "An abandoned building.",
+                  "randomized": "Randomized.ANY",
+                  "title": "ZAPDOS"
+                },
+                {
+                  "answer": "The top of MT. EMBER on ONE ISLAND.",
+                  "areas": [
+                    "MT EMBER"
+                  ],
+                  "have": {
+                    "national": 146
+                  },
+                  "hint": "A volcano on the SEVII ISLANDS.",
+                  "randomized": "Randomized.ANY",
+                  "title": "MOLTRES"
+                },
+                {
+                  "answer": "The bottom of CERULEAN CAVE, which opens after the SEVII ISLANDS story is finished.",
+                  "areas": [
+                    "CERULEAN CAVE"
+                  ],
+                  "have": {
+                    "national": 150
+                  },
+                  "hint": "Post-game, near CERULEAN CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "MEWTWO"
+                },
+                {
+                  "answer": "Two block ROUTE 12 and ROUTE 16. Wake them with the POKé FLUTE.",
+                  "areas": [
+                    "ROUTE 12",
+                    "ROUTE 16"
+                  ],
+                  "have": {
+                    "national": 143
+                  },
+                  "hint": "Sleeping in the way.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SNORLAX"
+                }
+              ],
+              "heading": "LEGENDARY POKéMON",
+              "randomized": "Randomized.HIDE"
+            }
+          ],
+          "title": "WHERE IS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "It's the last gym - it opens once you have the other seven badges.",
+                  "areas": [
+                    "VIRIDIAN CITY"
+                  ],
+                  "hint": "Come back much later.",
+                  "randomized": "Randomized.ANY",
+                  "title": "VIRIDIAN CITY's gym is locked"
+                },
+                {
+                  "answer": "BILL gives it to you after you help him in his cottage at the end of ROUTE 25, north of CERULEAN CITY.",
+                  "areas": [
+                    "CERULEAN CITY",
+                    "ROUTE 25",
+                    "VERMILION CITY"
+                  ],
+                  "hint": "Cross the bridge north of CERULEAN CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Where's the S.S. TICKET?"
+                },
+                {
+                  "answer": "FLASH lights it up (HM05, see WHERE IS), but you can walk through without it.",
+                  "areas": [
+                    "ROCK TUNNEL",
+                    "ROUTE 10"
+                  ],
+                  "hint": "An HM helps, but it's optional.",
+                  "randomized": "Randomized.ANY",
+                  "title": "ROCK TUNNEL is pitch black"
+                }
+              ],
+              "heading": "EARLY GAME",
+              "randomized": {
+                "answer": "Pick up OAK's PARCEL at the VIRIDIAN CITY POKé MART and deliver it to PROF. OAK in PALLET TOWN. He moves after that.",
+                "areas": [
+                  "VIRIDIAN CITY",
+                  "PALLET TOWN"
+                ],
+                "hint": "PROF. OAK is waiting for something from VIRIDIAN CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "An old man blocks the road north of VIRIDIAN"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "You need the SILPH SCOPE. It's on ROCKET HIDEOUT B4F, under the CELADON GAME CORNER - a switch behind a poster opens the entrance.",
+                  "areas": [
+                    "POKEMON TOWER",
+                    "LAVENDER TOWN",
+                    "CELADON CITY",
+                    "ROCKET HIDEOUT"
+                  ],
+                  "hint": "TEAM ROCKET has it, somewhere in CELADON CITY.",
+                  "randomized": "Randomized.ANY",
+                  "title": "I can't identify the ghosts in POKéMON TOWER"
+                },
+                {
+                  "answer": "It needs the LIFT KEY, which a ROCKET on B4F drops. Take the stairs down to reach him.",
+                  "areas": [
+                    "ROCKET HIDEOUT"
+                  ],
+                  "hint": "Someone downstairs has a key.",
+                  "randomized": "Randomized.ANY",
+                  "title": "The hideout's elevator won't move"
+                },
+                {
+                  "answer": "Rescue MR. FUJI from the top of POKéMON TOWER; he gives you the POKé FLUTE at his house in LAVENDER TOWN.",
+                  "areas": [
+                    "ROUTE 12",
+                    "ROUTE 16",
+                    "LAVENDER TOWN"
+                  ],
+                  "hint": "Something in LAVENDER TOWN wakes it.",
+                  "randomized": "Randomized.HIDE",
+                  "title": "A SNORLAX blocks the road"
+                },
+                {
+                  "answer": "Ride CYCLING ROAD south from CELADON CITY (BICYCLE needed), or go down ROUTES 12-15 from LAVENDER TOWN after waking the SNORLAX.",
+                  "areas": [
+                    "CELADON CITY",
+                    "LAVENDER TOWN",
+                    "ROUTE 12",
+                    "ROUTE 16"
+                  ],
+                  "hint": "There are two ways - one needs wheels.",
+                  "randomized": "Randomized.ANY",
+                  "title": "How do I get to FUCHSIA CITY?"
+                },
+                {
+                  "answer": "Find the CARD KEY on 5F; it opens every locked door in the building.",
+                  "areas": [
+                    "SILPH CO"
+                  ],
+                  "hint": "Somewhere in the middle floors.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SILPH CO.'s doors are locked"
+                }
+              ],
+              "heading": "MID GAME",
+              "randomized": {
+                "answer": "The gate guards are thirsty. Get TEA from the old woman on the ground floor of the CELADON CONDOMINIUMS and any guard lets you through.",
+                "areas": [
+                  "SAFFRON CITY",
+                  "CELADON CITY",
+                  "ROUTE 5",
+                  "ROUTE 6",
+                  "ROUTE 7",
+                  "ROUTE 8"
+                ],
+                "hint": "They'd like a drink - ask around CELADON CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "How do I get into SAFFRON CITY?"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Teach STRENGTH and push boulders onto the floor switches to open the way.",
+                  "areas": [
+                    "KANTO VICTORY ROAD"
+                  ],
+                  "hint": "An HM moves them.",
+                  "randomized": "Randomized.ANY",
+                  "title": "VICTORY ROAD's boulders"
+                }
+              ],
+              "heading": "LATE GAME",
+              "randomized": {
+                "answer": "The SECRET KEY is in the basement of the POKéMON MANSION on the same island.",
+                "areas": [
+                  "CINNABAR ISLAND",
+                  "POKEMON MANSION"
+                ],
+                "hint": "Search the burned-out building.",
+                "randomized": "Randomized.ANY",
+                "title": "CINNABAR ISLAND's gym is locked"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "After beating BLAINE, BILL is waiting at CINNABAR ISLAND and takes you to ONE ISLAND.",
+                  "areas": [
+                    "CINNABAR ISLAND"
+                  ],
+                  "hint": "After the seventh badge, someone on CINNABAR ISLAND.",
+                  "randomized": "Randomized.ANY",
+                  "title": "How do I reach the SEVII ISLANDS?"
+                },
+                {
+                  "answer": "Finish the SEVII ISLANDS story: bring the RUBY (MT. EMBER) and SAPPHIRE to CELIO on ONE ISLAND.",
+                  "areas": [
+                    "CERULEAN CITY",
+                    "ONE ISLAND"
+                  ],
+                  "hint": "Two gems for CELIO.",
+                  "randomized": "Randomized.ANY",
+                  "title": "CERULEAN CAVE is guarded"
+                }
+              ],
+              "heading": "POST-GAME",
+              "randomized": {
+                "answer": "Beat the POKéMON LEAGUE, catch 60 kinds of KANTO POKéMON, then talk to PROF. OAK.",
+                "areas": [
+                  "PALLET TOWN"
+                ],
+                "hint": "Finish the League and keep catching.",
+                "randomized": "Randomized.ANY",
+                "title": "How do I get the National Dex?"
+              }
+            }
+          ],
+          "title": "STUCK?"
+        }
+      ]
+    }
+  },
+  "kind": "pokedaisy-reference-text",
+  "schema": 1,
+  "title": "FireRed and LeafGreen"
+}

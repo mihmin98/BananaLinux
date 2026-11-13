@@ -939,6 +939,8 @@ derived bits, the gyms by their leaders' flags, no `opens`.)
   `Thunderbolt`, `MASTER BALL`) finds none outside the guides' `foe` and `places` names; and
   `find kiwami/rootfs -path '*pokedaisy*'` is empty.
 - **Commit**: `GB Pokémon companion: PokeDaisy's reference data for the mainline games, Gen I to Gen V`
+- (*Deviations* 2026-11-13, step 16: five files a game, evaluated by a Kotlin interpreter; no id tables; `text.json`
+  outside the scan.)
 
 ### 17. The documentation, and what the feature weighs
 
@@ -1350,6 +1352,33 @@ Where the implementation turned out different from this plan, why, and what chan
     and teams in the ROM, every team of a milestone at its level cap) and `gbpk-ui.sh` (Red's guide loaded on the
     stand-in). The Gen I captures' `Live::flags` change from none to the banks (`gbpk-units`' `checkGen1`).
 
+- **2026-11-13, step 16: the reference data as the sources allow** (the first three agreed with the user).
+  - **Five files a game** (the user's choice): `releases.json` (`GameTitles.kt`'s English SHA-1s and titles; the
+    releases' names aren't in PokeDaisy but in comments), `ram.json` (the reader's configs, every field with its
+    defaults), `rom.json` (the ROM tables' records), `guide.json` (the bosses by title, place, flag and trainer ids,
+    the generated boss tables without teams, the areas without their sub-map names, the guides' int constants) and
+    `text.json` (PokeDaisy's guide pages and Yellow's item descriptions). Gold and Silver have no guide in PokeDaisy,
+    so no `guide.json` or `text.json`; Red's, Blue's and Yellow's bosses are the generated tables' (`Gen1World`'s list
+    is built by code). There is no FAQ apart from the guide pages.
+  - **No id tables** (the user's choice): the configs' tables of ids in other files (map places, item pockets, fly
+    spots, matrix headers, town map places and zones) aren't read, nor the place names, nor the bytes copied from a ROM
+    (Platinum's town map grid). A config keeps only PokeDaisy's own identifiers as strings (`POCKET_ITEMS`,
+    `GuideId.EMERALD`); its region names, boss names (`probeName`) and file names are left out. The DS games' ROM
+    files are named in `NdsArt.kt`'s code, not a table, and aren't taken.
+  - **A Kotlin interpreter, not the step 1 evaluator**: the configs and guides are built by helper functions with
+    block bodies, `if (leafGreen)`, string templates, `"HM%02d".format(...)`, `vararg`, trailing lambdas and secondary
+    constructors, so `pokedaisy-extract.py` evaluates them (about 1,300 lines); what it can't evaluate (code run on the
+    save) is left out and listed in `README.md`'s *Not extracted*, which doesn't fail the run, as the plan asked. It
+    reads 44 Kotlin files, 6 TOML files and the 15 schemas, each in `SOURCES`. Python 3.11 or later (`tomllib`).
+  - **`text.json` is outside the scan** (the user's choice, twice): PokeDaisy's words name what they talk about (FireRed's
+    tips, BULBASAUR), and its WHERE IS pages title each entry by the thing itself ("MEWTWO"). The scan covers every
+    other reference file and the image's data, the guides' `title`, `where`, `name`, `foe` and `places` aside; its
+    twenty names are ten species, five moves and five items.
+  - **Files**: `kiwami/data/pokedaisy/NOTICE` is written by hand, as the image folder's; `README.md`, `LICENSE`, the
+    game files and `SOURCES` by the script. `SOURCES` is the folder's own file, not a section of the image's.
+    `--reference` writes the reference data alone; `--check` covers both, with the checkout or without.
+  - **Size**: 54 files, 1.2 MB, against "several MB" expected.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -1372,6 +1401,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 13. Gen I's ROM: the tables | done | `GB Pokémon companion: Red, Blue and Yellow's species, moves, items, encounters and trainers from the ROM` |
 | 14. Gen I's ROM: the sprites and the town map | done | `GB Pokémon companion: Gen I's sprites and town map, decoded from the ROM` |
 | 15. Red, Blue and Yellow's guides | done | `GB Pokémon companion: Red, Blue and Yellow's guides, converted from PokeDaisy's tables` |
-| 16. PokeDaisy's reference data for every mainline game | todo | |
+| 16. PokeDaisy's reference data for every mainline game | done | `GB Pokémon companion: PokeDaisy's reference data for the mainline games, Gen I to Gen V` |
 | 17. The documentation, and what the feature weighs | todo | |
 | 18. Final check | todo | |

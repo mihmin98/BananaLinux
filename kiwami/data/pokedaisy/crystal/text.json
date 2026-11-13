@@ -1,0 +1,34 @@
+{
+  "game": "crystal",
+  "guides": {
+    "CRYSTAL": {
+      "pages": [
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Each tree you HEADBUTT is common, rare or almost empty, picked from where the tree stands and your trainer ID. HERE lists both tables; try every tree on a route to find the rare ones.",
+                  "hint": "It has to do with your trainer ID.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Why do some trees never have the rare POKéMON?"
+                }
+              ],
+              "heading": "WILD POKéMON",
+              "randomized": {
+                "answer": "The game's clock has three times of day: morning from 4 AM, day from 10 AM and night from 6 PM. Grass and caves have a list for each, and HERE shows the one for the time your game's clock says.",
+                "hint": "Look at the clock.",
+                "randomized": "Randomized.ANY",
+                "title": "Why did the POKéMON on this route change?"
+              }
+            }
+          ],
+          "title": "TIPS"
+        }
+      ]
+    }
+  },
+  "kind": "pokedaisy-reference-text",
+  "schema": 1,
+  "title": "Crystal"
+}

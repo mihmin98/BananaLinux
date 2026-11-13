@@ -19,9 +19,10 @@ a `NOTICE` kept with the source, in the work's README or equivalent documentatio
 
 The fork takes from PokeDaisy:
 
-- **Its data**: the games' RAM addresses, the releases' SHA-1s, and later its guide tables' structure and its own
-  words, extracted by a script (below). Nothing of the games' own content: their names, text and tables are read from
-  the player's ROM at run time, as upstream's companions do.
+- **Its data**: the games' RAM addresses, the releases' SHA-1s, its guide tables' structure and its own words,
+  extracted by a script (below), for the six games into the image and for every mainline game PokeDaisy supports into
+  the reference data (*PokeDaisy's reference data*, below), which isn't in the image. Nothing of the games' own
+  content: their names, text and tables are read from the player's ROM at run time, as upstream's companions do.
 - **Its readers' design**: the companion's C++ (`ui/src/kiwami/gbpk/`) follows PokeDaisy's Kotlin readers.
 
 So the companion's sources and data are GPL-3.0 with PokeDaisy's 7(b) term, and **the fork's banana-ui, which links
@@ -90,6 +91,56 @@ newer PokeDaisy is changing `PIN`, running it, and reading the diff. Each script
 writes to a temporary folder and compares with what is committed; with `--check` alone (as `kiwami/tests/ci.sh` runs
 them) it verifies the committed files against `SOURCES`' hashes, and `pret-extract.py` that every line of
 `gbpk-symbols.txt` has its value. A re-run is byte for byte the same.
+
+```sh
+python3 -I kiwami/tools/pokedaisy-extract.py ~/Documents/Projects/pokedaisy --reference   # kiwami/data/pokedaisy/
+```
+
+writes the reference data (below) and its `SOURCES`; `pokedaisy-extract.py --check`, with or without the checkout,
+covers it too.
+
+## PokeDaisy's reference data
+
+`kiwami/data/pokedaisy/` holds what PokeDaisy knows about every mainline game it supports, English releases only: Red
+and Blue, Yellow, Gold and Silver, Crystal, Ruby and Sapphire, Emerald, FireRed and LeafGreen, Platinum, HeartGold and
+SoulSilver, Black and White, Black 2 and White 2 (PokeDaisy has no Diamond or Pearl). Nothing reads it: it is there to
+compare with, for this companion's ROM reader now and upstream's GBA and DS companions later, and it isn't copied into
+the image (`kiwami/` puts only `kiwami/rootfs/` there; `kiwami/tests/ci.sh` checks no `pokedaisy` path is in it). Its
+`README.md`, written by the script, is the index: each game's folder and what each file holds, and *Not extracted*,
+every value the script met and left out, with why.
+
+A folder a game, five files at most:
+
+- `releases.json`: the SHA-1s `GameTitles.kt` gives the game's English releases, with their titles.
+- `ram.json`: the reader's configs by PokeDaisy's name, every field (its defaults too): `Gen1Config`, `Gen2Config`,
+  the Gen III `NativeConfig`s of `gamedata/gen3/retail/*.toml`, `Gen4Config`, `Gen5Config`.
+- `rom.json`: the ROM tables' records: Gen I's and Gen II's Dex and Art tables, a Gen III config's Pokédex, guide,
+  trainer card and field items' records and the family's TOML records (`gamedata/gen3/records/`), a DS game's Pokédex
+  record.
+- `guide.json`: the hand-written guides' bosses (title, place, the flag that marks them beaten, the trainer ids;
+  `by_code` names what PokeDaisy works out from the save, a team by the starter or a boss done by any of several
+  flags), the generated boss tables without their teams, the areas' items, gifts and trades by place, kind, id, flag,
+  count and the species a trade wants, and the guides' int constants (flags, items, vars, RAM).
+- `text.json`: PokeDaisy's own words: its guide pages (the tips, and WHERE IS, each entry titled by what it is about)
+  and the descriptions of Yellow's items it wrote itself.
+
+The Kotlin is evaluated, not matched by patterns: `pokedaisy-extract.py` has a small interpreter of the Kotlin these
+files use (constructors with defaults and secondary constructors, `.copy()`, top-level, local and object members,
+helper functions with an expression or a block body, `vararg`, trailing lambdas, `if`/`else` on a parameter, string
+templates and `.format()`, `.let { }`), so `fireRedGuide(leafGreen = true)` gives LeafGreen's own pages and
+`ptGym(...)` its boss's flag. What can't be evaluated is code run on the save (a `when`, a lambda reading its flags):
+it is left out and listed. The Gen III TOML is read with Python's `tomllib`, each config over its base, with its
+schema's defaults; a name it gives that is one of PokeDaisy's Kotlin values is evaluated there, and a Kotlin value
+naming a TOML record takes the record.
+
+Left out by rule: the games' tables (species order, gender ratios, growth rates, TM items and moves, landmarks, a
+regional Pokédex's order), the text in a config (a region's name, a boss's, PokeDaisy's file names: any string but its
+own identifiers), PokeDaisy's tables of ids in files the script doesn't read (map places, item pockets, fly spots, town
+maps) and the bytes it copied from a ROM (Platinum's town map grid), a boss's team, an area's sub-map name, PokeDaisy's
+hacks and its other languages. The bosses' titles and places stay, as the guides name their bosses by them, and
+PokeDaisy's own words stay whole, though they name what they talk about: `kiwami/tests/ci.sh` scans every other file
+(and the image's data) for twenty of the games' species, move and item names, the guides' boss and place names aside,
+and finds none.
 
 ## Which game a ROM is
 
@@ -503,7 +554,8 @@ what it takes them for:
   isn't named: the file holds no species names. Upstream's pages show these notes on the Dex page and in the catch
   suggestions; they show no guide `notes`, so the trades aren't those.
 - No `opens` and no tips, as PokeDaisy's Gen I guides have neither. Its item balls, gifts and key items aren't taken;
-  its descriptions of Yellow's items (`ItemDescriptionsYellow.kt`) aren't either, as they name the games' items.
+  its descriptions of Yellow's items (`ItemDescriptionsYellow.kt`) aren't either, as they name the games' items (they
+  are in the reference data's `yellow/text.json`).
 
 **Gold's and Silver's** come from the ROM, as PokeDaisy has no guide for them: `romGuide` (`ui/src/kiwami/gbpk/
 gsguide.cpp`, after upstream's `nds::guideFromRom`, which upstream since removed) makes a milestone of each trainer

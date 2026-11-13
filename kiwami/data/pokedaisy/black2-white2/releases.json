@@ -1,0 +1,16 @@
+{
+  "game": "black2-white2",
+  "kind": "pokedaisy-reference-releases",
+  "releases": [
+    {
+      "sha1": "e51e6dfb8678a3d19dcd2a10691b96a569ca0abb",
+      "title": "Pokémon Black 2"
+    },
+    {
+      "sha1": "b5d7490be7b415b8f1e672a53e978a9cc667e56a",
+      "title": "Pokémon White 2"
+    }
+  ],
+  "schema": 1,
+  "title": "Black 2 and White 2"
+}

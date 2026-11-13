@@ -1,0 +1,77 @@
+{
+  "game": "platinum",
+  "kind": "pokedaisy-reference-rom",
+  "schema": 1,
+  "tables": {
+    "GEN4_PLATINUM_US.pokedexTables": {
+      "abilityNameLength": 13,
+      "abilityNamePtr": false,
+      "abilityNameStride": 0,
+      "abilityNames": 0,
+      "baseStats": {
+        "abilitiesOff": "0x16",
+        "abilityU16": false,
+        "catchRateOff": 8,
+        "eggGroupsOff": "0x14",
+        "eggGroupsPacked": false,
+        "genderOff": "0x10",
+        "statsU16": false,
+        "stride": 28,
+        "typesOff": 6
+      },
+      "categoryPrefix": "",
+      "categorySeparator": " ",
+      "decimalPoint": ",",
+      "descriptionPage2Off": -1,
+      "entries": 0,
+      "entriesBySpecies": false,
+      "entryCategoryLen": 12,
+      "entryCategoryPtr": false,
+      "entryDescOff": "0x10",
+      "entryHeightOff": "0xC",
+      "entryStride": "0x24",
+      "evolutions": 0,
+      "flags": {
+        "block": "DexFlagBlock.SAVE_BLOCK_2",
+        "bytes": 52,
+        "caught": "0x28",
+        "seen": "0x5C",
+        "seenCopies": [
+          1528,
+          14872
+        ]
+      },
+      "footprints": 0,
+      "frontPics": 0,
+      "gen4": {
+        "gen5": false,
+        "lastSpecies": 493,
+        "origin": false,
+        "tmCount": 92
+      },
+      "hiddenAbilityOff": -1,
+      "levelUpLearnsets": 0,
+      "metric": false,
+      "nationalCount": 493,
+      "nationalMagic": "0xB9",
+      "nationalMagicOff": 3,
+      "nationalToSpecies": 0,
+      "palettes": 0,
+      "probeHeight": 7,
+      "probeSpecies": 1,
+      "probeWeight": 69,
+      "regionalCount": 210,
+      "regionalOrder": 0,
+      "regionalOrderIsSpecies": false,
+      "regionalOrderStride": 2,
+      "sb2DexOff": "0x18",
+      "speciesCount": 494,
+      "speciesInfo": 0,
+      "speciesToNational": 0,
+      "tmhmLearnsets": 0,
+      "tmhmMoves": 0,
+      "unitSpace": true
+    }
+  },
+  "title": "Platinum"
+}

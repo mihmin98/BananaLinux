@@ -1,0 +1,412 @@
+{
+  "game": "black2-white2",
+  "guides": {
+    "BLACK2": {
+      "pages": [
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Dark grass, grass that shakes and water that ripples each hold POKéMON of their own, often stronger or rarer than the plain grass around them.",
+                  "hint": "They're not the plain grass.",
+                  "randomized": "Randomized.ANY",
+                  "title": "What about the dark grass and the grass that shakes?"
+                }
+              ],
+              "heading": "WILD POKéMON",
+              "randomized": {
+                "answer": "Some places change their POKéMON with the seasons, and the seasons follow the month: January, May and September are spring, February, June and October summer, March, July and November autumn, April, August and December winter. HERE shows this month's list, by your DS clock (your device's).",
+                "hint": "Look at the calendar.",
+                "randomized": "Randomized.ANY",
+                "title": "Why did the POKéMON here change?"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Yes. Once you have entered the HALL OF FAME, the ELITE FOUR and the CHAMPION come back with stronger teams, and NEXT BOSS shows those.",
+                  "hint": "Think about the HALL OF FAME.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Do the ELITE FOUR change after the ending?"
+                }
+              ],
+              "heading": "BOSSES",
+              "randomized": {
+                "answer": "Every leader, the ELITE FOUR and the CHAMPION bring one team in the normal game and a bigger one with CHALLENGE MODE on. Easy mode uses the normal team at lower levels.",
+                "hint": "It depends on the game's mode.",
+                "randomized": "Randomized.ANY",
+                "title": "Why does NEXT BOSS show two teams?"
+              }
+            }
+          ],
+          "title": "TIPS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Someone hands it to you on ROUTE 5.",
+                  "areas": [
+                    "ROUTE 5"
+                  ],
+                  "have": {
+                    "itemId": 421
+                  },
+                  "hint": "ROUTE 5.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM02 FLY"
+                },
+                {
+                  "answer": "Someone hands it to you on ROUTE 6.",
+                  "areas": [
+                    "ROUTE 6"
+                  ],
+                  "have": {
+                    "itemId": 422
+                  },
+                  "hint": "ROUTE 6.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM03 SURF"
+                },
+                {
+                  "answer": "Someone in the CASTELIA SEWERS gives it to you.",
+                  "areas": [
+                    "CASTELIA SEWERS"
+                  ],
+                  "have": {
+                    "itemId": 423
+                  },
+                  "hint": "CASTELIA SEWERS.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM04 STRENGTH"
+                },
+                {
+                  "answer": "Someone in VICTORY ROAD gives it to you.",
+                  "areas": [
+                    "VICTORY ROAD"
+                  ],
+                  "have": {
+                    "itemId": 424
+                  },
+                  "hint": "VICTORY ROAD.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM05 WATERFALL"
+                },
+                {
+                  "answer": "Someone in UNDELLA TOWN gives it to you.",
+                  "areas": [
+                    "UNDELLA TOWN"
+                  ],
+                  "have": {
+                    "itemId": 425
+                  },
+                  "hint": "UNDELLA TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM06 DIVE"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "Someone hands it to you in VIRBANK CITY.",
+                "areas": [
+                  "VIRBANK CITY"
+                ],
+                "have": {
+                  "itemId": 420
+                },
+                "hint": "VIRBANK CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "HM01 CUT"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Someone hands it to you at CASTELIA GATE.",
+                  "areas": [
+                    "CASTELIA GATE"
+                  ],
+                  "have": {
+                    "itemId": 471
+                  },
+                  "hint": "CASTELIA GATE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "DOWSING MCHN"
+                },
+                {
+                  "answer": "Someone in NUVEMA TOWN gives it to you.",
+                  "areas": [
+                    "NUVEMA TOWN"
+                  ],
+                  "have": {
+                    "itemId": 447
+                  },
+                  "hint": "NUVEMA TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SUPER ROD"
+                },
+                {
+                  "answer": "Someone hands it to you on ROUTE 22.",
+                  "areas": [
+                    "ROUTE 22"
+                  ],
+                  "have": {
+                    "itemId": 635
+                  },
+                  "hint": "ROUTE 22.",
+                  "randomized": "Randomized.ANY",
+                  "title": "COLRESS MCHN"
+                },
+                {
+                  "answer": "You get them in the GIANT CHASM.",
+                  "areas": [
+                    "GIANT CHASM"
+                  ],
+                  "have": {
+                    "itemId": 628
+                  },
+                  "hint": "GIANT CHASM.",
+                  "randomized": "Randomized.ANY",
+                  "title": "DNA SPLICERS"
+                },
+                {
+                  "answer": "You get it at the ABUNDANT SHRINE.",
+                  "areas": [
+                    "ABUNDANT SHRINE"
+                  ],
+                  "have": {
+                    "itemId": 638
+                  },
+                  "hint": "ABUNDANT SHRINE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "REVEAL GLASS"
+                }
+              ],
+              "heading": "KEY ITEMS",
+              "randomized": {
+                "answer": "Someone hands it to you in CASTELIA CITY.",
+                "areas": [
+                  "CASTELIA CITY"
+                ],
+                "have": {
+                  "itemId": 450
+                },
+                "hint": "CASTELIA CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "BICYCLE"
+              }
+            }
+          ],
+          "title": "WHERE IS"
+        }
+      ]
+    },
+    "WHITE2": {
+      "pages": [
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Dark grass, grass that shakes and water that ripples each hold POKéMON of their own, often stronger or rarer than the plain grass around them.",
+                  "hint": "They're not the plain grass.",
+                  "randomized": "Randomized.ANY",
+                  "title": "What about the dark grass and the grass that shakes?"
+                }
+              ],
+              "heading": "WILD POKéMON",
+              "randomized": {
+                "answer": "Some places change their POKéMON with the seasons, and the seasons follow the month: January, May and September are spring, February, June and October summer, March, July and November autumn, April, August and December winter. HERE shows this month's list, by your DS clock (your device's).",
+                "hint": "Look at the calendar.",
+                "randomized": "Randomized.ANY",
+                "title": "Why did the POKéMON here change?"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Yes. Once you have entered the HALL OF FAME, the ELITE FOUR and the CHAMPION come back with stronger teams, and NEXT BOSS shows those.",
+                  "hint": "Think about the HALL OF FAME.",
+                  "randomized": "Randomized.ANY",
+                  "title": "Do the ELITE FOUR change after the ending?"
+                }
+              ],
+              "heading": "BOSSES",
+              "randomized": {
+                "answer": "Every leader, the ELITE FOUR and the CHAMPION bring one team in the normal game and a bigger one with CHALLENGE MODE on. Easy mode uses the normal team at lower levels.",
+                "hint": "It depends on the game's mode.",
+                "randomized": "Randomized.ANY",
+                "title": "Why does NEXT BOSS show two teams?"
+              }
+            }
+          ],
+          "title": "TIPS"
+        },
+        {
+          "sections": [
+            {
+              "entries": [
+                {
+                  "answer": "Someone hands it to you on ROUTE 5.",
+                  "areas": [
+                    "ROUTE 5"
+                  ],
+                  "have": {
+                    "itemId": 421
+                  },
+                  "hint": "ROUTE 5.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM02 FLY"
+                },
+                {
+                  "answer": "Someone hands it to you on ROUTE 6.",
+                  "areas": [
+                    "ROUTE 6"
+                  ],
+                  "have": {
+                    "itemId": 422
+                  },
+                  "hint": "ROUTE 6.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM03 SURF"
+                },
+                {
+                  "answer": "Someone in the CASTELIA SEWERS gives it to you.",
+                  "areas": [
+                    "CASTELIA SEWERS"
+                  ],
+                  "have": {
+                    "itemId": 423
+                  },
+                  "hint": "CASTELIA SEWERS.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM04 STRENGTH"
+                },
+                {
+                  "answer": "Someone in VICTORY ROAD gives it to you.",
+                  "areas": [
+                    "VICTORY ROAD"
+                  ],
+                  "have": {
+                    "itemId": 424
+                  },
+                  "hint": "VICTORY ROAD.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM05 WATERFALL"
+                },
+                {
+                  "answer": "Someone in UNDELLA TOWN gives it to you.",
+                  "areas": [
+                    "UNDELLA TOWN"
+                  ],
+                  "have": {
+                    "itemId": 425
+                  },
+                  "hint": "UNDELLA TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "HM06 DIVE"
+                }
+              ],
+              "heading": "HMs",
+              "randomized": {
+                "answer": "Someone hands it to you in VIRBANK CITY.",
+                "areas": [
+                  "VIRBANK CITY"
+                ],
+                "have": {
+                  "itemId": 420
+                },
+                "hint": "VIRBANK CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "HM01 CUT"
+              }
+            },
+            {
+              "entries": [
+                {
+                  "answer": "Someone hands it to you at CASTELIA GATE.",
+                  "areas": [
+                    "CASTELIA GATE"
+                  ],
+                  "have": {
+                    "itemId": 471
+                  },
+                  "hint": "CASTELIA GATE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "DOWSING MCHN"
+                },
+                {
+                  "answer": "Someone in NUVEMA TOWN gives it to you.",
+                  "areas": [
+                    "NUVEMA TOWN"
+                  ],
+                  "have": {
+                    "itemId": 447
+                  },
+                  "hint": "NUVEMA TOWN.",
+                  "randomized": "Randomized.ANY",
+                  "title": "SUPER ROD"
+                },
+                {
+                  "answer": "Someone hands it to you on ROUTE 22.",
+                  "areas": [
+                    "ROUTE 22"
+                  ],
+                  "have": {
+                    "itemId": 635
+                  },
+                  "hint": "ROUTE 22.",
+                  "randomized": "Randomized.ANY",
+                  "title": "COLRESS MCHN"
+                },
+                {
+                  "answer": "You get them in the GIANT CHASM.",
+                  "areas": [
+                    "GIANT CHASM"
+                  ],
+                  "have": {
+                    "itemId": 628
+                  },
+                  "hint": "GIANT CHASM.",
+                  "randomized": "Randomized.ANY",
+                  "title": "DNA SPLICERS"
+                },
+                {
+                  "answer": "You get it at the ABUNDANT SHRINE.",
+                  "areas": [
+                    "ABUNDANT SHRINE"
+                  ],
+                  "have": {
+                    "itemId": 638
+                  },
+                  "hint": "ABUNDANT SHRINE.",
+                  "randomized": "Randomized.ANY",
+                  "title": "REVEAL GLASS"
+                }
+              ],
+              "heading": "KEY ITEMS",
+              "randomized": {
+                "answer": "Someone hands it to you in CASTELIA CITY.",
+                "areas": [
+                  "CASTELIA CITY"
+                ],
+                "have": {
+                  "itemId": 450
+                },
+                "hint": "CASTELIA CITY.",
+                "randomized": "Randomized.ANY",
+                "title": "BICYCLE"
+              }
+            }
+          ],
+          "title": "WHERE IS"
+        }
+      ]
+    }
+  },
+  "kind": "pokedaisy-reference-text",
+  "schema": 1,
+  "title": "Black 2 and White 2"
+}

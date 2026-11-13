@@ -5,8 +5,8 @@
 #   card, A on the first writing kiwami_pokemon_companion_gb = on;
 # - the game panel with the companion for Crystal (gbpanel: a stand-in for the ROM's tables, as CI has no ROM), fed
 #   PokeDaisy's captures (gbfeed): the pages ready, the party read, a battle showing the Battle page and its end the
-#   Party page, the corner switching to the menu and back, the rules on and put back when the host goes, Crystal's
-#   guide file loaded (its 22 milestones; no hidden items, which come from the ROM);
+#   Party page, the corner and the Back button switching to the menu and back (F to the menu), the rules on and put
+#   back when the host goes, Crystal's guide file loaded (its 22 milestones; no hidden items, which come from the ROM);
 # - a made-up ROM with Crystal's title and another SHA-1: "Not supported", and nothing asked of the game;
 # - upstream's gamepanel after it: no companion, and not the Game Boy one again;
 # - the pages' blocks for Gen II (KIWAMI_GBPK_TRACE=1 names each drawn): DVs and stat experience, Hidden Power, the
@@ -64,8 +64,9 @@ press down; press down; press down; press down; wait 1; shot off; press a; wait 
     # shows the Battle page, its end the Party page; the corner shows the menu (the tiles) and the pages again
     run $size crystal "home 0; gbpanel 1 $CAP/crystal; gshot wait; gbhost; gbfeed $CAP/crystal; sleep 300; gshot party; \
 wait 300; gbfeed $CAP/crystal_battle; sleep 300; gshot battle; wait 300; gbfeed $CAP/crystal; sleep 100; \
-gtouch 600 28; gshot menu; gtouch 600 28; gbpanel 1 $CAP/crystal $MADE_UP; gbhost; gbfeed $CAP/crystal; gshot unsupported; \
-gamepanel 1 /nonexistent.gba; gtouch 300 300"
+gtouch 600 28; gshot menu; gtouch 600 28; gbutton back; gbutton back; gbutton f; gbutton f; gbutton back; \
+gbpanel 1 $CAP/crystal $MADE_UP; gbhost; gbfeed $CAP/crystal; gshot unsupported; \
+gamepanel 1 /nonexistent.gba; gtouch 300 300; gbutton back"
     logged "gbpanel .*/crystal: companion Crystal"
     logged "gb companion: rules on \(Generation II\)"
     logged "gb companion: guide: 22 milestones, 0 hidden items$"
@@ -77,6 +78,11 @@ gamepanel 1 /nonexistent.gba; gtouch 300 300"
         { echo "FAIL $size crystal: the battle's end didn't show the Party page"; fail=1; }
     logged "gtouch 600 28: action 0 keys 0 view game$"
     logged "gtouch 600 28: action 0 keys 0 view pages:"
+    # Back (the button beside F) switches as the corner does; F shows the menu, and on the menu does nothing; Back on
+    # upstream's panel after it does nothing
+    b=$(grep -E 'gbutton ' "$log" | sed 's/.*gbutton //; s/view pages:.*/view pages/' | tr '\n' ';')
+    [ "$b" = "back: switched view game;back: switched view pages;f: switched view game;f: nothing view game;back: switched view pages;back: nothing view ;" ] ||
+        { echo "FAIL $size crystal: the buttons: $b"; fail=1; }
     shown wait; shown party; shown battle; shown menu
     differ wait party; differ party battle
     # the host goes with the next game: the rules back to upstream's before the made-up ROM's companion opens

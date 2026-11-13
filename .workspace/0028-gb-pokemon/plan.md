@@ -112,6 +112,9 @@ Found while reading the code, each a change to what the investigation proposed:
 - **A22**: `kiwami/data/pokedaisy/` holds the reference data for every mainline game PokeDaisy supports (English
   releases), with an index, and nothing of it is in the image.
 - **A23**: upstream's GBA and DS companions behave as on `main` (their tests in `make test` pass unchanged).
+- **A24** (added 2026-11-13, step 18): given a Game Boy game with the fork's companion on the game panel, when Back
+  (the button beside F) is pressed, then the panel switches between its menu and the pages, as the corner does; F
+  still shows the menu (upstream's); with upstream's panels Back does as before.
 
 ## Risks
 
@@ -961,7 +964,23 @@ derived bits, the gyms by their leaders' flags, no `opens`.)
 - **Commit**: `GB Pokémon companion: its documentation, the merge checks for upstream's companion code, and its footprint`
 - (*Deviations* 2026-11-13, step 17: banana-ui grows by about 390 KB, not under 200 KB; measured on x86-64.)
 
-### 18. Final check
+### 18. Back switches the game panel in a Game Boy game
+
+- **Files**: `ui/src/settings_gamepanel.cpp` (a hook), `ui/src/kiwami/gbpk/panel.h`, `kiwami/tests/gbpk-ui.sh`,
+  `kiwami/GB-POKEMON.md`, `docs/FORK.md` (changed)
+- **Change**: `Settings::gameButton` gets one `kiwami:` line after F's: Back (`BTN_Z`) calls `compToggle()` while
+  the fork's Game Boy panel is open (`PanelSwitch::gameBoy()`, new), as Back's Companion job does in a GBA game.
+  Upstream reads the Companion buttons only for the Game Boy Advance (`gCompKeys` in `gameOpen`); a Game Boy game has
+  no use for Back (`run-retroarch` hands only L2 to R3 to bananad), so there is no Buttons row for it. F is left as
+  upstream has it: the menu, where its combos are. The docs say so, and that R2 alone fast-forwards in the Game Boy
+  games (upstream's template).
+- **Tests**: `gbpk-ui.sh`'s Crystal run presses Back, Back, F, F, Back on the pages (upstream's `gbutton` verb): the
+  menu, the pages, the menu, nothing, the pages; and Back on upstream's `gamepanel` after it: nothing. It fails with
+  the hook taken out. `make test`, `make -C ui`, `kiwami/tests/ci.sh .buildroot`.
+- **Commit**: `GB Pokémon companion: the Back button switches the game panel between its menu and the pages`
+- (*Deviations* 2026-11-13, step 18: added after the manual tests.)
+
+### 19. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
 - The fork's tests: `gbpk-units`, `gbpk-ui.sh`, `gbpk-roms.sh` with `GB_ROMS` set to the user's folder (and the
@@ -969,7 +988,7 @@ derived bits, the gyms by their leaders' flags, no `opens`.)
 - `kiwami/tests/ui-objects.sh`: the object build is still byte for byte the one call's.
 - The hooks: `git diff --stat main...HEAD` and `git grep -n 'kiwami:'` (the commands in `docs/FORK.md`) agree, and
   the new ones are exactly: `main.cpp` 10, `pages.cpp` 10, `logic.cpp` 4, `model.cpp` 2, `settings.h` 2, `model.h` 1,
-  `guide.cpp` 1, `settings.cpp` 1.
+  `guide.cpp` 1, `settings.cpp` 1, `settings_gamepanel.cpp` 1 (step 18).
 - With both rows Off, `make test`'s renders in `ui/tests/out/` match `main`'s (a second checkout), and its bench lines
   are within noise of `main`'s.
 - Nothing of the games in the repository: step 16's string scan over `kiwami/rootfs/usr/share/banana/companions/
@@ -997,7 +1016,7 @@ derived bits, the gyms by their leaders' flags, no `opens`.)
 | The ROM reader on made-up data | `gbpk-units.cpp` | every table read back from a made-up ROM for each generation; both decompressions on hand-built streams; the tile maps; refusals | A12, A13, A14 |
 | The ROM reader on the user's ROMs | `kiwami/tests/gbpk-roms.sh` (`GB_ROMS`, by default `~/gb-companion/roms`, skipped without; the files in `kiwami/tests/gbpk/roms.sha1`) | the nine releases' SHA-1s, species, moves, encounters, trainers, every sprite, the maps; PokeDaisy's reference tables | A3, A12, A13, A14, A16 |
 | The guides | `gbpk-units.cpp` through `nds::loadGuideFile` | the four files load with nothing skipped; milestones follow badges and flags; hidden items' flags; the ROM-built guide | A15, A16 |
-| The panel, headless | `kiwami/tests/gbpk-ui.sh` at 640x480 and 1024x768 | the rows and their keys; the pages on a fixture, the battle's start and end, the Menu switch, unsupported; the Gen-aware blocks' trace lines | A1, A3, A4, A9, A11 |
+| The panel, headless | `kiwami/tests/gbpk-ui.sh` at 640x480 and 1024x768 | the rows and their keys; the pages on a fixture, the battle's start and end, the Menu switch by the corner, Back and F, unsupported; the Gen-aware blocks' trace lines | A1, A3, A4, A9, A11, A24 |
 | Upstream unchanged | `make test` | upstream's GBA, DS, guide and logic tests pass; renders match `main`'s with the rows Off | A2, A23 |
 | The build | `kiwami/tests/ui-objects.sh`, `make -C ui`, `ci.sh .buildroot` | the object build equals the one call; the boards configure | (the tree) |
 
@@ -1026,8 +1045,15 @@ Each run: Second screen on, the system's row On, the game started from the menu.
 | M12 | rgds-plus | Challenge mode On (upstream's row): Crystal, catch the first Pokémon on a route, let one faint. Quit, start again. | The Here and Log pages keep the first encounter and the lost Pokémon across the restart. | `banana-ui.log`; the files in `/data/banana/cache/gb-companion/` | A17 | not run |
 | M13 | rgds-plus | A user definition for Red in `/data/banana/companions/gb/` with Game companion On and the `gb` row On (only if the user has one to hand; otherwise by the code's reading at review). | Upstream's game companion shows, not the fork's. | `banana-ui.log`: `game companion:` and no `gb companion:` | A6 | not run |
 | M14 | rgds-plus | Settings > Other systems > Second screen, and Settings > System > Credits. An Emerald game with upstream's row On. | The two rows after Pokémon companion, Off on a fresh card. The PokeDaisy line in the credits. The GBA companion as before. | none | A1, A20, A23 | not run |
+| M15 | rgds-plus | After step 18. A Game Boy and a Game Boy Color game with the companion on its pages: Back, Back; F; R2 alone during play; F + R2. | Back shows the menu, then the pages again. F shows the menu. R2 alone fast-forwards and the pages stay; F + R2 fast-forwards with the menu shown. | none | A24 | not run |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- 2026-11-13, image 0.5.3.4 built from `9169503f`, RG DS Plus: the user ran the companion with Game Boy and Game Boy
+  Color games and approved it, with one remark: fast-forwarding with F + R2 takes the panel to its menu, since F shows
+  the menu, and only a tap on the corner brings the pages back. F's menu is upstream's (as in a GBA game), and R2
+  alone already fast-forwards in these games (upstream's template); what the GBA has and the Game Boy games lacked is
+  the Back button to switch back: step 18.
 
 ## Deviations
 
@@ -1389,6 +1415,13 @@ Where the implementation turned out different from this plan, why, and what chan
   Also beyond the plan's list for that file: *Taking in a newer PokeDaisy* (step by step), *The tests* (an overview)
   and *What it doesn't do* (the limits, and the retirement if upstream ships its own). `docs/FORK.md` gets a third row
   besides the plan's two, for a feature's code under another licence.
+- **2026-11-13, step 18: Back switches the game panel, a step added after the manual tests.** On the device, F + R2
+  (fast-forward) took the panel to its menu, F's job upstream, and the pages came back only by a tap on the corner:
+  upstream gives the Back button the switch in GBA games alone (`gCompKeys`, read for the Game Boy Advance). The user
+  chose Back for the Game Boy games too, with F left as upstream has it. It is a 32nd hook line, in a ninth upstream
+  file (`settings_gamepanel.cpp`), placed in `gameButton` rather than `gameOpen` so it asks at the press whether the
+  fork's panel is open, not depending on the order the panel and the game open in. No Settings row: Back has no other
+  job in a Game Boy game, and it does nothing with the rows Off. A24 and M15 are new; the final check is step 19.
 
 ## Progress
 
@@ -1414,4 +1447,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 15. Red, Blue and Yellow's guides | done | `GB Pokémon companion: Red, Blue and Yellow's guides, converted from PokeDaisy's tables` |
 | 16. PokeDaisy's reference data for every mainline game | done | `GB Pokémon companion: PokeDaisy's reference data for the mainline games, Gen I to Gen V` |
 | 17. The documentation, and what the feature weighs | done | `GB Pokémon companion: its documentation, the merge checks for upstream's companion code, and its footprint` |
-| 18. Final check | todo | |
+| 18. Back switches the game panel in a Game Boy game | done | `GB Pokémon companion: the Back button switches the game panel between its menu and the pages` |
+| 19. Final check | todo | |

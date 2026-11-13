@@ -67,6 +67,9 @@ namespace banana::kiwami::gbpk
 		std::string view() const { return gba.active() ? gba.view() : gb.view(); }
 		int ready() const { return gba.active() ? gba.ready() : gb.ready(); }
 		std::string title() const { return gba.active() ? gba.title() : gb.title(); }
+		// the Game Boy panel is the one open: Back (the button beside F, which a Game Boy game has no use for) switches
+		// it between the menu and the pages, as Back's Companion job does in a GBA game (a hook in Settings::gameButton)
+		bool gameBoy() const { return !gba.active() && gb.active(); }
 
 	private:
 		gba::Panel gba;

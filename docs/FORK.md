@@ -286,7 +286,9 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    panel: Settings' `gbaPanel` (`settings.h`) is the fork's `kiwami::gbpk::PanelSwitch`, which holds upstream's
    `gba::Panel` and the Game Boy one and forwards every member `settings_gamepanel.cpp` and `settings.h` call (upstream's
    first). A member upstream starts calling on `gbaPanel`, or a change to one's signature in `gba/panel.h`, fails to
-   compile until `ui/src/kiwami/gbpk/panel.h` forwards it. In `main.cpp`, the hooks follow the game's companion
+   compile until `ui/src/kiwami/gbpk/panel.h` forwards it. `Settings::gameButton`'s line after F's sends Back
+   (`BTN_Z`) to `compToggle()` while the Game Boy panel is open; if upstream gives the Game Boy systems a Companion
+   button of their own (their Buttons page, `gCompKeys` in `gameOpen`), the line goes. In `main.cpp`, the hooks follow the game's companion
    wiring: `gbGame.open` after the block that makes the reply pipe for upstream's Pokémon and game companions (it
    makes its own when they didn't), `attach` just before `gbaAttach`, the requests after upstream's `r = ...` line, the
    two feeds as an `if (...) {} else` before upstream's `if (companion.active())` (the replies of BananaFront's shared

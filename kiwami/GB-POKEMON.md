@@ -196,7 +196,11 @@ took the game (a definition of the user's own for it wins), and the header names
 ROM's header read; with the rows Off nothing of the fork's runs. It makes RetroArch's reply pipe as upstream does
 (`/run/banana/retroarch.out`) and logs `gb companion: <title>`. The game panel's pages are upstream's, on the panel's
 screen with its menu one tap away in the corner, as for a GBA game (`panel.cpp`: Settings' `gbaPanel` is a
-`PanelSwitch` holding upstream's panel and this one).
+`PanelSwitch` holding upstream's panel and this one). As in a GBA game, F shows the menu, where its combos are listed
+(upstream's), and the Back button beside F switches between the menu and the pages: a `kiwami:` line in
+`Settings::gameButton` (`settings_gamepanel.cpp`), for the fork's panel alone. A Game Boy game has no use for Back, so
+it has no Buttons row as the GBA's has. Fast-forward is R2 alone in the Game Boy games (upstream's template,
+`ra_btn_r2.gb` and `.gbc`), so F isn't needed for it and the pages stay up.
 
 `host.cpp` reads the whole ROM on a thread (the game in a `.zip` or `.7z` too), checks its SHA-1, then its tables, and
 logs `gb companion: <title> (<release>) read in <N> ms`. Only then does the memory reader open: a ROM it doesn't know
@@ -211,9 +215,9 @@ and the panel through three test verbs of the fork's: `gbpanel <screen> <capture
 capture's game, with a stand-in for the ROM's tables, every species, move and item named by its number, or the ROM
 given read and checked), `gbfeed <capture folder>` (the reader's requests answered from a capture) and `gbhost` (the
 wait for the ROM's data, as upstream's `gbahost`, which needs a GBA companion). It checks Crystal's capture read into
-the pages, a wild battle's start and end, the corner to the menu and back, the rules put back when the host goes, a
-ROM with Crystal's title and another SHA-1 shown "Not supported" and never asked, and upstream's `gamepanel` after it
-opening no Game Boy panel.
+the pages, a wild battle's start and end, the corner and Back to the menu and back and F to the menu (upstream's
+`gbutton`), the rules put back when the host goes, a ROM with Crystal's title and another SHA-1 shown "Not supported"
+and never asked, and upstream's `gamepanel` after it opening no Game Boy panel, where Back does nothing.
 
 ## Reading the game's memory
 

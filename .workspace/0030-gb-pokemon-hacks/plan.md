@@ -482,7 +482,7 @@ Common to the steps (as #28's):
   - `ui/src/kiwami/gbpk/games.h`, `games.cpp`, `rom.h`, `rom.cpp`, `rom1.cpp`, `rom2.cpp`, `reader.cpp`, `rules.h`,
     `host.cpp` (changed)
   - `ui/src/kiwami/gbpk/items.inc` (removed: its content is the data files' now)
-  - `kiwami/tests/gbpk-units.cpp` (changed)
+  - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp` (changed)
   - `kiwami/GB-POKEMON.md` (changed: *The data files*)
 - **Change**:
   - **`gbpk-symbols.txt`** gets four line kinds, read by `pret-extract.py`:
@@ -532,7 +532,8 @@ Common to the steps (as #28's):
   - `gbpk-units`:
     - for the six retail data files, `gen1Item`/`gen2Item`/`gen1Pocket` over ids 0-255 equal today's tables, which the
       test keeps as literal arrays (`items.inc`'s rows, `GEN1_KEY_ITEMS`, the TM/HM ranges);
-    - `gen2Type` over 0-255 equals today's for Gen I and Gen II;
+    - `gen2Type` over 0-255 equals today's for Gen II, and for Gen I but ids 9 and 0x1B, which have no type there
+      (*Deviations*, 2026-11-14);
     - a made-up data file with `split` Ghost special gives a Ghost move `SPECIAL`, and `damage` uses the Special stats
       for it;
     - a data file with an unknown type name doesn't load.
@@ -1106,6 +1107,12 @@ Where the implementation turned out different from this plan, why, and what chan
   needs no PokeDaisy checkout, as *Before the steps* says. Step 1 leaves `host.cpp:26` on Gold's and Silver's ids.
 - **2026-11-14, step 1**: `kiwami/tests/gbpk-roms.cpp` added to step 1's files. It calls `detect` and `confirm`, so it
   follows the new signature: it loads `detect`'s candidates and picks among them with `confirmAny`, as the host does.
+- **2026-11-14, step 2**: Gen I's types aren't exactly today's `gen2Type`. Today's maps 9 to Steel and 0x1B to Dark for
+  every game, but pokered's and pokeyellow's `type_constants.asm` define neither, so Red's, Blue's and Yellow's data
+  files give no type for them (no ROM or save of theirs holds those ids). The test expects today's map for Gen I but
+  those two ids, `NO_TYPE`; Gen II's is today's exactly.
+- **2026-11-14, step 2**: `kiwami/tests/gbpk-roms.cpp` added to step 2's files: its two calls of `gen1Item` and
+  `gen2Item` pass the game's data.
 
 ## Progress
 
@@ -1114,7 +1121,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. Several games to one header title | done | GB Pokémon hacks: several games to one header title, the SHA-1 picks one |
-| 2. Each game's items, types and split | todo | |
+| 2. Each game's items, types and split | done | GB Pokémon hacks: each game's items, types and physical/special split from its data file |
 | 3. Each game's type chart from its ROM | todo | |
 | 4. Crystal Legacy | todo | |
 | 5. Crystal Legacy's guide | todo | |

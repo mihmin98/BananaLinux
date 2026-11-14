@@ -42,7 +42,7 @@ namespace banana::kiwami::gbpk
 		return -1;
 	}
 
-	// ---- items (their Gen IV numbers, as the reader gives them: items.inc) -------------------------------------------
+	// ---- items (their Gen IV numbers, as the reader gives them: the data file's items) -------------------------------
 	enum : uint16_t { MASTER_BALL = 1, ULTRA_BALL = 2, GREAT_BALL = 3, POKE_BALL = 4, SAFARI_BALL = 5,
 		SILVERPOWDER = 222, METAL_COAT = 233, DRAGON_SCALE = 235, LIGHT_BALL = 236, THICK_CLUB = 258,
 		FAST_BALL = 492, LEVEL_BALL = 493, LURE_BALL = 494, HEAVY_BALL = 495, LOVE_BALL = 496, FRIEND_BALL = 497,
@@ -78,7 +78,8 @@ namespace banana::kiwami::gbpk
 	// The games' formula: pokered engine/battle/core.asm (GetDamageVarsForPlayerAttack, CalculateDamage,
 	// AdjustDamageForMoveType, RandomizeDamage), pokecrystal engine/battle/effect_commands.asm (PlayerAttackDamage,
 	// BattleCommand_DamageCalc, BattleCommand_Stab, BattleCommand_DamageVariation) and misc.asm (DoBadgeTypeBoosts).
-	//   physical or special by the move's type (Fire and after: special; Gen I's Special is both special stats);
+	//   physical or special by the move's category, which the ROM reader gives by its type and the game's split (the
+	//   retail games': Fire and after special; Gen I's Special is both special stats);
 	//   the battle's own Attack and Defense: the battle copy's stats already hold the stat stages, the badges' stat
 	//   boosts, burn's halved Attack and paralysis's quartered Speed (the games recompute them), so none is applied
 	//   again; Gen II: Thick Club doubles Cubone's and Marowak's Attack, Light Ball Pikachu's Special Attack;
@@ -101,7 +102,7 @@ namespace banana::kiwami::gbpk
 		r.quarters = e1 * e2 / 4;
 		if (r.quarters == 0) { r.note = "no effect"; return r; }
 		if (mv.power <= 1) { r.note = "power varies"; return r; }
-		const bool phys = t < FIRE;
+		const bool phys = mv.cat == MoveCategory::PHYSICAL;
 		int atk = phys ? a.stats[0] : a.stats[3], def = phys ? d.stats[1] : d.stats[4];
 		if (g == GEN_II)
 		{

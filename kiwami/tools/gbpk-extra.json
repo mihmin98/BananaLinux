@@ -1,6 +1,13 @@
 {
   "games": {
     "blue": {
+      "balls": [
+        1,
+        2,
+        3,
+        4,
+        8
+      ],
       "const": {
         "bagSlots": {
           "file": "constants/menu_constants.asm",
@@ -138,7 +145,99 @@
           "value": 8
         }
       },
+      "files": {
+        "items": "constants/item_constants.asm",
+        "keyitems": "data/items/key_items.asm",
+        "types": "constants/type_constants.asm"
+      },
       "header_title": "POKEMON BLUE",
+      "items": {
+        "FIRE_STONE": [
+          32,
+          82
+        ],
+        "GOOD_ROD": [
+          77,
+          446
+        ],
+        "GREAT_BALL": [
+          3,
+          3
+        ],
+        "LEAF_STONE": [
+          47,
+          85
+        ],
+        "MASTER_BALL": [
+          1,
+          1
+        ],
+        "MOON_STONE": [
+          10,
+          81
+        ],
+        "OLD_ROD": [
+          76,
+          445
+        ],
+        "POKE_BALL": [
+          4,
+          4
+        ],
+        "SAFARI_BALL": [
+          8,
+          5
+        ],
+        "SUPER_ROD": [
+          78,
+          447
+        ],
+        "THUNDER_STONE": [
+          33,
+          83
+        ],
+        "ULTRA_BALL": [
+          2,
+          2
+        ],
+        "WATER_STONE": [
+          34,
+          84
+        ]
+      },
+      "key_items": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        31,
+        41,
+        42,
+        43,
+        44,
+        45,
+        48,
+        63,
+        64,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        76,
+        77,
+        78
+      ],
       "ram": {
         "badges": {
           "addr": "0xD356",
@@ -510,9 +609,49 @@
           "bank": 4,
           "symbol": "WildMonEncounterSlotChances"
         }
+      },
+      "special": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "types": {
+        "0": "normal",
+        "1": "fighting",
+        "2": "flying",
+        "20": "fire",
+        "21": "water",
+        "22": "grass",
+        "23": "electric",
+        "24": "psychic",
+        "25": "ice",
+        "26": "dragon",
+        "3": "poison",
+        "4": "ground",
+        "5": "rock",
+        "7": "bug",
+        "8": "ghost"
       }
     },
     "crystal": {
+      "balls": [
+        1,
+        2,
+        4,
+        5,
+        157,
+        159,
+        160,
+        161,
+        164,
+        165,
+        166,
+        177
+      ],
       "const": {
         "fastShipLandmark": {
           "file": "constants/landmark_constants.asm",
@@ -555,7 +694,181 @@
           "value": 233
         }
       },
+      "files": {
+        "items": "constants/item_constants.asm",
+        "types": "constants/type_constants.asm"
+      },
       "header_title": "PM_CRYSTAL",
+      "items": {
+        "BLACKBELT_I": [
+          98,
+          241
+        ],
+        "BLACKGLASSES": [
+          102,
+          240
+        ],
+        "CHARCOAL": [
+          138,
+          249
+        ],
+        "DRAGON_FANG": [
+          144,
+          250
+        ],
+        "DRAGON_SCALE": [
+          151,
+          235
+        ],
+        "FAST_BALL": [
+          161,
+          492
+        ],
+        "FIRE_STONE": [
+          22,
+          82
+        ],
+        "FRIEND_BALL": [
+          164,
+          497
+        ],
+        "GOOD_ROD": [
+          59,
+          446
+        ],
+        "GREAT_BALL": [
+          4,
+          3
+        ],
+        "HARD_STONE": [
+          125,
+          238
+        ],
+        "HEAVY_BALL": [
+          157,
+          495
+        ],
+        "KINGS_ROCK": [
+          82,
+          221
+        ],
+        "LEAF_STONE": [
+          34,
+          85
+        ],
+        "LEVEL_BALL": [
+          159,
+          493
+        ],
+        "LIGHT_BALL": [
+          163,
+          236
+        ],
+        "LOVE_BALL": [
+          166,
+          496
+        ],
+        "LURE_BALL": [
+          160,
+          494
+        ],
+        "MAGNET": [
+          108,
+          242
+        ],
+        "MASTER_BALL": [
+          1,
+          1
+        ],
+        "METAL_COAT": [
+          143,
+          233
+        ],
+        "MIRACLE_SEED": [
+          117,
+          239
+        ],
+        "MOON_BALL": [
+          165,
+          498
+        ],
+        "MOON_STONE": [
+          8,
+          81
+        ],
+        "MYSTIC_WATER": [
+          95,
+          243
+        ],
+        "NEVERMELTICE": [
+          107,
+          246
+        ],
+        "OLD_ROD": [
+          58,
+          445
+        ],
+        "PARK_BALL": [
+          177,
+          499
+        ],
+        "POISON_BARB": [
+          81,
+          245
+        ],
+        "POKE_BALL": [
+          5,
+          4
+        ],
+        "SHARP_BEAK": [
+          77,
+          244
+        ],
+        "SILVERPOWDER": [
+          88,
+          222
+        ],
+        "SOFT_SAND": [
+          76,
+          237
+        ],
+        "SPELL_TAG": [
+          113,
+          247
+        ],
+        "SUN_STONE": [
+          169,
+          80
+        ],
+        "SUPER_ROD": [
+          61,
+          447
+        ],
+        "THICK_CLUB": [
+          118,
+          258
+        ],
+        "THUNDERSTONE": [
+          23,
+          83
+        ],
+        "TWISTEDSPOON": [
+          96,
+          248
+        ],
+        "ULTRA_BALL": [
+          2,
+          2
+        ],
+        "UP_GRADE": [
+          172,
+          252
+        ],
+        "WATER_STONE": [
+          24,
+          84
+        ]
+      },
       "ram": {
         "backupMapGroup": {
           "addr": "0xDCAD",
@@ -1015,9 +1328,52 @@
           "bank": 10,
           "symbol": "WaterMonProbTable"
         }
+      },
+      "special": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27
+      ],
+      "types": {
+        "0": "normal",
+        "1": "fighting",
+        "2": "flying",
+        "20": "fire",
+        "21": "water",
+        "22": "grass",
+        "23": "electric",
+        "24": "psychic",
+        "25": "ice",
+        "26": "dragon",
+        "27": "dark",
+        "3": "poison",
+        "4": "ground",
+        "5": "rock",
+        "7": "bug",
+        "8": "ghost",
+        "9": "steel"
       }
     },
     "gold": {
+      "balls": [
+        1,
+        2,
+        4,
+        5,
+        157,
+        159,
+        160,
+        161,
+        164,
+        165,
+        166,
+        177
+      ],
       "const": {
         "badgeBoulder": {
           "file": "constants/ram_constants.asm",
@@ -1220,7 +1576,181 @@
           "value": 233
         }
       },
+      "files": {
+        "items": "constants/item_constants.asm",
+        "types": "constants/type_constants.asm"
+      },
       "header_title": "POKEMON_GLD",
+      "items": {
+        "BLACKBELT_I": [
+          98,
+          241
+        ],
+        "BLACKGLASSES": [
+          102,
+          240
+        ],
+        "CHARCOAL": [
+          138,
+          249
+        ],
+        "DRAGON_FANG": [
+          144,
+          250
+        ],
+        "DRAGON_SCALE": [
+          151,
+          235
+        ],
+        "FAST_BALL": [
+          161,
+          492
+        ],
+        "FIRE_STONE": [
+          22,
+          82
+        ],
+        "FRIEND_BALL": [
+          164,
+          497
+        ],
+        "GOOD_ROD": [
+          59,
+          446
+        ],
+        "GREAT_BALL": [
+          4,
+          3
+        ],
+        "HARD_STONE": [
+          125,
+          238
+        ],
+        "HEAVY_BALL": [
+          157,
+          495
+        ],
+        "KINGS_ROCK": [
+          82,
+          221
+        ],
+        "LEAF_STONE": [
+          34,
+          85
+        ],
+        "LEVEL_BALL": [
+          159,
+          493
+        ],
+        "LIGHT_BALL": [
+          163,
+          236
+        ],
+        "LOVE_BALL": [
+          166,
+          496
+        ],
+        "LURE_BALL": [
+          160,
+          494
+        ],
+        "MAGNET": [
+          108,
+          242
+        ],
+        "MASTER_BALL": [
+          1,
+          1
+        ],
+        "METAL_COAT": [
+          143,
+          233
+        ],
+        "MIRACLE_SEED": [
+          117,
+          239
+        ],
+        "MOON_BALL": [
+          165,
+          498
+        ],
+        "MOON_STONE": [
+          8,
+          81
+        ],
+        "MYSTIC_WATER": [
+          95,
+          243
+        ],
+        "NEVERMELTICE": [
+          107,
+          246
+        ],
+        "OLD_ROD": [
+          58,
+          445
+        ],
+        "PARK_BALL": [
+          177,
+          499
+        ],
+        "POISON_BARB": [
+          81,
+          245
+        ],
+        "POKE_BALL": [
+          5,
+          4
+        ],
+        "SHARP_BEAK": [
+          77,
+          244
+        ],
+        "SILVERPOWDER": [
+          88,
+          222
+        ],
+        "SOFT_SAND": [
+          76,
+          237
+        ],
+        "SPELL_TAG": [
+          113,
+          247
+        ],
+        "SUN_STONE": [
+          169,
+          80
+        ],
+        "SUPER_ROD": [
+          61,
+          447
+        ],
+        "THICK_CLUB": [
+          118,
+          258
+        ],
+        "THUNDERSTONE": [
+          23,
+          83
+        ],
+        "TWISTEDSPOON": [
+          96,
+          248
+        ],
+        "ULTRA_BALL": [
+          2,
+          2
+        ],
+        "UP_GRADE": [
+          172,
+          252
+        ],
+        "WATER_STONE": [
+          24,
+          84
+        ]
+      },
       "ram": {
         "backupMapGroup": {
           "addr": "0xD9F6",
@@ -1663,9 +2193,45 @@
           "bank": 10,
           "symbol": "WaterMonProbTable"
         }
+      },
+      "special": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27
+      ],
+      "types": {
+        "0": "normal",
+        "1": "fighting",
+        "2": "flying",
+        "20": "fire",
+        "21": "water",
+        "22": "grass",
+        "23": "electric",
+        "24": "psychic",
+        "25": "ice",
+        "26": "dragon",
+        "27": "dark",
+        "3": "poison",
+        "4": "ground",
+        "5": "rock",
+        "7": "bug",
+        "8": "ghost",
+        "9": "steel"
       }
     },
     "red": {
+      "balls": [
+        1,
+        2,
+        3,
+        4,
+        8
+      ],
       "const": {
         "bagSlots": {
           "file": "constants/menu_constants.asm",
@@ -1803,7 +2369,99 @@
           "value": 8
         }
       },
+      "files": {
+        "items": "constants/item_constants.asm",
+        "keyitems": "data/items/key_items.asm",
+        "types": "constants/type_constants.asm"
+      },
       "header_title": "POKEMON RED",
+      "items": {
+        "FIRE_STONE": [
+          32,
+          82
+        ],
+        "GOOD_ROD": [
+          77,
+          446
+        ],
+        "GREAT_BALL": [
+          3,
+          3
+        ],
+        "LEAF_STONE": [
+          47,
+          85
+        ],
+        "MASTER_BALL": [
+          1,
+          1
+        ],
+        "MOON_STONE": [
+          10,
+          81
+        ],
+        "OLD_ROD": [
+          76,
+          445
+        ],
+        "POKE_BALL": [
+          4,
+          4
+        ],
+        "SAFARI_BALL": [
+          8,
+          5
+        ],
+        "SUPER_ROD": [
+          78,
+          447
+        ],
+        "THUNDER_STONE": [
+          33,
+          83
+        ],
+        "ULTRA_BALL": [
+          2,
+          2
+        ],
+        "WATER_STONE": [
+          34,
+          84
+        ]
+      },
+      "key_items": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        31,
+        41,
+        42,
+        43,
+        44,
+        45,
+        48,
+        63,
+        64,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        76,
+        77,
+        78
+      ],
       "ram": {
         "badges": {
           "addr": "0xD356",
@@ -2175,9 +2833,49 @@
           "bank": 4,
           "symbol": "WildMonEncounterSlotChances"
         }
+      },
+      "special": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "types": {
+        "0": "normal",
+        "1": "fighting",
+        "2": "flying",
+        "20": "fire",
+        "21": "water",
+        "22": "grass",
+        "23": "electric",
+        "24": "psychic",
+        "25": "ice",
+        "26": "dragon",
+        "3": "poison",
+        "4": "ground",
+        "5": "rock",
+        "7": "bug",
+        "8": "ghost"
       }
     },
     "silver": {
+      "balls": [
+        1,
+        2,
+        4,
+        5,
+        157,
+        159,
+        160,
+        161,
+        164,
+        165,
+        166,
+        177
+      ],
       "const": {
         "badgeBoulder": {
           "file": "constants/ram_constants.asm",
@@ -2380,7 +3078,181 @@
           "value": 233
         }
       },
+      "files": {
+        "items": "constants/item_constants.asm",
+        "types": "constants/type_constants.asm"
+      },
       "header_title": "POKEMON_SLV",
+      "items": {
+        "BLACKBELT_I": [
+          98,
+          241
+        ],
+        "BLACKGLASSES": [
+          102,
+          240
+        ],
+        "CHARCOAL": [
+          138,
+          249
+        ],
+        "DRAGON_FANG": [
+          144,
+          250
+        ],
+        "DRAGON_SCALE": [
+          151,
+          235
+        ],
+        "FAST_BALL": [
+          161,
+          492
+        ],
+        "FIRE_STONE": [
+          22,
+          82
+        ],
+        "FRIEND_BALL": [
+          164,
+          497
+        ],
+        "GOOD_ROD": [
+          59,
+          446
+        ],
+        "GREAT_BALL": [
+          4,
+          3
+        ],
+        "HARD_STONE": [
+          125,
+          238
+        ],
+        "HEAVY_BALL": [
+          157,
+          495
+        ],
+        "KINGS_ROCK": [
+          82,
+          221
+        ],
+        "LEAF_STONE": [
+          34,
+          85
+        ],
+        "LEVEL_BALL": [
+          159,
+          493
+        ],
+        "LIGHT_BALL": [
+          163,
+          236
+        ],
+        "LOVE_BALL": [
+          166,
+          496
+        ],
+        "LURE_BALL": [
+          160,
+          494
+        ],
+        "MAGNET": [
+          108,
+          242
+        ],
+        "MASTER_BALL": [
+          1,
+          1
+        ],
+        "METAL_COAT": [
+          143,
+          233
+        ],
+        "MIRACLE_SEED": [
+          117,
+          239
+        ],
+        "MOON_BALL": [
+          165,
+          498
+        ],
+        "MOON_STONE": [
+          8,
+          81
+        ],
+        "MYSTIC_WATER": [
+          95,
+          243
+        ],
+        "NEVERMELTICE": [
+          107,
+          246
+        ],
+        "OLD_ROD": [
+          58,
+          445
+        ],
+        "PARK_BALL": [
+          177,
+          499
+        ],
+        "POISON_BARB": [
+          81,
+          245
+        ],
+        "POKE_BALL": [
+          5,
+          4
+        ],
+        "SHARP_BEAK": [
+          77,
+          244
+        ],
+        "SILVERPOWDER": [
+          88,
+          222
+        ],
+        "SOFT_SAND": [
+          76,
+          237
+        ],
+        "SPELL_TAG": [
+          113,
+          247
+        ],
+        "SUN_STONE": [
+          169,
+          80
+        ],
+        "SUPER_ROD": [
+          61,
+          447
+        ],
+        "THICK_CLUB": [
+          118,
+          258
+        ],
+        "THUNDERSTONE": [
+          23,
+          83
+        ],
+        "TWISTEDSPOON": [
+          96,
+          248
+        ],
+        "ULTRA_BALL": [
+          2,
+          2
+        ],
+        "UP_GRADE": [
+          172,
+          252
+        ],
+        "WATER_STONE": [
+          24,
+          84
+        ]
+      },
       "ram": {
         "backupMapGroup": {
           "addr": "0xD9F6",
@@ -2823,9 +3695,45 @@
           "bank": 10,
           "symbol": "WaterMonProbTable"
         }
+      },
+      "special": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27
+      ],
+      "types": {
+        "0": "normal",
+        "1": "fighting",
+        "2": "flying",
+        "20": "fire",
+        "21": "water",
+        "22": "grass",
+        "23": "electric",
+        "24": "psychic",
+        "25": "ice",
+        "26": "dragon",
+        "27": "dark",
+        "3": "poison",
+        "4": "ground",
+        "5": "rock",
+        "7": "bug",
+        "8": "ghost",
+        "9": "steel"
       }
     },
     "yellow": {
+      "balls": [
+        1,
+        2,
+        3,
+        4,
+        8
+      ],
       "const": {
         "bagSlots": {
           "file": "constants/menu_constants.asm",
@@ -2928,7 +3836,99 @@
           "value": 9
         }
       },
+      "files": {
+        "items": "constants/item_constants.asm",
+        "keyitems": "data/items/key_items.asm",
+        "types": "constants/type_constants.asm"
+      },
       "header_title": "POKEMON YELLOW",
+      "items": {
+        "FIRE_STONE": [
+          32,
+          82
+        ],
+        "GOOD_ROD": [
+          77,
+          446
+        ],
+        "GREAT_BALL": [
+          3,
+          3
+        ],
+        "LEAF_STONE": [
+          47,
+          85
+        ],
+        "MASTER_BALL": [
+          1,
+          1
+        ],
+        "MOON_STONE": [
+          10,
+          81
+        ],
+        "OLD_ROD": [
+          76,
+          445
+        ],
+        "POKE_BALL": [
+          4,
+          4
+        ],
+        "SAFARI_BALL": [
+          8,
+          5
+        ],
+        "SUPER_ROD": [
+          78,
+          447
+        ],
+        "THUNDER_STONE": [
+          33,
+          83
+        ],
+        "ULTRA_BALL": [
+          2,
+          2
+        ],
+        "WATER_STONE": [
+          34,
+          84
+        ]
+      },
+      "key_items": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        31,
+        41,
+        42,
+        43,
+        44,
+        45,
+        48,
+        63,
+        64,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        76,
+        77,
+        78
+      ],
       "ram": {
         "badges": {
           "addr": "0xD355",
@@ -3280,6 +4280,32 @@
           "bank": 4,
           "symbol": "WildMonEncounterSlotChances"
         }
+      },
+      "special": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "types": {
+        "0": "normal",
+        "1": "fighting",
+        "2": "flying",
+        "20": "fire",
+        "21": "water",
+        "22": "grass",
+        "23": "electric",
+        "24": "psychic",
+        "25": "ice",
+        "26": "dragon",
+        "3": "poison",
+        "4": "ground",
+        "5": "rock",
+        "7": "bug",
+        "8": "ghost"
       }
     }
   },

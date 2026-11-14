@@ -119,9 +119,12 @@ namespace banana::kiwami::gbpk
 			return no("the data file's counts (numPokemon, numPokemonIndexes, numMoves, numItems, numTrainerClasses, numMaps, firstIndoorMap) aren't Gen I's");
 		if (picsBound[0] < 2 || picsBound[0] >= picsBound[1] || picsBound[1] >= picsBound[2] || picsBound[2] >= picsBound[3] || picsBound[3] > 256)
 			return no("the data file's picsTangela, picsMoltres, picsBeedrill and picsStarmie aren't in order");
-		// (the TM and HM items where items.inc has them)
-		if (d.size("tm01") < 1 || gen1Item((uint8_t)d.size("tm01")) != 328 || d.size("hm01") < 1 || gen1Item((uint8_t)d.size("hm01")) != 420)
-			return no("the data file's tm01 and hm01 aren't the items' table's");
+		// (the TM and HM items, pret's constants/item_constants.asm: the five HMs after the items, the fifty TMs right
+		// after them, up to $FF at most; and none of the data file's items in their places)
+		const int hm01 = d.size("hm01"), tm01 = d.size("tm01");
+		if (hm01 <= nItems || tm01 != hm01 + NUM_HMS || tm01 + NUM_TMS > 256 || gen1Item(d, (uint8_t)tm01) != 328 ||
+			gen1Item(d, (uint8_t)hm01) != 420)
+			return no("the data file's tm01 and hm01 aren't Gen I's machines' places");
 
 		// the species' internal order (data/pokemon/dex_order.asm PokedexOrder: a national number an internal index,
 		// 0 for none), each species once
@@ -186,10 +189,10 @@ namespace banana::kiwami::gbpk
 			mn = r.skip(mn, 16);
 			v.effect = r.u8(e + 1);
 			v.power = r.u8(e + 2);
-			v.type = gen2Type(r.u8(e + 3));
+			v.type = gen2Type(d, r.u8(e + 3));
 			v.accuracy = percent(r.u8(e + 4));
 			v.pp = r.u8(e + 5);
-			v.cat = v.power == 0 ? nds::MoveCategory::STATUS : r.u8(e + 3) < 20 ? nds::MoveCategory::PHYSICAL : nds::MoveCategory::SPECIAL;
+			v.cat = v.power == 0 ? nds::MoveCategory::STATUS : category(d, r.u8(e + 3));
 			v.priority = (uint8_t)(int8_t)(m == quickAttack ? 1 : m == counter ? -1 : 0);
 		}
 
@@ -202,14 +205,14 @@ namespace banana::kiwami::gbpk
 		for (int i = 1; i <= nItems; i++)
 		{
 			if (in == RomView::NONE) return no("ItemNames ends before item " + std::to_string(i));
-			nds::ItemData& it = out.items[gen1Item((uint8_t)i)];
+			nds::ItemData& it = out.items[gen1Item(d, (uint8_t)i)];
 			it.name = nameCase(r.text(in, 16));
 			in = r.skip(in, 16);
 			const size_t p = prices + PRICE * (size_t)(i - 1);
 			const int a = bcd(r.u8(p)), b = bcd(r.u8(p + 1)), c = bcd(r.u8(p + 2));
 			if (a < 0 || b < 0 || c < 0) return no("ItemPrices' price " + std::to_string(i) + " isn't decimal");
 			it.price = (uint16_t)std::min(65535, a * 10000 + b * 100 + c);
-			it.pocket = gen1Pocket((uint8_t)i);
+			it.pocket = gen1Pocket(d, (uint8_t)i);
 		}
 		for (int n = 1; n <= NUM_TMS + NUM_HMS; n++)
 		{
@@ -235,8 +238,8 @@ namespace banana::kiwami::gbpk
 			sp.name = nameCase(r.text(names + MON_NAME * (size_t)(idx - 1), MON_NAME));
 			for (int i = 0; i < 4; i++) sp.base[i] = r.u8(b + 1 + i);
 			sp.base[4] = sp.base[5] = r.u8(b + 5);		// (Special, both special stats)
-			sp.types[0] = gen2Type(r.u8(b + 6));
-			sp.types[1] = gen2Type(r.u8(b + 7));
+			sp.types[0] = gen2Type(d, r.u8(b + 6));
+			sp.types[1] = gen2Type(d, r.u8(b + 7));
 			sp.catchRate = r.u8(b + 8);
 			sp.baseExp = r.u8(b + 9);
 			sp.genderRatio = 255;	// (no genders: the pages draw no sign)
@@ -268,7 +271,7 @@ namespace banana::kiwami::gbpk
 				switch (r.u8(p))
 				{
 				case EVOLVE_LEVEL: ev.method = nds::evo::LEVEL; ev.param = r.u8(p + 1); ev.into = national(r.u8(p + 2)); p += 3; break;
-				case EVOLVE_ITEM: ev.method = nds::evo::USE_ITEM; ev.param = gen1Item(r.u8(p + 1)); ev.into = national(r.u8(p + 3)); p += 4; break;
+				case EVOLVE_ITEM: ev.method = nds::evo::USE_ITEM; ev.param = gen1Item(d, r.u8(p + 1)); ev.into = national(r.u8(p + 3)); p += 4; break;
 				case EVOLVE_TRADE: ev.method = nds::evo::TRADE; ev.into = national(r.u8(p + 2)); p += 3; break;
 				default: return no("species " + std::to_string(s) + " has an evolution of a kind Gen I hasn't (" + std::to_string(r.u8(p)) + ")");
 				}
@@ -421,7 +424,7 @@ namespace banana::kiwami::gbpk
 				if (f == flagOf.end())
 					return no("map " + std::to_string(m) + "'s hidden item at " + std::to_string(r.u8(e + 1)) + ", " + std::to_string(r.u8(e)) +
 						" isn't in HiddenItemCoords");
-				out.hidden.push_back({ m, r.u8(e + 1), r.u8(e), gen1Item(r.u8(e + 2)), f->second });
+				out.hidden.push_back({ m, r.u8(e + 1), r.u8(e), gen1Item(d, r.u8(e + 2)), f->second });
 			}
 		}
 

@@ -465,6 +465,19 @@ static void testRomList()
 // their pictures and palettes, three moves, three items, four landmarks, one map group of two maps with wild Pokémon
 // in the first (grass, water, three rods, a tree and a rock), one trainer class with two trainers, the Pokégear's two
 // maps. The layouts are pret's (rom2.cpp, pics.cpp and maps.cpp name each).
+// a retail game's items and types (its data file's), for a made-up data file
+static void retailTables(GameData& d, const char* key)
+{
+	GameData real;
+	CHECK(loadData(key, real, nullptr));
+	d.items = real.items;
+	d.balls = real.balls;
+	d.keyItems = real.keyItems;
+	d.types = real.types;
+	d.special = real.special;
+	d.splitStats = real.splitStats;
+}
+
 struct MadeUpRom
 {
 	std::vector<uint8_t> b = std::vector<uint8_t>(0x10000, 0);
@@ -503,6 +516,7 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	using R = MadeUpRom;
 	m.d.key = "crystal";
 	m.d.gen = 2;
+	retailTables(m.d, "crystal");
 	m.d.game.id = CRYSTAL;
 	m.d.game.gen = GEN_II;
 	m.d.game.title = "Made-up";
@@ -687,7 +701,7 @@ static void testRomTables()
 	CHECK(hidden.size() == 1);
 	if (!hidden.empty())
 	{
-		CHECK(hidden[0].zone == 0x0101 && hidden[0].x == 9 && hidden[0].y == 5 && hidden[0].flag == 0x123 && hidden[0].item == gen2Item(3));
+		CHECK(hidden[0].zone == 0x0101 && hidden[0].x == 9 && hidden[0].y == 5 && hidden[0].flag == 0x123 && hidden[0].item == gen2Item(d, 3));
 		EQ(r->items[hidden[0].item].name, "HP Up");
 	}
 	auto count = [&](nds::EncounterKind k) { int n = 0; for (const auto& e : z.encounters) n += e.kind == k; return n; };
@@ -1561,6 +1575,7 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpGen1(GameData& d, int b
 	using R = MadeUpRom;
 	m.d.key = "red";
 	m.d.gen = 1;
+	retailTables(m.d, "red");
 	m.d.game.id = RED;
 	m.d.game.gen = GEN_I;
 	m.d.game.title = "Made-up";
@@ -1868,8 +1883,8 @@ static void testGen1RomTables()
 			o += std::to_string(h.zone) + ":" + std::to_string(h.x) + "," + std::to_string(h.y) + ":" + std::to_string(h.item) + ":" + std::to_string(h.flag) + " ";
 		return o;
 	};
-	const std::string want = "1:4,3:" + std::to_string(gen1Item(0x0A)) + ":0 1:8,7:" + std::to_string(gen1Item(0x04)) + ":2 2:6,5:" +
-		std::to_string(gen1Item(0x01)) + ":1 ";
+	const std::string want = "1:4,3:" + std::to_string(gen1Item(d, 0x0A)) + ":0 1:8,7:" + std::to_string(gen1Item(d, 0x04)) + ":2 2:6,5:" +
+		std::to_string(gen1Item(d, 0x01)) + ":1 ";
 	EQ(hidden(*r), want);
 	{
 		GameData y = d;
@@ -2166,6 +2181,142 @@ static nds::MoveData move(nds::Type t, uint8_t power)
 #define RANGE(r, l, h) do { checks++; if ((r).lo != (l) || (r).hi != (h)) { failed++; fprintf(stderr, "gbpk-units: FAIL %s:%d: %s is %d-%d, not %d-%d\n", __FILE__, __LINE__, #r, (r).lo, (r).hi, (l), (h)); } } while (0)
 #define NEAR(a, b) do { checks++; double a_ = (a), b_ = (b); if (std::fabs(a_ - b_) > 1e-6) { failed++; fprintf(stderr, "gbpk-units: FAIL %s:%d: %s is %.8f, not %.8f\n", __FILE__, __LINE__, #a, a_, b_); } } while (0)
 
+// the item and type maps as they were before each game's data file held them (ui/src/kiwami/gbpk/items.inc and
+// rom.cpp's gen2Type, from pret's constants), kept to check the data files give the same for the six games
+namespace old
+{
+	const std::pair<uint8_t, uint16_t> GEN2_ITEMS[] = {
+		{ 0x01, 1 }, { 0x02, 2 }, { 0x04, 3 }, { 0x05, 4 }, { 0x08, 81 }, { 0x16, 82 }, { 0x17, 83 }, { 0x18, 84 }, { 0x22, 85 },
+		{ 0x3A, 445 }, { 0x3B, 446 }, { 0x3D, 447 }, { 0x4C, 237 }, { 0x4D, 244 }, { 0x51, 245 }, { 0x52, 221 }, { 0x58, 222 },
+		{ 0x5F, 243 }, { 0x60, 248 }, { 0x62, 241 }, { 0x66, 240 }, { 0x6B, 246 }, { 0x6C, 242 }, { 0x71, 247 }, { 0x75, 239 },
+		{ 0x76, 258 }, { 0x7D, 238 }, { 0x8A, 249 }, { 0x8F, 233 }, { 0x90, 250 }, { 0x97, 235 }, { 0x9D, 495 }, { 0x9F, 493 },
+		{ 0xA0, 494 }, { 0xA1, 492 }, { 0xA3, 236 }, { 0xA4, 497 }, { 0xA5, 498 }, { 0xA6, 496 }, { 0xA9, 80 }, { 0xAC, 252 },
+		{ 0xB1, 499 },
+	};
+	const std::pair<uint8_t, uint16_t> GEN1_ITEMS[] = {
+		{ 0x01, 1 }, { 0x02, 2 }, { 0x03, 3 }, { 0x04, 4 }, { 0x08, 5 }, { 0x0A, 81 }, { 0x20, 82 }, { 0x21, 83 }, { 0x22, 84 },
+		{ 0x2F, 85 }, { 0x4C, 445 }, { 0x4D, 446 }, { 0x4E, 447 },
+	};
+	const uint8_t GEN1_KEY_ITEMS[] = { 0x05, 0x06, 0x07, 0x08, 0x09, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1F, 0x29,
+		0x2A, 0x2B, 0x2C, 0x2D, 0x30, 0x3F, 0x40, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4C, 0x4D, 0x4E };
+	const uint8_t GEN1_HM01 = 0xC4, GEN1_TM01 = 0xC9;
+
+	uint16_t gen2Item(uint8_t id)
+	{
+		if (!id) return 0;
+		for (const auto& e : GEN2_ITEMS) if (e.first == id) return e.second;
+		return (uint16_t)(GEN2_ONLY + id);
+	}
+	uint16_t gen1Item(uint8_t id)
+	{
+		if (!id) return 0;
+		for (const auto& e : GEN1_ITEMS) if (e.first == id) return e.second;
+		if (id >= GEN1_TM01 && id < GEN1_TM01 + 50) return (uint16_t)(328 + id - GEN1_TM01);
+		if (id >= GEN1_HM01 && id < GEN1_HM01 + 5) return (uint16_t)(420 + id - GEN1_HM01);
+		return (uint16_t)(GEN1_ONLY + id);
+	}
+	nds::Pocket gen1Pocket(uint8_t id)
+	{
+		if ((id >= 0x01 && id <= 0x04) || id == 0x08) return nds::POCKET_BALLS;
+		if (id >= GEN1_HM01 && id < GEN1_TM01 + 50) return nds::POCKET_TMS;
+		for (uint8_t k : GEN1_KEY_ITEMS) if (k == id) return nds::POCKET_KEY;
+		return nds::POCKET_ITEMS;
+	}
+	nds::Type gen2Type(uint8_t t)
+	{
+		if (t <= 5) return (nds::Type)t;
+		if (t >= 7 && t <= 9) return (nds::Type)(t - 1);
+		if (t >= 20 && t <= 27) return (nds::Type)(t - 20 + nds::FIRE);
+		return nds::NO_TYPE;
+	}
+}
+
+// each game's items, types and physical/special split from its data file: the six games' the same as before, every
+// id; a split moving a type's moves to the other category, in the ROM reader and in the damage; the guide from the
+// ROM by the data file; the files refused without their items or types, or with a type the fork doesn't know
+static void testTables()
+{
+	using namespace nds;
+	for (const char* key : { "red", "blue", "yellow", "gold", "silver", "crystal" })
+	{
+		GameData d;
+		std::string why;
+		CHECK(loadData(key, d, &why));
+		int bad = 0;
+		for (int i = 0; i < 256; i++)
+		{
+			const uint8_t id = (uint8_t)i;
+			const Type t = gen2Type(d, id);
+			if (d.gen == 1)
+			{
+				// (Gen I has no Steel, 9, or Dark, 0x1B: the old map gave them for every game)
+				bad += gen1Item(d, id) != old::gen1Item(id) || gen1Pocket(d, id) != old::gen1Pocket(id);
+				bad += t != (i == 9 || i == 0x1B ? NO_TYPE : old::gen2Type(id));
+			}
+			else bad += gen2Item(d, id) != old::gen2Item(id) || t != old::gen2Type(id);
+			// (a type's moves Physical below 20 and Special from it, as before)
+			if (t != NO_TYPE) bad += category(d, id) != (i < 20 ? MoveCategory::PHYSICAL : MoveCategory::SPECIAL);
+		}
+		if (bad) fprintf(stderr, "gbpk-units: %s: %d ids read otherwise than before\n", key, bad);
+		CHECK(bad == 0);
+		CHECK(d.romGuide == (std::string(key) == "gold" || std::string(key) == "silver"));
+	}
+
+	// a made-up data file (Crystal's, edited) in a folder of its own
+	auto edited = [&](const char* from, const char* to, GameData& x, std::string& w) {
+		std::ifstream in(dataPath + "/crystal.ram.json");
+		std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+		const size_t at = text.find(from);
+		CHECK(at != std::string::npos);
+		if (at != std::string::npos) text.replace(at, strlen(from), to);
+		char dir[] = "/tmp/gbpk-units.XXXXXX";
+		if (!mkdtemp(dir)) return false;
+		const std::string path = std::string(dir) + "/crystal.ram.json";
+		std::ofstream(path) << text;
+		setenv("KIWAMI_GBPK_DIR", dir, 1);
+		const bool ok = loadData("crystal", x, &w);
+		setenv("KIWAMI_GBPK_DIR", dataPath.c_str(), 1);
+		unlink(path.c_str());
+		rmdir(dir);
+		return ok;
+	};
+	GameData x, crystal;
+	std::string w;
+	CHECK(loadData("crystal", crystal, &w));
+	// Ghost (8) special, as a split line makes it: its moves Special
+	CHECK(edited("\"special\": [", "\"special\": [\n    8,", x, w));
+	CHECK(category(crystal, 8) == MoveCategory::PHYSICAL && category(x, 8) == MoveCategory::SPECIAL);
+	CHECK(x.special.count() == crystal.special.count() + 1);
+	CHECK(!edited("\"0\": \"normal\"", "\"0\": \"shadow\"", x, w) && w.find("a type it doesn't know (shadow)") != std::string::npos);
+	CHECK(!edited("\"types\": {", "\"typez\": {", x, w) && w.find("no items or no types") != std::string::npos);
+	CHECK(!edited("\"items\": [", "\"itemz\": [", x, w) && w.find("no items or no types") != std::string::npos);
+	CHECK(!edited("\"special\": [", "\"special\": [\n    300,", x, w) && w.find("list of ids") != std::string::npos);
+
+	// the ROM reader takes a move's category from the split: the made-up ROM's Normal move (1) Special, its Fire move
+	// (2) Physical
+	GameData m;
+	auto rom = madeUpRom(m);
+	m.special.set(0);
+	m.special.reset(20);
+	auto r = readRom(rom, m, &w);
+	CHECK(r && r->moves.size() > 2);
+	if (r && r->moves.size() > 2)
+		CHECK(r->moves[1].cat == MoveCategory::SPECIAL && r->moves[2].cat == MoveCategory::PHYSICAL && r->moves[1].type == NORMAL);
+
+	// and the damage by the category, not the type: a Ghost move of 80 at level 50 against a Fire type (neutral), Attack
+	// 100 and Special 50 against 100 and 100: ((22 * 80 * 100 / 100) / 50) + 2 = 37 (31 at 217/255) physical,
+	// ((22 * 80 * 50 / 100) / 50) + 2 = 19 (16) special
+	useRules(GEN_II);
+	const Fighter a = fighter(1, 50, NORMAL, NO_TYPE, { 100, 100, 100, 50, 100 });
+	const Fighter f = fighter(4, 50, FIRE, NO_TYPE, { 100, 100, 100, 100, 100 });
+	MoveData g = move(GHOST, 80);
+	CHECK(g.cat == MoveCategory::PHYSICAL);
+	RANGE(nds::damage(GEN_II, g, a, f), 31, 37);
+	g.cat = MoveCategory::SPECIAL;
+	RANGE(nds::damage(GEN_II, g, a, f), 16, 19);
+	useRules(Gen::IV);
+}
+
 static void testRules()
 {
 	using namespace nds;
@@ -2345,6 +2496,7 @@ int main(int argc, char** argv)
 	testRomGuide();
 	testReaderRules();
 	testRules();
+	testTables();
 	if (failed)
 	{
 		fprintf(stderr, "gbpk-units: %d of %d checks failed\n", failed, checks);

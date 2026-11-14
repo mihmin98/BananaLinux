@@ -9,8 +9,11 @@
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "gbpk.h"
+#include <array>
+#include <bitset>
 #include <cstdint>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -54,7 +57,18 @@ namespace banana::kiwami::gbpk
 		std::map<std::string, int> sizes;
 		std::vector<FlagBank> flags;		// the banks the guide reads (none: no guide flags)
 		std::vector<DerivedFlag> derived;
+		// the game's items and types, by its own ids (pret's constants: kiwami/tools/gbpk-symbols.txt): the items
+		// upstream's logic knows by their Gen IV id, the balls, Gen I's key items (its one bag list's pockets), each
+		// type id's nds::Type (NO_TYPE where the game has none), and its physical/special split: the special types,
+		// and those whose category goes by the attacker's base Attack and Special
+		std::map<uint8_t, uint16_t> items;
+		std::set<uint8_t> balls, keyItems;
+		std::array<nds::Type, 256> types;
+		std::bitset<256> special, splitStats;
+		bool romGuide = false;				// its guide made from the ROM's trainers (gsguide.h), none in a file
 		int release = -1;					// the confirmed ROM's, in releases
+
+		GameData() { types.fill(nds::NO_TYPE); }
 
 		Addr at(const std::string& k) const { auto i = ram.find(k); return i == ram.end() ? Addr{} : i->second; }
 		int size(const std::string& k, int def = 0) const { auto i = sizes.find(k); return i == sizes.end() ? def : i->second; }
@@ -62,7 +76,7 @@ namespace banana::kiwami::gbpk
 
 	// <dataDir>/<key>.ram.json into out; false with the reason in why (a missing file, another schema or kind, a
 	// game key it doesn't know, an address outside WRAM and HRAM, a flag bank or a derived bit out of place, a
-	// dex_size it can't use)
+	// dex_size it can't use, no items or types, a type it doesn't know)
 	bool loadData(const std::string& key, GameData& out, std::string* why);
 	// each key's data file, in order; one that doesn't load is left out, its reason added to why ("; " between)
 	std::vector<GameData> loadGames(const std::vector<std::string>& keys, std::string* why);

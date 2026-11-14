@@ -11,44 +11,43 @@
 
 namespace banana::kiwami::gbpk
 {
+	uint16_t gen2Item(const GameData& d, uint8_t id)
+	{
+		if (!id) return 0;
+		auto i = d.items.find(id);
+		return i != d.items.end() ? i->second : (uint16_t)(GEN2_ONLY + id);
+	}
+
 	namespace
 	{
-		// Gen I's and II's item ids to Gen IV's (items.inc)
-		struct ItemId { uint8_t id; uint16_t gen4; };
-#include "items.inc"
+		const int GEN1_TMS = 50, GEN1_HMS = 5;
+		// the data file's first TM and HM items (0: none, a file without them)
+		int tm01(const GameData& d) { return d.size("tm01"); }
+		int hm01(const GameData& d) { return d.size("hm01"); }
 	}
 
-	uint16_t gen2Item(uint8_t id)
+	uint16_t gen1Item(const GameData& d, uint8_t id)
 	{
 		if (!id) return 0;
-		for (const auto& e : GEN2_ITEMS) if (e.id == id) return e.gen4;
-		return (uint16_t)(GEN2_ONLY + id);
-	}
-
-	uint16_t gen1Item(uint8_t id)
-	{
-		if (!id) return 0;
-		for (const auto& e : GEN1_ITEMS) if (e.id == id) return e.gen4;
+		auto i = d.items.find(id);
+		if (i != d.items.end()) return i->second;
 		// TM01-50 as Gen IV's TM01-50 (328-377), HM01-05 as its HM01-05 (420-424)
-		if (id >= GEN1_TM01 && id < GEN1_TM01 + 50) return (uint16_t)(328 + id - GEN1_TM01);
-		if (id >= GEN1_HM01 && id < GEN1_HM01 + 5) return (uint16_t)(420 + id - GEN1_HM01);
+		if (tm01(d) > 0 && id >= tm01(d) && id < tm01(d) + GEN1_TMS) return (uint16_t)(328 + id - tm01(d));
+		if (hm01(d) > 0 && id >= hm01(d) && id < hm01(d) + GEN1_HMS) return (uint16_t)(420 + id - hm01(d));
 		return (uint16_t)(GEN1_ONLY + id);
 	}
 
-	nds::Pocket gen1Pocket(uint8_t id)
+	nds::Pocket gen1Pocket(const GameData& d, uint8_t id)
 	{
-		if ((id >= 0x01 && id <= 0x04) || id == 0x08) return nds::POCKET_BALLS;	// (the Safari Ball, a key item to the game)
-		if (id >= GEN1_HM01 && id < GEN1_TM01 + 50) return nds::POCKET_TMS;
-		for (uint8_t k : GEN1_KEY_ITEMS) if (k == id) return nds::POCKET_KEY;
+		if (d.balls.count(id)) return nds::POCKET_BALLS;	// (the Safari Ball too, a key item to the game)
+		if (hm01(d) > 0 && id >= hm01(d) && id < tm01(d) + GEN1_TMS) return nds::POCKET_TMS;
+		if (d.keyItems.count(id)) return nds::POCKET_KEY;
 		return nds::POCKET_ITEMS;
 	}
 
-	nds::Type gen2Type(uint8_t t)
+	nds::Type gen2Type(const GameData& d, uint8_t t)
 	{
-		if (t <= 5) return (nds::Type)t;
-		if (t >= 7 && t <= 9) return (nds::Type)(t - 1);
-		if (t >= 20 && t <= 27) return (nds::Type)(t - 20 + nds::FIRE);
-		return nds::NO_TYPE;
+		return d.types[t];
 	}
 
 	std::string RomView::text(size_t o, size_t max) const

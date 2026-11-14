@@ -241,7 +241,7 @@ The snapshot becomes upstream's `nds::Live`, in the DS companion's conventions, 
 take it. Gold, Silver and Crystal (pret's `macros/ram.asm`: `party_struct` 48 bytes, `battle_struct` 32):
 
 - species are national numbers already; an egg is the species list's EGG (0xFD);
-- items are their Gen IV numbers where upstream's logic knows them by number (`items.inc`: the balls, the Apricorn
+- items are their Gen IV numbers where upstream's logic knows them by number (the data file's `items`: the balls, the Apricorn
   balls, the type-boosting items, Light Ball, Thick Club, the rods, the stones, the trade items), checked against
   pret's ids for Gold, Silver and Crystal; any other item is 1000 + its Gen II id. The Bug-Catching Contest's Park Ball
   (x1.5) is Gen IV's Sport Ball. TM01-50 and HM01-07 are Gen IV's 328-377 and 420-426;
@@ -271,8 +271,8 @@ games agree, and otherwise:
   items, no gender, never shiny; no friendship, but Yellow's starter Pikachu has the game's happiness
   (`wPikachuHappiness`), told as the game tells it (`IsThisPartyMonStarterPikachu`: the starter's species, the
   player's OT id, and the OT name's first five letters the player's);
-- the bag is one list, split into the pages' pockets by `items.inc`: the balls (the Safari Ball, a key item to the
-  game, among them), TM01-50 and HM01-05 as Gen IV's 328-377 and 420-424, the game's key items (pret's
+- the bag is one list, split into the pages' pockets by the data file: its `balls` (the Safari Ball, a key item to the
+  game, among them), TM01-50 and HM01-05 as Gen IV's 328-377 and 420-424, its `key_items` (pret's
   `KeyItemFlags`), and the rest; the stones and rods by their Gen IV numbers, any other item 1000 + its Gen I id;
 - a battle is `wIsInBattle` 1 wild, 2 trainer, our battler over the party member `wPlayerMonNumber` names, the
   foe's over the trainer's party member out (`wEnemyMonPartyPos`), the stat mods (7 none) with Special's for both
@@ -350,7 +350,7 @@ on a PC. Where each table is comes from the data file's `rom` section; its layou
   category by the type (Normal to Steel physical, Fire to Dark special), and the priority from the game's own table
   (`MoveEffectPriorities`: Protect, Detect and Endure +2, Quick Attack, Mach Punch and ExtremeSpeed +1, Roar,
   Whirlwind, Counter and Mirror Coat -1) and Vital Throw's -1, kept as upstream does (signed, 0 the normal).
-- **Items** below TM01: name, price, pocket and description, at the Gen IV id `items.inc` gives or 1000 + the Gen II
+- **Items** below TM01: name, price, pocket and description, at the Gen IV id the data file gives or 1000 + the Gen II
   id; the TMs and HMs as Gen IV numbers them (TM01 328, HM01 420), each teaching the move `TMHMMoves` names.
 - **Places**: each map of each group (`MapGroupPointers`; the last group ends where the first map's attributes start)
   by map group << 8 | number, named by its landmark, with its wild Pokémon:
@@ -389,7 +389,7 @@ millisecond on a PC.
 - **Moves**: as Gen II's, but with no effect chance or description (the games have none), and Quick Attack's +1 and
   Counter's -1 by their ids, as `MainInBattleLoop` gives them.
 - **Items** up to the elevators' floors: name and price (`ItemPrices`, three bytes of decimal), at the Gen IV id
-  `items.inc` gives or 1000 + the Gen I id, in the pocket the pages give it; the TMs and HMs as Gen IV numbers them.
+  the data file gives or 1000 + the Gen I id, in the pocket the pages give it; the TMs and HMs as Gen IV numbers them.
 - **Places**: every map by its number, named as the town map names it (`LoadTownMapEntry`: an outdoor map its own
   `ExternalMapEntries` entry, an indoor one its group's in `InternalMapEntries`), with its grass and water at the
   chances of `WildMonEncounterSlotChances`, and fishing: the Old Rod's Magikarp Lv 5 (in `ItemUseOldRod`'s code, read
@@ -491,7 +491,9 @@ JSON with sorted keys:
              "numPokemon": 251, "numMoves": 251, "firstTm": 191 },
   "flags": [ { "ram": "eventFlags", "bytes": 256, "first": 0 } ],
   "derived": [ { "bit": 2048, "any": [ 68, 1464 ], "for": "e4-will" } ],
-  "rom": { "baseData": { "bank": 20, "addr": "0x5424", "src": "pokedaisy pret (BaseData)" } } }
+  "rom": { "baseData": { "bank": 20, "addr": "0x5424", "src": "pokedaisy pret (BaseData)" } },
+  "items": [ [ 1, 1 ], [ 2, 2 ], [ 4, 3 ], [ 5, 4 ], [ 8, 81 ] ], "balls": [ 1, 2, 4, 5, 157 ],
+  "types": { "0": "normal", "7": "bug", "20": "fire", "27": "dark" }, "special": [ 20, 21, 22, 23, 24, 25, 26, 27 ] }
 ```
 
 - `header_title` is the ROM header's title (0x134), the same for a game's releases; `code` is a release's game code
@@ -509,7 +511,7 @@ JSON with sorted keys:
   landmark and the Fast Ship's (`kantoLandmark`, `fastShipLandmark`: which Pokégear map a place is on), and TM01's
   item id (PokeDaisy's `firstTm`). Gen I's: the species and their internal indexes, the moves, the items, the trainer
   classes and the maps (`numPokemonIndexes`, `numMaps`, ...), the first indoor map, the first TM and HM items
-  (`tm01`, `hm01`, checked against `items.inc`'s), Quick Attack's and Counter's ids, and in Red and Blue each gym
+  (`tm01`, `hm01`: the five HMs after the items, the fifty TMs right after them), Quick Attack's and Counter's ids, and in Red and Blue each gym
   leader's class (`leaderBrock` .. `leaderGiovanni`), by pret's constants.
 - `rom` keys are a table's start; Gen I's are Gen II's names where the table plays the same part (`baseData`,
   `pokemonNames`, `moves`, `trainerGroups`, ...), and their own for the rest (`dexOrder`, `wildData`, `oldRod`,
@@ -524,6 +526,20 @@ JSON with sorted keys:
   `mewPicsBank` checked against them). Crystal looks a Pokédex entry's bank up in a table (`dexEntryBanks`); Gold and Silver count it from the
   first entry's (`dexEntryFirst`, checked against PokeDaisy's `dexEntryFirstBank`). Crystal fixes a picture's bank by
   `picsBanks`, Gold and Silver by `picBankFixes`.
+- `items`, `balls`, `key_items`, `types`, `special` and `split_stats` are the game's own ids (pret's constants, read
+  by `pret-extract.py` through `gbpk-symbols.txt`'s `item`, `items`, `keyitems`, `types` and `split` lines):
+  - `items` pairs an item's id with its Gen IV id, for the items upstream's logic knows by number (the balls, the
+    stones, the rods, the held items its rules name); any other item is 1000 + its own id. `balls` are the balls among
+    them, and Gen I's `key_items` its `KeyItemFlags`' (the bag's pockets). Only the names pret's `const` macro gives
+    are items: pokecrystal's `SAFARI_BALL` is a `DEF` of Moon Stone's id, not one.
+  - `types` names each type id in the fork's words (`normal` .. `dark` in `nds::Type`'s order; Gen I has no Steel or
+    Dark, and Bird and Curse's `???` have none). `special` are the types whose moves are Special, from the constants'
+    `SPECIAL` on, as the games split them (pret's `engine/battle/effect_commands.asm`); a game's `split` lines move a
+    type in or out of it, or to `split_stats`, whose category goes by the attacker's base Attack and Special. A move's
+    category is its type's (`rom.h` `category`), and `rules.h`'s damage takes Attack or Special by it.
+  - The file refuses to load without `items` and `types`, or with a type name it doesn't know.
+- `guide` is `"rom"` for a game whose guide the host builds from the ROM's trainers (`gsguide.cpp`: Gold and Silver);
+  the others' are their `<game>.json`. `dex_size`, when given, is the Pokédex's size (else 151 or 251).
 - `flags` are the banks of the save's flags the guide reads, each at a `ram` key's address, its `bytes` laid into
   `Live::flags` from bit `first` (a byte's first; no two over one bit). `derived` are bits worked out from those
   after each read: `bit` is set when `all` (or `any`) of the listed bits are, and `for` names the milestone that reads

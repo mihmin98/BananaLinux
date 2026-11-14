@@ -1,8 +1,8 @@
 #pragma once
 // banana-ui (kiwami): the Game Boy Pokémon companion's ROM reader. The player's own ROM's tables as upstream's
 // nds::RomData, in the conventions the DS companion's pages and logic work with, as ui/src/gba/gen3rom.h does for
-// the GBA games: species by national number, types in nds::Type's order, items in Gen IV's numbering (items.inc;
-// GEN2_ONLY + the game's own id for the rest), TMs as Gen IV numbers them (TM01-50 = 1-50, HM01-07 = 93-99),
+// the GBA games: species by national number, types in nds::Type's order, items in Gen IV's numbering (the data
+// file's items; GEN2_ONLY + the game's own id for the rest), TMs as Gen IV numbers them (TM01-50 = 1-50, HM01-07 = 93-99),
 // evolution methods in ui/src/nds/rom.h's nds::evo numbering, places by zone = map group << 8 | map number (Gen I: the
 // map number), trainers by class << 8 | number (the battle's Battle::trainerId).
 // Where the tables are is the data file's rom section (pret's symbols, PokeDaisy's Gen1Dex.kt and Gen2Dex.kt where
@@ -20,18 +20,24 @@
 
 namespace banana::kiwami::gbpk
 {
-	// Gen II's item ids in Gen IV's numbering where upstream's logic knows an item by it (items.inc), else
-	// GEN2_ONLY + the id; 0 for 0
+	// Gen II's item ids in Gen IV's numbering where upstream's logic knows an item by it (the data file's items),
+	// else GEN2_ONLY + the id; 0 for 0
 	constexpr uint16_t GEN2_ONLY = 1000;
-	uint16_t gen2Item(uint8_t id);
-	// Gen I's the same way (1000 + the id: a game is of one generation), its TMs and HMs as Gen IV's; and the pocket the
-	// pages put it in (the game has one bag list): balls, TMs and HMs, the game's key items, the rest
+	uint16_t gen2Item(const GameData& d, uint8_t id);
+	// Gen I's the same way (1000 + the id: a game is of one generation), its TMs and HMs as Gen IV's (from the data
+	// file's tm01 and hm01); and the pocket the pages put it in (the game has one bag list): balls, TMs and HMs, the
+	// game's key items, the rest
 	constexpr uint16_t GEN1_ONLY = 1000;
-	uint16_t gen1Item(uint8_t id);
-	nds::Pocket gen1Pocket(uint8_t id);
-	// Gen II's types (pret's constants/type_constants.asm: Normal .. Rock 0-5, Bug, Ghost, Steel 7-9, Fire .. Dark
-	// 20-27) in nds::Type's order; NO_TYPE for the others (Curse's ???)
-	nds::Type gen2Type(uint8_t t);
+	uint16_t gen1Item(const GameData& d, uint8_t id);
+	nds::Pocket gen1Pocket(const GameData& d, uint8_t id);
+	// a type id of the game's (its constants/type_constants.asm, both generations') in nds::Type's order; NO_TYPE for
+	// one it hasn't (Bird, Curse's ???)
+	nds::Type gen2Type(const GameData& d, uint8_t t);
+	// a damaging move's category by its type id: Special for the game's special types, else Physical
+	inline nds::MoveCategory category(const GameData& d, uint8_t t)
+	{
+		return d.special[t] ? nds::MoveCategory::SPECIAL : nds::MoveCategory::PHYSICAL;
+	}
 
 	// The game's tables from the ROM (the whole file; kept for the sprites, decoded on demand). Null with the reason
 	// in why when the data file lacks a table or a table's first entries don't check (another layout than the

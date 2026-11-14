@@ -15,6 +15,22 @@
 #   <games> ram.<key> <symbol>              a WRAM or HRAM address (bank 0 is C000-CFFF and HRAM, 1 the D000 bank)
 #   <games> rom.<key> <symbol>              a ROM address (its bank and address in the bank's window)
 #   <games> const.<key> <file> <name>       a constant from the repo's <file> (rgbds' const macros evaluated)
+#   item <NAME> <gen4> [ball]               an item upstream's logic knows by its Gen IV id (ui/src/nds/logic.cpp's
+#                                           Item enum, its TMs from 328 and HMs from 420, the rods, the stones and
+#                                           held items; upstream's ui/src/gba/gen3items.inc gives each), by its
+#                                           constant's name in any game; ball: one of the balls
+#   <games> items <file>                    the game's item constants: each item line's name the const macro gives
+#                                           there is [its id, its Gen IV id] in the data file's items (a name it hasn't
+#                                           is passed over: a DEF of another item's id, as pokecrystal's SAFARI_BALL, is
+#                                           not an item), and the balls its balls
+#   <games> keyitems <file>                 Gen I's KeyItemFlags (data/items/key_items.asm, "dbit TRUE ; NAME" an item
+#                                           from 1, each name checked against the item constants' id): the TRUE ones'
+#                                           ids are the data file's key_items
+#   <games> types <file>                    the game's type constants: each one's id and the fork's name for it in the
+#                                           data file's types (BIRD and CURSE_TYPE left out; one the fork doesn't
+#                                           know stops the run), and those at or past SPECIAL its special types
+#   <games> split <TYPE> physical|special|stats   an exception to the type constants' split, the source in a comment:
+#                                           the type moved out of or into special, or to the attacker's stats
 
 # The releases (PokeDaisy's GameTitles.kt must list the same SHA-1s for each game)
 crystal release pokecrystal pokecrystal USA
@@ -257,6 +273,62 @@ red,blue,yellow rom.trainerClassNames TrainerNames
 red,blue rom.loneMoves LoneMoves
 red,blue rom.teamMoves TeamMoves
 yellow rom.specialTrainerMoves SpecialTrainerMoves
+
+# The items upstream's logic and pages know by their Gen IV id (rom.cpp gen1Item and gen2Item); any other is 1000 +
+# the game's own id. Gen I's TMs and HMs are counted from tm01 and hm01 (below), not listed.
+item MASTER_BALL 1 ball
+item ULTRA_BALL 2 ball
+item GREAT_BALL 3 ball
+item POKE_BALL 4 ball
+item SAFARI_BALL 5 ball
+item SUN_STONE 80
+item MOON_STONE 81
+item FIRE_STONE 82
+item THUNDER_STONE 83
+item THUNDERSTONE 83
+item WATER_STONE 84
+item LEAF_STONE 85
+item METAL_COAT 233
+item DRAGON_SCALE 235
+item LIGHT_BALL 236
+item SOFT_SAND 237
+item HARD_STONE 238
+item MIRACLE_SEED 239
+item BLACKGLASSES 240
+item BLACKBELT_I 241
+item MAGNET 242
+item MYSTIC_WATER 243
+item SHARP_BEAK 244
+item POISON_BARB 245
+item NEVERMELTICE 246
+item SPELL_TAG 247
+item TWISTEDSPOON 248
+item CHARCOAL 249
+item DRAGON_FANG 250
+item UP_GRADE 252
+item KINGS_ROCK 221
+item SILVERPOWDER 222
+item THICK_CLUB 258
+item OLD_ROD 445
+item GOOD_ROD 446
+item SUPER_ROD 447
+# (Gen II's balls of its own; the Park Ball, the Bug-Catching Contest's x1.5, is Gen IV's Sport Ball)
+item FAST_BALL 492 ball
+item LEVEL_BALL 493 ball
+item LURE_BALL 494 ball
+item HEAVY_BALL 495 ball
+item LOVE_BALL 496 ball
+item FRIEND_BALL 497 ball
+item MOON_BALL 498 ball
+item PARK_BALL 499 ball
+crystal,gold,silver items constants/item_constants.asm
+red,blue,yellow items constants/item_constants.asm
+red,blue,yellow keyitems data/items/key_items.asm
+
+# The types (the move's type id is its category too: Physical below SPECIAL, Special from it, pret's
+# engine/battle/effect_commands.asm)
+crystal,gold,silver types constants/type_constants.asm
+red,blue,yellow types constants/type_constants.asm
 
 # Gen I's counts, its first TM and HM items, and the moves its priorities name
 red,blue,yellow const.numPokemon constants/pokedex_constants.asm NUM_POKEMON

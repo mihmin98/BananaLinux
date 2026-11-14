@@ -207,6 +207,34 @@ namespace banana::kiwami::gbpk
 		out.game.gen = out.gen == 1 ? GEN_I : GEN_II;
 		out.game.title = v["title"].str();
 		out.game.dexSize = out.gen == 1 ? 151 : 251;
+		// the items ([id, Gen IV id] pairs), balls, key items, types ({ "id": "name" }) and split
+		auto byte = [](const json::Value& x) { return x.type == json::Value::NUM && x.n >= 0 && x.n <= 255 && x.n == (int)x.n; };
+		if (v["items"].type != json::Value::ARR || v["types"].type != json::Value::OBJ) return no("has no items or no types");
+		for (const auto& e : v["items"].arr)
+		{
+			if (e.size() != 2 || !byte(e[0]) || e[0].n < 1 || e[1].type != json::Value::NUM || e[1].n < 1 || e[1].n > 65535)
+				return no("has an item it can't read");
+			out.items[(uint8_t)e[0].n] = (uint16_t)e[1].n;
+		}
+		auto ids = [&](const char* k, auto put) {
+			for (const auto& e : v[k].arr) { if (!byte(e)) return false; put((uint8_t)e.n); }
+			return v[k].isNull() || v[k].type == json::Value::ARR;
+		};
+		if (!ids("balls", [&](uint8_t i) { out.balls.insert(i); }) || !ids("key_items", [&](uint8_t i) { out.keyItems.insert(i); }) ||
+			!ids("special", [&](uint8_t i) { out.special.set(i); }) || !ids("split_stats", [&](uint8_t i) { out.splitStats.set(i); }))
+			return no("has a list of ids it can't read");
+		static const char* const TYPE_NAMES[] = { "normal", "fighting", "flying", "poison", "ground", "rock", "bug", "ghost",
+			"steel", "fire", "water", "grass", "electric", "psychic", "ice", "dragon", "dark" };	// (nds::Type's order)
+		for (const auto& [k, name] : v["types"].obj)
+		{
+			char* end = nullptr;
+			const long t = strtol(k.c_str(), &end, 10);
+			if (k.empty() || *end || t < 0 || t > 255) return no("has a type id it can't read (" + k + ")");
+			const auto* f = std::find(std::begin(TYPE_NAMES), std::end(TYPE_NAMES), name.str());
+			if (f == std::end(TYPE_NAMES)) return no("has a type it doesn't know (" + name.str() + ")");
+			out.types[(size_t)t] = (nds::Type)(f - std::begin(TYPE_NAMES));
+		}
+		out.romGuide = v["guide"].str() == "rom";
 		if (!v["dex_size"].isNull())
 		{
 			const json::Value& n = v["dex_size"];

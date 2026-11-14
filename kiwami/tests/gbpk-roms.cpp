@@ -393,7 +393,7 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 		for (std::string l; std::getline(f, l);)
 		{
 			int lm, item, flag;
-			if (sscanf(l.c_str(), "%d|HIDDEN|%d|%d|", &lm, &item, &flag) == 3) theirs.insert({ flag, gen2Item((uint8_t)item) });
+			if (sscanf(l.c_str(), "%d|HIDDEN|%d|%d|", &lm, &item, &flag) == 3) theirs.insert({ flag, gen2Item(d, (uint8_t)item) });
 		}
 		for (const HiddenItem& h : hidden) ours.insert({ h.flag, h.item });
 		CHECK(theirs.size() == 85 && ours == theirs);
@@ -410,7 +410,7 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 			if (l.find("val " + table) != std::string::npos) in = true;
 			else if (in && l == ")") break;
 			int map, item, flag;
-			if (in && sscanf(l.c_str(), "%d|HIDDEN|%d|%d|", &map, &item, &flag) == 3) theirs.insert({ map, flag - 0x20000, gen1Item((uint8_t)item) });
+			if (in && sscanf(l.c_str(), "%d|HIDDEN|%d|%d|", &map, &item, &flag) == 3) theirs.insert({ map, flag - 0x20000, gen1Item(d, (uint8_t)item) });
 		}
 		// (and one more: the item left on UNUSED_MAP_6F, a map the game never loads, which PokeDaisy's generator leaves
 		// out; the Here page lists a map's own, so it never shows)

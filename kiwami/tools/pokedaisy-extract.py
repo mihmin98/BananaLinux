@@ -147,6 +147,8 @@ PLACE_ALIAS = {'POKéMON LEAGUE': 'INDIGO PLATEAU', 'MT. SILVER': 'SILVER CAVE'}
 # constants' prefix, its RAM's and its world's), and the guide file's code (the fork's own: the carts have none,
 # ui/src/kiwami/gbpk/guide-games.inc)
 GEN1_GUIDES = {'red': ('G1R', 'RED', 'PKRD'), 'blue': ('G1B', 'BLUE', 'PKBL'), 'yellow': ('G1Y', 'YELLOW', 'PKYL')}
+# the games whose guide the host builds from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp): PokeDaisy has none
+ROM_GUIDES = ('gold', 'silver')
 # GuideGen1Gen.kt's RAM constants (<prefix>_<name>, Gen I's D000-DFFF the data files' bank 1), by the data file's key,
 # and its sizes; what is left out
 GEN1_GUIDE_RAM = {'EVENT_FLAGS': 'eventFlags', 'MISSABLE_FLAGS': 'toggleFlags', 'BADGES': 'badges'}
@@ -914,6 +916,23 @@ def build(checkout):
         }
         if derived:
             doc['derived'] = derived
+        # the game's items, types and physical/special split, pret's (gbpk-symbols.txt's items, keyitems, types and
+        # split lines): ids only, the items' names left in gbpk-extra.json
+        for k in ('items', 'types'):
+            if k not in g:
+                fail('%s: %s has no %s for %s' % (EXTRA, key, k, key))
+        doc['items'] = sorted(g['items'].values())
+        doc['balls'] = g['balls']
+        if gen == 1:
+            if 'key_items' not in g:
+                fail('%s: %s has no key_items' % (EXTRA, key))
+            doc['key_items'] = g['key_items']
+        doc['types'] = g['types']
+        doc['special'] = g['special']
+        if g.get('split_stats'):
+            doc['split_stats'] = sorted(g['split_stats'])
+        if key in ROM_GUIDES:
+            doc['guide'] = 'rom'
         files['%s/%s.ram.json' % (FOLDER, key)] = pe.dump(doc).encode('utf-8')
     if unread:
         print('unread:', file=sys.stderr)

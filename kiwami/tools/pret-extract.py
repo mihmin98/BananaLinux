@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # The Game Boy Pokémon companion's facts from pret's disassemblies (pokecrystal, pokegold, pokered, pokeyellow): the
 # addresses, ROM offsets and constants kiwami/tools/gbpk-symbols.txt asks for, looked up in each release's symbol
-# file, and the releases' SHA-1s and ROM headers, written to kiwami/tools/gbpk-extra.json. Only facts about the retail
+# file, each game's items, key items, types and physical/special split from its constants, and the releases' SHA-1s
+# and ROM headers, written to kiwami/tools/gbpk-extra.json. Only facts about the retail
 # ROMs are taken, none of pret's code or tables (kiwami/GB-POKEMON.md).
 #
 #   pret-extract.py <pret folder>            write gbpk-extra.json and SOURCES' [pret] section
@@ -40,6 +41,17 @@ def sha256(data):
 
 # --- The list ---
 
+# the fork's names of the types (the data files' "types": nds::Type's order, then the fork's own past it), by the type
+# constant's name in a game's constants/type_constants.asm; BIRD and CURSE_TYPE have no type of their own
+TYPE_NAMES = {'NORMAL': 'normal', 'FIGHTING': 'fighting', 'FLYING': 'flying', 'POISON': 'poison', 'GROUND': 'ground',
+              'ROCK': 'rock', 'BUG': 'bug', 'GHOST': 'ghost', 'STEEL': 'steel', 'FIRE': 'fire', 'WATER': 'water',
+              'GRASS': 'grass', 'ELECTRIC': 'electric', 'PSYCHIC_TYPE': 'psychic', 'ICE': 'ice', 'DRAGON': 'dragon',
+              'DARK': 'dark', 'TYPELESS': 'typeless', 'CRYSTAL': 'crystal', 'BONEMERANG_TYPE': 'bonemerang',
+              'TRI': 'tri', 'FLOATING': 'floating', 'MAGMA': 'magma'}
+NOT_TYPES = ('BIRD', 'CURSE_TYPE')
+SPLITS = ('physical', 'special', 'stats')
+
+
 def read_list(text):
     """The lines of gbpk-symbols.txt: (line number, games, kind, key, args)."""
     out = []
@@ -50,7 +62,25 @@ def read_list(text):
         parts = line.split(None, 2)
         if len(parts) < 3:
             fail('%s:%d: too short: %s' % (LIST, n, line))
+        if parts[0] == 'item':
+            f = line.split()
+            if len(f) not in (3, 4) or not f[2].isdigit() or not 1 <= int(f[2]) <= 65535 or f[3:] not in ([], ['ball']):
+                fail('%s:%d: an item is item <NAME> <Gen IV id> [ball]' % (LIST, n))
+            out.append((n, None, 'item', f[1], [int(f[2]), f[3:] == ['ball']]))
+            continue
         games = parts[0].split(',')
+        if parts[1] in ('items', 'keyitems', 'types'):
+            a = parts[2].split()
+            if len(a) != 1:
+                fail('%s:%d: %s takes <file>' % (LIST, n, parts[1]))
+            out.append((n, games, parts[1], None, a))
+            continue
+        if parts[1] == 'split':
+            a = parts[2].split()
+            if len(a) != 2 or a[0] not in TYPE_NAMES or a[1] not in SPLITS:
+                fail('%s:%d: a split is <games> split <TYPE> %s' % (LIST, n, '|'.join(SPLITS)))
+            out.append((n, games, 'split', None, a))
+            continue
         if parts[1] == 'release':
             a = parts[2].split(None, 2)
             if len(a) != 3:
@@ -98,6 +128,7 @@ class Consts:
 
     def __init__(self, name):
         self.name = name
+        self.consts = {}   # the names the const macro gave, in order: an enumeration's members (not a DEF's alias)
         self.v = {'const_value': 0, 'const_inc': 1}
         self.macros = {}
         self.unknown = {}  # a DEF set aside: name -> why
@@ -187,7 +218,7 @@ class Consts:
                 self.v['const_value'] = self.expr(a[0], where) if a else 0
                 self.v['const_inc'] = self.expr(a[1], where) if len(a) > 1 else 1
             elif word == 'const' and len(a) == 1:
-                self.v[a[0]] = self.v['const_value']
+                self.v[a[0]] = self.consts[a[0]] = self.v['const_value']
                 self.v['const_value'] += self.v['const_inc']
             elif word == 'shift_const' and len(a) == 1:
                 self.v[a[0]] = 1 << self.v['const_value']
@@ -316,8 +347,20 @@ def build(pret, lines):
             fail('%s:%d: %s isn\'t in %s as a patch of a %s release' % (LIST, n, a[0], PATCHES, gs[0]))
         g['releases'].append({'hack': True, 'name': a[1], 'sha1': a[0]})
     consts = {}
+
+    def constants(g, f):
+        ck = (g['repo'], f)
+        if ck not in consts:
+            c = Consts('%s/%s' % ck)
+            try:
+                c.run(pret.read(g['repo'], f))
+            except Consts.Undefined as e:
+                fail(str(e))
+            consts[ck] = c
+        return consts[ck]
+
     for n, gs, kind, key, a in lines:
-        if kind in ('release', 'hack'):
+        if kind in ('release', 'hack', 'item', 'items', 'keyitems', 'types', 'split'):
             continue
         for game in gs:
             if game not in games:
@@ -328,13 +371,7 @@ def build(pret, lines):
             if kind == 'const':
                 f, name = a
                 ck = (g['repo'], f)
-                if ck not in consts:
-                    c = Consts('%s/%s' % ck)
-                    try:
-                        c.run(pret.read(g['repo'], f))
-                    except Consts.Undefined as e:
-                        fail(str(e))
-                    consts[ck] = c
+                constants(g, f)
                 if name in consts[ck].unknown:
                     fail('%s:%d: %s/%s: %s' % (LIST, n, g['repo'], f, consts[ck].unknown[name]))
                 if name not in consts[ck].v:
@@ -358,11 +395,93 @@ def build(pret, lines):
             elif addr >= 0x8000:
                 fail('%s:%d: %s at %04X isn\'t in the ROM' % (LIST, n, a[0], addr))
             g[kind][key] = {'bank': bank, 'addr': hexaddr(addr), 'symbol': a[0]}
+    tables(pret, lines, games, constants)
     for g in games.values():
         del g['syms']
     used = sorted({g['repo'] for g in games.values()})
     return {'schema': 1, 'kind': 'gb-pokemon-pret', 'games': games,
             'repos': {r: pret.repos[r] for r in used}}
+
+
+def tables(pret, lines, games, constants):
+    """The items, key items, types and physical/special split lines: each game's tables from its constants files."""
+    items = [(n, key, a) for n, gs, kind, key, a in lines if kind == 'item']
+    if len({key for n, key, a in items}) != len(items):
+        fail('%s: an item is listed twice' % LIST)
+    found = set()
+    order = {'items': 0, 'types': 0, 'keyitems': 1, 'split': 1}    # (key items and splits read the others)
+    for step in (0, 1):
+        for n, gs, kind, key, a in lines:
+            if order.get(kind) != step:
+                continue
+            for game in gs:
+                if game not in games:
+                    fail('%s:%d: %s has no release line' % (LIST, n, game))
+                g = games[game]
+                files = g.setdefault('files', {})
+                if kind != 'split' and kind in files:
+                    fail('%s:%d: %s\'s %s given twice' % (LIST, n, game, kind))
+                if kind == 'items':
+                    # (by the const macro's names only: pokecrystal's SAFARI_BALL is a DEF of MOON_STONE's id)
+                    c = constants(g, a[0])
+                    g['items'], g['balls'], taken = {}, [], {}
+                    for ln, name, (gen4, ball) in items:
+                        if name not in c.consts:
+                            continue
+                        i = c.consts[name]
+                        if not 1 <= i <= 255 or i in taken:
+                            fail('%s:%d: %s\'s %s is id %d (%s)' % (LIST, ln, game, name, i, taken.get(i, 'not an item\'s')))
+                        taken[i] = name
+                        g['items'][name] = [i, gen4]
+                        if ball:
+                            g['balls'].append(i)
+                        found.add(name)
+                    g['balls'].sort()
+                elif kind == 'types':
+                    c = constants(g, a[0])
+                    if 'SPECIAL' not in c.v:
+                        fail('%s:%d: %s/%s has no SPECIAL' % (LIST, n, g['repo'], a[0]))
+                    g['types'], g['special'] = {}, []
+                    for name, i in c.consts.items():
+                        if name in NOT_TYPES:
+                            continue
+                        if name not in TYPE_NAMES:
+                            fail('%s:%d: %s/%s: %s isn\'t a type the fork knows' % (LIST, n, g['repo'], a[0], name))
+                        g['types'][str(i)] = TYPE_NAMES[name]
+                        if i >= c.v['SPECIAL']:
+                            g['special'].append(i)
+                elif kind == 'keyitems':
+                    if 'items' not in files:
+                        fail('%s:%d: %s\'s key items before its items line' % (LIST, n, game))
+                    names = {i: k for k, i in constants(g, files['items']).consts.items()}
+                    text = pret.read(g['repo'], a[0])
+                    flags = re.findall(r'^\s*dbit\s+(TRUE|FALSE)\s*;\s*(\w+)', text, re.M)
+                    if not flags:
+                        fail('%s:%d: no dbit lines in %s/%s' % (LIST, n, g['repo'], a[0]))
+                    g['key_items'] = []
+                    for i, (on, name) in enumerate(flags, 1):
+                        if names.get(i) != name:
+                            fail('%s:%d: %s/%s: item %d is %s, not %s' % (LIST, n, g['repo'], a[0], i, names.get(i), name))
+                        if on == 'TRUE':
+                            g['key_items'].append(i)
+                else:   # split
+                    if 'types' not in files:
+                        fail('%s:%d: %s\'s split before its types line' % (LIST, n, game))
+                    ids = [int(i) for i, t in g['types'].items() if t == TYPE_NAMES[a[0]]]
+                    if len(ids) != 1:
+                        fail('%s:%d: %s has no type %s' % (LIST, n, game, a[0]))
+                    i = ids[0]
+                    if a[1] == 'stats':
+                        g.setdefault('split_stats', []).append(i)
+                    elif a[1] == 'special' and i not in g['special']:
+                        g['special'] = sorted(g['special'] + [i])
+                    elif a[1] == 'physical' and i in g['special']:
+                        g['special'].remove(i)
+                    continue
+                files[kind] = a[0]
+    for ln, name, a in items:
+        if name not in found:
+            fail('%s:%d: item %s is in no game\'s item constants' % (LIST, ln, name))
 
 
 # --- SOURCES ---
@@ -445,6 +564,11 @@ def main(argv):
         extra = json.load(open(os.path.join(REPO, OUT), encoding='utf-8'))
         values = 0
         for ln, gs, kind, key, a in lines:
+            if kind == 'item':
+                if not any(key in g.get('items', {}) and g['items'][key][1] == a[0] for g in extra['games'].values()):
+                    fail('%s:%d: no answer in %s' % (LIST, ln, OUT))
+                values += 1
+                continue
             for game in gs:
                 g = extra['games'].get(game)
                 if g is None:
@@ -454,6 +578,12 @@ def main(argv):
                              for r in g['releases'])
                 elif kind == 'hack':
                     ok = any(r.get('hack') and r['sha1'] == a[0] and r['name'] == a[1] for r in g['releases'])
+                elif kind in ('items', 'keyitems', 'types'):
+                    ok = g.get('files', {}).get(kind) == a[0]
+                elif kind == 'split':
+                    ids = [int(i) for i, t in g.get('types', {}).items() if t == TYPE_NAMES[a[0]]]
+                    ok = len(ids) == 1 and (ids[0] in g.get('split_stats', []) if a[1] == 'stats' else
+                                            (ids[0] in g.get('special', [])) == (a[1] == 'special'))
                 else:
                     v = g.get(kind, {}).get(key)
                     ok = v is not None and v.get('symbol') == a[-1]

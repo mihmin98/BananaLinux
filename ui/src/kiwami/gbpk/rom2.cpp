@@ -61,7 +61,7 @@ namespace banana::kiwami::gbpk
 		// warps, the coord events and the bg events, each a count and its records), the bg events of the item kind, and
 		// the hiddenitem each points to (macros/scripts/maps.asm: the flag, dw, then the item). A map whose events
 		// don't read has none.
-		void hiddenItems(const RomView& r, size_t header, uint16_t zone, GbRomData& out)
+		void hiddenItems(const RomView& r, const GameData& d, size_t header, uint16_t zone, GbRomData& out)
 		{
 			const size_t a = r.at(r.u8(header), r.le16(header + 3));
 			if (!r.has(a, MAP_ATTRIBUTES)) return;
@@ -80,7 +80,7 @@ namespace banana::kiwami::gbpk
 			{
 				if (r.u8(e + 2) != BGEVENT_ITEM) continue;
 				const size_t s = r.at(bank, r.le16(e + 3));
-				if (r.has(s, 3)) out.hidden.push_back({ zone, r.u8(e + 1), r.u8(e), gen2Item(r.u8(s + 2)), r.le16(s) });
+				if (r.has(s, 3)) out.hidden.push_back({ zone, r.u8(e + 1), r.u8(e), gen2Item(d, r.u8(s + 2)), r.le16(s) });
 			}
 		}
 	}
@@ -158,11 +158,11 @@ namespace banana::kiwami::gbpk
 			mn = r.skip(mn, 16);
 			v.effect = r.u8(e + 1);
 			v.power = r.u8(e + 2);
-			v.type = gen2Type(r.u8(e + 3));
+			v.type = gen2Type(d, r.u8(e + 3));
 			v.accuracy = percent(r.u8(e + 4));
 			v.pp = r.u8(e + 5);
 			v.effectChance = percent(r.u8(e + 6));
-			v.cat = v.power == 0 ? nds::MoveCategory::STATUS : r.u8(e + 3) < 20 ? nds::MoveCategory::PHYSICAL : nds::MoveCategory::SPECIAL;
+			v.cat = v.power == 0 ? nds::MoveCategory::STATUS : category(d, r.u8(e + 3));
 			int p = BASE_PRIORITY;
 			if (m == vitalThrow) p = 0;
 			else
@@ -179,7 +179,7 @@ namespace banana::kiwami::gbpk
 		for (int i = 1; i < firstTm && i < 256; i++)
 		{
 			if (in == RomView::NONE) return no("ItemNames ends before item " + std::to_string(i));
-			nds::ItemData& it = out.items[gen2Item((uint8_t)i)];
+			nds::ItemData& it = out.items[gen2Item(d, (uint8_t)i)];
 			it.name = nameCase(r.text(in, 16));
 			in = r.skip(in, 16);
 			const size_t a = itemAttr + ITEM_ATTR * (size_t)(i - 1);
@@ -211,8 +211,8 @@ namespace banana::kiwami::gbpk
 			const size_t b = baseData + BASE_DATA * (s - 1);
 			sp.name = nameCase(r.text(names + MON_NAME * (s - 1), MON_NAME));
 			for (int i = 0; i < 6; i++) sp.base[i] = r.u8(b + 1 + i);
-			sp.types[0] = gen2Type(r.u8(b + 7));
-			sp.types[1] = gen2Type(r.u8(b + 8));
+			sp.types[0] = gen2Type(d, r.u8(b + 7));
+			sp.types[1] = gen2Type(d, r.u8(b + 8));
 			sp.catchRate = r.u8(b + 9);
 			sp.baseExp = r.u8(b + 10);
 			sp.genderRatio = r.u8(b + 13);
@@ -265,8 +265,8 @@ namespace banana::kiwami::gbpk
 					switch (kind)
 					{
 					case EVOLVE_LEVEL: ev.method = nds::evo::LEVEL; ev.param = a; break;
-					case EVOLVE_ITEM: ev.method = nds::evo::USE_ITEM; ev.param = gen2Item(a); break;
-					case EVOLVE_TRADE: ev.method = a == END ? nds::evo::TRADE : nds::evo::TRADE_ITEM; ev.param = a == END ? 0 : gen2Item(a); break;
+					case EVOLVE_ITEM: ev.method = nds::evo::USE_ITEM; ev.param = gen2Item(d, a); break;
+					case EVOLVE_TRADE: ev.method = a == END ? nds::evo::TRADE : nds::evo::TRADE_ITEM; ev.param = a == END ? 0 : gen2Item(d, a); break;
 					case EVOLVE_HAPPINESS: ev.method = a == TR_MORNDAY ? nds::evo::FRIENDSHIP_DAY : a == TR_NITE ? nds::evo::FRIENDSHIP_NIGHT : nds::evo::FRIENDSHIP; break;
 					default: return no("species " + std::to_string(s) + " has an evolution of a kind Gen II hasn't (" + std::to_string(kind) + ")");
 					}
@@ -312,7 +312,7 @@ namespace banana::kiwami::gbpk
 				if (lm < out.locationNames.size()) loc.name = out.locationNames[lm];
 				landmarkOf[z] = lm;
 				if (r.u8(h + 8)) fishGroupOf[z] = r.u8(h + 8);
-				hiddenItems(r, h, z, out);
+				hiddenItems(r, d, h, z, out);
 			}
 		}
 		auto zone = [&](size_t o) -> nds::Location& {
@@ -465,7 +465,7 @@ namespace banana::kiwami::gbpk
 					m.level = r.u8(q);
 					m.species = r.u8(q + 1);
 					q += 2;
-					if (type & TRAINERTYPE_ITEM) m.item = gen2Item(r.u8(q++));
+					if (type & TRAINERTYPE_ITEM) m.item = gen2Item(d, r.u8(q++));
 					if (type & TRAINERTYPE_MOVES) { for (int j = 0; j < 4; j++) m.moves[j] = r.u8(q + j); q += 4; }
 					else defaultMoves(out, m);
 					ok = m.level >= 1 && m.level <= 100 && m.species >= 1 && m.species <= nSp && tr.team.size() < 6;

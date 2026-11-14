@@ -391,7 +391,11 @@ at the NPC and a matchup option changed. Logs: `/data/banana/logs/banana-ui.log`
 7. PureRGB's switched types and matchups? *Answered*: followed from the save.
 8. The ROMs? *Answered*: the user has the versions listed.
 9. Issue #30's text lists Polished Crystal and Prism and not PureGreen or v2.7.7. *Answered* (planning, 2026-11-13): an
-   updated text is written with the plan, for the user to paste into #30.
+   updated text is written with the plan, for the user to paste into #30. *Done*: the description was updated on
+   2026-11-13 (PureGreen and v2.7.7 in, Polished Crystal and Prism out). What planning settled after that (Crystal
+   Clear's SGB Mode builds, a shared title picked by SHA-1, each game's items and split, PureRGB's guides, types,
+   forms, signature moves and Hyper Ball, the three new hook lines, the rgbds versions) went in a comment on #30
+   instead of another edit, on 2026-11-14 (the user's choice).
 10. PureRGB's six types of its own (Typeless, Crystal, Bonemerang, Tri, Floating, Magma), found in planning? *Answered*:
     values of the fork's past upstream's 18, with three hook lines naming and colouring them (plan, *Refinements*).
 11. PureRGB's signature moves (`RemappableMoves`)? *Answered*: followed, from the ROM, unless the save turned them off;

@@ -654,7 +654,8 @@ Common to the steps (as #28's):
 
 - **Files**:
   - `kiwami/tools/pokedaisy-extract.py` (changed)
-  - `kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal-legacy.json` (new), `SOURCES` (changed)
+  - `kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal-legacy.json` (new), `crystal-legacy.ram.json`
+    (changed: the guide's flags, *Deviations*, 2026-11-14), `SOURCES` (changed)
   - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp` (changed)
   - `kiwami/GB-POKEMON.md` (changed: *The guides*)
 - **Change**:
@@ -1149,6 +1150,11 @@ Where the implementation turned out different from this plan, why, and what chan
   second data file now runs on the real folder. `kiwami/tests/gbpk/NOTICE` names the hacks' captures. `gbpk-roms.cpp`
   reads the subfolders as `gbpk-roms.sh` does, and checks a hack's chart by being read whole (its entries counted),
   not against the retail chart.
+- **2026-11-14, step 5**: `crystal-legacy.ram.json` added to step 5's files. Its guide reads the save's flags, so the
+  data file gains them as Crystal's has them: `flags` (its 256 bytes of event flags), the Elite Four's four derived
+  bits (2048-2051; Red is done by his own flag, so no fifth) and `tradeFlagBytes`, with its `CL_*` RAM constants
+  checked against its build's symbols. `gbpk-roms.cpp` also compares Crystal Legacy's hidden items with PokeDaisy's
+  (`GuideCrystalLegacyGen.kt`'s 85 HIDDEN lines), as it does Crystal's: a check the step didn't list.
 
 ## Progress
 
@@ -1160,7 +1166,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 2. Each game's items, types and split | done | GB Pokémon hacks: each game's items, types and physical/special split from its data file |
 | 3. Each game's type chart from its ROM | done | GB Pokémon hacks: each game's type chart read from its ROM |
 | 4. Crystal Legacy | done | GB Pokémon hacks: Crystal Legacy, from its build's symbols, its memory and its ROM |
-| 5. Crystal Legacy's guide | todo | |
+| 5. Crystal Legacy's guide | done | GB Pokémon hacks: Crystal Legacy's guide, from PokeDaisy's |
 | 6. Yellow Legacy | todo | |
 | 7. Yellow Legacy's guide | todo | |
 | 8. Types of the fork's own on the pages | todo | |

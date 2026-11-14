@@ -524,8 +524,7 @@ before `SPECIAL`: `gbpk-symbols.txt`'s `split` lines). Three of its ROM tables a
   foe's preview takes the default DVs;
 - `rockSmashMons`: Rock Smash's sets are a table of their own, from 0 (`RockSmashMons`).
 
-Its guide, PokeDaisy's, comes with the plan's step 5 (`.workspace/0030-gb-pokemon-hacks/plan.md`); until then its
-Guide page has the ROM's hidden items alone.
+Its guide, `crystal-legacy.json`, is PokeDaisy's, converted as Crystal's (*The guides*).
 
 ## The data files
 
@@ -601,10 +600,10 @@ ROM hacks': `crystal-legacy`), JSON with sorted keys:
 
 The Guide page's milestones and notes, and the Here page's hidden items, in upstream's guide schema
 (`nds-pokemon-guide`, schema 1, `docs/COMPANIONS.md`), loaded through upstream's `nds::loadGuideFile` with
-`nds::guideResolver` over the ROM's data. The six games are rows of upstream's guide loader by a hook
-(`ui/src/kiwami/gbpk/guide-games.inc`, included in `ui/src/nds/guide.cpp`'s `GAMES`): their ids, keys and codes (Gold's,
-Silver's and Crystal's headers'; Red's, Blue's and Yellow's `PKRD`, `PKBL`, `PKYL` are the fork's own, as their carts
-have none). The host (`host.cpp`) loads `<key>.json` from the data folder, or for Gold and Silver builds the guide from
+`nds::guideResolver` over the ROM's data. The six games and the ROM hacks are rows of upstream's guide loader by a
+hook (`ui/src/kiwami/gbpk/guide-games.inc`, included in `ui/src/nds/guide.cpp`'s `GAMES`): their ids, keys and codes
+(Gold's, Silver's and Crystal's headers', a hack's its base game's; Red's, Blue's and Yellow's `PKRD`, `PKBL`, `PKYL`
+are the fork's own, as their carts have none). The host (`host.cpp`) loads `<key>.json` from the data folder, or for Gold and Silver builds the guide from
 the ROM (below); no file, or one refused, logs `gb companion: no guide: <why>`, and the pages go on with the hidden
 items alone. Either way it logs `gb companion: guide: <N> milestones, <M> hidden items`.
 
@@ -632,6 +631,21 @@ there from pret/pokecrystal):
 - **Hidden items** are the ROM's (*Reading the ROM*), not the file's: the host adds a secret for each, on its own map
   with its x and y, "A hidden <item>." by the ROM's item name, every one listed whether found or not, as upstream's
   companions list theirs. Gold, Silver, Red, Blue and Yellow have theirs too.
+
+**Crystal Legacy's**, `crystal-legacy.json`, is converted the same way from `GuideCrystal.kt`'s `BOSSES_CRYSTAL_LEGACY`
+(`clBoss`, `clLeague`) over `GuideCrystalLegacyGen.kt` (its flags and teams, generated there from Crystal Legacy
+v1.3.1's build), with Crystal's tips. Its data file's `flags` are its event flags (`wEventFlags`, 256 bytes at its own
+address) and the Elite Four's derived bits after them; its RAM constants there are checked against its build's
+symbols. Where it differs from Crystal's:
+
+- **Its own teams and flags**: the same 22 bosses in Crystal's order, each with Crystal Legacy's team (Falkner's top
+  level 10, Red's 93). Red is done by its own `EVENT_DEFEATED_RED` (`flag:2001`), which Crystal Legacy sets when he's
+  beaten (it clears `EVENT_RED_IN_MT_SILVER` instead, the opposite of Crystal), so his milestone needs no derived bit.
+- **The gyms that follow the badges**: Chuck, Jasmine and Pryce can be taken in any order, so each gym's script picks
+  its team by the badges owned (`readvar VAR_BADGES` in its `maps/*Gym.asm`: 5 badges its second team, 6 its third,
+  any other count its first; PokeDaisy's `clScaledBoss`). The milestone shows the team for the badges the story's
+  order has there, the gyms before it: Chuck's first (4 badges, top level 31), Jasmine's second (5, 36), Pryce's third
+  (6, 38). Its `tips` say so, with the other teams' top levels, which the advice shows with the next milestone.
 
 **Red's, Blue's and Yellow's**, `red.json`, `blue.json` and `yellow.json`, are converted by `pokedaisy-extract.py` from
 PokeDaisy's `GuideGen1Gen.kt` (each game's bosses with the flags that mark them beaten, and its in-game trades,
@@ -687,8 +701,10 @@ lowest-levelled team's top level as `level_cap`, and its type the one most of th
   ROM's, as for Crystal.
 
 The script refuses what it can't read: a boss that isn't `crBoss(title, where, flag, key[, crLeague(flag)])` with
-an optional `{ p -> p.flag(A) && p.flag(B) }`, a rule of another shape, a tip that isn't `entry(question, answer[,
-hint = ...])`, or a `GUIDE_CRYSTAL` with other bosses or pages; for Gen I, a `GuideGen1.kt` whose banks, rule or
+an optional `{ p -> p.flag(A) && p.flag(B) }` (Crystal Legacy's `clBoss` and `clLeague` the same), or
+`clScaledBoss(title, where, flag, key)` for a leader whose helper picks `<key>_<n>` teams by the 16 badges' count, a
+rule of another shape, a scaled team the generated file hasn't, a tip that isn't `entry(question, answer[, hint =
+...])`, or a `GUIDE_CRYSTAL` or `GUIDE_CRYSTAL_LEGACY` with other bosses, world or pages; for Gen I, a `GuideGen1.kt` whose banks, rule or
 wiring of a game's tables differ from what it takes, a boss line that isn't six fields, a boss whose lines differ but
 by the team or whose teams' top levels differ, a title that isn't a leader's, an Elite Four member's or the Champion's,
 a gym not done by its own badge, a flag outside the event flags and the cave guard, a trade it can't read, or one of a

@@ -13,8 +13,48 @@
     166,
     177
   ],
+  "derived": [
+    {
+      "any": [
+        68,
+        1464
+      ],
+      "bit": 2048,
+      "for": "e4-will"
+    },
+    {
+      "any": [
+        68,
+        1465
+      ],
+      "bit": 2049,
+      "for": "e4-koga"
+    },
+    {
+      "any": [
+        68,
+        1466
+      ],
+      "bit": 2050,
+      "for": "e4-bruno"
+    },
+    {
+      "any": [
+        68,
+        1467
+      ],
+      "bit": 2051,
+      "for": "e4-karen"
+    }
+  ],
   "dex_size": 251,
-  "flags": [],
+  "flags": [
+    {
+      "bytes": 256,
+      "first": 0,
+      "ram": "eventFlags"
+    }
+  ],
   "game": "crystal-legacy",
   "gen": 2,
   "header_title": "PM_CRYSTAL",
@@ -258,7 +298,7 @@
     "eventFlags": {
       "addr": "0xDA7D",
       "bank": 1,
-      "src": "pret (wEventFlags)"
+      "src": "pokedaisy pret (wEventFlags)"
     },
     "gameTime": {
       "addr": "0xD4CF",
@@ -268,7 +308,7 @@
     "johtoBadges": {
       "addr": "0xD862",
       "bank": 1,
-      "src": "pret (wJohtoBadges)"
+      "src": "pokedaisy pret (wJohtoBadges)"
     },
     "kantoBadges": {
       "addr": "0xD863",
@@ -413,7 +453,7 @@
     "timeOfDay": {
       "addr": "0xD274",
       "bank": 1,
-      "src": "pret (wTimeOfDay)"
+      "src": "pokedaisy pret (wTimeOfDay)"
     },
     "tmsHms": {
       "addr": "0xD864",
@@ -423,7 +463,7 @@
     "tradeFlags": {
       "addr": "0xD96B",
       "bank": 1,
-      "src": "pret (wTradeFlags)"
+      "src": "pokedaisy pret (wTradeFlags)"
     },
     "xCoord": {
       "addr": "0xDCC3",
@@ -654,6 +694,7 @@
     "numPokemon": 251,
     "numTrainerClasses": 70,
     "speciesCount": 251,
+    "tradeFlagBytes": 1,
     "trainerDvs": 8,
     "trainerHappiness": 64,
     "trainerNickname": 4,

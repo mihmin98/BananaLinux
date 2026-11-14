@@ -17,12 +17,14 @@ in  ebfde8f4fc1bf6a4f2f411b8cb030dd7c8be36b23a08c2c9a04cb34932e51923  pokedaisy 
 in  f33fd7f41938deb6c1b29556669f643495bb4c42fb554ed849280ba2f6229d92  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2Reader.kt
 in  aa78cc353530d524f44f4b168a72e1fcf65a7cbb957cc430b51a8b96a02d2211  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystal.kt
 in  816154d8b641ee466f82736eea9c40d086708fdd2399052ec8502bb6d29dcbe6  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt
+in  da04eeae53b0c8dbfbe1a4f2e05a25fe157f949574fa08c678c78238870aacb5  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalLegacyGen.kt
 in  9beb7da6823cd96abef582dacf34d31972b4045a17be7f829d97fa297cf32ae8  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen1.kt
 in  cd54badd8a22eba6a86ab348b4bb2a0870a883ffa0c063b07178a577deb4ae5d  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen1Gen.kt
 out e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/LICENSE
 out 11b4ed90876ff042ebe01a95a2f92c8cd436138d31f90942cbb069758acaed7e  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/blue.json
 out cf7c976e3d3424b0ef4d4192387b869867b909b097d4809c19b3686c21877b99  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/blue.ram.json
-out 500a4b69cdcc401d2652a08625811bce226c7a2e22ee55f2bf77d38db4864ddf  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal-legacy.ram.json
+out b7a35fa3f08c07fa9161c8afd8a6174013e6ac02c3eefe88a537e31dd6115fe9  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal-legacy.json
+out e3290cf4801664281e64ebd2af87b08d432c5bc082f1cb23f8c2b092f3b1d29c  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal-legacy.ram.json
 out 477bd98fc9e34e70ae72bb62bc38b42cf76633e0e7589c6213af7f4dbe9adba1  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.json
 out bed0d06315cf32480e3b7dc31a869f1a2697ab5e69a466efc6b0f759f55f8dd7  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.ram.json
 out de47c63bfe95770df1a707ab1dbac47f84561ea94544f66e641733f8c4641193  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/gold.ram.json

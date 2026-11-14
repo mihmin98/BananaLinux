@@ -385,8 +385,9 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 }
 
 // the hidden items from the maps' events, and the game's guide file over this ROM: every place found by its name,
-// every boss's teams the ROM's with its top level (the Champion of Gen I three, one for each starter). Crystal's hidden
-// items are PokeDaisy's, by flag and item (its GuideCrystalGen.kt's HIDDEN lines: landmark|HIDDEN|item|flag|...); Red's,
+// every boss's teams the ROM's with its top level (the Champion of Gen I three, one for each starter). Crystal's and
+// Crystal Legacy's hidden items are PokeDaisy's, by flag and item (the HIDDEN lines of its GuideCrystalGen.kt and
+// GuideCrystalLegacyGen.kt: landmark|HIDDEN|item|flag|...); Red's,
 // Blue's and Yellow's by map, flag and item (GuideGen1Gen.kt's <prefix>_AREAS_RAW: map|HIDDEN|item|0x20000 + flag|...).
 // the ROM's type chart (TypeEffects, TypeMatchups), cell for cell, against the one the companion used before it read
 // the ROM's: for Red, Blue and Yellow upstream's with Gen I's five differences (rules.h's fallback), for Gold, Silver
@@ -435,9 +436,10 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 		named += r.zones.count(h.zone) && !r.zones.at(h.zone).name.empty() && h.item < r.items.size() && !r.items[h.item].name.empty();
 	CHECK(hidden.size() > 50 && named == (int)hidden.size());
 	fprintf(stderr, "gbpk-roms: %s: %zu hidden items\n", current.c_str(), hidden.size());
-	if (d.key == "crystal" && !pokedaisy.empty())
+	if ((d.key == "crystal" || d.key == "crystal-legacy") && !pokedaisy.empty())
 	{
-		std::ifstream f(pokedaisy + "/app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt");
+		std::ifstream f(pokedaisy + "/app/src/main/kotlin/com/pokedaisy/app/companion/data/" +
+			(d.key == "crystal" ? "GuideCrystalGen.kt" : "GuideCrystalLegacyGen.kt"));
 		// (a multiset: the National Park's Full Heal lies on the park's map and on its Bug Contest copy, one flag)
 		std::multiset<std::pair<int, int>> theirs, ours;
 		for (std::string l; std::getline(f, l);)

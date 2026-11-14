@@ -1200,12 +1200,21 @@ static void checkCrystal(const char* capture, const char* key)
 	CHECK(l->dexCaught.size() == 32 && (l->dexCaught[(152 - 1) / 8] >> ((152 - 1) % 8) & 1) && (l->dexCaught[(16 - 1) / 8] >> ((16 - 1) % 8) & 1));
 	CHECK(l->badges == 0 && l->playSeconds > 0);
 	CHECK(r.serial() == 1 && r.error().empty());
-	if (strcmp(key, "crystal") != 0) return;	// (Crystal Legacy's guide and its flags: the next step)
 	// the guide's flags: the 256 bytes of event flags, then a byte of derived bits; a new game hasn't won the League,
-	// so none of them is set (EVENT_RED_IN_MT_SILVER is, from the start: Red is hidden till the Hall of Fame)
+	// so none of them is set (Crystal's EVENT_RED_IN_MT_SILVER is, from the start: Red is hidden till the Hall of Fame;
+	// Crystal Legacy's Red is done by its own EVENT_DEFEATED_RED, not set)
 	auto flag = [&](int n) { return (size_t)(n >> 3) < l->flags.size() && (l->flags[(size_t)n >> 3] >> (n & 7) & 1); };
 	CHECK(l->flags.size() == 257 && l->flags[256] == 0);
-	CHECK(!flag(68) && flag(1890) && !flag(1213));
+	const bool legacy = strcmp(key, "crystal-legacy") == 0;
+	CHECK(!flag(68) && !flag(1213) && (legacy ? !flag(2001) : flag(1890)));
+	// ... and the guide's next milestone by them: Falkner's, the save having no badge (a stand-in resolver)
+	nds::GuideResolver res;
+	res.zones = [](const std::string&) { return std::vector<uint16_t>{ 0x0101 }; };
+	nds::GuideData g;
+	std::string why;
+	CHECK(nds::loadGuideFile(dataPath + "/" + key + ".json", g, game(key).game.id, &why, &res));
+	const nds::Milestone* next = nds::nextMilestone(g, *l);
+	EQ(next ? next->id : std::string("none"), "gym-1-falkner");
 }
 
 // the derived bits on the crystal capture with flags set: the League won sets the Elite Four's and Red's (his own
@@ -1307,6 +1316,69 @@ static void testGuide()
 	// (no flags read: nothing is done)
 	l.flags.clear();
 	EQ(next(), "gym-1-falkner");
+}
+
+// Crystal Legacy's guide file (PokeDaisy's, converted as Crystal's): the same 22 bosses in Crystal's order with its
+// own teams; Chuck, Jasmine and Pryce, whose teams go by the badges owned (the gyms can be taken in any order), with
+// the team for the badges the story's order has there (4, 5 and 6: Chuck's first, Jasmine's second, Pryce's third,
+// PokeDaisy's clScaledBoss) and a tip saying so; Red done by his own flag, EVENT_DEFEATED_RED (2001), not a rule
+static void testCrystalLegacyGuide()
+{
+	nds::GuideResolver res;
+	res.zones = [](const std::string&) { return std::vector<uint16_t>{ 0x0101 }; };
+	nds::GuideData g;
+	std::string why = "-";
+	CHECK(nds::loadGuideFile(dataPath + "/crystal-legacy.json", g, CRYSTAL_LEGACY, &why, &res));
+	EQ(why, "");
+	CHECK(g.unresolved.empty() && g.secrets.empty() && g.notes.size() == 2 && g.milestones.size() == 22);
+	int tips = 0;
+	for (const nds::Milestone& m : g.milestones)
+	{
+		CHECK(m.trainerIds.size() == 1 && m.levelCap > 0 && m.foeAceLevel == m.levelCap && !m.placeZones.empty() &&
+			m.doneWhen.compare(0, 5, "flag:") == 0);
+		tips += !m.tips.empty();
+	}
+	CHECK(tips == 3);
+	if (g.milestones.size() == 22)
+	{
+		const std::vector<nds::Milestone>& ms = g.milestones;
+		EQ(ms[0].name, "Gym 1: Falkner");
+		CHECK(ms[0].trainerIds[0] == (1 << 8 | 1) && ms[0].levelCap == 10);
+		EQ(ms[4].name, "Gym 5: Chuck");
+		CHECK(ms[4].trainerIds[0] == (7 << 8 | 1) && ms[4].levelCap == 31 && ms[4].tips.find("for 4 badges") != std::string::npos);
+		CHECK(ms[4].tips.find("36 with 5 badges, 38 with 6 badges, and 31 with any other count") != std::string::npos);
+		EQ(ms[5].name, "Gym 6: Jasmine");
+		CHECK(ms[5].trainerIds[0] == (6 << 8 | 2) && ms[5].levelCap == 36 && ms[5].tips.find("for 5 badges") != std::string::npos);
+		EQ(ms[6].name, "Gym 7: Pryce");
+		CHECK(ms[6].trainerIds[0] == (5 << 8 | 3) && ms[6].levelCap == 38 && ms[6].tips.find("for 6 badges") != std::string::npos);
+		CHECK(ms[7].tips.empty());
+		EQ(ms[12].name, "Champion: Lance");
+		EQ(ms[12].doneWhen, "flag:68");
+		EQ(ms[21].name, "Red (Silver Cave)");
+		EQ(ms[21].doneWhen, "flag:2001");
+	}
+	// Crystal's id refuses it (the same code, BYTE; another game's key)
+	nds::GuideData other;
+	CHECK(!nds::loadGuideFile(dataPath + "/crystal-legacy.json", other, CRYSTAL, &why, &res));
+
+	// the next milestone follows the save's flags: the Elite Four by the derived bits 2048-2051, as Crystal's
+	nds::Live l;
+	l.valid = true;
+	l.flags.assign(257, 0);
+	auto set = [&](int n) { l.flags[(size_t)n >> 3] |= (uint8_t)(1 << (n & 7)); };
+	auto next = [&] { const nds::Milestone* m = nds::nextMilestone(g, l); return m ? m->id : std::string("none"); };
+	EQ(next(), "gym-1-falkner");
+	for (int n = 1213; n <= 1218; n++) set(n);
+	EQ(next(), "gym-7-pryce");
+	for (int n = 1219; n <= 1220; n++) set(n);
+	EQ(next(), "e4-will");
+	for (int n = 2048; n <= 2051; n++) set(n);
+	EQ(next(), "champion-lance");
+	set(68);
+	for (int n = 1221; n <= 1228; n++) set(n);
+	EQ(next(), "red");
+	set(2001);
+	EQ(next(), "none");
 }
 
 // Red's, Blue's and Yellow's guide files through upstream's loader (a stand-in resolver: every place is map 1, every
@@ -2073,6 +2145,10 @@ static void testCrystalLegacy()
 	CHECK(gen2Type(g, 8) == nds::GHOST && category(g, 8) == nds::MoveCategory::SPECIAL && category(g, 27) == nds::MoveCategory::PHYSICAL);
 	CHECK(g.rom.count("dexEntryFar") && !g.rom.count("dexEntryPointers") && g.rom.count("trainerGroupsFar") && g.rom.count("rockSmashMons"));
 	CHECK(g.size("trainerNickname") == 4 && g.size("trainerDvs") == 8 && g.size("trainerStatExp") == 16 && g.size("trainerHappiness") == 64);
+	// (its guide's flags: the event flags at its own address, the Elite Four's derived bits after them; Red has his own
+	// flag, so no fifth bit)
+	CHECK(g.flags.size() == 1 && g.flags[0].ram == "eventFlags" && g.flags[0].bytes == 256 && g.at("eventFlags").addr == 0xDA7D);
+	CHECK(g.derived.size() == 4 && g.derived[0].bit == 2048 && !g.derived[0].all && (g.derived[0].of == std::vector<int>{ 68, 1464 }));
 
 	Dump d;
 	double now = 0;
@@ -2670,6 +2746,7 @@ int main(int argc, char** argv)
 	testGen1RomTables();
 	testDerivedFlags();
 	testGuide();
+	testCrystalLegacyGuide();
 	testGen1Guides();
 	testRomGuide();
 	testReaderRules();

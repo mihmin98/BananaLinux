@@ -34,6 +34,7 @@ GEN2_DEX = DATA + '/Gen2Dex.kt'
 GEN2_ART = DATA + '/Gen2Art.kt'
 GEN1_ART = DATA + '/Gen1Art.kt'
 CRYSTAL_GUIDE = DATA + '/GuideCrystalGen.kt'
+CRYSTAL_LEGACY_GUIDE = DATA + '/GuideCrystalLegacyGen.kt'
 CRYSTAL_RULES = DATA + '/GuideCrystal.kt'
 GEN1_GUIDE = DATA + '/GuideGen1Gen.kt'
 GEN1_RULES = DATA + '/GuideGen1.kt'
@@ -139,10 +140,19 @@ ART1_SKIP.update({'sha1': 'the releases, from GameTitles.kt instead', 'dexCount'
                   'townMapPath': 'PokeDaisy\'s file', 'townMapColors': 'colours sampled from an emulator; the ROM\'s instead',
                   'charset': 'English\'s, as the data files\' text'})
 
-# GuideCrystalGen.kt's RAM constants (WRAM bank 1), by the data file's key
-CRYSTAL_GUIDE_RAM = {'CR_EVENT_FLAGS': 'eventFlags', 'CR_TIME_OF_DAY': 'timeOfDay', 'CR_BADGES': 'johtoBadges',
-                     'CR_TRADE_FLAGS': 'tradeFlags'}
-CRYSTAL_GUIDE_SIZES = {'CR_EVENT_FLAG_BYTES': 'eventFlagBytes', 'CR_TRADE_FLAG_BYTES': 'tradeFlagBytes'}
+# Crystal's and Crystal Legacy's guides (GuideCrystal.kt's two, each over its generated file): the generated file and
+# its constants' prefix, GuideCrystal.kt's names for the game's boss helper, its world, its League rule, its bosses
+# and its guide, and what the generated file was made from
+CRYSTAL_GUIDES = {
+    'crystal': (CRYSTAL_GUIDE, 'CR', 'crBoss', 'CrystalWorld', 'crLeague', 'BOSSES_CRYSTAL', 'GUIDE_CRYSTAL',
+                'pret/pokecrystal'),
+    'crystal-legacy': (CRYSTAL_LEGACY_GUIDE, 'CL', 'clBoss', 'CrystalLegacyWorld', 'clLeague', 'BOSSES_CRYSTAL_LEGACY',
+                       'GUIDE_CRYSTAL_LEGACY', 'Crystal Legacy v1.3.1\'s build'),
+}
+# the generated files' RAM constants (<prefix>_<name>, WRAM bank 1), by the data file's key, and their sizes
+CRYSTAL_GUIDE_RAM = {'EVENT_FLAGS': 'eventFlags', 'TIME_OF_DAY': 'timeOfDay', 'BADGES': 'johtoBadges',
+                     'TRADE_FLAGS': 'tradeFlags'}
+CRYSTAL_GUIDE_SIZES = {'EVENT_FLAG_BYTES': 'eventFlagBytes', 'TRADE_FLAG_BYTES': 'tradeFlagBytes'}
 
 # Crystal's guide (GuideCrystal.kt's bosses and tips over GuideCrystalGen.kt's flags and teams): the guide file's
 # milestones by the title's first words, and the places PokeDaisy names that aren't a landmark's name in the game
@@ -514,67 +524,105 @@ def slug(s):
     return re.sub(r'[^a-z0-9]+', '-', s.lower().replace('é', 'e')).strip('-')
 
 
-def crystal_guide(rules_src, gen_src, first_derived):
-    """The guide file of Crystal (nds-pokemon-guide, schema 1) and the bits derived from the save's flags its milestones
-    read: each boss of GuideCrystal.kt in its order, done by its flag, or by a rule over two (crLeague's, a lambda's)
-    as a derived bit from first_derived on; its team's trainer id and top level from GuideCrystalGen.kt; the tips as
-    notes. Returns (guide, derived, unread)."""
+def scaled_teams(s, helper, world):
+    """A boss helper whose team goes by the badges owned, as Crystal Legacy's clScaledBoss: {count: the team key's
+    suffix} for the counts it names, any other count the key's own team; None when the rules have no such helper."""
+    m = re.search(r'fun %s\(' % helper, s)
+    if not m:
+        return None
+    lam = braced(s, closing(s, m.end() - 1))
+    body = ' '.join(s[m.start():s.index(lam, m.start()) + len(lam)].split())
+    w = re.fullmatch(r'fun %s\(title: String, where: String, done: Int, key: String\) = Boss\(title, where, done\) \{ p -> '
+                 r'%s\.trainer\(when \(\(0 until 16\)\.count \{ p\.flag\(CR_BADGE_FLAG \+ it\) \}\) \{ ((?:\d+ -> "\$\{key\}_\w+" )+)'
+                 r'else -> key \}\) \}' % (helper, world), body)
+    if not w:
+        fail('%s: %s isn\'t a Boss whose team goes by the 16 badges\' count' % (CRYSTAL_RULES, helper))
+    return {int(n): x for n, x in re.findall(r'(\d+) -> "\$\{key\}(_\w+)"', w.group(1))}
+
+
+def crystal_guide(key, guide_title, rules_src, gen_src, first_derived):
+    """The guide file of Crystal or Crystal Legacy (nds-pokemon-guide, schema 1; CRYSTAL_GUIDES' names for each) and
+    the bits derived from the save's flags its milestones read: each boss of GuideCrystal.kt in its order, done by its
+    flag, or by a rule over two (the League's, a lambda's) as a derived bit from first_derived on; its team's trainer
+    id and top level from the generated file (a gym whose team goes by the badges, Crystal Legacy's clScaledBoss, the
+    team for the badges the story's order has there, and a tip saying so); the tips as notes. Returns (guide, derived,
+    unread)."""
+    gen_file, prefix, helper, world, league_fn, bosses_name, guide_name, made_from = CRYSTAL_GUIDES[key]
     consts = guide_consts(gen_src)
     unread = []
-    m = re.search(r'\bval CR_BOSSES_RAW\s*:[^=]*=\s*listOf\(\s*"""(.*?)"""', gen_src, re.S)
+    m = re.search(r'\bval %s_BOSSES_RAW\s*:[^=]*=\s*listOf\(\s*"""(.*?)"""' % prefix, gen_src, re.S)
     if not m:
-        fail('no CR_BOSSES_RAW in %s' % CRYSTAL_GUIDE)
+        fail('no %s_BOSSES_RAW in %s' % (prefix, gen_file))
     teams = {}
     for line in m.group(1).splitlines():
         if not line.strip():
             continue
         f = line.split('|')
         if len(f) != 5 or not f[1].isdigit() or not f[2].isdigit():
-            fail('%s: a boss line it can\'t read: %s' % (CRYSTAL_GUIDE, line))
+            fail('%s: a boss line it can\'t read: %s' % (gen_file, line))
         teams[f[0]] = (int(f[1]) << 8 | int(f[2]), max(int(x.split()[0]) for x in f[4].split(';')))
     s = strip_comments(rules_src)
-    # (the shapes the conversion takes: crBoss is a Boss of its title, place, flag and rule, its team the key's)
-    if not re.search(r'fun crBoss\(title: String, where: String, done: Int, key: String, doneIf: \(\(SaveProgress\) -> Boolean\)\? = null\)\s*=\s*'
-                     r'Boss\(title, where, done, doneIf = doneIf\)\s*\{\s*CrystalWorld\.trainer\(key\)\s*\}', s):
-        fail('%s: crBoss isn\'t Boss(title, where, done, doneIf) with CrystalWorld\'s team' % CRYSTAL_RULES)
-    gm = re.search(r'\bval GUIDE_CRYSTAL\s*=\s*GameGuide\(', s)
+    # (the shapes the conversion takes: the boss helper is a Boss of its title, place, flag and rule, its team the key's
+    # in the game's world)
+    if not re.search(r'fun %s\(title: String, where: String, done: Int, key: String, doneIf: \(\(SaveProgress\) -> Boolean\)\? = null\)\s*=\s*'
+                     r'Boss\(title, where, done, doneIf = doneIf\)\s*\{\s*%s\.trainer\(key\)\s*\}' % (helper, world), s):
+        fail('%s: %s isn\'t Boss(title, where, done, doneIf) with %s\'s team' % (CRYSTAL_RULES, helper, world))
+    gm = re.search(r'\bval %s\s*=\s*GameGuide\(' % guide_name, s)
     gbody = gm and s[gm.end():closing(s, gm.end() - 1)]
-    if not gbody or not re.search(r'bosses\s*=\s*BOSSES_CRYSTAL\b', gbody) or not re.search(r'pages\s*=\s*listOf\(CRYSTAL_TIPS\)', gbody):
-        fail('%s: GUIDE_CRYSTAL isn\'t BOSSES_CRYSTAL with CRYSTAL_TIPS' % CRYSTAL_RULES)
-    lm = re.search(r'fun crLeague\(own: Int\)[^=]*=', s)
+    if not gbody or not re.search(r'bosses\s*=\s*%s\b' % bosses_name, gbody) or \
+            not re.search(r'world\s*=\s*%s\b' % world, gbody) or not re.search(r'pages\s*=\s*listOf\(CRYSTAL_TIPS\)', gbody):
+        fail('%s: %s isn\'t %s in %s with CRYSTAL_TIPS' % (CRYSTAL_RULES, guide_name, bosses_name, world))
+    lm = re.search(r'fun %s\(own: Int\)[^=]*=' % league_fn, s)
     league = lm and braced(s, lm.end())
-    bm = re.search(r'\bval BOSSES_CRYSTAL\s*=\s*listOf\(', s)
+    scaled_fn = helper[:2] + 'ScaledBoss'
+    scaled = scaled_teams(s, scaled_fn, world)
+    bm = re.search(r'\bval %s\s*=\s*listOf\(' % bosses_name, s)
     if not bm:
-        fail('no BOSSES_CRYSTAL in %s' % CRYSTAL_RULES)
+        fail('no %s in %s' % (bosses_name, CRYSTAL_RULES))
     places, milestones, derived, gyms = {}, [], [], 0
     for it in split_args(s[bm.end():closing(s, bm.end() - 1)]):
-        if not it.startswith('crBoss('):
-            unread.append('BOSSES_CRYSTAL: %s' % it)
+        fn = next((f for f in (helper, scaled_fn) if it.startswith(f + '(')), None)
+        if not fn or (fn == scaled_fn and scaled is None):
+            unread.append('%s: %s' % (bosses_name, it))
             continue
-        c = closing(it, len('crBoss'))
-        args, rest = split_args(it[len('crBoss('):c]), it[c + 1:].strip()
-        title, where, key = (kotlin_string(args[i]) for i in (0, 1, 3)) if len(args) >= 4 else (None, None, None)
-        if not title or not where or key not in teams or len(args) > 5:
-            unread.append('BOSSES_CRYSTAL: %s' % it)
+        c = closing(it, len(fn))
+        args, rest = split_args(it[len(fn) + 1:c]), it[c + 1:].strip()
+        title, where, team = (kotlin_string(args[i]) for i in (0, 1, 3)) if len(args) >= 4 else (None, None, None)
+        if not title or not where or team not in teams or len(args) > (4 if fn == scaled_fn else 5):
+            unread.append('%s: %s' % (bosses_name, it))
             continue
         rule = None
         if len(args) == 5:
-            cm = re.fullmatch(r'crLeague\((\w+)\)', args[4])
+            cm = re.fullmatch(r'%s\((\w+)\)' % league_fn, args[4])
             if cm and league and cm.group(1) in consts:
                 rule = flag_rule(league, consts, {'own': consts[cm.group(1)]})
         elif rest:
-            rule = flag_rule(rest, consts)
+            rule = flag_rule(rest, consts) if fn == helper else None
         elif args[2] in consts:
             rule = ('flag', consts[args[2]])
         if not rule or (args[2] != '0' and len(args) + bool(rest) > 4):
-            unread.append('BOSSES_CRYSTAL: %s (its rule)' % title)
+            unread.append('%s: %s (its rule)' % (bosses_name, title))
             continue
-        prefix, kind, label, cls = next(k for k in GUIDE_KINDS if title.startswith(k[0]))
-        foe = name_case(title[len(prefix):])
+        kprefix, kind, label, cls = next(k for k in GUIDE_KINDS if title.startswith(k[0]))
+        foe = name_case(title[len(kprefix):])
         if kind == 'gym':
             where = re.sub(r' GYM$', '', where)
         place_name = name_case(PLACE_ALIAS.get(where, where))
         places[slug(place_name)] = {'name': place_name}
+        tips = None
+        if fn == scaled_fn:
+            # (a gym taken in any order, its team by the badges owned: the one for the badges the story's order has
+            # there, the gyms before it; the others in the tip)
+            if kind != 'gym':
+                unread.append('%s: %s (a scaled boss that isn\'t a leader)' % (bosses_name, title))
+                continue
+            others = {n: teams.get(team + x) for n, x in scaled.items()}
+            if None in others.values():
+                fail('%s: %s has no team %s' % (gen_file, team, ', '.join(team + x for x in scaled.values())))
+            tips = ('%s\'s gym can be taken out of order, and the team follows the badges you have: its top level is %s, '
+                    'and %d with any other count. This is the team for %d badges, the story\'s order.' %
+                    (foe, ', '.join('%d with %d badges' % (others[n][1], n) for n in sorted(others)), teams[team][1], gyms))
+            team += scaled.get(gyms, '')
         if kind == 'gym':
             gyms += 1
             mid, name = 'gym-%d-%s' % (gyms, slug(foe)), 'Gym %d: %s' % (gyms, foe)
@@ -588,12 +636,15 @@ def crystal_guide(rules_src, gen_src, first_derived):
             bit = first_derived + len(derived)
             derived.append({'bit': bit, rule[0]: rule[1], 'for': mid})
             done = 'flag:%d' % bit
-        tid, ace = teams[key]
+        tid, ace = teams[team]
         ms = {'id': mid, 'name': name, 'kind': kind, 'place': slug(place_name), 'level_cap': ace,
               'foe': {'name': foe, 'ace_level': ace}, 'trainer_ids': [tid], 'done_when': done,
-              'quality': 'reference-only', 'source': 'PokeDaisy GuideCrystal.kt, GuideCrystalGen.kt (%s)' % key}
+              'quality': 'reference-only',
+              'source': 'PokeDaisy GuideCrystal.kt, %s (%s)' % (os.path.basename(gen_file), team)}
         if cls:
             ms['foe']['class'] = cls
+        if tips:
+            ms['tips'] = tips
         milestones.append(ms)
     notes = []
     tm = re.search(r'\bval CRYSTAL_TIPS\s*=\s*page\(', s)
@@ -610,10 +661,10 @@ def crystal_guide(rules_src, gen_src, first_derived):
         notes.append({'id': 'note-tip-%d' % (len(notes) + 1), 'kind': 'tip', 'title': q, 'text': a,
                       'quality': 'reference-only', 'source': 'PokeDaisy GuideCrystal.kt (CRYSTAL_TIPS)'})
     guide = {
-        'schema': 1, 'kind': 'nds-pokemon-guide', 'game': 'crystal', 'code': 'BYTE', 'title': 'Pokémon Crystal',
-        'revision': 1,
+        'schema': 1, 'kind': 'nds-pokemon-guide', 'game': key, 'code': 'BYTE', 'title': guide_title, 'revision': 1,
         'sources': ['PokeDaisy by Lidor Itzhari, %s (GPL-3.0): GuideCrystal.kt\'s bosses, their order and rules, and '
-                    'its tips; GuideCrystalGen.kt\'s flags and teams, generated there from pret/pokecrystal' % PIN[:8],
+                    'its tips; %s\'s flags and teams, generated there from %s' %
+                    (PIN[:8], os.path.basename(gen_file), made_from),
                     'The player\'s ROM: the trainers\' teams, the places\' maps and the hidden items, read when the '
                     'game starts (kiwami/GB-POKEMON.md)'],
         'places': places, 'milestones': milestones, 'notes': notes,
@@ -768,8 +819,7 @@ def build(checkout):
     dex_src = read(GEN2_DEX)
     art_src = read(GEN2_ART)
     art1_src = read(GEN1_ART)
-    guide_src = read(CRYSTAL_GUIDE)
-    guide = guide_consts(guide_src)
+    crystal_srcs = {k: read(v[0]) for k, v in CRYSTAL_GUIDES.items()}
     rules_src = read(CRYSTAL_RULES)
     gen1_guide_src = read(GEN1_GUIDE)
     gen1_guide_consts = guide_consts(gen1_guide_src)
@@ -820,18 +870,22 @@ def build(checkout):
             else:
                 unread.append('%s.%s = %s' % (art_cfg, k, v))
         src = {k: 'pokedaisy' for k in ram}
-        if key == 'crystal':
+        if key in CRYSTAL_GUIDES:
+            gen_file, cprefix = CRYSTAL_GUIDES[key][:2]
+            guide = guide_consts(crystal_srcs[key])
             for c, k in CRYSTAL_GUIDE_RAM.items():
+                c = cprefix + '_' + c
                 if c not in guide:
-                    unread.append('%s: no %s' % (CRYSTAL_GUIDE, c))
+                    unread.append('%s: no %s' % (gen_file, c))
                     continue
                 v = addr_value(('addr', 1, guide[c]))
                 if k in ram and ram[k] != v:
-                    fail('crystal ram.%s: %s says %02X:%04X, %s %02X:%04X' % (k, GEN2, ram[k][0], ram[k][1], c, v[0], v[1]))
+                    fail('%s ram.%s: %s says %02X:%04X, %s %02X:%04X' % (key, k, GEN2, ram[k][0], ram[k][1], c, v[0], v[1]))
                 ram[k], src[k] = v, 'pokedaisy'
             for c, k in CRYSTAL_GUIDE_SIZES.items():
+                c = cprefix + '_' + c
                 if c not in guide:
-                    unread.append('%s: no %s' % (CRYSTAL_GUIDE, c))
+                    unread.append('%s: no %s' % (gen_file, c))
                     continue
                 sizes[k] = guide[c]
         if key in GEN1_GUIDES:
@@ -906,9 +960,9 @@ def build(checkout):
         releases = [{k: r[k] for k in ('sha1', 'name', 'code', 'hack') if k in r} for r in g['releases']]
         # the flag banks its guide reads (Live::flags: each bank's bits from its first, the derived bits after them)
         flags, derived = [], []
-        if key == 'crystal':
+        if key in CRYSTAL_GUIDES:
             flags = [{'ram': 'eventFlags', 'bytes': sizes['eventFlagBytes'], 'first': 0}]
-            gd, derived, u = crystal_guide(rules_src, guide_src, 8 * sizes['eventFlagBytes'])
+            gd, derived, u = crystal_guide(key, pd_title, rules_src, crystal_srcs[key], 8 * sizes['eventFlagBytes'])
             unread += u
             files['%s/%s.json' % (FOLDER, key)] = pe.dump(gd).encode('utf-8')
         elif key in GEN1_GUIDES:
@@ -2343,7 +2397,7 @@ def main(argv):
     if len(args) > 1 or any(a.startswith('-') for a in args) or (ref and check):
         sys.exit('usage: pokedaisy-extract.py [<pokedaisy checkout>] [--check | --reference] [--any-commit]')
     outs = ['%s/%s.ram.json' % (FOLDER, g[0]) for g in GAMES] + [FOLDER + '/LICENSE'] + \
-        ['%s/%s.json' % (FOLDER, k) for k in ['crystal'] + list(GEN1_GUIDES)]
+        ['%s/%s.json' % (FOLDER, k) for k in list(CRYSTAL_GUIDES) + list(GEN1_GUIDES)]
     if not args:
         if not check:
             fail('give PokeDaisy\'s checkout, or --check')

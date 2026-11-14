@@ -2657,6 +2657,11 @@ static void testTables()
 	CHECK(category(crystal, 8) == MoveCategory::PHYSICAL && category(x, 8) == MoveCategory::SPECIAL);
 	CHECK(x.special.count() == crystal.special.count() + 1);
 	CHECK(!edited("\"0\": \"normal\"", "\"0\": \"shadow\"", x, w) && w.find("a type it doesn't know (shadow)") != std::string::npos);
+	// the fork's own types by their names (PureRGB's six, gbpk.h), at the ids PureRGB gives them
+	CHECK(edited("\"9\": \"steel\"", "\"9\": \"crystal\", \"6\": \"typeless\", \"10\": \"bonemerang\", \"17\": \"tri\", "
+		"\"18\": \"floating\", \"19\": \"magma\"", x, w));
+	CHECK(x.types[6] == TYPELESS && x.types[9] == CRYSTAL_TYPE && x.types[10] == BONEMERANG &&
+		x.types[17] == TRI && x.types[18] == FLOATING && x.types[19] == MAGMA && x.types[8] == GHOST);
 	CHECK(!edited("\"types\": {", "\"typez\": {", x, w) && w.find("no items or no types") != std::string::npos);
 	CHECK(!edited("\"items\": [", "\"itemz\": [", x, w) && w.find("no items or no types") != std::string::npos);
 	CHECK(!edited("\"special\": [", "\"special\": [\n    300,", x, w) && w.find("list of ids") != std::string::npos);
@@ -2683,6 +2688,109 @@ static void testTables()
 	RANGE(nds::damage(GEN_II, g, a, f), 31, 37);
 	g.cat = MoveCategory::SPECIAL;
 	RANGE(nds::damage(GEN_II, g, a, f), 16, 19);
+	useRules(Gen::IV);
+}
+
+// the fork's own types (gbpk.h: PureRGB's six, past upstream's 18): their names and colours, which the hooks in
+// upstream's pages.cpp (typeChip) and logic.cpp (typeName) give; a made-up ROM chart with them, in PureRGB's ids (its
+// constants/type_constants.asm), read whole, its cells through upstream's effectiveness(): Water on Crystal 0.5x,
+// Ground on Floating 0x, Bonemerang on Flying no entry, so 1x (data/types/type_matchups.asm); upstream's advice over a
+// party of a Crystal and a Floating member with a Tri move, which names Tri, never "?"
+static void testForkTypes()
+{
+	using namespace nds;
+	const std::pair<Type, const char*> NAMES[] = { { TYPELESS, "Typeless" }, { CRYSTAL_TYPE, "Crystal" }, { BONEMERANG, "Ground" },
+		{ TRI, "Tri" }, { FLOATING, "Floating" }, { MAGMA, "Magma" } };
+	for (auto [t, n] : NAMES)
+	{
+		EQ(std::string(extraTypeName(t) ? extraTypeName(t) : "(none)"), n);
+		CHECK(extraTypeColor(t) != 0);
+	}
+	CHECK(extraTypeColor(CRYSTAL_TYPE) == 0x88d0e0 && extraTypeColor(BONEMERANG) == 0xe0c068 && extraTypeColor(MAGMA) == 0xd05038);
+	CHECK(!extraTypeName(FIRE) && !extraTypeName(FAIRY) && !extraTypeName(NO_TYPE) && !extraTypeName((Type)31) && !extraTypeName((Type)38));
+	CHECK(extraTypeColor(FIRE) == 0 && extraTypeColor(NO_TYPE) == 0);
+	CHECK(chartIndex(TYPELESS) == 18 && chartIndex(MAGMA) == 23 && chartIndex((Type)31) == -1 && chartIndex((Type)38) == -1);
+
+	GameData d;
+	const std::pair<uint8_t, Type> IDS[] = { { 0x00, NORMAL }, { 0x02, FLYING }, { 0x03, POISON }, { 0x04, GROUND }, { 0x05, ROCK },
+		{ 0x06, TYPELESS }, { 0x08, GHOST }, { 0x09, CRYSTAL_TYPE }, { 0x0A, BONEMERANG }, { 0x11, TRI }, { 0x12, FLOATING },
+		{ 0x13, MAGMA }, { 0x14, FIRE }, { 0x15, WATER } };
+	for (auto [id, t] : IDS) d.types[id] = t;
+	const std::vector<uint8_t> b = { 0x15, 0x14, 20, 0x15, 0x09, 5, 0x04, 0x12, 0, 0x04, 0x02, 0, 0x11, 0x08, 0, 0x13, 0x15, 5, 0xFF };
+	TypeChart c;
+	std::string why;
+	CHECK(readTypeChart(RomView{ b, 1 }, d, 0, "TypeEffects", c, &why));
+	EQ(why, "");
+	GameRules g;
+	g.chart = c;
+	useRules(GEN_I);
+	useGameRules(&g);
+	CHECK(effectiveness(WATER, CRYSTAL_TYPE, NO_TYPE) == 2 && effectiveness(GROUND, FLOATING, NO_TYPE) == 0);
+	CHECK(effectiveness(BONEMERANG, FLYING, NO_TYPE) == 4 && effectiveness(GROUND, FLYING, NO_TYPE) == 0);
+	CHECK(effectiveness(MAGMA, WATER, NO_TYPE) == 2 && effectiveness(WATER, ROCK, CRYSTAL_TYPE) == 2 && effectiveness(TRI, GHOST, NO_TYPE) == 0);
+	CHECK(effectiveness(TYPELESS, GHOST, NO_TYPE) == 4 && effectiveness(FIRE, (Type)38, NO_TYPE) == 4);
+
+	// the advice: a Crystal/Rock and a Poison/Floating member, each with Tri Attack (Tri, special, 80), against a gym of a
+	// Ghost alone, which Tri can't touch
+	GbRomData rom;
+	rom.game.gen = GEN_I;
+	rom.species.resize(4);
+	rom.species[1].name = "Onix";
+	rom.species[1].types[0] = CRYSTAL_TYPE;
+	rom.species[1].types[1] = ROCK;
+	rom.species[2].name = "Weezing";
+	rom.species[2].types[0] = POISON;
+	rom.species[2].types[1] = FLOATING;
+	rom.species[3].name = "Gastly";
+	rom.species[3].types[0] = rom.species[3].types[1] = GHOST;
+	rom.moves.resize(2);
+	rom.moves[1].name = "Tri Attack";
+	rom.moves[1].type = TRI;
+	rom.moves[1].cat = MoveCategory::SPECIAL;
+	rom.moves[1].power = 80;
+	rom.moves[1].accuracy = 100;
+	Trainer t;
+	t.id = 1 << 8 | 1;
+	t.cls = "Leader";
+	t.name = "Agatha";
+	TrainerMon tm;
+	tm.species = 3;
+	tm.level = 20;
+	t.team = { tm };
+	rom.trainers[t.id] = t;
+	GuideData guide;
+	Milestone m;
+	m.id = "gym-1";
+	m.name = "Gym 1: Agatha";
+	m.kind = "gym";
+	m.leader = "Agatha";
+	m.trainerIds = { t.id };
+	m.doneWhen = "badge:1";
+	m.badge = 1;
+	m.levelCap = 20;
+	guide.milestones = { m };
+	Live l;
+	l.valid = true;
+	for (uint16_t sp : { 1, 2 })
+	{
+		Mon p;
+		p.species = sp;
+		p.level = 25;
+		p.nick = rom.species[sp].name;
+		p.moves[0] = 1;
+		p.pp[0] = 10;
+		p.hp = p.maxHp = 60;
+		l.party.push_back(p);
+	}
+	const Advice a = computeAdvice(rom, l, &guide, AdviceState());
+	std::string all;
+	for (const std::string& s : a.nextProblems) all += s + "\n";
+	for (const ScorePart& sp : a.scoreParts) for (const std::string& s : sp.why) all += s + "\n";
+	for (const CatchSuggestion& cs : a.catchNow) all += cs.why + "\n";
+	for (const auto& [item, s] : a.tmPlan) all += s + "\n";
+	CHECK(a.next && all.find("Tri moves can't touch Agatha's whole team") != std::string::npos && all.find('?') == std::string::npos);
+	if (all.find("Tri moves") == std::string::npos || all.find('?') != std::string::npos) fprintf(stderr, "gbpk-units: the advice: %s", all.c_str());
+	useGameRules(nullptr);
 	useRules(Gen::IV);
 }
 
@@ -2875,6 +2983,7 @@ int main(int argc, char** argv)
 	testReaderRules();
 	testRules();
 	testTables();
+	testForkTypes();
 	if (failed)
 	{
 		fprintf(stderr, "gbpk-units: %d of %d checks failed\n", failed, checks);

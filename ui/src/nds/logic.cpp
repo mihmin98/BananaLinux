@@ -411,7 +411,7 @@ namespace banana::nds
 {
 	static const char* TYPE_NAME[NUM_TYPES] = { "Normal", "Fighting", "Flying", "Poison", "Ground", "Rock", "Bug",
 		"Ghost", "Steel", "Fire", "Water", "Grass", "Electric", "Psychic", "Ice", "Dragon", "Dark", "Fairy" };
-	static std::string typeName(Type t) { return t < NUM_TYPES ? TYPE_NAME[t] : "?"; }
+	static std::string typeName(Type t) { if (const char* k = kiwami::gbpk::extraTypeName(t)) return k; return t < NUM_TYPES ? TYPE_NAME[t] : "?"; }	// kiwami: the fork's types
 	static std::string speciesName(const RomData& rom, uint16_t s) { auto* x = sp(rom, s); return x ? x->name : "?"; }
 	static const MoveData* move(const RomData& rom, uint16_t m) { return m && m < rom.moves.size() ? &rom.moves[m] : nullptr; }
 	static bool damaging(const MoveData* m) { return m && m->cat != MoveCategory::STATUS && m->power > 1; }

@@ -20,6 +20,26 @@ namespace banana::kiwami::gbpk
 	constexpr nds::GameId CRYSTAL_LEGACY = (nds::GameId)106, YELLOW_LEGACY = (nds::GameId)107, PURERED = (nds::GameId)108,
 		PUREBLUE = (nds::GameId)109, PUREGREEN = (nds::GameId)110, CRYSTAL_CLEAR = (nds::GameId)111;
 
+	// the fork's own types, past upstream's 18 (nds::Type 0-17): PureRGB's six (its constants/type_constants.asm at
+	// v2.7.7: Struggle's, Hardened Onix's, Bonemerang's, Tri Attack's, the Floating forms', Volcanic Magmar's). Values
+	// of upstream's enum it never takes, as GEN_I is of nds::Gen: upstream's loops stop at NUM_TYPES, its names give ""
+	// and its colours grey past it, and three marked hooks (ui/src/nds/pages.cpp's typeChip, ui/src/nds/logic.cpp's
+	// typeName) name and colour these instead. rules.h's chart has cells for them
+	constexpr nds::Type TYPELESS = (nds::Type)32, CRYSTAL_TYPE = (nds::Type)33, BONEMERANG = (nds::Type)34, TRI = (nds::Type)35,
+		FLOATING = (nds::Type)36, MAGMA = (nds::Type)37;
+	// a fork's type's name, nullptr for any other type. Bonemerang's is Ground, as PureRGB's TypeNames names it
+	inline const char* extraTypeName(nds::Type t)
+	{
+		static const char* const NAMES[] = { "Typeless", "Crystal", "Ground", "Tri", "Floating", "Magma" };
+		return t >= TYPELESS && t <= MAGMA ? NAMES[t - TYPELESS] : nullptr;
+	}
+	// its chip's colour (Bonemerang's Ground's, upstream's TYPE_COLORS[GROUND]); 0 for any other type
+	inline uint32_t extraTypeColor(nds::Type t)
+	{
+		static const uint32_t COLORS[] = { 0x68a090, 0x88d0e0, 0xe0c068, 0xc8b0e8, 0x98a8f0, 0xd05038 };
+		return t >= TYPELESS && t <= MAGMA ? COLORS[t - TYPELESS] : 0;
+	}
+
 	inline bool oldGen(nds::Gen g) { return g == GEN_I || g == GEN_II; }
 	inline bool gbGame(nds::GameId id) { return (int)id >= (int)RED && (int)id <= (int)CRYSTAL_CLEAR; }
 	// the retail game whose engine a game is, for a per-game branch (Crystal's caught data, Yellow's Pikachu): a hack's

@@ -223,16 +223,13 @@ namespace banana::kiwami::gbpk
 		if (!ids("balls", [&](uint8_t i) { out.balls.insert(i); }) || !ids("key_items", [&](uint8_t i) { out.keyItems.insert(i); }) ||
 			!ids("special", [&](uint8_t i) { out.special.set(i); }) || !ids("split_stats", [&](uint8_t i) { out.splitStats.set(i); }))
 			return no("has a list of ids it can't read");
-		static const char* const TYPE_NAMES[] = { "normal", "fighting", "flying", "poison", "ground", "rock", "bug", "ghost",
-			"steel", "fire", "water", "grass", "electric", "psychic", "ice", "dragon", "dark" };	// (nds::Type's order)
 		for (const auto& [k, name] : v["types"].obj)
 		{
 			char* end = nullptr;
 			const long t = strtol(k.c_str(), &end, 10);
 			if (k.empty() || *end || t < 0 || t > 255) return no("has a type id it can't read (" + k + ")");
-			const auto* f = std::find(std::begin(TYPE_NAMES), std::end(TYPE_NAMES), name.str());
-			if (f == std::end(TYPE_NAMES)) return no("has a type it doesn't know (" + name.str() + ")");
-			out.types[(size_t)t] = (nds::Type)(f - std::begin(TYPE_NAMES));
+			out.types[(size_t)t] = typeByName(name.str());
+			if (out.types[(size_t)t] == nds::NO_TYPE) return no("has a type it doesn't know (" + name.str() + ")");
 		}
 		out.romGuide = v["guide"].str() == "rom";
 		if (!v["dex_size"].isNull())
@@ -242,6 +239,19 @@ namespace banana::kiwami::gbpk
 			out.game.dexSize = (int)n.n;
 		}
 		return true;
+	}
+
+	nds::Type typeByName(const std::string& name)
+	{
+		static const char* const NAMES[] = { "normal", "fighting", "flying", "poison", "ground", "rock", "bug", "ghost",
+			"steel", "fire", "water", "grass", "electric", "psychic", "ice", "dragon", "dark" };	// (nds::Type's order)
+		// (and the fork's own, from TYPELESS on)
+		static const char* const FORK_NAMES[] = { "typeless", "crystal", "bonemerang", "tri", "floating", "magma" };
+		if (const auto* f = std::find(std::begin(NAMES), std::end(NAMES), name); f != std::end(NAMES))
+			return (nds::Type)(f - std::begin(NAMES));
+		if (const auto* f = std::find(std::begin(FORK_NAMES), std::end(FORK_NAMES), name); f != std::end(FORK_NAMES))
+			return (nds::Type)(TYPELESS + (f - std::begin(FORK_NAMES)));
+		return nds::NO_TYPE;
 	}
 
 	std::vector<GameData> loadGames(const std::vector<std::string>& keys, std::string* why)

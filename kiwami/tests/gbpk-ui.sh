@@ -17,6 +17,8 @@
 # - Red's pages on its captures (the stand-in's species by their internal index): Gen I's rules on, the party and a
 #   wild battle, Gen I's blocks (one Special row, no Item or Friendship row, no Hidden Power, base stats with
 #   Special), its guide file loaded (13 milestones), and its rules off before Crystal's companion opens after it;
+# - the fork's own types (PureRGB's) named and coloured: a stand-in species made Crystal and Floating (gbtypes), its
+#   two chips on the Party page in their colours;
 # - Yellow Legacy's pages on its captures (Yellow's title, its own addresses): Gen I's rules, the party of six and a
 #   wild battle, its guide file loaded (13 milestones).
 # Needs ui/banana-ui (make ui) and ImageMagick (the shots not blank). Run by kiwami/tests/ci.sh when banana-ui is
@@ -192,6 +194,20 @@ gtouch 100 298; gshot species; gbpanel 1 $CAP/crystal; gbhost"
     shown party; shown battle; shown species
     differ party battle
     grep -E 'gb(host|feed|panel)|gb companion: (rules|pages:)' "$log" | sort | uniq -c | sed "s/^ */gbpk-ui: $size: red: /; s|$PWD/||g"
+
+    # the fork's own types (PureRGB's, ui/src/kiwami/gbpk/gbpk.h) on the Party page: the stand-in's Pikachu (84, Red's
+    # internal index) made Crystal and Floating, their chips in their colours (0x88d0e0, 0x98a8f0: a chip's worth of
+    # each, counted, wherever the page puts them), and neither colour in Red's own shot above (Pikachu Normal)
+    run $size types "home 0; gbtypes 84 crystal floating; gbpanel 1 $CAP/red; gbhost; gbfeed $CAP/red; sleep 300; gshot party"
+    logged "gbtypes 84: crystal floating$"
+    logged "gbfeed .*/red: asked [1-9][0-9]*, party 6, battle 0, view pages:Party$"
+    shown party
+    pixels() { convert "$1" -fill black +opaque "#$2" -fill white -opaque "#$2" -format '%[fx:round(mean*w*h)]' info: 2>/dev/null; }
+    for c in 88d0e0 98a8f0; do
+        n=$(pixels "$OUT/$size-types-party-bot.png" $c) r=$(pixels "$OUT/$size-red-party-bot.png" $c)
+        [ "${n:-0}" -gt 200 ] && [ "${r:-1}" = 0 ] || { echo "FAIL $size types: #$c: ${n:-none} pixels with the fork's types, ${r:-none} without"; fail=1; }
+        echo "gbpk-ui: $size: types: #$c: $n pixels on the Party page, $r without the fork's types"
+    done
 
     # Yellow Legacy's pages: Yellow's title, its capture read at its own addresses (the party of six), a wild battle on
     # the Battle page, its end the Party page; Gen I's rules; its guide file loaded

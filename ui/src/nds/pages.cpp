@@ -2,6 +2,7 @@
 #include "logic.h"
 #include "../settings_draw.h"
 #include "../lang.h"
+#include "../kiwami/gbpk/gbpk.h"	// kiwami: the fork's types (PureRGB's), named and coloured
 #include <algorithm>
 #include <cmath>
 #include <condition_variable>
@@ -661,6 +662,7 @@ namespace banana::nds
 		}
 		float typeChip(Type t, float x, float y, bool measureOnly = false, float h = 18)
 		{
+			if (const char* k = kiwami::gbpk::extraTypeName(t)) return chip(lang::tr("Pokémon types", k), kiwami::gbpk::extraTypeColor(t), x, y, true, measureOnly, h);	// kiwami:
 			if (t >= NUM_TYPES) return 0;
 			return chip(trType(t), TYPE_COLORS[t], x, y, true, measureOnly, h);
 		}

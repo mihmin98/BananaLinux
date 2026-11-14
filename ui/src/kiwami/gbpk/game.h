@@ -3,7 +3,7 @@
 // at a game's launch, whether the companion opens (Settings > Other systems > Second screen's row of the system the
 // game was started from, a game panel, no other companion for the game, and a header title of the games) and the
 // pipe for RetroArch's replies; while it plays, the reader's requests and the replies; the host for the panel's pages
-// (host.h), handed to Settings' panel (panel.h); and the headless test verbs gbpanel, gbfeed, gbhost and gbdrag.
+// (host.h), handed to Settings' panel (panel.h); and the headless test verbs gbpanel, gbfeed, gbhost, gbdrag and gbtypes.
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
@@ -49,6 +49,8 @@ namespace banana::kiwami::gbpk
 		//   gbhost: waits (up to 10 s) for the ROM's data, as upstream's gbahost does for the GBA's
 		//   gbdrag <x1> <y1> <x2> <y2>: a finger down at one point, moved to the other and lifted, on the game panel, in
 		//     the panel's own px (upstream's gtouch only taps, in px of a 640x480 panel)
+		//   gbtypes <species> <type> [<type>]: the stand-ins made after it give that species these types (the data
+		//     files' names: "crystal floating"), as no ROM gives them; the others are Normal
 		static bool script(const std::string& op, std::istream& args, Settings& s, const std::string& out, double now);
 
 	private:

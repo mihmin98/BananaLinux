@@ -225,10 +225,12 @@ the Battle page and its end the Party page. Gen II's badges go to the rules with
 Guide page's milestones and the Here page's hidden items are *The guides*.
 
 `kiwami/tests/gbpk-ui.sh` (in `ci.sh` when banana-ui is built) runs banana-ui headless at both panel sizes: the rows,
-and the panel through three test verbs of the fork's: `gbpanel <screen> <capture folder> [rom]` (the companion for the
+and the panel through the fork's test verbs: `gbpanel <screen> <capture folder> [rom]` (the companion for the
 capture's game, with a stand-in for the ROM's tables, every species, move and item named by its number, or the ROM
-given read and checked), `gbfeed <capture folder>` (the reader's requests answered from a capture) and `gbhost` (the
-wait for the ROM's data, as upstream's `gbahost`, which needs a GBA companion). It checks Crystal's capture read into
+given read and checked), `gbfeed <capture folder>` (the reader's requests answered from a capture), `gbhost` (the
+wait for the ROM's data, as upstream's `gbahost`, which needs a GBA companion) and `gbtypes <species> <type> [<type>]`
+(the stand-ins made after it give that species those types, the data files' names: the fork's own types' chips). It
+checks Crystal's capture read into
 the pages, a wild battle's start and end, the corner and Back to the menu and back and F to the menu (upstream's
 `gbutton`), the rules put back when the host goes, a ROM with Crystal's title and another SHA-1 shown "Not supported"
 and never asked, and upstream's `gamepanel` after it opening no Game Boy panel, where Back does nothing.
@@ -343,6 +345,18 @@ for Generations III to V. For Gen I and II, four hook lines in `ui/src/nds/logic
   weight. Master Ball: certain.
 - **Hidden Power** (Gen II) from the DVs, and a stat from its base, DV, stat experience and level (`statFrom`), for the
   guide built from the ROM.
+- **The fork's own types**: PureRGB's six, which no game upstream reads has (its `constants/type_constants.asm`):
+  Typeless (Struggle's), Crystal (Hardened Onix's), Bonemerang (the move's: Ground that hits Flying), Tri (Tri
+  Attack's), Floating (the Floating forms') and Magma (Volcanic Magmar's). They are values of upstream's `nds::Type`
+  from 32 (`gbpk.h`: `TYPELESS` .. `MAGMA`), past its 18, as `GEN_I` is a value of its `nds::Gen`, and the data files
+  name them `typeless` .. `magma`. The chart has cells for them (its index: upstream's 18, then these six), so their
+  matchups are the ROM's, through the same chart hook, which comes before upstream's own guard on types past
+  `NUM_TYPES`. Upstream's pages and advice stop at `NUM_TYPES` everywhere else (no name, grey, not counted in the
+  coverage), so three more hook lines name and colour them: `ui/src/nds/pages.cpp` includes `gbpk.h`, and `typeChip`'s
+  first line draws their chips (Typeless 0x68a090, Crystal 0x88d0e0, Bonemerang as Ground, the name PureRGB's
+  `TypeNames` gives it, in Ground's colour, Tri 0xc8b0e8, Floating 0x98a8f0, Magma 0xd05038); `ui/src/nds/logic.cpp`'s
+  `typeName` names them in the advice ("Tri moves can't touch ..."), where upstream's says "?". The Battle page's
+  matchup rows list the attacking types upstream counts, so a Pokémon's weakness to one of these isn't among them.
 
 `kiwami/tests/gbpk-units.cpp` checks each rule through upstream's own entry points (`effectiveness`, `damage`,
 `effectiveSpeed`, `catchChance`), with the expected values worked by hand from pret's code in its comments.
@@ -747,9 +761,15 @@ All but the ROM tests run in `kiwami/tests/ci.sh`, without PokeDaisy, pret or th
   ROMs, plain, in a `.zip` and a solid `.7z`); the data files and `roms.sha1`; the character sets; the memory reader
   replayed over PokeDaisy's 37 captures (*The test captures*); the battle rules through upstream's entry points; the
   ROM readers, the picture decompressions and the maps on made-up ROMs and streams; the guides through upstream's
-  loader and `nextMilestone`, and Gold's and Silver's built from a made-up trainer table.
+  loader and `nextMilestone`, and Gold's and Silver's built from a made-up trainer table; the fork's own types (their
+  names, colours and chart cells, and upstream's advice naming them). Once by hand at a step that adds a type or
+  touches what indexes by one, it is built with `-fsanitize=address,undefined` (the `g++` line in `ci.sh` with those
+  flags, `-g -O1`, and without `-Werror`, as GCC's `-Wformat-truncation` at `-O1` warns on two `snprintf`s of
+  `rom1.cpp` and `rom2.cpp` that can't overflow) and runs clean.
 - **`gbpk-ui.sh`**: banana-ui headless at 640x480 and 1024x768, the Settings rows and the game panel (*On the game
-  panel*), the Gen-aware blocks by their trace lines, Gen I's and Gen II's captures.
+  panel*), the Gen-aware blocks by their trace lines, Gen I's and Gen II's captures, and the fork's types' chips on
+  the Party page: the headless verb `gbtypes <species> <type> [<type>]` gives a stand-in species types of its own
+  before `gbpanel`, and the test counts each chip's colour in the shot.
 - **The data's checks**: each script's `--check` against `SOURCES`, the data files' addresses all WRAM or HRAM, the
   reference data's licence files, JSON and absence from the overlay, the scan for the games' names, and the credits
   line `post-build.sh` adds.

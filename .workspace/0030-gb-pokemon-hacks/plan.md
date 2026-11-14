@@ -733,7 +733,8 @@ Common to the steps (as #28's):
 ### 8. Types of the fork's own on the pages, for PureRGB's six
 
 - **Files**:
-  - `ui/src/kiwami/gbpk/gbpk.h`, `rules.h`, `games.cpp` (changed)
+  - `ui/src/kiwami/gbpk/gbpk.h`, `rules.h`, `games.cpp` (changed); `games.h`, `game.h`, `game.cpp` (changed: the
+    `gbtypes` test verb, *Deviations*, 2026-11-15)
   - `ui/src/nds/pages.cpp` (hook, 2 lines)
   - `ui/src/nds/logic.cpp` (hook, 1 line)
   - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-ui.sh` (changed)
@@ -1181,6 +1182,19 @@ Where the implementation turned out different from this plan, why, and what chan
   any game's guide file there is and checks every place and boss's team against the ROM, and already compares Yellow
   Legacy's hidden items with `G1L_AREAS_RAW` (step 6). `GEN1_GUIDES` gets a fourth field, what the game's tables were
   generated from, for the guide file's `sources` (the retail games' files come out unchanged).
+- **2026-11-15, step 8**: the render check needs a stand-in species of the fork's types, and the stand-in (every
+  species Normal) is made in `ui/src/kiwami/gbpk/game.cpp`, not one of the step's files. The user chose a headless
+  verb: `gbtypes <species> <type> [<type>]` (`game.cpp`, documented in `game.h`), written before `gbpanel`, gives
+  that species those types in the stand-ins made after it. The type names go through a new `typeByName` (`games.h`),
+  which `loadData` uses too. `gbpk-ui.sh` counts each chip's colour in the Party page's shot (more than 200 pixels with
+  the types, none in Red's own shot) instead of reading a pixel at the chip's place, which differs between the sizes
+  and moves with upstream's layout (the user's choice). The one-off `-fsanitize=address,undefined` build of
+  `gbpk-units` is made without `-Werror`: at `-O1` GCC's `-Wformat-truncation` warns on `rom1.cpp:223`'s and
+  `rom2.cpp:206`'s `snprintf` of a TM's name (from #28, bounded by the TM count), which the normal `-O0` build doesn't.
+  The run had no PureRGB capture to replay (step 9 brings them): it covers the fork's types through the unit test's
+  chart and advice, and every existing capture. `rules.h` ties its chart's index to `gbpk.h`'s types
+  (`FORK_TYPES = TYPELESS`, a `static_assert` on the 24 cells) rather than changing it. `docs/FORK.md`'s sentence on
+  `model.cpp`'s chart hook said Gen I's chart; it now says the game's own, as step 3 made it.
 
 ## Progress
 
@@ -1195,7 +1209,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 5. Crystal Legacy's guide | done | GB Pokémon hacks: Crystal Legacy's guide, from PokeDaisy's |
 | 6. Yellow Legacy | done | GB Pokémon hacks: Yellow Legacy, from its build's symbols, its memory and its ROM |
 | 7. Yellow Legacy's guide | done | GB Pokémon hacks: Yellow Legacy's guide, from PokeDaisy's |
-| 8. Types of the fork's own on the pages | todo | |
+| 8. Types of the fork's own on the pages | done | GB Pokémon hacks: types of the fork's own on the pages, for PureRGB's six |
 | 9. PureRed, PureBlue and PureGreen | todo | |
 | 10. PureRGB's switches, signatures and Hyper Ball | todo | |
 | 11. PureRGB's guides | todo | |

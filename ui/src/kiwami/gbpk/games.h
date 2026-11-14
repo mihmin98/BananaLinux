@@ -84,6 +84,9 @@ namespace banana::kiwami::gbpk
 	// with, "_" read as "-", up to its end or a "_" (crystal_clear_v2_5_11_battle: crystal-clear; crystal_battle:
 	// crystal); "" when none
 	std::string fixtureKey(const std::string& name);
+	// a type by the data files' name for it ("normal" .. "dark" in nds::Type's order, and the fork's own, gbpk.h's:
+	// "typeless" .. "magma"); NO_TYPE for a name it doesn't know
+	nds::Type typeByName(const std::string& name);
 
 	enum class Match { NONE, KNOWN, UNSUPPORTED };
 	// the games whose header_title the header has (keys: their files' names, the retail game first, as the games are

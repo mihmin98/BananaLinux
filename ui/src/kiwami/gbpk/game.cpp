@@ -6,10 +6,12 @@
 #include "panel.h"
 #include "../../settings.h"
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <fcntl.h>
 #include <fstream>
 #include <iterator>
+#include <map>
 #include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -133,6 +135,8 @@ namespace banana::kiwami::gbpk
 		{
 			std::shared_ptr<const nds::Sprite> sprite(uint16_t, bool, uint8_t) const override { return nullptr; }
 		};
+		// the stand-ins' species given types of their own (gbtypes), by species; the others are Normal
+		std::map<uint16_t, std::array<nds::Type, 2>> standInTypes;
 		std::shared_ptr<const nds::RomData> makeStandIn(const GameData& d)
 		{
 			auto r = std::make_shared<StandIn>();
@@ -145,6 +149,7 @@ namespace banana::kiwami::gbpk
 				std::fill(std::begin(sp.base), std::end(sp.base), 50);
 				sp.catchRate = 45;
 				sp.genderRatio = d.gen == 1 ? 255 : 127;	// (no genders in Gen I: 255, none, draws no sign)
+				if (auto t = standInTypes.find((uint16_t)s); t != standInTypes.end()) { sp.types[0] = t->second[0]; sp.types[1] = t->second[1]; }
 			}
 			r->moves.resize(252);
 			for (size_t m = 1; m < r->moves.size(); m++) { r->moves[m].name = "Move " + std::to_string(m); r->moves[m].power = 40; r->moves[m].pp = 35; r->moves[m].accuracy = 100; }
@@ -242,6 +247,21 @@ namespace banana::kiwami::gbpk
 			s.gbaAttach(nullptr);
 			fprintf(stderr, "banana-ui: gbpanel %s%s%s: companion %s\n", dir.c_str(), rom.empty() ? "" : " ", rom.c_str(),
 				ok ? g.games[0].game.title.c_str() : "none");
+			return true;
+		}
+		if (op == "gbtypes")
+		{
+			int species = 0;
+			std::string a, b;
+			cs >> species >> a >> b;
+			const nds::Type t1 = typeByName(a), t2 = b.empty() ? t1 : typeByName(b);
+			if (species < 1 || species > 1023 || t1 == nds::NO_TYPE || t2 == nds::NO_TYPE)
+			{
+				fprintf(stderr, "banana-ui: gbtypes %d %s %s: not a species and its types\n", species, a.c_str(), b.c_str());
+				return true;
+			}
+			standInTypes[(uint16_t)species] = { t1, t2 };
+			fprintf(stderr, "banana-ui: gbtypes %d: %s %s\n", species, a.c_str(), b.empty() ? a.c_str() : b.c_str());
 			return true;
 		}
 		if (op == "gbfeed")

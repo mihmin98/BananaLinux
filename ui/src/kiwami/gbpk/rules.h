@@ -30,8 +30,9 @@ namespace banana::kiwami::gbpk
 	// ---- the type chart ---------------------------------------------------------------------------------------------
 	// The game's own chart, read from its ROM (rom1.cpp and rom2.cpp: TypeEffects, TypeMatchups) into a cell for each
 	// pair of its types, in quarters, -1 where the table has no entry (neutral). The cells are over a compact index of
-	// the types: nds::Type's 0-17, and the fork's own from 32 (gbpk.h) as 18 on.
-	constexpr int CHART_TYPES = 24, FORK_TYPES = 32;
+	// the types: nds::Type's 0-17, and the fork's own from TYPELESS (gbpk.h: PureRGB's six) as 18 on.
+	constexpr int FORK_TYPES = TYPELESS, CHART_TYPES = nds::NUM_TYPES + (MAGMA - TYPELESS + 1);
+	static_assert(CHART_TYPES == 24 && FORK_TYPES > nds::NUM_TYPES, "the chart's cells are 24 types: upstream's 18, the fork's 6");
 	inline int chartIndex(nds::Type t)
 	{
 		if (t < nds::NUM_TYPES) return t;

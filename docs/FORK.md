@@ -273,7 +273,7 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    (in `ci.sh`) fails when the two no longer make the same binary. A source upstream adds to `SRC` is compiled as an
    object with no change; one added after `kiwami.mk`'s include line stays in the link's own call. And the Game Boy
    Pokémon companion's rules in upstream's DS companion (`kiwami/GB-POKEMON.md`): `model.cpp`'s first line of `one()`
-   gives Gen I's type chart cells while a Red, Blue or Yellow is read, and `logic.cpp`'s first lines of `damage()`,
+   gives the type chart's cells of the Game Boy game being read (its ROM's), and `logic.cpp`'s first lines of `damage()`,
    `effectiveSpeed()` and `catchChance()` hand Gen I and II (`kiwami::gbpk::GEN_I`/`GEN_II`, values of upstream's
    `nds::Gen`) to the fork's own formulas in `ui/src/kiwami/gbpk/rules.h` (`effectiveSpeed`'s `Gen` isn't named, so its
    hook asks `oldRules()`, which the companion's host turns on and off with the game); `model.h`'s `statExp` line
@@ -316,6 +316,14 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    from `gb-pokemon/`. A change upstream makes to `GameRow`'s fields breaks the rows at compile time; a schema upstream
    adds to the guide files (a field, a `done_when` rule) is the fork's to use or not, and `kiwami/tests/gbpk-units.cpp`
    loads Crystal's file through upstream's loader and follows its milestones through upstream's `nextMilestone`.
+   And the same companion's own types (PureRGB's six, values of upstream's `nds::Type` from 32, past `NUM_TYPES`:
+   `ui/src/kiwami/gbpk/gbpk.h`): `pages.cpp` includes `gbpk.h` after `../lang.h`, and `typeChip`'s first line draws
+   their chips (`extraTypeName`, `extraTypeColor`) before upstream's `if (t >= NUM_TYPES) return 0;`; `logic.cpp`'s
+   `typeName`, a one-line function, is changed rather than added to, the fork's names first and upstream's line as it
+   was after them, so an upstream change to it is a conflict on that line alone, taken with the fork's part put back.
+   Every other place upstream names, colours or counts types stops at `NUM_TYPES` (an empty name, grey, not counted),
+   so a new one does too; one that indexes an array by a type without that guard reads past it for these, which
+   `kiwami/tests/gbpk-units.cpp` built with `-fsanitize=address,undefined` shows (its advice and chart over them).
    In upstream's companion code (`ui/src/nds/`, `ui/src/gba/`, `ui/src/pokemon.*`) as a whole, what to look for: a
    member added to `nds::Live`, `Mon`, `RomData`, `PageData` or `gba::Panel`, which the fork's reader, ROM reader or
    `PanelSwitch` may have to fill or forward (a `Live` field left empty shows as nothing on the pages, or as wrong

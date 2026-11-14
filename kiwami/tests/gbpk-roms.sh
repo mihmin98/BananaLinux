@@ -2,7 +2,8 @@
 # The Game Boy Pokémon companion's ROM tests on the player's own ROMs (kiwami/GB-POKEMON.md, "The ROMs for the tests").
 # None is in the repository: kiwami/tests/gbpk/roms.sha1 lists what the tests expect, by SHA-1, and this checks the
 # folders against it. GB_ROMS (default ~/gb-companion/roms) holds the Game Boy and Game Boy Color games, unpacked (.gb,
-# .gbc); without that folder everything is skipped and the check succeeds (as in CI). Each listed file is a line: ok,
+# .gbc), in the folder and in its subfolders one level down (a file there named by its path from the folder:
+# romhacks/<file>); without that folder everything is skipped and the check succeeds (as in CI). Each listed file is a line: ok,
 # ok (named <its name>) when it's there under another name, missing, or wrong file: sha1 <...> when a file has its name
 # and other bytes (a European release, a hack, a bad dump). A required one missing or wrong fails the check. Files the
 # list hasn't are named and left alone. A ROM hack read as the retail game it patches (roms.patches, beside the list)
@@ -28,14 +29,15 @@ fi
 T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
 
-# hashes <folder> <extension>...: "<sha1> <file name>" for each file there with one of the extensions (any case)
+# hashes <folder> <extension>...: "<sha1> <file name>" for each file there or in a subfolder of it with one of the
+# extensions (any case), named by its path from the folder
 hashes() {
     d=$1; shift
-    for f in "$d"/*; do
+    for f in "$d"/* "$d"/*/*; do
         [ -f "$f" ] || continue
         e=$(printf '%s' "${f##*.}" | tr 'A-Z' 'a-z')
         for x in "$@"; do
-            if [ "$e" = "$x" ]; then h=$(sha1sum < "$f"); printf '%s %s\n' "${h%% *}" "${f##*/}"; fi
+            if [ "$e" = "$x" ]; then h=$(sha1sum < "$f"); printf '%s %s\n' "${h%% *}" "${f#"$d"/}"; fi
         done
     done
 }

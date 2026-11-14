@@ -94,13 +94,20 @@ namespace banana::kiwami::gbpk
 			if (o == RomView::NONE && missing.empty()) missing = k;
 			return o;
 		};
+		// a Pokédex entry's pointer: Crystal's, Gold's and Silver's in a table of pointers, or Crystal Legacy's with its
+		// bank (dexEntryFar)
+		const bool dexFar = d.rom.count("dexEntryFar") > 0;
+		// the trainers' groups: a pointer a class into one bank, or Crystal Legacy's bank and pointer (trainerGroupsFar)
+		const bool groupsFar = d.rom.count("trainerGroupsFar") > 0;
 		const size_t baseData = table("baseData"), names = table("pokemonNames"), moves = table("moves"),
 			moveNames = table("moveNames"), moveDesc = table("moveDescriptions"), prio = table("moveEffectPriorities"),
 			itemNames = table("itemNames"), itemAttr = table("itemAttributes"), itemDesc = table("itemDescriptions"),
-			evos = table("evosAttacksPointers"), tmHm = table("tmHmMoves"), dexPtrs = table("dexEntryPointers"),
+			evos = table("evosAttacksPointers"), tmHm = table("tmHmMoves"),
+			dexPtrs = table(dexFar ? "dexEntryFar" : "dexEntryPointers"),
 			grassProbs = table("grassProbs"), waterProbs = table("waterProbs"), fish = table("fishGroups"),
 			timeFish = table("timeFishGroups"), treeMaps = table("treeMonMaps"), rockMaps = table("rockMonMaps"),
-			treeMons = table("treeMons"), trainers = table("trainerGroups"), classNames = table("trainerClassNames"),
+			treeMons = table("treeMons"), trainers = table(groupsFar ? "trainerGroupsFar" : "trainerGroups"),
+			classNames = table("trainerClassNames"),
 			landmarks = table("landmarks"), mapGroups = table("mapGroups"), mapsEnd = table("mapHeadersEnd"),
 			picPointers = table("picPointers"), unownPics = table("unownPicPointers"), monPalettes = table("monPalettes"),
 			typeChart = table("typeChart");
@@ -113,7 +120,7 @@ namespace banana::kiwami::gbpk
 		const size_t dexBanks = d.rom.count("dexEntryBanks") ? r.at(d.rom.at("dexEntryBanks")) : RomView::NONE;
 		const int dexFirst = d.rom.count("dexEntryFirst") ? d.rom.at("dexEntryFirst").bank : -1;
 		if (!missing.empty()) return no("no rom." + missing + " in the data file, or it is past the ROM's end");
-		if (dexBanks == RomView::NONE && dexFirst < 0) return no("no rom.dexEntryBanks or rom.dexEntryFirst in the data file");
+		if (!dexFar && dexBanks == RomView::NONE && dexFirst < 0) return no("no rom.dexEntryBanks or rom.dexEntryFirst in the data file");
 		const int nSp = d.size("numPokemon"), nMoves = d.size("numMoves"), nClasses = d.size("numTrainerClasses"),
 			nLandmarks = d.size("numLandmarks"), firstTm = d.size("firstTm"), vitalThrow = d.size("vitalThrow");
 		if (nSp < 1 || nSp > 254 || nMoves < 1 || nMoves > 254 || nClasses < 1 || nClasses > 255 || nLandmarks < 1 ||
@@ -123,6 +130,7 @@ namespace banana::kiwami::gbpk
 		// the species' base data, checked (BASE_DEX_NO in each record; Bulbasaur's base stats first)
 		static const uint8_t BULBASAUR[6] = { 45, 49, 49, 45, 65, 65 };
 		if (!r.has(baseData, (size_t)BASE_DATA * nSp) || !r.has(names, (size_t)MON_NAME * nSp)) return no("BaseData or PokemonNames runs past the ROM");
+		if (!r.has(dexPtrs, (size_t)(dexFar ? 3 : 2) * nSp)) return no("the Pokédex entries' pointers run past the ROM");
 		for (int s = 1; s <= nSp; s++)
 			if (r.u8(baseData + BASE_DATA * (s - 1)) != s) return no("BaseData's record " + std::to_string(s) + " isn't species " + std::to_string(s) + "'s");
 		if (memcmp(r.b.data() + baseData + 1, BULBASAUR, 6) != 0) return no("BaseData's first record isn't Bulbasaur's");
@@ -224,9 +232,12 @@ namespace banana::kiwami::gbpk
 			for (int k = 0; k < NUM_TMS + NUM_HMS; k++)
 				if (r.u8(b + 24 + k / 8) >> (k % 8) & 1) sp.tms.push_back((uint16_t)(k < NUM_TMS ? k + 1 : 93 + k - NUM_TMS));
 			// the Pokédex entry (engine/pokedex/pokedex_2.asm GetDexEntryPointer: a pointer each, in the bank of the
-			// species' 64): category, height (feet * 100 + inches), weight (pounds * 10), two pages
+			// species' 64; Crystal Legacy's a bank and a pointer each, dba): category, height (feet * 100 + inches),
+			// weight (pounds * 10), two pages
 			const int q = ((s - 1) >> 6) & 3;
-			const size_t e = r.at(dexBanks != RomView::NONE ? r.u8(dexBanks + q) : dexFirst + q, r.le16(dexPtrs + 2 * (s - 1)));
+			const size_t far = dexPtrs + 3 * (size_t)(s - 1);
+			const size_t e = dexFar ? r.at(r.u8(far), r.le16(far + 1)) :
+				r.at(dexBanks != RomView::NONE ? r.u8(dexBanks + q) : dexFirst + q, r.le16(dexPtrs + 2 * (s - 1)));
 			const size_t hw = r.skip(e, 16);
 			if (hw != RomView::NONE && r.has(hw, 4))
 			{
@@ -416,14 +427,18 @@ namespace banana::kiwami::gbpk
 			}
 		}
 		// Headbutt and Rock Smash (data/wild/treemon_maps.asm: map and set to -1; data/wild/treemons.asm: a set's
-		// percent, species and level to -1, the common trees' then the rare trees'; Rock Smash takes the first list)
-		auto trees = [&](size_t maps, EncounterKind k, int lists) {
+		// percent, species and level to -1, the common trees' then the rare trees'; Rock Smash takes the first list).
+		// Set 0 is none, but in Crystal Legacy's RockSmashMons, a table of Rock Smash's sets of its own from 0
+		// (engine/events/treemons.asm GetRockSmashMons)
+		const size_t rockSets = d.rom.count("rockSmashMons") ? r.at(d.rom.at("rockSmashMons")) : RomView::NONE;
+		auto trees = [&](size_t maps, EncounterKind k, int lists, size_t sets) {
+			const bool fromZero = sets != treeMons;
 			for (size_t o = maps; r.u8(o) != END && o < maps + 3 * 128; o += 3)
 			{
 				nds::Location& loc = zone(o);
 				const uint8_t set = r.u8(o + 2);
-				if (!set || has(loc, k)) continue;
-				size_t q = r.near(treeMons + 2 * (size_t)set);
+				if ((!set && !fromZero) || has(loc, k)) continue;
+				size_t q = r.near(sets + 2 * (size_t)set);
 				if (q == RomView::NONE) return false;
 				for (int list = 0; list < lists; list++, q++)
 					for (int n = 0; n < 16 && r.u8(q) != END; n++, q += 3)
@@ -431,20 +446,29 @@ namespace banana::kiwami::gbpk
 			}
 			return true;
 		};
-		if (!trees(treeMaps, EncounterKind::HEADBUTT, 2) || !trees(rockMaps, EncounterKind::ROCK_SMASH, 1)) return no("TreeMons' pointer leaves its bank");
+		if (!trees(treeMaps, EncounterKind::HEADBUTT, 2, treeMons) ||
+			!trees(rockMaps, EncounterKind::ROCK_SMASH, 1, rockSets != RomView::NONE ? rockSets : treeMons))
+			return no("TreeMons' pointer leaves its bank");
 		// the Pokégear's maps, and each place's spot on them (maps.cpp)
 		std::string w;
 		if (!readPokegearMaps(r, d, landmarkOf, out, &w)) return no(w);
 
-		// trainers (data/trainers/parties.asm: a group a class, TrainerGroups' pointer each; a group's trainers one after
-		// another to the next group: name, party type, then level, species, item when the type has items, four moves
-		// when it has moves, to -1), by class << 8 | number, the class's name from TrainerClassNames
+		// trainers (data/trainers/parties.asm: a group a class, TrainerGroups' pointer each, or with its bank; a group's
+		// trainers one after another to the next group: name, party type, then level, species, item when the type has
+		// items, four moves when it has moves, to -1), by class << 8 | number, the class's name from TrainerClassNames.
+		// Crystal Legacy's types have more bits, each a field read before the item (engine/battle/read_trainer_party.asm
+		// ReadTrainerPartyPieces): a nickname (a byte, then a string), two DVs, five words of stat experience, happiness;
+		// they are passed over (a game without them, the data file's sizes, has none)
 		std::vector<std::string> classes;
 		size_t cn = classNames;
 		for (int c = 0; c < nClasses && cn != RomView::NONE; c++) { classes.push_back(nameCase(r.text(cn, 16))); cn = r.skip(cn, 16); }
 		std::vector<size_t> starts;
-		if (!r.has(trainers, 2 * (size_t)nClasses)) return no("TrainerGroups runs past the ROM");
-		for (int c = 0; c < nClasses; c++) starts.push_back(r.near(trainers + 2 * c));
+		const size_t entry = groupsFar ? 3 : 2;
+		if (!r.has(trainers, entry * (size_t)nClasses)) return no("TrainerGroups runs past the ROM");
+		for (int c = 0; c < nClasses; c++)
+			starts.push_back(groupsFar ? r.at(r.u8(trainers + 3 * c), r.le16(trainers + 3 * c + 1)) : r.near(trainers + 2 * c));
+		const int nickname = d.size("trainerNickname"), dvs = d.size("trainerDvs"), statExp = d.size("trainerStatExp"),
+			happiness = d.size("trainerHappiness"), types = TRAINERTYPE_MOVES | TRAINERTYPE_ITEM | nickname | dvs | statExp | happiness;
 		for (int c = 0; c < nClasses; c++)
 		{
 			size_t o = starts[c];
@@ -460,7 +484,7 @@ namespace banana::kiwami::gbpk
 				size_t q = r.skip(o, 16);
 				if (q == RomView::NONE || q >= end) break;
 				const uint8_t type = r.u8(q++);
-				if (type > (TRAINERTYPE_MOVES | TRAINERTYPE_ITEM)) break;
+				if (type & ~types) break;
 				bool ok = true;
 				while (q < end && r.u8(q) != END && ok)
 				{
@@ -468,6 +492,9 @@ namespace banana::kiwami::gbpk
 					m.level = r.u8(q);
 					m.species = r.u8(q + 1);
 					q += 2;
+					if (type & nickname) q = r.skip(q + 1, 16);
+					if (q == RomView::NONE) break;
+					q += (type & dvs ? 2 : 0) + (type & statExp ? 10 : 0) + (type & happiness ? 1 : 0);
 					if (type & TRAINERTYPE_ITEM) m.item = gen2Item(d, r.u8(q++));
 					if (type & TRAINERTYPE_MOVES) { for (int j = 0; j < 4; j++) m.moves[j] = r.u8(q + j); q += 4; }
 					else defaultMoves(out, m);

@@ -1,6 +1,6 @@
 // The Game Boy Pokémon companion's ROM reader (ui/src/kiwami/gbpk/rom.h) on the player's own ROMs, which are never in
-// the repository: each .gb/.gbc in the folder that is a release the data files list (kiwami/tests/gbpk/roms.sha1, by
-// SHA-1) is read, and what the ROM is known to hold is checked against what was read, the game's guide file with it.
+// the repository: each .gb/.gbc in the folder, or in a subfolder of it one level down (the ROM hacks' romhacks/), that
+// is a release the data files list (kiwami/tests/gbpk/roms.sha1, by SHA-1) is read, and what the ROM is known to hold is checked against what was read, the game's guide file with it.
 // With a PokeDaisy checkout, every species' gender ratio and growth rate are compared with PokeDaisy's tables
 // (Gen2SpeciesCrystal.kt), and Crystal's, Red's, Blue's and Yellow's hidden items with their guides' (GuideCrystalGen.kt,
 // GuideGen1Gen.kt). With
@@ -25,6 +25,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <dirent.h>
+#include <sys/stat.h>
 #include <fstream>
 #include <map>
 #include <regex>
@@ -211,6 +212,10 @@ static void checkGen2(const nds::RomData& r, const std::string& key, const std::
 	EQ(c.category, "Leaf");
 	CHECK(c.height == 9 && c.weight == 64);	// 2'11" and 14.0 lb: 0.9 m, and 6.4 kg as the game reckons it
 	CHECK(c.dexText.size() > 40 && c.dexText.find("  ") == std::string::npos);
+	// every species' Pokédex page (Crystal Legacy's through its pointers with their banks)
+	int pages = 0;
+	for (size_t s = 1; s < r.species.size(); s++) pages += !r.species[s].category.empty() && r.species[s].dexText.size() > 20;
+	CHECK(pages == 251);
 	CHECK(!c.tms.empty() && c.tms.back() >= 93);	// (Cut and Flash: HMs)
 	// the moves: Pound, Quick Attack's priority, Vital Throw's, a special one, TM01
 	CHECK(r.moves[1].power == 40 && r.moves[1].accuracy == 100 && r.moves[1].pp == 35 && r.moves[1].cat == nds::MoveCategory::PHYSICAL);
@@ -239,11 +244,14 @@ static void checkGen2(const nds::RomData& r, const std::string& key, const std::
 	const nds::Location* newBark = nullptr;
 	for (const auto& [z, l] : r.zones) if (l.name == "New Bark Town" && fishes(&l)) newBark = &l;
 	CHECK(newBark && !fishes(route29));
+	// (the first Falkner: Crystal Legacy's second is his rematch; its first has a Pidgey and a Noctowl, Lv8 and 10, its
+	// data/trainers/parties.asm FalknerGroup at V1.3.1)
 	const nds::Trainer* falkner = nullptr;
-	for (const auto& [id, t] : r.trainers) if (t.name == "Falkner") falkner = &t;
+	for (const auto& [id, t] : r.trainers) if (t.name == "Falkner" && !falkner) falkner = &t;
 	CHECK(falkner && falkner->cls == "Leader" && falkner->id == (1 << 8 | 1));
-	CHECK(falkner && falkner->team.size() == 2 && falkner->team[0].species == 16 && falkner->team[0].level == 7 &&
-		falkner->team[1].species == 17 && falkner->team[1].level == 9);
+	const bool legacy = key == "crystal-legacy";
+	CHECK(falkner && falkner->team.size() == 2 && falkner->team[0].species == 16 && falkner->team[0].level == (legacy ? 8 : 7) &&
+		falkner->team[1].species == (legacy ? 164 : 17) && falkner->team[1].level == (legacy ? 10 : 9));
 	// every place with wild Pokémon is named, and the kinds are there
 	std::set<nds::EncounterKind> kinds;
 	int places = 0, unnamed = 0;
@@ -255,8 +263,11 @@ static void checkGen2(const nds::RomData& r, const std::string& key, const std::
 			for (const auto& e : l.encounters) kinds.insert(e.kind);
 		}
 	CHECK(unnamed == 0 && places > 80);
-	CHECK(kinds.count(nds::EncounterKind::SURF) && kinds.count(nds::EncounterKind::OLD_ROD) && kinds.count(nds::EncounterKind::SUPER_ROD) &&
-		kinds.count(nds::EncounterKind::HEADBUTT) && kinds.count(nds::EncounterKind::ROCK_SMASH));
+	std::string lacking;
+	for (auto [k, n] : { std::pair{ nds::EncounterKind::SURF, "Surf" }, { nds::EncounterKind::OLD_ROD, "Old Rod" },
+			{ nds::EncounterKind::SUPER_ROD, "Super Rod" }, { nds::EncounterKind::HEADBUTT, "Headbutt" }, { nds::EncounterKind::ROCK_SMASH, "Rock Smash" } })
+		if (!kinds.count(k)) lacking += std::string(lacking.empty() ? "" : ", ") + n;
+	EQ(lacking, "");
 	CHECK(r.trainers.size() > 400);
 	fprintf(stderr, "gbpk-roms: %s: %zu places, %d with wild Pokémon, %zu trainers, %zu place names\n", current.c_str(),
 		r.zones.size(), places, r.trainers.size(), r.locationNames.size());
@@ -383,8 +394,16 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 // chart is its own
 static void checkChart(const nds::RomData& r, const GameData& d)
 {
-	if (baseGame(d.game.id) != d.game.id) return;
 	const TypeChart& c = static_cast<const GbRomData&>(r).chart;
+	// (a ROM hack's own chart: read, which checks Water on Fire, and its entries counted)
+	if (baseGame(d.game.id) != d.game.id)
+	{
+		int listed = 0;
+		for (int8_t q : c) listed += q >= 0;
+		CHECK(listed > 80);
+		fprintf(stderr, "gbpk-roms: %s: the type chart's %d entries\n", current.c_str(), listed);
+		return;
+	}
 	useRules(d.game.gen);
 	useGameRules(nullptr);
 	int differ = 0, listed = 0;
@@ -528,18 +547,26 @@ int main(int argc, char** argv)
 	std::set<std::string> listed;
 	std::ifstream lf(argv[2]);
 	for (std::string l; std::getline(lf, l);) if (l.size() > 40 && l[0] != '#') listed.insert(l.substr(0, 40));
+	// (each file named by its path from the folder, as gbpk-roms.sh names it)
 	std::vector<std::string> files;
-	if (DIR* dp = opendir(dir.c_str()))
-	{
+	auto scan = [&](const std::string& sub, bool deeper, auto& self) -> void {
+		DIR* dp = opendir((sub.empty() ? dir : dir + "/" + sub).c_str());
+		if (!dp) return;
 		while (dirent* e = readdir(dp))
 		{
 			std::string n = e->d_name;
+			if (n == "." || n == "..") continue;
+			const std::string path = sub.empty() ? n : sub + "/" + n;
+			struct stat st;
+			if (stat((dir + "/" + path).c_str(), &st) != 0) continue;
+			if (S_ISDIR(st.st_mode)) { if (deeper) self(path, false, self); continue; }
 			std::string low = n;
 			for (char& ch : low) ch = (char)tolower((unsigned char)ch);
-			if ((low.size() > 3 && low.compare(low.size() - 3, 3, ".gb") == 0) || (low.size() > 4 && low.compare(low.size() - 4, 4, ".gbc") == 0)) files.push_back(n);
+			if ((low.size() > 3 && low.compare(low.size() - 3, 3, ".gb") == 0) || (low.size() > 4 && low.compare(low.size() - 4, 4, ".gbc") == 0)) files.push_back(path);
 		}
 		closedir(dp);
-	}
+	};
+	scan("", true, scan);
 	std::sort(files.begin(), files.end());
 	int read = 0;
 	for (const std::string& n : files)

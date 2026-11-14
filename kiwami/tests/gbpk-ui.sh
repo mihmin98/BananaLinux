@@ -7,9 +7,9 @@
 #   PokeDaisy's captures (gbfeed): the pages ready, the party read, a battle showing the Battle page and its end the
 #   Party page, the corner and the Back button switching to the menu and back (F to the menu), the rules on and put
 #   back when the host goes, Crystal's guide file loaded (its 22 milestones; no hidden items, which come from the ROM);
-# - a made-up ROM with Crystal's title and another SHA-1: "Not supported", and nothing asked of the game; and with a
-#   second made-up game of Crystal's title (a ROM hack keeps its base game's), both named till the SHA-1 picks one,
-#   and "Not supported" for both;
+# - a made-up ROM with Crystal's title and another SHA-1: "Not supported", and nothing asked of the game; Crystal and
+#   Crystal Legacy, which keeps Crystal's title, both named till the SHA-1 picks one, and "Not supported" for both;
+# - Crystal Legacy's pages on its captures (its own addresses): the party read, a wild battle on the Battle page;
 # - upstream's gamepanel after it: no companion, and not the Game Boy one again;
 # - the pages' blocks for Gen II (KIWAMI_GBPK_TRACE=1 names each drawn): DVs and stat experience, Hidden Power, the
 #   Item row alone, no abilities; the Party page as upstream draws it with them off (KIWAMI_GBPK_PAGES=0);
@@ -91,7 +91,7 @@ gamepanel 1 /nonexistent.gba; gtouch 300 300; gbutton back"
     before "gb companion: rules on" "gb companion: rules off"
     before "gb companion: rules off" "gbpanel .*/crystal .*rom.gbc: companion Crystal"
     # a ROM with Crystal's title and another SHA-1: Not supported, nothing asked, no rules
-    logged "gb companion: Crystal: not a release the companion knows \(sha1 [0-9a-f]{40}\)"
+    logged "gb companion: Crystal or Crystal Legacy: not a release the companion knows \(sha1 [0-9a-f]{40}\)"
     logged "gbhost: unsupported Crystal view pages:Party$"
     [ "$(grep -cE 'gb companion: rules on' "$log")" = 1 ] || { echo "FAIL $size crystal: the rules on for a ROM not supported"; fail=1; }
     [ "$(grep -E 'gbfeed ' "$log" | tail -n 1 | sed 's/.*asked \([0-9]*\).*/\1/')" = 0 ] || { echo "FAIL $size crystal: a ROM not supported was asked: $(grep gbfeed "$log" | tail -n 1)"; fail=1; }
@@ -101,15 +101,9 @@ gamepanel 1 /nonexistent.gba; gtouch 300 300; gbutton back"
     logged "gtouch 300 300: action [0-9]+ keys 0 view $"
     grep -E 'gb(host|feed|panel)|gtouch|gamepanel' "$log" | sed "s/^banana-ui: /gbpk-ui: $size: /; s|$PWD/||g"
 
-    # two games of Crystal's title (the data files' folder with a made-up second one, Crystal's file as Crystal
-    # Legacy's): both named, the retail game first, and the made-up ROM's SHA-1 neither's
-    SHARED=$OUT/shared-data
-    rm -rf "$SHARED"; cp -r "$KIWAMI_GBPK_DIR" "$SHARED"
-    sed 's/"game": "crystal"/"game": "crystal-legacy"/; s/"title": "Crystal"/"title": "Crystal Legacy"/' \
-        "$SHARED/crystal.ram.json" > "$SHARED/crystal-legacy.ram.json"
-    export KIWAMI_GBPK_DIR=$SHARED
+    # two games of Crystal's title (Crystal Legacy keeps it): both named, the retail game first, and the made-up ROM's
+    # SHA-1 neither's
     run $size shared "home 0; gbpanel 1 $CAP/crystal $MADE_UP; gbhost; gbfeed $CAP/crystal; gshot unsupported"
-    export KIWAMI_GBPK_DIR=$PWD/kiwami/rootfs/usr/share/banana/companions/gb-pokemon
     logged "gb companion: Crystal \(or Crystal Legacy\)$"
     logged "gbpanel .*/crystal .*rom.gbc: companion Crystal$"
     logged "gb companion: Crystal or Crystal Legacy: not a release the companion knows \(sha1 [0-9a-f]{40}\)"
@@ -117,6 +111,21 @@ gamepanel 1 /nonexistent.gba; gtouch 300 300; gbutton back"
     ! grep -q 'gb companion: rules on' "$log" || { echo "FAIL $size shared: the rules on for a ROM not supported"; fail=1; }
     [ "$(grep -E 'gbfeed ' "$log" | tail -n 1 | sed 's/.*asked \([0-9]*\).*/\1/')" = 0 ] || { echo "FAIL $size shared: a ROM not supported was asked: $(grep gbfeed "$log" | tail -n 1)"; fail=1; }
     shown unsupported
+
+    # Crystal Legacy's pages: its capture read at its own addresses (a party of two), a wild battle on the Battle page,
+    # its end the Party page; its guide comes with the next step, so none yet
+    run $size legacy "home 0; gbpanel 1 $CAP/crystal_legacy; gbhost; gbfeed $CAP/crystal_legacy; sleep 300; gshot party; \
+wait 300; gbfeed $CAP/crystal_legacy_battle; sleep 300; gshot battle; wait 300; gbfeed $CAP/crystal_legacy; sleep 100"
+    logged "gbpanel .*/crystal_legacy: companion Crystal Legacy$"
+    logged "gb companion: rules on \(Generation II\)"
+    logged "gbhost: ready Crystal Legacy view pages:Party$"
+    logged "gbfeed .*/crystal_legacy: asked [1-9][0-9]*, party 2, battle 0, view pages:Party$"
+    logged "gbfeed .*/crystal_legacy_battle: asked [1-9][0-9]*, party 2, battle 1, view pages:Battle$"
+    [ "$(grep -cE 'gbfeed .*/crystal_legacy: asked [1-9][0-9]*, party 2, battle 0, view pages:Party$' "$log")" = 2 ] ||
+        { echo "FAIL $size legacy: the battle's end didn't show the Party page"; fail=1; }
+    shown party; shown battle
+    differ party battle
+    grep -E 'gb(host|feed|panel)' "$log" | sed "s/^banana-ui: /gbpk-ui: $size: legacy: /; s|$PWD/||g"
 
     # Gen II's blocks on the pages (pages-impl.inc, traced): the Party page's Item row alone and its DVs and stat
     # experience, the wild box's DVs and Hidden Power, the Dex page with no abilities (Pidgey, the list dragged to it:

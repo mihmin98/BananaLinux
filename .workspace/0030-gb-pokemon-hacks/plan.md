@@ -584,12 +584,14 @@ Common to the steps (as #28's):
   - `kiwami/tools/pret-extract.py`, `kiwami/tools/gbpk-symbols.txt`, `kiwami/tools/gbpk-extra.json`,
     `kiwami/tools/pokedaisy-extract.py` (changed)
   - `kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal-legacy.ram.json` (new), `SOURCES` (changed)
-  - `ui/src/kiwami/gbpk/rom2.cpp` (changed: far Pokédex pointers)
+  - `ui/src/kiwami/gbpk/rom2.cpp` (changed: far Pokédex pointers, far trainer groups and their party fields, Rock
+    Smash's own table: *Deviations*, 2026-11-14)
   - `ui/src/kiwami/gbpk/guide-games.inc` (changed: the row)
-  - `kiwami/tests/gbpk/fixtures/crystal_legacy{,_battle,_battle_menu,_battle_party}/` (new, PokeDaisy's, unchanged)
+  - `kiwami/tests/gbpk/fixtures/crystal_legacy{,_battle,_battle_menu,_battle_party}/` (new, PokeDaisy's, unchanged),
+    `kiwami/tests/gbpk/NOTICE` (changed: the hacks' captures)
   - `kiwami/tests/gbpk/roms.sha1` (changed)
   - `kiwami/tests/gbpk-roms.sh`, `kiwami/tests/ci.sh` (changed: the folder's subfolders)
-  - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp` (changed)
+  - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp`, `kiwami/tests/gbpk-ui.sh` (changed)
   - `kiwami/DEPENDENCIES.md` (changed: Crystal Legacy's row, rgbds 0.5.2's)
   - `kiwami/GB-POKEMON.md` (changed: a *The ROM hacks* section)
 - **Change**:
@@ -608,14 +610,20 @@ Common to the steps (as #28's):
       it (said in a comment);
     - `items`, `types` and `split` lines: `crystal-legacy split GHOST special` and `crystal-legacy split DARK physical`
       (its `type_constants.asm`'s comments; its code's check named in the comment);
-    - `crystal-legacy rom.dexEntryFar DexEntryPointers` (one pointer and bank a species).
+    - `crystal-legacy rom.dexEntryFar PokedexDataPointerTable` (one pointer and bank a species; its symbol keeps
+      Crystal's name, *Deviations*);
+    - `crystal-legacy rom.trainerGroupsFar TrainerGroups`, its four party-type bits as `const` lines, and
+      `crystal-legacy rom.rockSmashMons RockSmashMons` (*Deviations*, 2026-11-14).
   - **`pokedaisy-extract.py`**:
     - reads `GEN2_CRYSTAL_LEGACY`, `GEN2_DEX_CRYSTAL_LEGACY` and its SHA-1 (`GameTitles.kt`) as a cross-check of
       pret-extract's values, a key in both having to agree;
     - writes `crystal-legacy.ram.json` with `"title": "Crystal Legacy"` and `"dex_size": 251`;
     - its list of PokeDaisy's hacks left out by name (`:96-98`, `:887-892`) drops Crystal Legacy.
   - **`rom2.cpp`**: with `rom.dexEntryFar`, a species' page is the 3-byte entry's bank and address (Crystal Legacy's
-    `DexEntryPointers`, PokeDaisy `Gen2Dex.kt:45`), instead of `dexEntryBanks`/`dexEntryFirst`.
+    `PokedexDataPointerTable`, PokeDaisy `Gen2Dex.kt:45`), instead of `dexEntryBanks`/`dexEntryFirst`. With
+    `rom.trainerGroupsFar`, a class's group is a bank and a pointer, and the party types' nickname, DVs, stat
+    experience and happiness fields (their bits from `sizes`) are passed over; with `rom.rockSmashMons`, Rock Smash's
+    sets are that table's, from 0 (*Deviations*, 2026-11-14).
   - **`guide-games.inc`**: `{ (GameId)106, "crystal-legacy", "BYTE", 251 }`.
   - **`roms.sha1`**: `74a6727e... gb optional crystal-legacy Pokemon Crystal - Legacy (v1.3.1) (TheSmithPlays).gbc`.
   - **`gbpk-roms.sh`**: `hashes` reads the folder's files and those of its subfolders one level down (the user keeps the
@@ -1119,6 +1127,28 @@ Where the implementation turned out different from this plan, why, and what chan
   as the step said.
 - **2026-11-14, step 3**: Water on Fire is the first entry of Gen I's `TypeEffects` only; Gen II's `TypeMatchups`
   starts with Normal on Rock. The read checks the chart's Water-on-Fire cell is 2x, whatever its place in the table.
+- **2026-11-14, step 4**: Crystal Legacy lays out two more ROM tables its own way, which the plan didn't foresee; the
+  user chose to read them (rather than leave its trainers unread). Its `TrainerGroups` has a bank and a pointer a class
+  (`dba`), and its party types have four more bits, each a field before the item and the moves: a nickname (a byte,
+  then a string), two DVs, five words of stat experience, happiness (`engine/battle/read_trainer_party.asm`
+  `ReadTrainerPartyPieces`; 9 of its trainers use them). Its Rock Smash sets are a table of their own, `RockSmashMons`,
+  from 0 (`engine/events/treemons.asm`). `rom2.cpp` reads both by data-file keys, `rom.trainerGroupsFar` (with
+  `sizes.trainerNickname`, `trainerDvs`, `trainerStatExp`, `trainerHappiness` from its
+  `constants/trainer_data_constants.asm`) and `rom.rockSmashMons`, as it reads `dexEntryFar`; a game without them reads
+  as before. The extra fields are passed over, so a foe's preview takes the default DVs. `gbpk-units` checks the three
+  layouts on the made-up ROM laid out Crystal Legacy's way.
+- **2026-11-14, step 4**: Crystal Legacy's far Pokédex table keeps Crystal's symbol, `PokedexDataPointerTable` (the plan
+  said `DexEntryPointers`); `crystal-legacy` has it under `rom.dexEntryFar` and no `dexEntryPointers` or
+  `dexEntryBanks`. PokeDaisy's `GEN2_DEX_CRYSTAL_LEGACY` gives its `dexEntryPointers` with `dexEntryFar = true`, which
+  `pokedaisy-extract.py` takes as `dexEntryFar` (its `dexEntryBanks` a placeholder).
+- **2026-11-14, step 4**: Crystal Legacy V1.3.1 is written for rgbds 0.5.2, whose syntax `pret-extract.py`'s constants
+  evaluator didn't read: `NAME EQU value` and `name: MACRO` without `DEF`, and a structure's `rsreset`/`rb`/`rw`. It
+  reads them now; pret's four give the same output.
+- **2026-11-14, step 4**: `kiwami/tests/gbpk-ui.sh` added to step 4's files (its tests named it): with Crystal
+  Legacy's data file, the made-up Crystal ROM is "Crystal or Crystal Legacy", so the step 1 run that copied a made-up
+  second data file now runs on the real folder. `kiwami/tests/gbpk/NOTICE` names the hacks' captures. `gbpk-roms.cpp`
+  reads the subfolders as `gbpk-roms.sh` does, and checks a hack's chart by being read whole (its entries counted),
+  not against the retail chart.
 
 ## Progress
 
@@ -1129,7 +1159,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 1. Several games to one header title | done | GB Pokémon hacks: several games to one header title, the SHA-1 picks one |
 | 2. Each game's items, types and split | done | GB Pokémon hacks: each game's items, types and physical/special split from its data file |
 | 3. Each game's type chart from its ROM | done | GB Pokémon hacks: each game's type chart read from its ROM |
-| 4. Crystal Legacy | todo | |
+| 4. Crystal Legacy | done | GB Pokémon hacks: Crystal Legacy, from its build's symbols, its memory and its ROM |
 | 5. Crystal Legacy's guide | todo | |
 | 6. Yellow Legacy | todo | |
 | 7. Yellow Legacy's guide | todo | |

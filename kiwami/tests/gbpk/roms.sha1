@@ -1,5 +1,6 @@
 # The ROMs the Game Boy Pokémon companion's ROM tests expect (kiwami/GB-POKEMON.md, "The ROMs for the tests"), checked
-# in the player's own folders by kiwami/tests/gbpk-roms.sh. None of them is in the repository. One line a file:
+# in the player's own folders (and their subfolders one level down) by kiwami/tests/gbpk-roms.sh. None of them is in
+# the repository. One line a file:
 #   <sha1> <system> <required|optional> <game> <file name: No-Intro's for a dump, the file's own for a hack>
 # system is the folder the file is looked for in: gb in GB_ROMS (~/gb-companion/roms), gba in GBA_ROMS
 # (~/gba-companion/roms), nds in NDS_ROMS (~/nds-companion/roms). A file is found by its SHA-1, whatever its name. The
@@ -20,6 +21,9 @@ a0fc810f1d4e124434f7be2c989ab5b5892ddf36 gb optional crystal Pokemon - Crystal V
 # ROM hacks read as the retail game they patch: roms.patches says what each changes, and gbpk-roms.sh checks it
 e7bfd2c2245597da5016e682fca8f19665c6cfd0 gb optional red Pokemon - Red Version (USA, Europe) (Fast Red) (v1.0) (80C).gb
 5030c1114554207191f2e6ffb1f2920cf3d7c668 gb optional blue Pokemon - Blue Version (USA, Europe) (Fast Blue) (v1.0) (80C).gb
+# ROM hacks read as games of their own: each its release's patch applied to the retail ROM it names (kiwami/GB-POKEMON.md,
+# The ROM hacks)
+74a6727e4406c35bc2d4f81347a5c5fdb8970663 gb optional crystal-legacy Pokemon Crystal - Legacy (v1.3.1) (TheSmithPlays).gbc
 
 # Game Boy Advance and DS: the other mainline games PokeDaisy supports (English releases), for a later comparison of
 # upstream's guides with PokeDaisy's tables; nothing reads them yet, and none is required

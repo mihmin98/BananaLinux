@@ -144,7 +144,8 @@ EOF
 # ~/gb-companion/roms, as here), then the check on made-up folders: none is skipped; an empty one fails naming the six required files; a file
 # with a listed name and other bytes is a wrong file, and six of them can't pass; and, with a made-up list, a file
 # found by its SHA-1 under its name or another, an optional one missing, an unlisted file named, the GBA folder's
-# files looked for without failing the check
+# files looked for without failing the check; a listed file in a subfolder found by its path, one two levels down not
+# looked at, and a patch (.bps) beside it not named
 kiwami/tests/gbpk-roms.sh
 T=$(mktemp -d)
 rr() { GB_ROMS=$T/$1 GBA_ROMS=$T/${2:-none} NDS_ROMS=$T/none kiwami/tests/gbpk-roms.sh > "$T/out" 2>&1; }
@@ -164,18 +165,24 @@ while IFS= read -r n; do echo "$n" > "$T/six/$n"; done < "$T/required"
 ! rr six || { echo "gbpk-roms: six made-up files passed" >&2; exit 1; }
 while IFS= read -r n; do has "$n: wrong file: sha1 $(echo "$n" | sha1sum | cut -c1-40)"; done < "$T/required"
 printf a > "$T/ok/Made Up (USA).gb"; printf b > "$T/ok/b.GBC"; printf c > "$T/ok/c.gbc"; printf d > "$T/ok/readme.txt"
+mkdir -p "$T/ok/romhacks/deeper"; printf g > "$T/ok/romhacks/g.gbc"; printf i > "$T/ok/romhacks/g.bps"; printf j > "$T/ok/romhacks/deeper/j.gb"
 printf e > "$T/gba/e.gba"; printf f > "$T/gba/Made Up GBA (USA).gba"
 h() { printf "$1" | sha1sum | cut -c1-40; }
 { echo '# made up'
   echo "$(h a) gb required made Made Up (USA).gb"
   echo "$(h b) gb required made Made Up (Europe).gbc"
   echo "$(h z) gb optional made Made Up (Japan).gbc"
+  echo "$(h g) gb optional made Made Up Hack (v1).gbc"
+  echo "$(h j) gb optional made Made Up Deeper.gb"
   echo "$(h e) gba optional made Made Up Advance (USA).gba"
   echo "$(h z) gba optional made Made Up GBA (USA).gba"; } > "$T/list"
 GBPK_ROMS_LIST=$T/list rr ok gba || { echo "gbpk-roms: the made-up list's files failed: $(cat "$T/out")" >&2; exit 1; }
 has "Made Up (USA).gb: ok"
 has "Made Up (Europe).gbc: ok (named b.GBC)"
 has "Made Up (Japan).gbc: missing"
+has "Made Up Hack (v1).gbc: ok (named romhacks/g.gbc)"
+has "Made Up Deeper.gb: missing"
+! grep -qE 'g\.bps|deeper' "$T/out" || { echo "gbpk-roms: named a patch or a file two folders down: $(cat "$T/out")" >&2; exit 1; }
 has "not listed, left alone: c.gbc (sha1 $(h c))"
 has "2 of 2 required files ok in $T/ok"
 has "Made Up Advance (USA).gba: ok (named e.gba)"

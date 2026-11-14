@@ -1,0 +1,693 @@
+{
+  "balls": [
+    1,
+    2,
+    4,
+    5,
+    157,
+    159,
+    160,
+    161,
+    164,
+    165,
+    166,
+    177
+  ],
+  "dex_size": 251,
+  "flags": [],
+  "game": "crystal-legacy",
+  "gen": 2,
+  "header_title": "PM_CRYSTAL",
+  "items": [
+    [
+      1,
+      1
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      4,
+      3
+    ],
+    [
+      5,
+      4
+    ],
+    [
+      8,
+      81
+    ],
+    [
+      22,
+      82
+    ],
+    [
+      23,
+      83
+    ],
+    [
+      24,
+      84
+    ],
+    [
+      34,
+      85
+    ],
+    [
+      58,
+      445
+    ],
+    [
+      59,
+      446
+    ],
+    [
+      61,
+      447
+    ],
+    [
+      76,
+      237
+    ],
+    [
+      77,
+      244
+    ],
+    [
+      81,
+      245
+    ],
+    [
+      82,
+      221
+    ],
+    [
+      88,
+      222
+    ],
+    [
+      95,
+      243
+    ],
+    [
+      96,
+      248
+    ],
+    [
+      98,
+      241
+    ],
+    [
+      102,
+      240
+    ],
+    [
+      107,
+      246
+    ],
+    [
+      108,
+      242
+    ],
+    [
+      113,
+      247
+    ],
+    [
+      117,
+      239
+    ],
+    [
+      118,
+      258
+    ],
+    [
+      125,
+      238
+    ],
+    [
+      138,
+      249
+    ],
+    [
+      143,
+      233
+    ],
+    [
+      144,
+      250
+    ],
+    [
+      151,
+      235
+    ],
+    [
+      157,
+      495
+    ],
+    [
+      159,
+      493
+    ],
+    [
+      160,
+      494
+    ],
+    [
+      161,
+      492
+    ],
+    [
+      163,
+      236
+    ],
+    [
+      164,
+      497
+    ],
+    [
+      165,
+      498
+    ],
+    [
+      166,
+      496
+    ],
+    [
+      169,
+      80
+    ],
+    [
+      172,
+      252
+    ],
+    [
+      177,
+      499
+    ]
+  ],
+  "kind": "gb-pokemon-ram",
+  "ram": {
+    "backupMapGroup": {
+      "addr": "0xDCB8",
+      "bank": 1,
+      "src": "pokedaisy pret (wBackupMapGroup)"
+    },
+    "battleMode": {
+      "addr": "0xD238",
+      "bank": 1,
+      "src": "pokedaisy pret (wBattleMode)"
+    },
+    "battleMon": {
+      "addr": "0xC62C",
+      "bank": 0,
+      "src": "pokedaisy pret (wBattleMon)"
+    },
+    "breedMon1": {
+      "addr": "0xDF17",
+      "bank": 1,
+      "src": "pret (wBreedMon1)"
+    },
+    "breedMon2": {
+      "addr": "0xDF50",
+      "bank": 1,
+      "src": "pret (wBreedMon2)"
+    },
+    "curBattleMon": {
+      "addr": "0xD0DF",
+      "bank": 1,
+      "src": "pokedaisy pret (wCurBattleMon)"
+    },
+    "curOTMon": {
+      "addr": "0xC663",
+      "bank": 0,
+      "src": "pokedaisy pret (wCurOTMon)"
+    },
+    "dayCareLady": {
+      "addr": "0xDF37",
+      "bank": 1,
+      "src": "pret (wDayCareLady)"
+    },
+    "dayCareMan": {
+      "addr": "0xDF00",
+      "bank": 1,
+      "src": "pret (wDayCareMan)"
+    },
+    "dexCaught": {
+      "addr": "0xDEA4",
+      "bank": 1,
+      "src": "pokedaisy pret (wPokedexCaught)"
+    },
+    "dexSeen": {
+      "addr": "0xDEC4",
+      "bank": 1,
+      "src": "pokedaisy pret (wPokedexSeen)"
+    },
+    "enemyMon": {
+      "addr": "0xD211",
+      "bank": 1,
+      "src": "pokedaisy pret (wEnemyMon)"
+    },
+    "enemyStatLevels": {
+      "addr": "0xC6D4",
+      "bank": 0,
+      "src": "pret (wEnemyStatLevels)"
+    },
+    "eventFlags": {
+      "addr": "0xDA7D",
+      "bank": 1,
+      "src": "pret (wEventFlags)"
+    },
+    "gameTime": {
+      "addr": "0xD4CF",
+      "bank": 1,
+      "src": "pokedaisy pret (wGameTimeHours)"
+    },
+    "johtoBadges": {
+      "addr": "0xD862",
+      "bank": 1,
+      "src": "pret (wJohtoBadges)"
+    },
+    "kantoBadges": {
+      "addr": "0xD863",
+      "bank": 1,
+      "src": "pret (wKantoBadges)"
+    },
+    "mapGroup": {
+      "addr": "0xDCC0",
+      "bank": 1,
+      "src": "pokedaisy pret (wMapGroup)"
+    },
+    "mapNumber": {
+      "addr": "0xDCC1",
+      "bank": 1,
+      "src": "pret (wMapNumber)"
+    },
+    "menu2D": {
+      "addr": "0xCFA1",
+      "bank": 0,
+      "src": "pokedaisy pret (w2DMenuCursorInitY)"
+    },
+    "menuCursor": {
+      "addr": "0xCFA9",
+      "bank": 0,
+      "src": "pokedaisy pret (wMenuCursorY)"
+    },
+    "money": {
+      "addr": "0xD859",
+      "bank": 1,
+      "src": "pokedaisy pret (wMoney)"
+    },
+    "moveMenuType": {
+      "addr": "0xD240",
+      "bank": 1,
+      "src": "pokedaisy pret (wMoveSelectionMenuType)"
+    },
+    "numBalls": {
+      "addr": "0xD9CC",
+      "bank": 1,
+      "src": "pokedaisy pret (wNumBalls)"
+    },
+    "numItems": {
+      "addr": "0xD89D",
+      "bank": 1,
+      "src": "pokedaisy pret (wNumItems)"
+    },
+    "numKeyItems": {
+      "addr": "0xD947",
+      "bank": 1,
+      "src": "pokedaisy pret (wNumKeyItems)"
+    },
+    "otPartyCount": {
+      "addr": "0xD28B",
+      "bank": 1,
+      "src": "pokedaisy pret (wOTPartyCount)"
+    },
+    "otPartyMons": {
+      "addr": "0xD293",
+      "bank": 1,
+      "src": "pokedaisy pret (wOTPartyMons)"
+    },
+    "otherTrainerClass": {
+      "addr": "0xD23A",
+      "bank": 1,
+      "src": "pret (wOtherTrainerClass)"
+    },
+    "otherTrainerID": {
+      "addr": "0xD23C",
+      "bank": 1,
+      "src": "pret (wOtherTrainerID)"
+    },
+    "partyCount": {
+      "addr": "0xDCE2",
+      "bank": 1,
+      "src": "pokedaisy pret (wPartyCount)"
+    },
+    "partyMenuAction": {
+      "addr": "0xD14C",
+      "bank": 1,
+      "src": "pokedaisy pret (wPartyMenuActionText)"
+    },
+    "partyMonNicknames": {
+      "addr": "0xDE4C",
+      "bank": 1,
+      "src": "pret (wPartyMonNicknames)"
+    },
+    "partyMonOTs": {
+      "addr": "0xDE0A",
+      "bank": 1,
+      "src": "pret (wPartyMonOTs)"
+    },
+    "partyMons": {
+      "addr": "0xDCEA",
+      "bank": 1,
+      "src": "pokedaisy pret (wPartyMons)"
+    },
+    "playerGender": {
+      "addr": "0xD47D",
+      "bank": 1,
+      "src": "pokedaisy pret (wPlayerGender)"
+    },
+    "playerID": {
+      "addr": "0xD486",
+      "bank": 1,
+      "src": "pret (wPlayerID)"
+    },
+    "playerName": {
+      "addr": "0xD488",
+      "bank": 1,
+      "src": "pret (wPlayerName)"
+    },
+    "playerStatLevels": {
+      "addr": "0xC6CC",
+      "bank": 0,
+      "src": "pret (wPlayerStatLevels)"
+    },
+    "roamMon1": {
+      "addr": "0xDFDA",
+      "bank": 1,
+      "src": "pret (wRoamMon1)"
+    },
+    "roamMon2": {
+      "addr": "0xDFE1",
+      "bank": 1,
+      "src": "pret (wRoamMon2)"
+    },
+    "roamMon3": {
+      "addr": "0xDFE8",
+      "bank": 1,
+      "src": "pret (wRoamMon3)"
+    },
+    "stepsToEgg": {
+      "addr": "0xDF38",
+      "bank": 1,
+      "src": "pret (wStepsToEgg)"
+    },
+    "tileMap": {
+      "addr": "0xC4A0",
+      "bank": 0,
+      "src": "pokedaisy pret (wTilemap)"
+    },
+    "timeOfDay": {
+      "addr": "0xD274",
+      "bank": 1,
+      "src": "pret (wTimeOfDay)"
+    },
+    "tmsHms": {
+      "addr": "0xD864",
+      "bank": 1,
+      "src": "pokedaisy pret (wTMsHMs)"
+    },
+    "tradeFlags": {
+      "addr": "0xD96B",
+      "bank": 1,
+      "src": "pret (wTradeFlags)"
+    },
+    "xCoord": {
+      "addr": "0xDCC3",
+      "bank": 1,
+      "src": "pret (wXCoord)"
+    },
+    "yCoord": {
+      "addr": "0xDCC2",
+      "bank": 1,
+      "src": "pret (wYCoord)"
+    }
+  },
+  "releases": [
+    {
+      "code": "BYTE",
+      "name": "v1.3.1",
+      "sha1": "74a6727e4406c35bc2d4f81347a5c5fdb8970663"
+    }
+  ],
+  "rom": {
+    "baseData": {
+      "addr": "0x5449",
+      "bank": 20,
+      "src": "pokedaisy pret (BaseData)"
+    },
+    "dexEntryFar": {
+      "addr": "0x43CD",
+      "bank": 17,
+      "src": "pokedaisy pret (PokedexDataPointerTable)"
+    },
+    "evosAttacksPointers": {
+      "addr": "0x4AB6",
+      "bank": 16,
+      "src": "pret (EvosAttacksPointers)"
+    },
+    "fishGroups": {
+      "addr": "0x682D",
+      "bank": 36,
+      "src": "pret (FishGroups)"
+    },
+    "grassProbs": {
+      "addr": "0x61C6",
+      "bank": 10,
+      "src": "pret (GrassMonProbTable)"
+    },
+    "itemAttributes": {
+      "addr": "0x67D1",
+      "bank": 1,
+      "src": "pret (ItemAttributes)"
+    },
+    "itemDescriptions": {
+      "addr": "0x498C",
+      "bank": 114,
+      "src": "pokedaisy pret (ItemDescriptions)"
+    },
+    "itemNames": {
+      "addr": "0x4000",
+      "bank": 114,
+      "src": "pret (ItemNames)"
+    },
+    "johtoGrass": {
+      "addr": "0x6604",
+      "bank": 10,
+      "src": "pret (JohtoGrassWildMons)"
+    },
+    "johtoMap": {
+      "addr": "0x60D2",
+      "bank": 36,
+      "src": "pokedaisy pret (JohtoMap)"
+    },
+    "johtoWater": {
+      "addr": "0x7138",
+      "bank": 10,
+      "src": "pret (JohtoWaterWildMons)"
+    },
+    "kantoGrass": {
+      "addr": "0x728F",
+      "bank": 10,
+      "src": "pret (KantoGrassWildMons)"
+    },
+    "kantoMap": {
+      "addr": "0x63A4",
+      "bank": 36,
+      "src": "pokedaisy pret (KantoMap)"
+    },
+    "kantoWater": {
+      "addr": "0x7812",
+      "bank": 10,
+      "src": "pret (KantoWaterWildMons)"
+    },
+    "landmarks": {
+      "addr": "0x68FC",
+      "bank": 114,
+      "src": "pret (Landmarks)"
+    },
+    "mapGroups": {
+      "addr": "0x4000",
+      "bank": 37,
+      "src": "pret (MapGroupPointers)"
+    },
+    "mapHeadersEnd": {
+      "addr": "0x4DD8",
+      "bank": 37,
+      "src": "pret (NewBarkTown_MapAttributes)"
+    },
+    "monPalettes": {
+      "addr": "0x6C83",
+      "bank": 2,
+      "src": "pokedaisy pret (PokemonPalettes)"
+    },
+    "moveDescriptions": {
+      "addr": "0x4E9A",
+      "bank": 11,
+      "src": "pokedaisy pret (MoveDescriptions)"
+    },
+    "moveEffectPriorities": {
+      "addr": "0x45EC",
+      "bank": 15,
+      "src": "pret (MoveEffectPriorities)"
+    },
+    "moveNames": {
+      "addr": "0x5F62",
+      "bank": 114,
+      "src": "pret (MoveNames)"
+    },
+    "moves": {
+      "addr": "0x4000",
+      "bank": 16,
+      "src": "pret (Moves)"
+    },
+    "picPointers": {
+      "addr": "0x4000",
+      "bank": 72,
+      "src": "pokedaisy pret (PokemonPicPointers)"
+    },
+    "picsBanks": {
+      "addr": "0x51F9",
+      "bank": 20,
+      "src": "pokedaisy pret (FixPicBank.PicsBanks)"
+    },
+    "pokegearPals": {
+      "addr": "0x7BCE",
+      "bank": 2,
+      "src": "pokedaisy pret (MalePokegearPals)"
+    },
+    "pokemonNames": {
+      "addr": "0x73A9",
+      "bank": 20,
+      "src": "pret (PokemonNames)"
+    },
+    "rockMonMaps": {
+      "addr": "0x42B5",
+      "bank": 46,
+      "src": "pret (RockMonMaps)"
+    },
+    "rockSmashMons": {
+      "addr": "0x42F9",
+      "bank": 46,
+      "src": "pret (RockSmashMons)"
+    },
+    "timeFishGroups": {
+      "addr": "0x6A14",
+      "bank": 36,
+      "src": "pret (TimeFishGroups)"
+    },
+    "tmHmMoves": {
+      "addr": "0x567A",
+      "bank": 4,
+      "src": "pokedaisy pret (TMHMMoves)"
+    },
+    "townMapGfx": {
+      "addr": "0x4AB0",
+      "bank": 62,
+      "src": "pokedaisy pret (TownMapGFX)"
+    },
+    "townMapPalMap": {
+      "addr": "0x601E",
+      "bank": 36,
+      "src": "pokedaisy pret (TownMapPals.PalMap)"
+    },
+    "trainerClassNames": {
+      "addr": "0x41EF",
+      "bank": 11,
+      "src": "pret (TrainerClassNames)"
+    },
+    "trainerGroupsFar": {
+      "addr": "0x5A6E",
+      "bank": 14,
+      "src": "pret (TrainerGroups)"
+    },
+    "treeMonMaps": {
+      "addr": "0x424E",
+      "bank": 46,
+      "src": "pret (TreeMonMaps)"
+    },
+    "treeMons": {
+      "addr": "0x42EB",
+      "bank": 46,
+      "src": "pret (TreeMons)"
+    },
+    "typeChart": {
+      "addr": "0x4BBB",
+      "bank": 13,
+      "src": "pret (TypeMatchups)"
+    },
+    "unownPicPointers": {
+      "addr": "0x4000",
+      "bank": 73,
+      "src": "pokedaisy pret (UnownPicPointers)"
+    },
+    "waterProbs": {
+      "addr": "0x61D4",
+      "bank": 10,
+      "src": "pret (WaterMonProbTable)"
+    }
+  },
+  "schema": 1,
+  "sizes": {
+    "ballsMax": 12,
+    "eventFlagBytes": 256,
+    "fastShipLandmark": 95,
+    "firstTm": 193,
+    "itemsMax": 84,
+    "kantoLandmark": 47,
+    "keyItemsMax": 25,
+    "numLandmarks": 96,
+    "numMoves": 251,
+    "numPokemon": 251,
+    "numTrainerClasses": 70,
+    "speciesCount": 251,
+    "trainerDvs": 8,
+    "trainerHappiness": 64,
+    "trainerNickname": 4,
+    "trainerStatExp": 16,
+    "vitalThrow": 233
+  },
+  "special": [
+    8,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26
+  ],
+  "title": "Crystal Legacy",
+  "types": {
+    "0": "normal",
+    "1": "fighting",
+    "2": "flying",
+    "20": "fire",
+    "21": "water",
+    "22": "grass",
+    "23": "electric",
+    "24": "psychic",
+    "25": "ice",
+    "26": "dragon",
+    "27": "dark",
+    "3": "poison",
+    "4": "ground",
+    "5": "rock",
+    "7": "bug",
+    "8": "ghost",
+    "9": "steel"
+  }
+}

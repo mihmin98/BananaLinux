@@ -1,6 +1,7 @@
-# What the Game Boy Pokémon companion takes from pret's disassemblies: kiwami/tools/pret-extract.py reads this list
-# and writes kiwami/tools/gbpk-extra.json. Only addresses, ROM offsets, ids and the ROM header's facts are taken;
-# none of pret's code or data tables (kiwami/GB-POKEMON.md, *Where the data comes from*).
+# What the Game Boy Pokémon companion takes from pret's disassemblies and the ROM hacks' forks of them:
+# kiwami/tools/pret-extract.py reads this list and writes kiwami/tools/gbpk-extra.json. Only addresses, ROM offsets,
+# ids and the ROM header's facts are taken; none of their code or data tables (kiwami/GB-POKEMON.md, *Where the data
+# comes from*).
 #
 # A line a value; '#' starts a comment. <games> is one game or several joined by commas (crystal,gold,silver).
 #
@@ -9,6 +10,12 @@
 #                                           and its symbols from <build>.sym on the repo's symbols branch. <name> is
 #                                           No-Intro's region and revision. A game's releases must agree on every
 #                                           value below, or the run fails.
+#   <game> build <folder> <build> <sha1> <name>   a ROM hack's release, built by the user from its source at the
+#                                           release's tag (<folder>, beside pret's; its HEAD must be the tag):
+#                                           <build>.gbc in its working tree must have <sha1> (the release's; the
+#                                           fork's roms.sha1 is pret's, left over), its header's title and code are
+#                                           read from it, and its symbols from <build>.sym beside it. <name> is the
+#                                           release's version
 #   <game> hack <sha1> <name>               a ROM hack read as the game it patches: kiwami/tests/gbpk/roms.patches
 #                                           must list <sha1> as a patch of one of the game's releases; its symbols
 #                                           are the release's, and it isn't one of PokeDaisy's set
@@ -45,126 +52,144 @@ yellow release pokeyellow pokeyellow USA, Europe
 red hack e7bfd2c2245597da5016e682fca8f19665c6cfd0 Fast Red (v1.0)
 blue hack 5030c1114554207191f2e6ffb1f2920cf3d7c668 Fast Blue (v1.0)
 
+# The ROM hacks read as games of their own (kiwami/GB-POKEMON.md, *The ROM hacks*), each built from its tag with the
+# rgbds kiwami/DEPENDENCIES.md names, and given on the lines of the game whose engine it keeps where its symbol has the
+# same name (a line it is left off says why)
+# (Crystal Legacy, cRz-Shadows/Pokemon_Crystal_Legacy at V1.3.1, rgbds 0.5.2: PokeDaisy's GameTitles.kt has its SHA-1)
+crystal-legacy build Pokemon_Crystal_Legacy pokecrystal 74a6727e4406c35bc2d4f81347a5c5fdb8970663 v1.3.1
+
 # Gen II's WRAM that PokeDaisy reads too (Gen2Reader.kt's Gen2Config): pret's value must agree with it
-crystal,gold,silver ram.partyCount wPartyCount
-crystal,gold,silver ram.partyMons wPartyMons
-crystal,gold,silver ram.numItems wNumItems
-crystal,gold,silver ram.numKeyItems wNumKeyItems
-crystal,gold,silver ram.numBalls wNumBalls
-crystal,gold,silver ram.tmsHms wTMsHMs
-crystal,gold,silver ram.money wMoney
-crystal,gold,silver ram.mapGroup wMapGroup
-crystal,gold,silver ram.backupMapGroup wBackupMapGroup
-crystal,gold,silver ram.battleMode wBattleMode
-crystal,gold,silver ram.battleMon wBattleMon
-crystal,gold,silver ram.enemyMon wEnemyMon
-crystal,gold,silver ram.otPartyCount wOTPartyCount
-crystal,gold,silver ram.otPartyMons wOTPartyMons
-crystal,gold,silver ram.curOTMon wCurOTMon
-crystal ram.playerGender wPlayerGender
-crystal,gold,silver ram.gameTime wGameTimeHours
-crystal,gold,silver ram.dexCaught wPokedexCaught
-crystal,gold,silver ram.dexSeen wPokedexSeen
-crystal,gold,silver ram.menu2D w2DMenuCursorInitY
-crystal,gold,silver ram.menuCursor wMenuCursorY
-crystal,gold,silver ram.moveMenuType wMoveSelectionMenuType
-crystal,gold,silver ram.tileMap wTilemap
-crystal,gold,silver ram.partyMenuAction wPartyMenuActionText
-crystal,gold,silver ram.curBattleMon wCurBattleMon
+crystal,crystal-legacy,gold,silver ram.partyCount wPartyCount
+crystal,crystal-legacy,gold,silver ram.partyMons wPartyMons
+crystal,crystal-legacy,gold,silver ram.numItems wNumItems
+crystal,crystal-legacy,gold,silver ram.numKeyItems wNumKeyItems
+crystal,crystal-legacy,gold,silver ram.numBalls wNumBalls
+crystal,crystal-legacy,gold,silver ram.tmsHms wTMsHMs
+crystal,crystal-legacy,gold,silver ram.money wMoney
+crystal,crystal-legacy,gold,silver ram.mapGroup wMapGroup
+crystal,crystal-legacy,gold,silver ram.backupMapGroup wBackupMapGroup
+crystal,crystal-legacy,gold,silver ram.battleMode wBattleMode
+crystal,crystal-legacy,gold,silver ram.battleMon wBattleMon
+crystal,crystal-legacy,gold,silver ram.enemyMon wEnemyMon
+crystal,crystal-legacy,gold,silver ram.otPartyCount wOTPartyCount
+crystal,crystal-legacy,gold,silver ram.otPartyMons wOTPartyMons
+crystal,crystal-legacy,gold,silver ram.curOTMon wCurOTMon
+crystal,crystal-legacy ram.playerGender wPlayerGender
+crystal,crystal-legacy,gold,silver ram.gameTime wGameTimeHours
+crystal,crystal-legacy,gold,silver ram.dexCaught wPokedexCaught
+crystal,crystal-legacy,gold,silver ram.dexSeen wPokedexSeen
+crystal,crystal-legacy,gold,silver ram.menu2D w2DMenuCursorInitY
+crystal,crystal-legacy,gold,silver ram.menuCursor wMenuCursorY
+crystal,crystal-legacy,gold,silver ram.moveMenuType wMoveSelectionMenuType
+crystal,crystal-legacy,gold,silver ram.tileMap wTilemap
+crystal,crystal-legacy,gold,silver ram.partyMenuAction wPartyMenuActionText
+crystal,crystal-legacy,gold,silver ram.curBattleMon wCurBattleMon
 # (PokeDaisy's GuideCrystalGen.kt has Crystal's)
-crystal,gold,silver ram.eventFlags wEventFlags
-crystal,gold,silver ram.timeOfDay wTimeOfDay
-crystal,gold,silver ram.johtoBadges wJohtoBadges
-crystal,gold,silver ram.tradeFlags wTradeFlags
+crystal,crystal-legacy,gold,silver ram.eventFlags wEventFlags
+crystal,crystal-legacy,gold,silver ram.timeOfDay wTimeOfDay
+crystal,crystal-legacy,gold,silver ram.johtoBadges wJohtoBadges
+crystal,crystal-legacy,gold,silver ram.tradeFlags wTradeFlags
 
 # Gen II's WRAM that PokeDaisy doesn't read
-crystal,gold,silver ram.kantoBadges wKantoBadges
-crystal,gold,silver ram.playerID wPlayerID
-crystal,gold,silver ram.playerName wPlayerName
-crystal,gold,silver ram.mapNumber wMapNumber
-crystal,gold,silver ram.yCoord wYCoord
-crystal,gold,silver ram.xCoord wXCoord
-crystal,gold,silver ram.partyMonOTs wPartyMonOTs
-crystal,gold,silver ram.partyMonNicknames wPartyMonNicknames
-crystal,gold,silver ram.playerStatLevels wPlayerStatLevels
-crystal,gold,silver ram.enemyStatLevels wEnemyStatLevels
-crystal,gold,silver ram.dayCareMan wDayCareMan
-crystal,gold,silver ram.breedMon1 wBreedMon1
-crystal,gold,silver ram.dayCareLady wDayCareLady
-crystal,gold,silver ram.breedMon2 wBreedMon2
-crystal,gold,silver ram.roamMon1 wRoamMon1
-crystal,gold,silver ram.roamMon2 wRoamMon2
-crystal,gold,silver ram.roamMon3 wRoamMon3
-crystal,gold,silver ram.stepsToEgg wStepsToEgg
-crystal,gold,silver ram.otherTrainerClass wOtherTrainerClass
-crystal,gold,silver ram.otherTrainerID wOtherTrainerID
+crystal,crystal-legacy,gold,silver ram.kantoBadges wKantoBadges
+crystal,crystal-legacy,gold,silver ram.playerID wPlayerID
+crystal,crystal-legacy,gold,silver ram.playerName wPlayerName
+crystal,crystal-legacy,gold,silver ram.mapNumber wMapNumber
+crystal,crystal-legacy,gold,silver ram.yCoord wYCoord
+crystal,crystal-legacy,gold,silver ram.xCoord wXCoord
+crystal,crystal-legacy,gold,silver ram.partyMonOTs wPartyMonOTs
+crystal,crystal-legacy,gold,silver ram.partyMonNicknames wPartyMonNicknames
+crystal,crystal-legacy,gold,silver ram.playerStatLevels wPlayerStatLevels
+crystal,crystal-legacy,gold,silver ram.enemyStatLevels wEnemyStatLevels
+crystal,crystal-legacy,gold,silver ram.dayCareMan wDayCareMan
+crystal,crystal-legacy,gold,silver ram.breedMon1 wBreedMon1
+crystal,crystal-legacy,gold,silver ram.dayCareLady wDayCareLady
+crystal,crystal-legacy,gold,silver ram.breedMon2 wBreedMon2
+crystal,crystal-legacy,gold,silver ram.roamMon1 wRoamMon1
+crystal,crystal-legacy,gold,silver ram.roamMon2 wRoamMon2
+crystal,crystal-legacy,gold,silver ram.roamMon3 wRoamMon3
+crystal,crystal-legacy,gold,silver ram.stepsToEgg wStepsToEgg
+crystal,crystal-legacy,gold,silver ram.otherTrainerClass wOtherTrainerClass
+crystal,crystal-legacy,gold,silver ram.otherTrainerID wOtherTrainerID
 
 # The event flags' count (a bit each at wEventFlags)
-crystal,gold,silver const.numEvents constants/event_flags.asm NUM_EVENTS
+crystal,crystal-legacy,gold,silver const.numEvents constants/event_flags.asm NUM_EVENTS
 
 # Gen II's ROM tables (ui/src/kiwami/gbpk/rom2.cpp reads them; their layouts are named there). PokeDaisy's Gen2Dex.kt
 # gives some of them too (GEN2_DEX_CRYSTAL, GEN2_DEX_GOLD_SILVER): pret's value must agree with it
-crystal,gold,silver rom.baseData BaseData
-crystal,gold,silver rom.pokemonNames PokemonNames
-crystal,gold,silver rom.moves Moves
-crystal,gold,silver rom.moveNames MoveNames
-crystal,gold,silver rom.moveDescriptions MoveDescriptions
-crystal,gold,silver rom.moveEffectPriorities MoveEffectPriorities
-crystal,gold,silver rom.itemNames ItemNames
-crystal,gold,silver rom.itemAttributes ItemAttributes
-crystal,gold,silver rom.itemDescriptions ItemDescriptions
-crystal,gold,silver rom.evosAttacksPointers EvosAttacksPointers
-crystal,gold,silver rom.tmHmMoves TMHMMoves
+crystal,crystal-legacy,gold,silver rom.baseData BaseData
+crystal,crystal-legacy,gold,silver rom.pokemonNames PokemonNames
+crystal,crystal-legacy,gold,silver rom.moves Moves
+crystal,crystal-legacy,gold,silver rom.moveNames MoveNames
+crystal,crystal-legacy,gold,silver rom.moveDescriptions MoveDescriptions
+crystal,crystal-legacy,gold,silver rom.moveEffectPriorities MoveEffectPriorities
+crystal,crystal-legacy,gold,silver rom.itemNames ItemNames
+crystal,crystal-legacy,gold,silver rom.itemAttributes ItemAttributes
+crystal,crystal-legacy,gold,silver rom.itemDescriptions ItemDescriptions
+crystal,crystal-legacy,gold,silver rom.evosAttacksPointers EvosAttacksPointers
+crystal,crystal-legacy,gold,silver rom.tmHmMoves TMHMMoves
 crystal,gold,silver rom.dexEntryPointers PokedexDataPointerTable
 # (Crystal looks a Pokédex entry's bank up in a table, a bank for each 64 species; Gold and Silver count from the
-# first entry's bank)
+# first entry's bank; Crystal Legacy's table has the bank in each entry, a bank and a pointer a species, under its own
+# key, and no table of banks: engine/pokedex/pokedex_2.asm GetDexEntryPointer)
 crystal rom.dexEntryBanks GetDexEntryPointer.PokedexEntryBanks
 gold,silver rom.dexEntryFirst BulbasaurPokedexEntry
-crystal,gold,silver rom.johtoGrass JohtoGrassWildMons
-crystal,gold,silver rom.johtoWater JohtoWaterWildMons
-crystal,gold,silver rom.kantoGrass KantoGrassWildMons
-crystal,gold,silver rom.kantoWater KantoWaterWildMons
-crystal,gold,silver rom.grassProbs GrassMonProbTable
-crystal,gold,silver rom.waterProbs WaterMonProbTable
-crystal,gold,silver rom.fishGroups FishGroups
-crystal,gold,silver rom.timeFishGroups TimeFishGroups
-crystal,gold,silver rom.treeMonMaps TreeMonMaps
-crystal,gold,silver rom.rockMonMaps RockMonMaps
-crystal,gold,silver rom.treeMons TreeMons
+crystal-legacy rom.dexEntryFar PokedexDataPointerTable
+crystal,crystal-legacy,gold,silver rom.johtoGrass JohtoGrassWildMons
+crystal,crystal-legacy,gold,silver rom.johtoWater JohtoWaterWildMons
+crystal,crystal-legacy,gold,silver rom.kantoGrass KantoGrassWildMons
+crystal,crystal-legacy,gold,silver rom.kantoWater KantoWaterWildMons
+crystal,crystal-legacy,gold,silver rom.grassProbs GrassMonProbTable
+crystal,crystal-legacy,gold,silver rom.waterProbs WaterMonProbTable
+crystal,crystal-legacy,gold,silver rom.fishGroups FishGroups
+crystal,crystal-legacy,gold,silver rom.timeFishGroups TimeFishGroups
+crystal,crystal-legacy,gold,silver rom.treeMonMaps TreeMonMaps
+crystal,crystal-legacy,gold,silver rom.rockMonMaps RockMonMaps
+crystal,crystal-legacy,gold,silver rom.treeMons TreeMons
+# (Crystal Legacy's Rock Smash sets are a table of their own, from 0: engine/events/treemons.asm GetRockSmashMons)
+crystal-legacy rom.rockSmashMons RockSmashMons
 crystal,gold,silver rom.trainerGroups TrainerGroups
-crystal,gold,silver rom.trainerClassNames TrainerClassNames
-crystal,gold,silver rom.landmarks Landmarks
-crystal,gold,silver rom.mapGroups MapGroupPointers
+# (Crystal Legacy's groups are a bank and a pointer a class, under their own key, and its party types have four more
+# fields before the item and moves, by these bits: a nickname, two DVs, five words of stat experience, happiness;
+# data/trainers/party_pointers.asm, engine/battle/read_trainer_party.asm ReadTrainerPartyPieces)
+crystal-legacy rom.trainerGroupsFar TrainerGroups
+crystal-legacy const.trainerNickname constants/trainer_data_constants.asm TRAINERTYPE_NICKNAME
+crystal-legacy const.trainerDvs constants/trainer_data_constants.asm TRAINERTYPE_DVS
+crystal-legacy const.trainerStatExp constants/trainer_data_constants.asm TRAINERTYPE_STAT_EXP
+crystal-legacy const.trainerHappiness constants/trainer_data_constants.asm TRAINERTYPE_HAPPINESS
+crystal,crystal-legacy,gold,silver rom.trainerClassNames TrainerClassNames
+crystal,crystal-legacy,gold,silver rom.landmarks Landmarks
+crystal,crystal-legacy,gold,silver rom.mapGroups MapGroupPointers
 # (the first map's attributes follow the last map group's headers: where that group ends)
-crystal,gold,silver rom.mapHeadersEnd NewBarkTown_MapAttributes
+crystal,crystal-legacy,gold,silver rom.mapHeadersEnd NewBarkTown_MapAttributes
 # (the type chart, data/types/type_matchups.asm: attacker, defender and multiplier triples; the Foresight pairs after
 # its -2, then -1)
-crystal,gold,silver rom.typeChart TypeMatchups
+crystal,crystal-legacy,gold,silver rom.typeChart TypeMatchups
 
 # Gen II's counts and the one move its priority names
-crystal,gold,silver const.numPokemon constants/pokemon_constants.asm NUM_POKEMON
-crystal,gold,silver const.numMoves constants/move_constants.asm NUM_ATTACKS
-crystal,gold,silver const.vitalThrow constants/move_constants.asm VITAL_THROW
-crystal,gold,silver const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINER_CLASSES
-crystal,gold,silver const.numLandmarks constants/landmark_constants.asm NUM_LANDMARKS
+crystal,crystal-legacy,gold,silver const.numPokemon constants/pokemon_constants.asm NUM_POKEMON
+crystal,crystal-legacy,gold,silver const.numMoves constants/move_constants.asm NUM_ATTACKS
+crystal,crystal-legacy,gold,silver const.vitalThrow constants/move_constants.asm VITAL_THROW
+crystal,crystal-legacy,gold,silver const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINER_CLASSES
+crystal,crystal-legacy,gold,silver const.numLandmarks constants/landmark_constants.asm NUM_LANDMARKS
 # (the Pokégear: a landmark from KANTO_LANDMARK up is on the Kanto map, the Fast Ship's on Johto's)
-crystal,gold,silver const.kantoLandmark constants/landmark_constants.asm KANTO_LANDMARK
-crystal,gold,silver const.fastShipLandmark constants/landmark_constants.asm LANDMARK_FAST_SHIP
+crystal,crystal-legacy,gold,silver const.kantoLandmark constants/landmark_constants.asm KANTO_LANDMARK
+crystal,crystal-legacy,gold,silver const.fastShipLandmark constants/landmark_constants.asm LANDMARK_FAST_SHIP
 
 # Gen II's front pictures and their palettes (ui/src/kiwami/gbpk/pics.cpp), the Pokégear's Johto and Kanto maps
 # (maps.cpp). PokeDaisy's Gen2Dex.kt and Gen2Art.kt give them too: pret's value must agree with it. Crystal fixes a
 # picture's bank by an index into a table, Gold and Silver by a list of pairs (engine/gfx/load_pics.asm FixPicBank)
-crystal,gold,silver rom.picPointers PokemonPicPointers
-crystal,gold,silver rom.unownPicPointers UnownPicPointers
-crystal rom.picsBanks FixPicBank.PicsBanks
+crystal,crystal-legacy,gold,silver rom.picPointers PokemonPicPointers
+crystal,crystal-legacy,gold,silver rom.unownPicPointers UnownPicPointers
+crystal,crystal-legacy rom.picsBanks FixPicBank.PicsBanks
 gold,silver rom.picBankFixes FixPicBank.FixPicBankTable
-crystal,gold,silver rom.monPalettes PokemonPalettes
-crystal,gold,silver rom.townMapGfx TownMapGFX
-crystal,gold,silver rom.johtoMap JohtoMap
-crystal,gold,silver rom.kantoMap KantoMap
-crystal,gold,silver rom.townMapPalMap TownMapPals.PalMap
+crystal,crystal-legacy,gold,silver rom.monPalettes PokemonPalettes
+crystal,crystal-legacy,gold,silver rom.townMapGfx TownMapGFX
+crystal,crystal-legacy,gold,silver rom.johtoMap JohtoMap
+crystal,crystal-legacy,gold,silver rom.kantoMap KantoMap
+crystal,crystal-legacy,gold,silver rom.townMapPalMap TownMapPals.PalMap
 # (Crystal's boy's; the girl's differ only in the cities' colour, and the map is read once, not by the save)
-crystal rom.pokegearPals MalePokegearPals
+crystal,crystal-legacy rom.pokegearPals MalePokegearPals
 gold,silver rom.pokegearPals PokegearPals
 
 # Gold and Silver's guide, built from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp): each gym leader's trainer
@@ -327,13 +352,17 @@ item LOVE_BALL 496 ball
 item FRIEND_BALL 497 ball
 item MOON_BALL 498 ball
 item PARK_BALL 499 ball
-crystal,gold,silver items constants/item_constants.asm
+crystal,crystal-legacy,gold,silver items constants/item_constants.asm
 red,blue,yellow items constants/item_constants.asm
 red,blue,yellow keyitems data/items/key_items.asm
 
 # The types (the move's type id is its category too: Physical below SPECIAL, Special from it, pret's
 # engine/battle/effect_commands.asm)
-crystal,gold,silver types constants/type_constants.asm
+crystal,crystal-legacy,gold,silver types constants/type_constants.asm
+# (Crystal Legacy keeps Ghost before SPECIAL and Dark after it for trades, and its damage makes Ghost special and Dark
+# physical: engine/battle/effect_commands.asm PlayerAttackDamage and EnemyAttackDamage, cp GHOST / cp DARK first)
+crystal-legacy split GHOST special
+crystal-legacy split DARK physical
 red,blue,yellow types constants/type_constants.asm
 
 # Gen I's counts, its first TM and HM items, and the moves its priorities name

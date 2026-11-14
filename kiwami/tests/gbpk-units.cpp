@@ -61,9 +61,10 @@ static void testDetect()
 {
 	std::vector<std::string> keys;
 	using K = std::vector<std::string>;
+	// (Crystal Legacy keeps Crystal's title and code: both, the retail game first)
 	auto h = header("PM_CRYSTAL", "BYTE");
 	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
-	CHECK(keys == K{ "crystal" });
+	CHECK((keys == K{ "crystal", "crystal-legacy" }));
 	// Gold's and Silver's eleven letters fill the title, the code right after
 	h = header("POKEMON_GLD", "AAUE");
 	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
@@ -214,7 +215,7 @@ static void testConfirm()
 	CHECK(rom.size() == 0x8000);
 	std::vector<std::string> keys;
 	CHECK(detect(rom.data(), rom.size(), keys) == Match::KNOWN);
-	CHECK(keys == std::vector<std::string>{ "crystal" });
+	CHECK((keys == std::vector<std::string>{ "crystal", "crystal-legacy" }));
 	CHECK(confirm(rom, d) == Match::UNSUPPORTED);
 	CHECK(d.release == -1 && d.game.romHash.size() == 40 && d.game.code.empty());
 	// with its SHA-1 listed (a stand-in for a release), it's that release, and the code is the file's
@@ -297,8 +298,8 @@ static void testSharedTitle()
 	unlink((std::string(dir) + "/crystal-clear.ram.json").c_str());
 	rmdir(dir);
 	setenv("KIWAMI_GBPK_DIR", dataPath.c_str(), 1);
-	// (back in the real folder: the title is Crystal's alone)
-	CHECK(detect(rom1.data(), rom1.size(), keys) == Match::KNOWN && keys == std::vector<std::string>{ "crystal" });
+	// (back in the real folder: the title is Crystal's and Crystal Legacy's)
+	CHECK(detect(rom1.data(), rom1.size(), keys) == Match::KNOWN && (keys == std::vector<std::string>{ "crystal", "crystal-legacy" }));
 }
 
 static void testRomFile()
@@ -400,7 +401,7 @@ static void testRomList()
 		required += x.need == "required";
 		CHECK(x.name.size() > 4 && (x.name.compare(x.name.size() - 3, 3, ".gb") == 0 || x.name.compare(x.name.size() - 4, 4, ".gbc") == 0));
 	}
-	CHECK(lines.size() == 28 && gb == 10 && required == 6);
+	CHECK(lines.size() == 29 && gb == 11 && required == 6);
 	// the ROM hacks read as the retail game they patch (roms.patches): each a Game Boy line, its retail ROM a required
 	// one of the same game, its ranges in order and apart, inside the bank-0 code and the header (gbpk-roms.sh compares
 	// the files themselves)
@@ -431,7 +432,7 @@ static void testRomList()
 		hacks++;
 	}
 	CHECK(hacks == 2);
-	for (const char* key : { "red", "blue", "yellow", "gold", "silver", "crystal" })
+	for (const char* key : { "red", "blue", "yellow", "gold", "silver", "crystal", "crystal-legacy" })
 	{
 		GameData d;
 		bool listed = false;
@@ -456,7 +457,7 @@ static void testRomList()
 			released++;
 		}
 	}
-	CHECK(games == 6 && released == 10);
+	CHECK(games == 7 && released == 11);
 }
 
 // ---- the ROM reader on a made-up ROM ----------------------------------------------------------------------------
@@ -510,7 +511,9 @@ struct MadeUpRom
 	static std::vector<int> cat(std::vector<int> a, const std::vector<int>& c) { a.insert(a.end(), c.begin(), c.end()); return a; }
 };
 
-static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool notBulbasaur = false)
+// legacy: Crystal Legacy's layouts for the same tables (rom2.cpp): the Pokédex's pointers with their banks, the
+// trainers' groups with theirs and Falkner's party with every field its types add, Rock Smash's sets a table from 0
+static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool notBulbasaur = false, bool legacy = false)
 {
 	MadeUpRom m;
 	using R = MadeUpRom;
@@ -558,8 +561,12 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	// the Pokédex: category, height (2'04"), weight (15.0 lb), two pages; the entries' bank counted from bank 1
 	const int x1 = m.put(R::cat(R::cat(R::cat(R::str("SEED"), { 204, 0, 150, 0 }), R::str("A PAGE|ONE")), R::str("TWO")));
 	const int x2 = m.put(R::cat(R::cat(R::cat(R::str("SEED"), { 0x2C, 1, 0x1E, 1 }), R::str("P")), R::str("Q")));
-	m.key("dexEntryPointers", m.put(R::words({ x1, x2 })));
-	m.d.rom["dexEntryFirst"] = Addr{ 1, 0x4000 };
+	if (legacy) m.key("dexEntryFar", m.put({ 1, x1 & 0xFF, x1 >> 8, 1, x2 & 0xFF, x2 >> 8 }));
+	else
+	{
+		m.key("dexEntryPointers", m.put(R::words({ x1, x2 })));
+		m.d.rom["dexEntryFirst"] = Addr{ 1, 0x4000 };
+	}
 	// landmarks: x + 8, y + 16 (the point on the screen), the name's pointer: the special one, New Bark Town (at 92,
 	// 84 on Johto's map), Pallet Town (Kanto's from 2, KANTO_LANDMARK; at 52, 108) and the Fast Ship (at 140, 116, on
 	// Johto's)
@@ -600,12 +607,28 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	const int set1 = m.put({ 50, 1, 10, 50, 2, 10, 0xFF, 100, 2, 12, 0xFF }), set2 = m.put({ 90, 1, 15, 10, 2, 15, 0xFF });
 	m.key("treeMons", m.put(R::words({ set1, set1, set2 })));
 	m.key("treeMonMaps", m.put({ 1, 1, 1, 0xFF }));
-	m.key("rockMonMaps", m.put({ 1, 1, 2, 0xFF }));
+	if (legacy) m.key("rockSmashMons", m.put(R::words({ set2 })));
+	m.key("rockMonMaps", m.put({ 1, 1, (uint8_t)(legacy ? 0 : 2), 0xFF }));
 	// trainers: one class, its group right after its pointer: Falkner with items and moves, then Bob with neither
 	m.key("trainerClassNames", m.put(R::str("LEADER")));
 	const int tg = m.next;
-	m.key("trainerGroups", m.put(R::words({ tg + 2 })));
-	m.put(R::cat(R::cat(R::str("FALKNER"), { 3, 7, 1, 0, 1, 2, 0, 0, 9, 2, 2, 3, 0, 0, 0, 0xFF }), R::cat(R::str("BOB"), { 0, 8, 1, 0xFF })));
+	if (!legacy)
+	{
+		m.key("trainerGroups", m.put(R::words({ tg + 2 })));
+		m.put(R::cat(R::cat(R::str("FALKNER"), { 3, 7, 1, 0, 1, 2, 0, 0, 9, 2, 2, 3, 0, 0, 0, 0xFF }), R::cat(R::str("BOB"), { 0, 8, 1, 0xFF })));
+	}
+	else
+	{
+		// (each Pokémon: level, species, a nickname - a byte, then "BIRD" or none -, two DVs, five words of stat
+		// experience, happiness, the item, the moves)
+		m.d.sizes.insert({ { "trainerNickname", 4 }, { "trainerDvs", 8 }, { "trainerStatExp", 16 }, { "trainerHappiness", 64 } });
+		m.key("trainerGroupsFar", m.put({ 1, (tg + 3) & 0xFF, (tg + 3) >> 8 }));
+		const std::vector<int> fields = { 0xFF, 0xFF, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0x42 };
+		m.put(R::cat(R::str("FALKNER"), { 3 | 4 | 8 | 16 | 64, 7, 1 }));
+		m.put(R::cat(R::cat({ 0x50 }, R::str("BIRD")), R::cat(fields, { 0, 1, 2, 0, 0, 9, 2, 0x50, 0x50 })));
+		m.put(R::cat(fields, { 2, 3, 0, 0, 0, 0xFF }));
+		m.put(R::cat(R::str("BOB"), { 0, 8, 1, 0xFF }));
+	}
 	// the pictures: one LZ stream for both, 25 tiles (literal: tile 0 with pixels 1 at 0,0, 2 at 1,1 and 3 at 2,2;
 	// tile 1, below it, 3 at 0,0; then a long zero fill of 368), too short for Ivysaur's 36. The stored bank is 1 less
 	// PICS_FIX ($36), fixed by PicsBanks (its first, "Pics 1", bank 1). The palettes' first entry is the games' unused
@@ -643,6 +666,51 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	m.key("kantoMap", m.put(kanto));
 	d = m.d;
 	return std::make_shared<std::vector<uint8_t>>(m.b);
+}
+
+// Crystal Legacy's layouts read as the retail ones: the same pages, trainers and Rock Smash from the made-up ROM laid
+// out its way; a party type with a bit the game hasn't ends the class's trainers
+static void testLegacyTables()
+{
+	GameData d1, d2;
+	std::string why;
+	auto r1 = readRom(madeUpRom(d1), d1, &why), r2 = readRom(madeUpRom(d2, false, true), d2, &why);
+	CHECK(r1 && r2);
+	EQ(why, "");
+	if (!r1 || !r2) return;
+	for (int s = 1; s <= 2; s++)
+	{
+		EQ(r2->species[s].category, r1->species[s].category);
+		EQ(r2->species[s].dexText, r1->species[s].dexText);
+		CHECK(r2->species[s].height == r1->species[s].height && r2->species[s].weight == r1->species[s].weight);
+	}
+	EQ(r2->species[1].dexText, "A PAGE ONE TWO");
+	CHECK(r1->trainers.size() == 2 && r2->trainers.size() == 2);
+	for (const auto& [id, t] : r1->trainers)
+	{
+		auto o = r2->trainers.find(id);
+		CHECK(o != r2->trainers.end() && o->second.team.size() == t.team.size());
+		if (o == r2->trainers.end()) continue;
+		EQ(o->second.name, t.name);
+		for (size_t i = 0; i < t.team.size() && i < o->second.team.size(); i++)
+		{
+			const nds::TrainerMon &a = t.team[i], &b = o->second.team[i];
+			CHECK(a.level == b.level && a.species == b.species && a.item == b.item && memcmp(a.moves, b.moves, sizeof a.moves) == 0);
+		}
+	}
+	auto rocks = [](const nds::RomData& r) {
+		std::vector<std::pair<int, int>> v;
+		auto z = r.zones.find(1 << 8 | 1);
+		if (z != r.zones.end()) for (const auto& e : z->second.encounters) if (e.kind == nds::EncounterKind::ROCK_SMASH) v.push_back({ e.species, e.percent });
+		return v;
+	};
+	CHECK(rocks(*r1).size() == 2 && rocks(*r2) == rocks(*r1));
+	// (with a type bit the data file doesn't give, Falkner isn't read, nor Bob after him)
+	GameData d3;
+	auto rom3 = madeUpRom(d3, false, true);
+	d3.sizes.erase("trainerHappiness");
+	auto r3 = readRom(rom3, d3, &why);
+	CHECK(r3 && r3->trainers.empty());
 }
 
 static void testRomTables()
@@ -1098,7 +1166,8 @@ struct FakeRom : nds::RomData
 static const uint16_t BERRY = 1000 + 0xAD, POTION = 1000 + 0x12, TACKLE = 33, GROWL = 45, LEER = 43;	// (POKE_BALL: rules.h's, 4)
 
 // Crystal on ROUTE 29 (each release: the same save loaded): CHRIS with CHIKORITA holding a BERRY and a PIDGEY, the
-// lab's POTION, four POKé BALLs (the README pokes five in and one was thrown at the PIDGEY), at (46, 11)
+// lab's POTION, four POKé BALLs (the README pokes five in and one was thrown at the PIDGEY), at (46, 11); and Crystal
+// Legacy with that save (its README: rewritten for its pockets), read at its own addresses
 static void checkCrystal(const char* capture, const char* key)
 {
 	Dump d;
@@ -1131,6 +1200,7 @@ static void checkCrystal(const char* capture, const char* key)
 	CHECK(l->dexCaught.size() == 32 && (l->dexCaught[(152 - 1) / 8] >> ((152 - 1) % 8) & 1) && (l->dexCaught[(16 - 1) / 8] >> ((16 - 1) % 8) & 1));
 	CHECK(l->badges == 0 && l->playSeconds > 0);
 	CHECK(r.serial() == 1 && r.error().empty());
+	if (strcmp(key, "crystal") != 0) return;	// (Crystal Legacy's guide and its flags: the next step)
 	// the guide's flags: the 256 bytes of event flags, then a byte of derived bits; a new game hasn't won the League,
 	// so none of them is set (EVENT_RED_IN_MT_SILVER is, from the start: Red is hidden till the Hall of Fame)
 	auto flag = [&](int n) { return (size_t)(n >> 3) < l->flags.size() && (l->flags[(size_t)n >> 3] >> (n & 7) & 1); };
@@ -1986,11 +2056,69 @@ static void testGen1RomTables()
 	CHECK(r && r->regionMaps.size() == 1 && r->regionMaps[0].rgba.empty() && r->regionMaps[0].cells.size() == 360);
 }
 
+// Crystal Legacy's captures (PokeDaisy's: the crystal capture's save, its README): the same trainer, party, bag and
+// place as Crystal's, its bag of 84 slots (Crystal's 20); a wild HOOTHOOT (Lv3) against CHIKORITA in its battle
+// captures, the move list, the battle menu and the battle's party menu on screen. Its data file: TM01 is item 0xC1
+// (Crystal's 0xBF), its Ghost special and Dark physical, its Pokédex's pointers with their banks
+static void testCrystalLegacy()
+{
+	checkCrystal("crystal_legacy", "crystal-legacy");
+	GameData g = game("crystal-legacy");
+	CHECK(g.game.id == CRYSTAL_LEGACY && g.game.dexSize == 251 && g.headerTitle == "PM_CRYSTAL");
+	EQ(g.game.title, "Crystal Legacy");
+	CHECK(g.releases.size() == 1 && g.releases[0].sha1 == "74a6727e4406c35bc2d4f81347a5c5fdb8970663" && g.releases[0].code == "BYTE");
+	EQ(g.releases.empty() ? "" : g.releases[0].name, "v1.3.1");
+	CHECK(g.size("itemsMax") == 84 && g.size("firstTm") == 0xC1 && game("crystal").size("firstTm") == 0xBF);
+	CHECK(g.special[8] && !g.special[27] && g.types[8] == nds::GHOST && g.types[27] == nds::DARK);
+	CHECK(gen2Type(g, 8) == nds::GHOST && category(g, 8) == nds::MoveCategory::SPECIAL && category(g, 27) == nds::MoveCategory::PHYSICAL);
+	CHECK(g.rom.count("dexEntryFar") && !g.rom.count("dexEntryPointers") && g.rom.count("trainerGroupsFar") && g.rom.count("rockSmashMons"));
+	CHECK(g.size("trainerNickname") == 4 && g.size("trainerDvs") == 8 && g.size("trainerStatExp") == 16 && g.size("trainerHappiness") == 64);
+
+	Dump d;
+	double now = 0;
+	if (d.load("crystal_legacy"))
+	{
+		Reader r;
+		r.open(g);
+		auto l = replay(r, d, now);
+		size_t items = 0;
+		auto p = l->bag.find(nds::POCKET_ITEMS);
+		if (p != l->bag.end()) items = p->second.size();
+		CHECK(l->valid && items == 1 && inBag(*l, nds::POCKET_ITEMS, POTION));
+	}
+	else failed++;
+	if (d.load("crystal_legacy_battle"))
+	{
+		Reader r;
+		r.open(g);
+		auto l = replay(r, d, now);
+		const nds::Battle& b = l->battle;
+		CHECK(l->valid && r.inBattle() && b.kind == nds::BattleKind::WILD);
+		CHECK(b.ours[0].present && b.ours[0].mon.species == 152 && b.ours[0].mon.level == 5);
+		CHECK(b.ours[0].mon.moves[0] == TACKLE && b.ours[0].mon.moves[1] == GROWL);
+		EQ(b.ours[0].mon.nick, "CHIKORITA");
+		CHECK(b.foes[0].present && b.foes[0].mon.species == 163 && b.foes[0].mon.level == 3);
+		CHECK(b.foes[0].types[0] == nds::NORMAL && b.foes[0].types[1] == nds::FLYING);
+		CHECK(b.foeParty.empty() && b.trainerId == 0);
+	}
+	else failed++;
+	for (const char* c : { "crystal_legacy_battle_menu", "crystal_legacy_battle_party" })
+	{
+		if (!d.load(c)) { failed++; continue; }
+		Reader r;
+		r.open(g);
+		auto l = replay(r, d, now);
+		CHECK(l->valid && l->party.size() == 2 && r.inBattle() && l->battle.kind == nds::BattleKind::WILD);
+		CHECK(l->battle.foes[0].mon.species == 163 && l->battle.ours[0].mon.species == 152);
+	}
+}
+
 static void testCaptures()
 {
 	checkCrystal("crystal", "crystal");
 	checkCrystal("crystal_rev0", "crystal");
 	checkCrystal("crystal_au", "crystal");
+	testCrystalLegacy();
 
 	Dump d;
 	double now = 0;
@@ -2532,6 +2660,7 @@ int main(int argc, char** argv)
 	testText();
 	testRomList();
 	testRomTables();
+	testLegacyTables();
 	testLz();
 	testPictureFormats();
 	testPic1();

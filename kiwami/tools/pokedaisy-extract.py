@@ -50,7 +50,8 @@ FOLDER = os.path.dirname(SOURCES)
 SECTION = 'pokedaisy'
 
 # The games: their key, generation, title, PokeDaisy's config, its ROM tables' config (Gen2Dex.kt, Gen1Dex.kt), its
-# art's (Gen2Art.kt, Gen1Art.kt) and the title GameTitles.kt gives their releases
+# art's (Gen2Art.kt, Gen1Art.kt) and the title GameTitles.kt gives their releases (its RETAIL map's, or HACKS' for the
+# ROM hacks read as games of their own: kiwami/GB-POKEMON.md, The ROM hacks)
 GAMES = [
     ('crystal', 2, 'Crystal', 'GEN2_CRYSTAL', 'GEN2_DEX_CRYSTAL', 'CRYSTAL', 'Pokémon Crystal'),
     ('gold', 2, 'Gold', 'GEN2_GOLD', 'GEN2_DEX_GOLD_SILVER', 'GOLD', 'Pokémon Gold'),
@@ -58,7 +59,11 @@ GAMES = [
     ('red', 1, 'Red', 'GEN1_RED', 'GEN1_DEX_RED', 'RED', 'Pokémon Red'),
     ('blue', 1, 'Blue', 'GEN1_BLUE', 'GEN1_DEX_RED', 'BLUE', 'Pokémon Blue'),
     ('yellow', 1, 'Yellow', 'GEN1_YELLOW', 'GEN1_DEX_YELLOW', 'YELLOW', 'Pokémon Yellow'),
+    ('crystal-legacy', 2, 'Crystal Legacy', 'GEN2_CRYSTAL_LEGACY', 'GEN2_DEX_CRYSTAL_LEGACY', 'CRYSTAL_LEGACY',
+     'Pokémon Crystal Legacy'),
 ]
+# the ROM hacks among them: their data files say their Pokédex's size (the retail games' is their generation's)
+HACK_DEX_SIZE = {'crystal-legacy': 251}
 
 # Gen2Config's fields that are the games' own tables, or PokeDaisy's features outside the companion: left out
 SKIP = {
@@ -95,10 +100,12 @@ DEX_SKIP = {
     'dexEntryFirstBank': 'checked against pret\'s rom.dexEntryFirst instead',
     'textDict': 'a ROM hack\'s', 'packed': 'a ROM hack\'s', 'dexOrder': 'a ROM hack\'s', 'baseDataSize': 'a ROM hack\'s',
     'picBankDirect': 'a ROM hack\'s', 'unown': 'Unown\'s species, 201 in the retail games', 'lastItem': 'firstTm - 1 in the retail games',
-    'dexEntryFar': 'a ROM hack\'s', 'polished': 'a ROM hack\'s',
+    'polished': 'a ROM hack\'s',
 }
 # (Gold's and Silver's dexEntryBanks and picsBanks are PokeDaisy's placeholders: their entries' bank is counted from
-# the first's, and their pictures' banks are fixed by picBankFixes' pairs)
+# the first's, and their pictures' banks are fixed by picBankFixes' pairs. A config with dexEntryFar, Crystal Legacy's,
+# has a bank in each entry of its dexEntryPointers, which the rom section takes as dexEntryFar; its dexEntryBanks is a
+# placeholder too)
 DEX_UNUSED = {('GEN2_DEX_GOLD_SILVER', 'dexEntryBanks'), ('GEN2_DEX_GOLD_SILVER', 'picsBanks')}
 
 # Gen1DexTables' fields: the ROM tables the data files' rom section takes (by its key), the Pokédex's RAM, which
@@ -119,7 +126,7 @@ ART_ROM = {'townMapGfx': 'townMapGfx', 'townMapPalMap': 'townMapPalMap', 'pokege
 ART_LISTS = {'townMaps': ('johtoMap', 'kantoMap')}
 ART_SKIP = {k: 'PokeDaisy\'s own art, not the companion\'s' for k in (
     'font', 'fontPath', 'icons', 'monMenuIcons', 'eggIcon', 'heldItemIcons', 'partyMenuObPals', 'iconsDir',
-    'holdIconsPath', 'playerSprites', 'objectPals', 'playerPaths')}
+    'holdIconsPath', 'playerSprites', 'objectPals', 'playerPaths', 'iconBankSplit', 'iconPalNibbles')}
 ART_SKIP.update({'name': 'PokeDaisy\'s name for the art\'s files', 'sha1s': 'the releases, from GameTitles.kt instead',
                  'townMapPaths': 'PokeDaisy\'s files'})
 # Gen1ArtTables' fields: the town map's tables the rom section takes, and what is left out (PokeDaisy's own art, and
@@ -445,15 +452,17 @@ def guide_consts(src):
             for m in re.finditer(r'const val (\w+)\s*=\s*(0x[0-9A-Fa-f]+|\d+)\b', strip_comments(src))}
 
 
-def retail_sha1s(src):
+def retail_sha1s(src, maps=('RETAIL',)):
+    """GameTitles.kt's SHA-1s by title, from its RETAIL map (and HACKS', given)."""
     s = strip_comments(src)
-    m = re.search(r'private val RETAIL\s*:[^=]*=\s*mapOf\(', s)
-    if not m:
-        fail('no RETAIL map in %s' % TITLES)
-    body = s[m.end():closing(s, m.end() - 1)]
     out = {}
-    for h, title in re.findall(r'"([0-9a-f]{40})"\s+to\s+"([^"]+)"', body):
-        out.setdefault(title, set()).add(h)
+    for name in maps:
+        m = re.search(r'private val %s\s*:[^=]*=\s*mapOf\(' % name, s)
+        if not m:
+            fail('no %s map in %s' % (name, TITLES))
+        body = s[m.end():closing(s, m.end() - 1)]
+        for h, title in re.findall(r'"([0-9a-f]{40})"\s+to\s+"([^"]+)"', body):
+            out.setdefault(title, set()).add(h)
     return out
 
 
@@ -765,7 +774,7 @@ def build(checkout):
     gen1_guide_src = read(GEN1_GUIDE)
     gen1_guide_consts = guide_consts(gen1_guide_src)
     gen1_rules_src = read(GEN1_RULES)
-    titles = retail_sha1s(read(TITLES))
+    titles = retail_sha1s(read(TITLES), ('RETAIL', 'HACKS'))
     extra_text = open(os.path.join(REPO, EXTRA), encoding='utf-8').read()
     inputs[EXTRA] = pe.sha256(extra_text.encode('utf-8'))
     extra = json.loads(extra_text)
@@ -786,10 +795,13 @@ def build(checkout):
             rom_src.update({k: 'pokedaisy' for k in dex_rom})
             ram.update(dex_ram)
         dex = read_dex(dex_src, dex_cfg) if gen == 2 else {}
+        far = dex.get('dexEntryFar') is True
         for k, v in dex.items():
-            if (dex_cfg, k) in DEX_UNUSED or k in DEX_SKIP:
+            if (dex_cfg, k) in DEX_UNUSED or k in DEX_SKIP or (far and k in ('dexEntryFar', 'dexEntryBanks')):
                 continue
-            if k in DEX_ROM and isinstance(v, tuple):
+            if far and k == 'dexEntryPointers' and isinstance(v, tuple):
+                rom['dexEntryFar'], rom_src['dexEntryFar'] = v, 'pokedaisy'
+            elif k in DEX_ROM and isinstance(v, tuple):
                 rom[DEX_ROM[k]], rom_src[DEX_ROM[k]] = v, 'pokedaisy'
             elif k in DEX_SIZES and isinstance(v, int) and not isinstance(v, bool):
                 sizes[DEX_SIZES[k]] = v
@@ -933,6 +945,8 @@ def build(checkout):
             doc['split_stats'] = sorted(g['split_stats'])
         if key in ROM_GUIDES:
             doc['guide'] = 'rom'
+        if key in HACK_DEX_SIZE:
+            doc['dex_size'] = HACK_DEX_SIZE[key]
         files['%s/%s.ram.json' % (FOLDER, key)] = pe.dump(doc).encode('utf-8')
     if unread:
         print('unread:', file=sys.stderr)

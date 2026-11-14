@@ -619,6 +619,11 @@
       "bank": 46,
       "src": "pret (TreeMons)"
     },
+    "typeChart": {
+      "addr": "0x4D01",
+      "bank": 13,
+      "src": "pret (TypeMatchups)"
+    },
     "unownPicPointers": {
       "addr": "0x4000",
       "bank": 31,

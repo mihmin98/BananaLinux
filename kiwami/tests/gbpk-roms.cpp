@@ -377,6 +377,37 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 // every boss's teams the ROM's with its top level (the Champion of Gen I three, one for each starter). Crystal's hidden
 // items are PokeDaisy's, by flag and item (its GuideCrystalGen.kt's HIDDEN lines: landmark|HIDDEN|item|flag|...); Red's,
 // Blue's and Yellow's by map, flag and item (GuideGen1Gen.kt's <prefix>_AREAS_RAW: map|HIDDEN|item|0x20000 + flag|...).
+// the ROM's type chart (TypeEffects, TypeMatchups), cell for cell, against the one the companion used before it read
+// the ROM's: for Red, Blue and Yellow upstream's with Gen I's five differences (rules.h's fallback), for Gold, Silver
+// and Crystal upstream's own without Fairy; and no entry for a type past Dark. Only the retail games: a ROM hack's
+// chart is its own
+static void checkChart(const nds::RomData& r, const GameData& d)
+{
+	if (baseGame(d.game.id) != d.game.id) return;
+	const TypeChart& c = static_cast<const GbRomData&>(r).chart;
+	useRules(d.game.gen);
+	useGameRules(nullptr);
+	int differ = 0, listed = 0;
+	for (int a = 0; a < CHART_TYPES; a++)
+		for (int t = 0; t < CHART_TYPES; t++)
+		{
+			const int q = c[(size_t)(a * CHART_TYPES + t)];
+			listed += q >= 0;
+			const bool old = a <= nds::DARK && t <= nds::DARK;
+			const int want = old ? nds::effectiveness((nds::Type)a, (nds::Type)t, nds::NO_TYPE) : -1;
+			if ((old && (q < 0 ? 4 : q) != want) || (!old && q != -1))
+			{
+				if (++differ <= 5) fprintf(stderr, "gbpk-roms: FAIL %s: the chart's type %d on type %d is %d quarters, not %d\n",
+					current.c_str(), a, t, q, want);
+			}
+		}
+	useRules(nds::Gen::IV);
+	checks++;
+	if (differ) failed++;
+	fprintf(stderr, "gbpk-roms: %s: the type chart's %d entries, the companion's chart before it %s\n", current.c_str(), listed,
+		differ ? "differs" : "cell for cell");
+}
+
 static void checkGuide(const nds::RomData& r, const GameData& d, const std::string& pokedaisy)
 {
 	const std::vector<HiddenItem>& hidden = static_cast<const GbRomData&>(r).hidden;
@@ -542,12 +573,14 @@ int main(int argc, char** argv)
 		if (d.gen == 1)
 		{
 			checkGen1(*r, d);
+			checkChart(*r, d);
 			checkGuide(*r, d, pokedaisy);
 			checkPics(*r, *rom, out ? out : "", key);
 			checkTownMap(*r, out ? out : "", key);
 			continue;
 		}
 		checkGen2(*r, key, pokedaisy);
+		checkChart(*r, d);
 		checkGuide(*r, d, pokedaisy);
 		checkPics(*r, *rom, out ? out : "", key);
 		checkMaps(*r, out ? out : "", key);

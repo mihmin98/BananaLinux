@@ -102,7 +102,8 @@ namespace banana::kiwami::gbpk
 			timeFish = table("timeFishGroups"), treeMaps = table("treeMonMaps"), rockMaps = table("rockMonMaps"),
 			treeMons = table("treeMons"), trainers = table("trainerGroups"), classNames = table("trainerClassNames"),
 			landmarks = table("landmarks"), mapGroups = table("mapGroups"), mapsEnd = table("mapHeadersEnd"),
-			picPointers = table("picPointers"), unownPics = table("unownPicPointers"), monPalettes = table("monPalettes");
+			picPointers = table("picPointers"), unownPics = table("unownPicPointers"), monPalettes = table("monPalettes"),
+			typeChart = table("typeChart");
 		// a picture's bank: Crystal's PicsBanks, or Gold's and Silver's pairs (pics.cpp)
 		const bool bankPairs = d.rom.count("picBankFixes") > 0;
 		const size_t picBanks = table(bankPairs ? "picBankFixes" : "picsBanks");
@@ -171,6 +172,8 @@ namespace banana::kiwami::gbpk
 			v.priority = (uint8_t)(int8_t)(p - BASE_PRIORITY);
 			v.description = r.text(r.near(moveDesc + 2 * (m - 1)), 200);
 		}
+		// the type chart (data/types/type_matchups.asm TypeMatchups, rom.cpp readTypeChart)
+		if (!readTypeChart(r, d, typeChart, "TypeMatchups", out.chart, why)) return false;
 
 		// items: below TM01 each its name, attributes and description, at its Gen IV id or GEN2_ONLY + its own; the TMs
 		// and HMs as Gen IV numbers them (TM01 328, HM01 420)

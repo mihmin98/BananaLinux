@@ -5,13 +5,14 @@
 // nds::Live (reader.h: the journey log, the advice, the notices), and the PageData the game panel's pages draw
 // (panel.h). The memory reader is opened only once the ROM is confirmed: a release the companion doesn't know ("Not
 // supported") is never asked anything. While a Game Boy game's data is in use its rules are upstream's logic's
-// (rules.h useRules), and put back when the host goes. The guide is the game's file in the data folder (Crystal's),
+// (rules.h useRules, and useGameRules with its ROM's type chart), and put back when the host goes. The guide is the game's file in the data folder (Crystal's),
 // with the ROM's hidden items.
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "games.h"
 #include "reader.h"
+#include "rules.h"
 #include "../../nds/model.h"
 #include "../../nds/pages.h"
 #include "../../nds/session.h"
@@ -58,6 +59,7 @@ namespace banana::kiwami::gbpk
 		nds::PageData base, out;
 		bool fresh = false;
 		std::unique_ptr<nds::SessionThread> session;
+		std::unique_ptr<GameRules> rules;	// the game's own (its ROM's type chart): rules.h gameRules while it's set
 		uint64_t lastSerial = 0;
 		void begin(Loaded l);
 	};

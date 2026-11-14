@@ -599,6 +599,11 @@
           "bank": 14,
           "symbol": "TrainerAI"
         },
+        "typeChart": {
+          "addr": "0x6474",
+          "bank": 15,
+          "symbol": "TypeEffects"
+        },
         "wildData": {
           "addr": "0x4EEB",
           "bank": 3,
@@ -1317,6 +1322,11 @@
           "addr": "0x42E8",
           "bank": 46,
           "symbol": "TreeMons"
+        },
+        "typeChart": {
+          "addr": "0x4BB1",
+          "bank": 13,
+          "symbol": "TypeMatchups"
         },
         "unownPicPointers": {
           "addr": "0x4000",
@@ -2183,6 +2193,11 @@
           "bank": 46,
           "symbol": "TreeMons"
         },
+        "typeChart": {
+          "addr": "0x4D01",
+          "bank": 13,
+          "symbol": "TypeMatchups"
+        },
         "unownPicPointers": {
           "addr": "0x4000",
           "bank": 31,
@@ -2822,6 +2837,11 @@
           "addr": "0x652E",
           "bank": 14,
           "symbol": "TrainerAI"
+        },
+        "typeChart": {
+          "addr": "0x6474",
+          "bank": 15,
+          "symbol": "TypeEffects"
         },
         "wildData": {
           "addr": "0x4EEB",
@@ -3685,6 +3705,11 @@
           "bank": 46,
           "symbol": "TreeMons"
         },
+        "typeChart": {
+          "addr": "0x4D01",
+          "bank": 13,
+          "symbol": "TypeMatchups"
+        },
         "unownPicPointers": {
           "addr": "0x4000",
           "bank": 31,
@@ -4269,6 +4294,11 @@
           "addr": "0x65B2",
           "bank": 14,
           "symbol": "TrainerAI"
+        },
+        "typeChart": {
+          "addr": "0x65FA",
+          "bank": 15,
+          "symbol": "TypeEffects"
         },
         "wildData": {
           "addr": "0x4B95",

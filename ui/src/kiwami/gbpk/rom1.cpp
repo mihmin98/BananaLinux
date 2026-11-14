@@ -93,7 +93,7 @@ namespace banana::kiwami::gbpk
 			external = table("externalMapEntries"), internal = table("internalMapEntries"), wildData = table("wildData"),
 			wildSlots = table("wildSlots"), oldRod = table("oldRod"), goodRod = table("goodRodMons"), trainers = table("trainerGroups"),
 			trainersEnd = table("trainerGroupsEnd"), classNames = table("trainerClassNames"), paletteIds = table("monPaletteIds"),
-			palettes = table("palettes");
+			palettes = table("palettes"), typeChart = table("typeChart");
 		// the front pictures' banks ("Pics 1" .. "Pics 5", each its first picture's) and the town map's tables (maps.cpp
 		// reads them; here only that the data file has them)
 		for (const char* k : { "pics1", "pics2", "pics3", "pics4", "pics5", "townMap", "townMapTiles", "townMapOrder", "townMapOrderEnd" }) table(k);
@@ -195,6 +195,8 @@ namespace banana::kiwami::gbpk
 			v.cat = v.power == 0 ? nds::MoveCategory::STATUS : category(d, r.u8(e + 3));
 			v.priority = (uint8_t)(int8_t)(m == quickAttack ? 1 : m == counter ? -1 : 0);
 		}
+		// the type chart (data/types/type_matchups.asm TypeEffects, rom.cpp readTypeChart)
+		if (!readTypeChart(r, d, typeChart, "TypeEffects", out.chart, why)) return false;
 
 		// items: each its name (ItemNames, a list of strings; the elevators' floors after them aren't read) and price
 		// (ItemPrices, bcd3), at its Gen IV id or GEN1_ONLY + its own (rom.cpp gen1Item); the TMs and HMs as Gen IV

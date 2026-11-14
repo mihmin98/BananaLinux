@@ -510,6 +510,11 @@
       "bank": 14,
       "src": "pret (TrainerAI)"
     },
+    "typeChart": {
+      "addr": "0x6474",
+      "bank": 15,
+      "src": "pret (TypeEffects)"
+    },
     "wildData": {
       "addr": "0x4EEB",
       "bank": 3,

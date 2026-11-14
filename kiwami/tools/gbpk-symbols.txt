@@ -137,6 +137,9 @@ crystal,gold,silver rom.landmarks Landmarks
 crystal,gold,silver rom.mapGroups MapGroupPointers
 # (the first map's attributes follow the last map group's headers: where that group ends)
 crystal,gold,silver rom.mapHeadersEnd NewBarkTown_MapAttributes
+# (the type chart, data/types/type_matchups.asm: attacker, defender and multiplier triples; the Foresight pairs after
+# its -2, then -1)
+crystal,gold,silver rom.typeChart TypeMatchups
 
 # Gen II's counts and the one move its priority names
 crystal,gold,silver const.numPokemon constants/pokemon_constants.asm NUM_POKEMON
@@ -273,6 +276,9 @@ red,blue,yellow rom.trainerClassNames TrainerNames
 red,blue rom.loneMoves LoneMoves
 red,blue rom.teamMoves TeamMoves
 yellow rom.specialTrainerMoves SpecialTrainerMoves
+# (the type chart, data/types/type_matchups.asm: attacker, defender and multiplier triples up to -1)
+red,blue rom.typeChart TypeEffects
+yellow rom.typeChart TypeEffects
 
 # The items upstream's logic and pages know by their Gen IV id (rom.cpp gen1Item and gen2Item); any other is 1000 +
 # the game's own id. Gen I's TMs and HMs are counted from tm01 and hm01 (below), not listed.

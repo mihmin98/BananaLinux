@@ -12,6 +12,7 @@
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "games.h"
+#include "rules.h"
 #include "../../nds/model.h"
 #include <cstdint>
 #include <memory>
@@ -108,6 +109,7 @@ namespace banana::kiwami::gbpk
 		Gen1Pics pics1;
 		std::vector<HiddenItem> hidden;		// by zone, in the maps' order (the Here page's secrets: host.cpp)
 		std::vector<uint16_t> national;		// Gen I: a species' national number by its internal index (0: none)
+		TypeChart chart;					// the type chart (rules.h), the host's GameRules once read
 		std::shared_ptr<const nds::Sprite> sprite(uint16_t species, bool female = false, uint8_t form = 0) const override;
 	};
 	// the games' "n percent" (n * 255 / 100) as n
@@ -117,6 +119,14 @@ namespace banana::kiwami::gbpk
 	void defaultMoves(const nds::RomData& r, nds::TrainerMon& m);
 	// an evolution's words ("Level 16", "Use Moon Stone"), the items by r's names
 	std::string evoHow(const nds::RomData& r, uint16_t method, uint16_t param);
+
+	// the type chart at o (both generations' data/types/type_matchups.asm, `name` the table's for the reason): attacker,
+	// defender and multiplier triples (pret's constants/battle_constants.asm: 20 super effective, 10 effective, 05 not
+	// very effective, 00 no effect) up to -1, past a -2 (Gen II's: the pairs Foresight takes away, which count as any
+	// other). Each type id through the data file's types; a pair listed twice multiplies, as the games' damage walks
+	// the whole table. False with the reason in why for a pair that isn't two of the game's types and one of the four,
+	// a table that runs on, or a chart in which Water isn't super effective on Fire.
+	bool readTypeChart(const RomView& r, const GameData& d, size_t o, const char* name, TypeChart& out, std::string* why);
 
 	// Gen I's tables into out (rom1.cpp)
 	bool readGen1(const RomView& r, const GameData& d, GbRomData& out, std::string* why);

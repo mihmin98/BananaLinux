@@ -10,6 +10,7 @@
 #include "gbpk.h"
 #include "../../nds/logic.h"
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cstdint>
 
@@ -18,7 +19,7 @@ namespace banana::kiwami::gbpk
 	// ---- the game in use ----------------------------------------------------------------------------------------
 	// Set by the companion's host when a Game Boy game's data is read, and put back (useRules with an upstream Gen)
 	// when it closes, as upstream's useModernTypeChart is: one game at a time. oldChart: Gen I's type chart in
-	// upstream's effectiveness(); oldRules: a Game Boy game's rules, for upstream's effectiveSpeed(), whose Gen isn't
+	// upstream's effectiveness() when no game's own is set (below); oldRules: a Game Boy game's rules, for upstream's effectiveSpeed(), whose Gen isn't
 	// named. badges: the player's (Johto's, then Kanto's), for Gen II's badge type boosts.
 	inline std::atomic<bool> oldChart{ false }, oldRulesOn{ false };
 	inline std::atomic<uint16_t> badges{ 0 };
@@ -27,13 +28,38 @@ namespace banana::kiwami::gbpk
 	inline void setBadges(uint16_t b) { badges.store(b); }
 
 	// ---- the type chart ---------------------------------------------------------------------------------------------
-	// a cell of Gen I's chart in quarters where it differs from upstream's (which is Gen II's: pret's pokecrystal
-	// data/types/type_matchups.asm), -1 for upstream's own. Gen I's (pokered data/types/type_matchups.asm) has no Steel
-	// or Dark, Ghost does nothing to Psychic, Bug and Poison are super effective on each other, Ice is neutral on Fire.
-	// Only while oldChart is on.
+	// The game's own chart, read from its ROM (rom1.cpp and rom2.cpp: TypeEffects, TypeMatchups) into a cell for each
+	// pair of its types, in quarters, -1 where the table has no entry (neutral). The cells are over a compact index of
+	// the types: nds::Type's 0-17, and the fork's own from 32 (gbpk.h) as 18 on.
+	constexpr int CHART_TYPES = 24, FORK_TYPES = 32;
+	inline int chartIndex(nds::Type t)
+	{
+		if (t < nds::NUM_TYPES) return t;
+		if (t >= FORK_TYPES && t < FORK_TYPES + CHART_TYPES - nds::NUM_TYPES) return t - FORK_TYPES + nds::NUM_TYPES;
+		return -1;
+	}
+	using TypeChart = std::array<int8_t, CHART_TYPES * CHART_TYPES>;
+
+	// what the game in use plays by beyond its generation's rules: its type chart. Set by the host once the ROM is read
+	// (useGameRules), after useRules, and cleared (nullptr) before the host frees it, once its Session has stopped.
+	struct GameRules { TypeChart chart; };
+	inline std::atomic<const GameRules*> gameRules{ nullptr };
+	inline void useGameRules(const GameRules* r) { gameRules.store(r); }
+
+	// a cell of the chart in use, in quarters, for upstream's effectiveness(); -1 for upstream's own. With a game's rules
+	// set, its ROM's cell (4 where the table has none, or for a type outside the game's). Without them (the tests'
+	// stand-in, which has no ROM) Gen I's while oldChart is on, where it differs from upstream's (which is Gen II's:
+	// pret's pokecrystal data/types/type_matchups.asm): Gen I's (pokered data/types/type_matchups.asm) has no Steel or
+	// Dark, Ghost does nothing to Psychic, Bug and Poison are super effective on each other, Ice is neutral on Fire.
 	inline int chart(nds::Type a, nds::Type d)
 	{
 		using namespace nds;
+		if (const GameRules* g = gameRules.load())
+		{
+			const int i = chartIndex(a), j = chartIndex(d);
+			const int q = i < 0 || j < 0 ? -1 : g->chart[(size_t)(i * CHART_TYPES + j)];
+			return q < 0 ? 4 : q;
+		}
 		if (!oldChart.load()) return -1;
 		if (a == STEEL || a == DARK || d == STEEL || d == DARK) return 4;
 		if (a == GHOST && d == PSYCHIC) return 0;

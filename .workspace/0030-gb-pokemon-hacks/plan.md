@@ -1113,6 +1113,12 @@ Where the implementation turned out different from this plan, why, and what chan
   those two ids, `NO_TYPE`; Gen II's is today's exactly.
 - **2026-11-14, step 2**: `kiwami/tests/gbpk-roms.cpp` added to step 2's files: its two calls of `gen1Item` and
   `gen2Item` pass the game's data.
+- **2026-11-14, step 3**: `ui/src/kiwami/gbpk/rom.cpp` and `host.h` added to step 3's files. The table's reading is
+  the same in both generations, so it is one function, `readTypeChart` in `rom.cpp`, that `rom1.cpp` and `rom2.cpp`
+  call; `host.h` holds the host's `GameRules`. `rom.h` includes `rules.h` for the chart's type. `game.cpp` is unchanged,
+  as the step said.
+- **2026-11-14, step 3**: Water on Fire is the first entry of Gen I's `TypeEffects` only; Gen II's `TypeMatchups`
+  starts with Normal on Rock. The read checks the chart's Water-on-Fire cell is 2x, whatever its place in the table.
 
 ## Progress
 
@@ -1122,7 +1128,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. Several games to one header title | done | GB Pokémon hacks: several games to one header title, the SHA-1 picks one |
 | 2. Each game's items, types and split | done | GB Pokémon hacks: each game's items, types and physical/special split from its data file |
-| 3. Each game's type chart from its ROM | todo | |
+| 3. Each game's type chart from its ROM | done | GB Pokémon hacks: each game's type chart read from its ROM |
 | 4. Crystal Legacy | todo | |
 | 5. Crystal Legacy's guide | todo | |
 | 6. Yellow Legacy | todo | |

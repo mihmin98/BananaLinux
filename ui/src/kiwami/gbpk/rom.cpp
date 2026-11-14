@@ -63,6 +63,33 @@ namespace banana::kiwami::gbpk
 		return NONE;
 	}
 
+	bool readTypeChart(const RomView& r, const GameData& d, size_t o, const char* name, TypeChart& out, std::string* why)
+	{
+		auto no = [&](const std::string& w) { if (why) *why = w; return false; };
+		const uint8_t END = 0xFF, FORESIGHT = 0xFE;
+		const int MAX_ENTRIES = 255;
+		out.fill(-1);
+		int n = 0;
+		for (size_t e = o; ; e += 3)
+		{
+			if (!r.has(e, 1)) return no(std::string(name) + " runs past the ROM");
+			if (r.u8(e) == END) break;
+			if (r.u8(e) == FORESIGHT && !r.has(++e, 1)) return no(std::string(name) + " runs past the ROM");
+			if (r.u8(e) == END) break;
+			if (++n > MAX_ENTRIES || !r.has(e, 3)) return no(std::string(name) + " doesn't end");
+			const int a = chartIndex(gen2Type(d, r.u8(e))), t = chartIndex(gen2Type(d, r.u8(e + 1)));
+			const uint8_t m = r.u8(e + 2);
+			if (a < 0 || t < 0 || (m != 0 && m != 5 && m != 10 && m != 20))
+				return no(std::string(name) + "' entry " + std::to_string(n) + " isn't a type pair");
+			int8_t& c = out[(size_t)(a * CHART_TYPES + t)];
+			const int q = m * 4 / 10;		// (in quarters: 8, 4, 2, 0)
+			c = (int8_t)(c < 0 ? q : c * q / 4);
+		}
+		if (out[(size_t)(chartIndex(nds::WATER) * CHART_TYPES + chartIndex(nds::FIRE))] != 8)
+			return no(std::string(name) + " doesn't make Water super effective on Fire: not the game's chart");
+		return true;
+	}
+
 	uint8_t percent(uint8_t raw) { return (uint8_t)((raw * 100 + 127) / 255); }
 
 	void defaultMoves(const nds::RomData& r, nds::TrainerMon& m)

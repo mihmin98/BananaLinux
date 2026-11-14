@@ -539,6 +539,9 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	const int md1 = m.put(R::str("A HIT|THAT POUNDS")), md2 = m.put(R::str("FIRST")), md3 = m.put(R::str("LAST"));
 	m.key("moveDescriptions", m.put(R::words({ md1, md2, md3 })));
 	m.key("moveEffectPriorities", m.put({ 0x67, 2, 0xFF }));
+	// TypeMatchups (pokecrystal's ids: Normal 0, Ghost 8, Fire $14, Water $15): Water on Fire 20, then -2 and the pair
+	// Foresight takes away, Normal on Ghost 00, then -1
+	m.key("typeChart", m.put({ 0x15, 0x14, 20, 0xFE, 0, 8, 0, 0xFF }));
 	// items: names, attributes (price, held effect, parameter, property, pocket: Ball 3, Item 1; menus), descriptions
 	m.key("itemNames", m.put(R::cat(R::cat(R::str("MASTER BALL"), R::str("ULTRA BALL")), R::str("HP UP"))));
 	m.key("itemAttributes", m.put({ 0, 0, 0, 0, 6, 3, 0, 0xB0, 0x04, 0, 0, 6, 3, 0, 0x48, 0x26, 0, 0, 0, 1, 0 }));
@@ -680,6 +683,16 @@ static void testRomTables()
 	CHECK(r->moves[2].type == nds::FIRE && r->moves[2].cat == nds::MoveCategory::SPECIAL && (int8_t)r->moves[2].priority == 1 &&
 		r->moves[2].accuracy == 95 && r->moves[2].effectChance == 30);
 	CHECK(r->moves[3].type == nds::FIGHTING && (int8_t)r->moves[3].priority == -1 && r->moves[3].power == 70);
+	// the type chart: Water on Fire, and past the -2 Normal on Ghost (Foresight's pair counts as any other); the rest
+	// neutral, upstream's Gen II cells not among them (Fire on Grass)
+	{
+		const TypeChart& c = static_cast<const GbRomData&>(*r).chart;
+		auto cell = [&](nds::Type a, nds::Type t) { return c[(size_t)(chartIndex(a) * CHART_TYPES + chartIndex(t))]; };
+		CHECK(cell(nds::WATER, nds::FIRE) == 8 && cell(nds::NORMAL, nds::GHOST) == 0 && cell(nds::FIRE, nds::GRASS) == -1);
+		int listed = 0;
+		for (int8_t q : c) listed += q >= 0;
+		CHECK(listed == 2);
+	}
 	// items at their Gen IV ids (Master and Ultra Ball) or GEN2_ONLY + theirs (HP Up), the TMs and HMs as Gen IV's
 	EQ(r->items[1].name, "Master Ball");
 	EQ(r->items[1].description, "THE BEST");
@@ -1626,6 +1639,12 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpGen1(GameData& d, int b
 	// data file's counter, for its -1)
 	m.key("moves", m.put({ 1, 0, 40, 0, 255, 35, 2, 0, 40, 0, 255, 30, 3, 4, 40, 20, 255, 25 }));
 	m.key("moveNames", m.put(R::cat(R::cat(R::str("POUND"), R::str("QUICK ATTACK")), R::str("EMBER"))));
+	// TypeEffects (pokered's ids: Fire $14, Water $15, Grass $16, Psychic $18, Ice $19, Bug 7, Poison 3, Ghost 8):
+	// Water on Fire 20 (the read's check), Ghost on Psychic 00 and Bug on Poison 20 as Red's, Ice on Fire listed as 10
+	// (PureRGB lists it so), Fire on Grass made up as 05; then -1. For a refusal: an id with no type (9) as the second
+	// entry's attacker, a multiplier that isn't one of the four (15), Water on Fire 10
+	m.key("typeChart", m.put({ 0x15, 0x14, bad == 7 ? 10 : 20, bad == 5 ? 9 : 8, 0x18, 0, 7, 3, bad == 6 ? 15 : 20,
+		0x19, 0x14, 10, 0x14, 0x16, 5, 0xFF }));
 	// items 1-10: names and prices (bcd3: the Ultra Ball 1200, the Poké Ball 200)
 	std::vector<int> in;
 	for (const char* n : { "MASTER BALL", "ULTRA BALL", "GREAT BALL", "POKE BALL", "TOWN MAP", "BICYCLE", "SURFBOARD", "SAFARI BALL",
@@ -1764,6 +1783,23 @@ static void testGen1RomTables()
 	EQ(r->items[328].name, "TM01");
 	EQ(r->items[424].name, "HM05");
 	CHECK(r->tmMoves.size() == 100 && r->tmMoves[0] == 1 && r->tmMoves[92] == 2);
+	// the type chart, in quarters, through upstream's effectiveness() while it's the game's rules (whatever the
+	// generation's fallback says: Gen II's here): the table's cells, neutral where it has no entry
+	{
+		using namespace nds;
+		GameRules g;
+		g.chart = static_cast<const GbRomData&>(*r).chart;
+		useRules(GEN_II);
+		useGameRules(&g);
+		CHECK(effectiveness(WATER, FIRE, NO_TYPE) == 8 && effectiveness(GHOST, PSYCHIC, NO_TYPE) == 0);
+		CHECK(effectiveness(BUG, POISON, NO_TYPE) == 8 && effectiveness(ICE, FIRE, NO_TYPE) == 4);
+		CHECK(effectiveness(FIRE, GRASS, NO_TYPE) == 2 && effectiveness(FIRE, GRASS, POISON) == 2);
+		CHECK(effectiveness(POISON, BUG, NO_TYPE) == 4 && effectiveness(FIGHTING, STEEL, NO_TYPE) == 4);
+		CHECK(effectiveness(WATER, FAIRY, NO_TYPE) == 4 && effectiveness(WATER, NO_TYPE, NO_TYPE) == 4);
+		useGameRules(nullptr);
+		CHECK(effectiveness(FIRE, GRASS, NO_TYPE) == 8 && effectiveness(GHOST, PSYCHIC, NO_TYPE) == 8);
+		useRules(Gen::IV);
+	}
 	// places: each map named by the town map; the names once each
 	CHECK(r->zones.size() == 3);
 	CHECK((r->locationNames == std::vector<std::string>{ "Pallet Town", "Viridian Forest" }));
@@ -1905,6 +1941,14 @@ static void testGen1RomTables()
 	CHECK(!readRom(rom, d, &why) && why.find("class 3") != std::string::npos);
 	rom = madeUpGen1(d, 4);
 	CHECK(!readRom(rom, d, &why) && why.find("map 2's hidden item at 9, 9 isn't in HiddenItemCoords") != std::string::npos);
+	// ... a type chart entry with an id the game has no type for, or a multiplier that isn't one of the four; a chart
+	// where Water isn't super effective on Fire
+	rom = madeUpGen1(d, 5);
+	CHECK(!readRom(rom, d, &why) && why.find("TypeEffects' entry 2 isn't a type pair") != std::string::npos);
+	rom = madeUpGen1(d, 6);
+	CHECK(!readRom(rom, d, &why) && why.find("TypeEffects' entry 3 isn't a type pair") != std::string::npos);
+	rom = madeUpGen1(d, 7);
+	CHECK(!readRom(rom, d, &why) && why.find("TypeEffects doesn't make Water super effective on Fire") != std::string::npos);
 	rom = madeUpGen1(d);
 	GameData d2 = d;
 	d2.rom.erase("wildData");
@@ -2320,8 +2364,10 @@ static void testTables()
 static void testRules()
 {
 	using namespace nds;
-	// the type chart through upstream's effectiveness(): Gen I's cells while its chart is in use, upstream's (Gen II's)
-	// otherwise (pokered and pokecrystal data/types/type_matchups.asm)
+	// the type chart through upstream's effectiveness() with no game's own set (the tests' stand-in has no ROM): Gen I's
+	// cells while its chart is in use, upstream's (Gen II's) otherwise (pokered and pokecrystal
+	// data/types/type_matchups.asm)
+	CHECK(gameRules.load() == nullptr);
 	useRules(GEN_I);
 	CHECK(effectiveness(GHOST, PSYCHIC, NO_TYPE) == 0 && effectiveness(BUG, POISON, NO_TYPE) == 8);
 	CHECK(effectiveness(POISON, BUG, NO_TYPE) == 8 && effectiveness(ICE, FIRE, NO_TYPE) == 4);
@@ -2335,6 +2381,9 @@ static void testRules()
 	CHECK(oldRules());
 	useRules(Gen::IV);	// (the host puts it back: upstream's games untouched)
 	CHECK(!oldRules() && effectiveness(GHOST, PSYCHIC, NO_TYPE) == 8);
+	// the chart's compact index: upstream's types, the fork's from 32, nothing else
+	CHECK(chartIndex(NORMAL) == 0 && chartIndex(FAIRY) == 17 && chartIndex((Type)32) == 18 && chartIndex((Type)37) == 23);
+	CHECK(chartIndex(NUM_TYPES) == -1 && chartIndex((Type)31) == -1 && chartIndex((Type)38) == -1 && chartIndex(NO_TYPE) == -1);
 
 	// damage through upstream's damage(), Gen II (pokecrystal effect_commands.asm):
 	// Lv 5 TACKLE (35, Normal), Attack 11 against Defense 9, no STAB, neutral:

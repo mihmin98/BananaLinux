@@ -69,6 +69,11 @@ namespace banana::kiwami::gbpk
 		session.reset();	// (stopped first: it saves the journey on this thread)
 		if (load.valid()) load.wait();
 		reader.close();
+		if (rules)	// (the Session has stopped: nothing asks the chart now)
+		{
+			useGameRules(nullptr);
+			rules.reset();
+		}
 		// (upstream's hosts don't put the chart back: an Emerald after Red would be judged by Gen I's)
 		if (base.rom)
 		{
@@ -173,6 +178,14 @@ namespace banana::kiwami::gbpk
 		base.guide = l.guide ? l.guide : std::make_shared<nds::GuideData>();
 		useRules(data.game.gen);
 		fprintf(stderr, "banana-ui: gb companion: rules on (Generation %s)\n", data.gen == 1 ? "I" : "II");
+		// the game's own type chart, read from its ROM (none for the tests' stand-in: rules.h falls back on the
+		// generation's)
+		if (const auto* gb = dynamic_cast<const GbRomData*>(base.rom.get()); gb && gb->rom)
+		{
+			rules = std::make_unique<GameRules>();
+			rules->chart = gb->chart;
+			useGameRules(rules.get());
+		}
 		reader.open(data);
 		auto ss = std::make_unique<nds::Session>(base.rom, base.guide, stateDir);
 		ss->setChallenge(challenge);

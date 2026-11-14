@@ -31,7 +31,8 @@ out de47c63bfe95770df1a707ab1dbac47f84561ea94544f66e641733f8c4641193  kiwami/roo
 out 4b07e3bb9740c74cfded1346b1d77b302ff044eede08724830233c8f07c3dd32  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/red.json
 out f1e686d523aad0faf926c47c68187c53a906884b38b8e136db6e5e270d46230c  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/red.ram.json
 out d34f3f961ed85c93212aa4b322351891540114929fcabc16c32451f138ed79b5  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/silver.ram.json
-out 900c3d35f3762f00e20daccfaf243a2478dd586885d434a569934f3a441e0b3f  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow-legacy.ram.json
+out 3f1fdb07462de5e1be8b052c18f9c17bba9334c50a4eae06bf4bc685db2dec33  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow-legacy.json
+out b8ef39b4e34327d2f44f1a409b2ee90b649c0d660874bfacddbc086ac9c9655f  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow-legacy.ram.json
 out cbf7f2a93a5172af3878580d795401d493b524f44b26410903d8639cec1ffd0e  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow.json
 out 09bb69245ed34229ab4a65378ad4c3bf5599ca661aed429a8d147ccf0a37206d  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow.ram.json
 

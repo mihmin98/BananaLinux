@@ -6,8 +6,61 @@
     4,
     8
   ],
+  "derived": [
+    {
+      "any": [
+        2273,
+        2569
+      ],
+      "bit": 2816,
+      "for": "e4-lorelei"
+    },
+    {
+      "any": [
+        2281,
+        2569
+      ],
+      "bit": 2817,
+      "for": "e4-bruno"
+    },
+    {
+      "any": [
+        2289,
+        2569
+      ],
+      "bit": 2818,
+      "for": "e4-agatha"
+    },
+    {
+      "any": [
+        2297,
+        2569
+      ],
+      "bit": 2819,
+      "for": "e4-lance"
+    },
+    {
+      "any": [
+        2305,
+        2569
+      ],
+      "bit": 2820,
+      "for": "champion-your-rival"
+    }
+  ],
   "dex_size": 151,
-  "flags": [],
+  "flags": [
+    {
+      "bytes": 320,
+      "first": 0,
+      "ram": "eventFlags"
+    },
+    {
+      "bytes": 32,
+      "first": 2560,
+      "ram": "toggleFlags"
+    }
+  ],
   "game": "yellow-legacy",
   "gen": 1,
   "header_title": "POKEMON YELLOW",
@@ -158,7 +211,7 @@
     "eventFlags": {
       "addr": "0xD746",
       "bank": 1,
-      "src": "pret (wEventFlags)"
+      "src": "pokedaisy pret (wEventFlags)"
     },
     "isInBattle": {
       "addr": "0xD057",
@@ -238,7 +291,7 @@
     "toggleFlags": {
       "addr": "0xD5F3",
       "bank": 1,
-      "src": "pret (wMissableObjectFlags)"
+      "src": "pokedaisy pret (wMissableObjectFlags)"
     },
     "topMenuItemY": {
       "addr": "0xCC24",
@@ -475,7 +528,8 @@
     "quickAttack": 98,
     "starterPikachu": 84,
     "tm01": 201,
-    "toggleCeruleanCaveGuy": 9
+    "toggleCeruleanCaveGuy": 9,
+    "toggleFlagBytes": 32
   },
   "special": [
     8,

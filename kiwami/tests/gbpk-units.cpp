@@ -1382,15 +1382,16 @@ static void testCrystalLegacyGuide()
 	EQ(next(), "none");
 }
 
-// Red's, Blue's and Yellow's guide files through upstream's loader (a stand-in resolver: every place is map 1, every
-// trainer 1:1) and logic: the eight gyms by their badges, the Elite Four and the Champion by derived bits, every flag
-// inside the banks and the derived bits; the in-game trades as notes on the Pokémon given
+// Red's, Blue's, Yellow's and Yellow Legacy's guide files through upstream's loader (a stand-in resolver: every place
+// is map 1, every trainer 1:1) and logic: the eight gyms by their badges, the Elite Four and the Champion by derived
+// bits, every flag inside the banks and the derived bits; the in-game trades as notes on the Pokémon given (Yellow
+// Legacy's eight, Yellow's seven and the Saffron Pidgey House's)
 static void testGen1Guides()
 {
 	nds::GuideResolver res;
 	res.zones = [](const std::string&) { return std::vector<uint16_t>{ 1 }; };
 	res.trainers = [](const std::string&, const std::string&, int) { return std::vector<uint16_t>{ 1 << 8 | 1 }; };
-	for (auto [key, id, trades] : { std::tuple{ "red", RED, 9 }, { "blue", BLUE, 9 }, { "yellow", YELLOW, 7 } })
+	for (auto [key, id, trades] : { std::tuple{ "red", RED, 9 }, { "blue", BLUE, 9 }, { "yellow", YELLOW, 7 }, { "yellow-legacy", YELLOW_LEGACY, 8 } })
 	{
 		GameData d;
 		std::string why = "-";
@@ -1427,10 +1428,25 @@ static void testGen1Guides()
 		EQ(g.milestones[12].name, "Champion: your rival");
 		EQ(g.milestones[12].foeName, "Rival3");
 		EQ(g.milestones[12].leader, "your rival");
-		CHECK(g.milestones[0].levelCap == (key == std::string("yellow") ? 12 : 14) && g.milestones[12].levelCap == 65);
+		CHECK(g.milestones[0].levelCap == (baseGame(id) == YELLOW ? 12 : 14) && g.milestones[12].levelCap == 65);
 		auto mr = g.evolutionNotes.find(122);
 		CHECK(mr != g.evolutionNotes.end());
 		if (mr != g.evolutionNotes.end()) EQ(mr->second, "From an in-game trade in the Route 2 Trade House.");
+		if (id == YELLOW_LEGACY)
+		{
+			// (Yellow Legacy's own teams: Lt. Surge's top level 29, Erika's 35, Koga's 43, where Yellow's are 28, 32, 50)
+			EQ(g.milestones[4].name, "Gym 5: Koga");
+			CHECK(g.milestones[2].levelCap == 29 && g.milestones[3].levelCap == 35 && g.milestones[4].levelCap == 43);
+			auto pidgey = g.evolutionNotes.find(124);
+			CHECK(pidgey != g.evolutionNotes.end());
+			if (pidgey != g.evolutionNotes.end()) EQ(pidgey->second, "From an in-game trade in the Saffron Pidgey House.");
+		}
+		// (Yellow's guide and Yellow Legacy's are each their own game's: the other's id refuses the file)
+		if (baseGame(id) == YELLOW)
+		{
+			nds::GuideData other;
+			CHECK(!nds::loadGuideFile(dataPath + "/" + key + ".json", other, id == YELLOW ? YELLOW_LEGACY : YELLOW, &why, &res));
+		}
 
 		// the next milestone follows the badges, then the flags: a room's flag its member alone, the Cerulean Cave
 		// guard hidden (the League won) the Elite Four and the Champion, worked out by the reader (Reader::flagsInto)
@@ -1587,13 +1603,13 @@ static std::shared_ptr<nds::Live> checkGen1(const char* capture, const char* key
 	for (const auto& [pocket, list] : l->bag) items += list.size();
 	CHECK(items == 17 && !inBag(*l, nds::POCKET_KEY, GEN1_ONLY + 0x05));
 	CHECK(l->timeOfDay == nds::TimeOfDay::ANY && r.error().empty());
-	if (std::string(key) == "yellow-legacy") return l;	// (Yellow Legacy's guide and its flags: the next step)
 	// the guide's flags: the 320 bytes of event flags, the 32 of the toggleable objects' from bit 2560, then a byte of
 	// derived bits; the Elite Four's rooms' flags clear (the lobby clears them), and the League not won in Red's and
 	// Blue's numbering. Yellow's save holds the same bytes, and its toggleable objects are numbered one on from the
-	// Cerulean Cave guard's: Red's object 9 hidden reads as Yellow's guard hidden, the League won
+	// Cerulean Cave guard's: Red's object 9 hidden reads as Yellow's guard hidden, the League won. Yellow Legacy's
+	// capture is Yellow's save rewritten, its toggleable objects at its own address: the same bits
 	auto flag = [&](int n) { return (size_t)(n >> 3) < l->flags.size() && (l->flags[(size_t)n >> 3] >> (n & 7) & 1); };
-	const bool yellow = std::string(key) == "yellow";
+	const bool yellow = baseGame(game(key).game.id) == YELLOW;
 	CHECK(l->flags.size() == 353 && l->flags[352] == (yellow ? 0x1F : 0));
 	CHECK(!flag(2273) && !flag(2305) && flag(2560 + 8) == false && flag(2560 + 9));
 	return l;
@@ -1616,8 +1632,28 @@ static void testYellowLegacy()
 	CHECK(g.special[8] && g.types[8] == nds::GHOST && category(g, 8) == nds::MoveCategory::SPECIAL);
 	CHECK(category(game("yellow"), 8) == nds::MoveCategory::PHYSICAL && category(g, 0x14) == nds::MoveCategory::SPECIAL);
 
+	// (its guide's flags: Yellow's banks and derived bits, its toggleable objects at its own address)
+	CHECK(g.flags.size() == 2 && g.flags[1].ram == "toggleFlags" && g.flags[1].first == 2560 && g.at("toggleFlags").addr == 0xD5F3);
+	CHECK(g.derived.size() == 5 && g.derived[0].bit == 2816 && (g.derived[0].of == std::vector<int>{ 2273, 2569 }));
+
 	auto l = checkGen1("yellow_legacy", "yellow-legacy");
 	CHECK(l->battle.kind == nds::BattleKind::NONE);
+	// ... and the guide's next milestone by them: none, the save having its eight badges and the League won (the
+	// Cerulean Cave guard hidden); with the guard's bit and the derived bits cleared, the Elite Four's first
+	{
+		nds::GuideResolver res;
+		res.zones = [](const std::string&) { return std::vector<uint16_t>{ 1 }; };
+		res.trainers = [](const std::string&, const std::string&, int) { return std::vector<uint16_t>{ 1 << 8 | 1 }; };
+		nds::GuideData guide;
+		std::string why;
+		CHECK(nds::loadGuideFile(dataPath + "/yellow-legacy.json", guide, YELLOW_LEGACY, &why, &res));
+		auto next = [&] { const nds::Milestone* m = nds::nextMilestone(guide, *l); return m ? m->id : std::string("none"); };
+		EQ(next(), "none");
+		const int guard = 2560 + g.size("toggleCeruleanCaveGuy");
+		l->flags[(size_t)guard >> 3] &= (uint8_t)~(1 << (guard & 7));
+		l->flags[352] = 0;
+		EQ(next(), "e4-lorelei");
+	}
 	l = checkGen1("yellow_legacy_battle", "yellow-legacy");
 	const nds::Battle& b = l->battle;
 	CHECK(b.kind == nds::BattleKind::WILD && b.trainerId == 0 && b.foeParty.empty());

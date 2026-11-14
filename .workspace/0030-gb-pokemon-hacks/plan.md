@@ -718,8 +718,10 @@ Common to the steps (as #28's):
 
 - **Files**:
   - `kiwami/tools/pokedaisy-extract.py` (changed)
-  - `kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow-legacy.json` (new), `SOURCES` (changed)
-  - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp` (changed)
+  - `kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow-legacy.json` (new), `yellow-legacy.ram.json`
+    (changed: the guide's flags, *Deviations*, 2026-11-14), `SOURCES` (changed)
+  - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-ui.sh` (changed; `gbpk-roms.cpp` unchanged, *Deviations*,
+    2026-11-14)
   - `kiwami/GB-POKEMON.md` (changed)
 - **Change**: `GEN1_GUIDES` gets `'yellow-legacy': ('G1L', 'YELLOW_LEGACY', 'PKYL')`. `gen1_guide` reads
   `G1L_BOSSES_RAW`, `G1L_AREAS_RAW` and `GuideGen1.kt`'s `YELLOW_LEGACY_GUIDE_RAM` as it reads Yellow's.
@@ -1171,6 +1173,14 @@ Where the implementation turned out different from this plan, why, and what chan
   42, the rods, Brock's and Lorelei's moves, Lick special) and its hidden items against PokeDaisy's `G1L_AREAS_RAW`.
   `kiwami/tests/gbpk/NOTICE` names its captures. `gbpk-ui.sh` also asserts Crystal Legacy's guide loaded, which step 5
   left out (its comment still said the guide was to come).
+- **2026-11-14, step 7**: `yellow-legacy.ram.json` added to step 7's files, as step 5 added Crystal Legacy's: its guide
+  reads the save's flags, so the data file gains Yellow's banks (`flags`: 320 bytes of event flags and the 32 of its
+  toggleable objects, at its own `0xD5F3`), the five derived bits 2816-2820 and `toggleFlagBytes`, its `G1L_*` RAM
+  constants checked against its build's symbols. `kiwami/tests/gbpk-ui.sh` added too: its Yellow Legacy run said no
+  guide was there, and now asserts the guide's 13 milestones. `gbpk-roms.cpp` needs no change: its `checkGuide` loads
+  any game's guide file there is and checks every place and boss's team against the ROM, and already compares Yellow
+  Legacy's hidden items with `G1L_AREAS_RAW` (step 6). `GEN1_GUIDES` gets a fourth field, what the game's tables were
+  generated from, for the guide file's `sources` (the retail games' files come out unchanged).
 
 ## Progress
 
@@ -1184,7 +1194,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 4. Crystal Legacy | done | GB Pokémon hacks: Crystal Legacy, from its build's symbols, its memory and its ROM |
 | 5. Crystal Legacy's guide | done | GB Pokémon hacks: Crystal Legacy's guide, from PokeDaisy's |
 | 6. Yellow Legacy | done | GB Pokémon hacks: Yellow Legacy, from its build's symbols, its memory and its ROM |
-| 7. Yellow Legacy's guide | todo | |
+| 7. Yellow Legacy's guide | done | GB Pokémon hacks: Yellow Legacy's guide, from PokeDaisy's |
 | 8. Types of the fork's own on the pages | todo | |
 | 9. PureRed, PureBlue and PureGreen | todo | |
 | 10. PureRGB's switches, signatures and Hyper Ball | todo | |

@@ -162,10 +162,13 @@ GUIDE_KINDS = [('LEADER ', 'gym', 'Gym', 'Leader'), ('ELITE FOUR ', 'elite4', 'E
                ('CHAMPION ', 'champion', 'Champion', 'Champion'), ('', 'postgame', None, None)]
 PLACE_ALIAS = {'POKéMON LEAGUE': 'INDIGO PLATEAU', 'MT. SILVER': 'SILVER CAVE'}
 
-# Red's, Blue's and Yellow's guides (GuideGen1.kt's rules over GuideGen1Gen.kt's tables): each game's names there (its
-# constants' prefix, its RAM's and its world's), and the guide file's code (the fork's own: the carts have none,
-# ui/src/kiwami/gbpk/guide-games.inc)
-GEN1_GUIDES = {'red': ('G1R', 'RED', 'PKRD'), 'blue': ('G1B', 'BLUE', 'PKBL'), 'yellow': ('G1Y', 'YELLOW', 'PKYL')}
+# Red's, Blue's, Yellow's and Yellow Legacy's guides (GuideGen1.kt's rules over GuideGen1Gen.kt's tables): each game's
+# names there (its constants' prefix, its RAM's and its world's), the guide file's code (the fork's own: the carts have
+# none, ui/src/kiwami/gbpk/guide-games.inc), and what its tables were generated from
+GEN1_GUIDES = {'red': ('G1R', 'RED', 'PKRD', 'pret/pokered and pret/pokeyellow'),
+               'blue': ('G1B', 'BLUE', 'PKBL', 'pret/pokered and pret/pokeyellow'),
+               'yellow': ('G1Y', 'YELLOW', 'PKYL', 'pret/pokered and pret/pokeyellow'),
+               'yellow-legacy': ('G1L', 'YELLOW_LEGACY', 'PKYL', 'Yellow Legacy v1.0.10\'s build')}
 # the games whose guide the host builds from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp): PokeDaisy has none
 ROM_GUIDES = ('gold', 'silver')
 # GuideGen1Gen.kt's RAM constants (<prefix>_<name>, Gen I's D000-DFFF the data files' bank 1), by the data file's key,
@@ -706,9 +709,9 @@ def gen1_rules(rules_src, prefix, world):
     return out
 
 
-def gen1_guide(gen_src, key, prefix, code, title, sizes, cave_guy, first_derived):
-    """The guide file of Red, Blue or Yellow (nds-pokemon-guide, schema 1) and the bits derived from the save's flags its
-    milestones read: each boss of GuideGen1Gen.kt's <prefix>_BOSSES_RAW in its order (a key's lines one boss, its
+def gen1_guide(gen_src, key, prefix, code, made_from, title, sizes, cave_guy, first_derived):
+    """The guide file of Red, Blue, Yellow or Yellow Legacy (nds-pokemon-guide, schema 1) and the bits derived from the
+    save's flags its milestones read: each boss of GuideGen1Gen.kt's <prefix>_BOSSES_RAW in its order (a key's lines one boss, its
     teams the Champion's by his starter), a gym done by its badge, the others by a derived bit when any of their flags
     is set (the event flags from bit 0, the toggleable objects' after them); the in-game trades as the Pokédex's notes
     on the Pokémon given, by their place. The item balls, gifts and key items of <prefix>_AREAS_RAW are left out, and
@@ -796,8 +799,7 @@ def gen1_guide(gen_src, key, prefix, code, title, sizes, cave_guy, first_derived
     guide = {
         'schema': 1, 'kind': 'nds-pokemon-guide', 'game': key, 'code': code, 'title': title, 'revision': 1,
         'sources': ['PokeDaisy by Lidor Itzhari, %s (GPL-3.0): GuideGen1.kt\'s rules; GuideGen1Gen.kt\'s bosses, their '
-                    'order and flags, and the in-game trades, generated there from pret/pokered and pret/pokeyellow'
-                    % PIN[:8],
+                    'order and flags, and the in-game trades, generated there from %s' % (PIN[:8], made_from),
                     'The player\'s ROM: the trainers\' teams, the places\' maps and the hidden items, read when the '
                     'game starts (kiwami/GB-POKEMON.md)'],
         'places': places, 'milestones': milestones, 'evolutions': evolutions,
@@ -971,7 +973,7 @@ def build(checkout):
             ev = sizes['eventFlagBytes']
             flags = [{'ram': 'eventFlags', 'bytes': ev, 'first': 0},
                      {'ram': 'toggleFlags', 'bytes': sizes['toggleFlagBytes'], 'first': 8 * ev}]
-            gd, derived, u = gen1_guide(gen1_guide_src, key, prefix, GEN1_GUIDES[key][2], pd_title, sizes,
+            gd, derived, u = gen1_guide(gen1_guide_src, key, prefix, *GEN1_GUIDES[key][2:], pd_title, sizes,
                                         sizes['toggleCeruleanCaveGuy'], 8 * (ev + sizes['toggleFlagBytes']))
             unread += u
             files['%s/%s.json' % (FOLDER, key)] = pe.dump(gd).encode('utf-8')

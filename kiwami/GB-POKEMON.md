@@ -49,7 +49,8 @@ Two sources, each read by its own script into files that are committed, so a bui
 - **PokeDaisy**, by `kiwami/tools/pokedaisy-extract.py`: the RAM addresses in its readers' configs (`Gen2Reader.kt`'s
   `Gen2Config` and `Gen1Reader.kt`'s `Gen1Config`, read by a small evaluator of their named arguments,
   `wramx(bank, addr)` and `.copy(...)`; Gen I's English configs only, checked by their `language`), Crystal's
-  guide RAM (`GuideCrystalGen.kt`), Crystal's guide and Red's, Blue's and Yellow's (*The guides*: `GuideCrystal.kt`,
+  guide RAM (`GuideCrystalGen.kt`), Crystal's and Crystal Legacy's guides and Red's, Blue's, Yellow's and Yellow
+  Legacy's (*The guides*: `GuideCrystal.kt`,
   `GuideGen1.kt` and the tables they read), the ROM tables its Pokédex reads (`Gen2Dex.kt`,
   `Gen2Art.kt`, and `Gen1Dex.kt`'s English `GEN1_DEX_RED` and `GEN1_DEX_YELLOW`: the base stats, Mew's apart in Red
   and Blue, the pages, the palettes, and the Pokédex's RAM; the fields its other releases change checked to be their
@@ -542,12 +543,12 @@ line). It keeps pret's older names for some symbols, each given on a line of its
 `STARTER_PIKACHU`, `GBCBasePalettes`, `wMissableObjectFlags`, `HS_CERULEAN_CAVE_GUY` and `HiddenObjectMaps`. Two of
 its ROM's records are its own, read by `rom1.cpp` as the game reads them (*Red, Blue and Yellow's tables*): its Old Rod
 is a table of two (`oldRodMons`, `OldRodMons`: Goldeen and Poliwag at 5), and its Metapod has a stray entry among its
-evolutions. Its guide comes with the plan's step 7; until then its Guide page has the ROM's hidden items alone.
+evolutions. Its guide, `yellow-legacy.json`, is PokeDaisy's, converted as Yellow's (*The guides*).
 
 ## The data files
 
 `/usr/share/banana/companions/gb-pokemon/<game>.ram.json` (`red`, `blue`, `yellow`, `gold`, `silver`, `crystal`, and the
-ROM hacks': `crystal-legacy`), JSON with sorted keys:
+ROM hacks': `crystal-legacy`, `yellow-legacy`), JSON with sorted keys:
 
 ```json
 { "schema": 1, "kind": "gb-pokemon-ram", "game": "crystal", "gen": 2, "title": "Crystal",
@@ -693,6 +694,15 @@ what it takes them for:
 - No `opens` and no tips, as PokeDaisy's Gen I guides have neither. Its item balls, gifts and key items aren't taken;
   its descriptions of Yellow's items (`ItemDescriptionsYellow.kt`) aren't either, as they name the games' items (they
   are in the reference data's `yellow/text.json`).
+
+**Yellow Legacy's**, `yellow-legacy.json`, is converted the same way from `GuideGen1Gen.kt`'s `G1L_` tables (generated
+there from Yellow Legacy v1.0.10's build) by `GuideGen1.kt`'s `YELLOW_LEGACY_GUIDE_RAM` and `YELLOW_LEGACY_WORLD`,
+which the script checks are wired as Yellow's. It has Yellow's 13 bosses in Yellow's order, the code `PKYL` (its
+header's, Yellow's, has none), and its own teams: Lt. Surge's top level 29, Erika's 35, Koga's 43 (Yellow's 28, 32,
+50). Its flags are Yellow's: the event flags at Yellow's address, the toggleable objects' at its own (`0xD5F3`, its
+`wMissableObjectFlags`), the Cerulean Cave guard its object 9, and the same derived bits 2816-2820; its data file's RAM
+constants there are checked against its build's symbols. Its trades are eight, Yellow's seven and one in the Saffron
+Pidgey House.
 
 **Gold's and Silver's** come from the ROM, as PokeDaisy has no guide for them: `romGuide` (`ui/src/kiwami/gbpk/
 gsguide.cpp`, after upstream's `nds::guideFromRom`, which upstream since removed) makes a milestone of each trainer

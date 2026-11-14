@@ -18,7 +18,7 @@
 #   wild battle, Gen I's blocks (one Special row, no Item or Friendship row, no Hidden Power, base stats with
 #   Special), its guide file loaded (13 milestones), and its rules off before Crystal's companion opens after it;
 # - Yellow Legacy's pages on its captures (Yellow's title, its own addresses): Gen I's rules, the party of six and a
-#   wild battle; no guide file yet, so none loaded.
+#   wild battle, its guide file loaded (13 milestones).
 # Needs ui/banana-ui (make ui) and ImageMagick (the shots not blank). Run by kiwami/tests/ci.sh when banana-ui is
 # built, or by hand:
 #   kiwami/tests/gbpk-ui.sh       (the shots and logs in $OUT, /tmp/kiwami-gbpk-ui by default)
@@ -194,11 +194,13 @@ gtouch 100 298; gshot species; gbpanel 1 $CAP/crystal; gbhost"
     grep -E 'gb(host|feed|panel)|gb companion: (rules|pages:)' "$log" | sort | uniq -c | sed "s/^ */gbpk-ui: $size: red: /; s|$PWD/||g"
 
     # Yellow Legacy's pages: Yellow's title, its capture read at its own addresses (the party of six), a wild battle on
-    # the Battle page, its end the Party page; Gen I's rules; its guide file isn't there yet, so none
+    # the Battle page, its end the Party page; Gen I's rules; its guide file loaded
     run $size ylegacy "home 0; gbpanel 1 $CAP/yellow_legacy; gbhost; gbfeed $CAP/yellow_legacy; sleep 300; gshot party; \
 wait 300; gbfeed $CAP/yellow_legacy_battle; sleep 300; gshot battle; wait 300; gbfeed $CAP/yellow_legacy; sleep 100"
     logged "gbpanel .*/yellow_legacy: companion Yellow Legacy$"
     logged "gb companion: rules on \(Generation I\)$"
+    logged "gb companion: guide: 13 milestones, 0 hidden items$"
+    ! grep -q 'gb companion: no guide' "$log" || { echo "FAIL $size ylegacy: $(grep 'no guide' "$log")"; fail=1; }
     logged "gbhost: ready Yellow Legacy view pages:Party$"
     logged "gbfeed .*/yellow_legacy: asked [1-9][0-9]*, party 6, battle 0, view pages:Party$"
     logged "gbfeed .*/yellow_legacy_battle: asked [1-9][0-9]*, party 6, battle 1, view pages:Battle$"

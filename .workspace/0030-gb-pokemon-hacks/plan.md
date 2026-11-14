@@ -422,7 +422,7 @@ Common to the steps (as #28's):
 - **Files**:
   - `ui/src/kiwami/gbpk/gbpk.h`, `games.h`, `games.cpp`, `game.h`, `game.cpp`, `host.h`, `host.cpp`, `reader.cpp`,
     `pages-impl.inc` (changed)
-  - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-ui.sh` (changed)
+  - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-ui.sh`, `kiwami/tests/gbpk-roms.cpp` (changed)
   - `kiwami/GB-POKEMON.md` (changed: *Which game a ROM is*)
 - **Change**:
   - **`gbpk.h`**:
@@ -433,9 +433,10 @@ Common to the steps (as #28's):
       Yellow, 108 and 110 Red, 109 Blue; a retail id itself).
   - **The per-game branches go by `baseGame`**:
     - `reader.cpp:395` (`caughtData`, Crystal's);
-    - `pages-impl.inc:91` (Yellow's Pikachu's friendship);
-    - `host.cpp:26` (Gold's and Silver's guide from the ROM, which becomes a data file's `"guide": "rom"`, read by
-      `loadData`, so step 14 can give it to Crystal Clear).
+    - `pages-impl.inc:91` (Yellow's Pikachu's friendship).
+
+    `host.cpp:26` (Gold's and Silver's guide from the ROM) stays by their ids: it becomes the data files' `"guide":
+    "rom"` in step 2, which regenerates them (*Deviations*, 2026-11-14).
   - **`games.cpp`**:
     - `GAMES` gets the six keys with their ids. `loadData` takes `dexSize` from the file's `"dex_size"` when given,
       else 151 or 251 as today.
@@ -453,6 +454,7 @@ Common to the steps (as #28's):
     - The stand-in path (tests) passes one game, as today.
   - **`Game::script("gbpanel")`** maps a fixture folder to its key by the longest key it starts with (*Common*). With
     a ROM, it opens every candidate as `Game::open` does.
+  - **`gbpk-roms.cpp`** picks the game as the host does: `detect`'s candidates loaded, `confirmAny` among them.
 - **Tests**:
   - `gbpk-units`:
     - `testDetect`'s checks (`:59-91`) move to the new signature, its `NONE` cases kept with `keys` empty: `POKEMON
@@ -477,8 +479,8 @@ Common to the steps (as #28's):
     `kiwami/tools/pokedaisy-extract.py` (changed)
   - `kiwami/rootfs/usr/share/banana/companions/gb-pokemon/{red,blue,yellow,gold,silver,crystal}.ram.json`, `SOURCES`
     (regenerated)
-  - `ui/src/kiwami/gbpk/games.h`, `games.cpp`, `rom.h`, `rom.cpp`, `rom1.cpp`, `rom2.cpp`, `reader.cpp`, `rules.h`
-    (changed)
+  - `ui/src/kiwami/gbpk/games.h`, `games.cpp`, `rom.h`, `rom.cpp`, `rom1.cpp`, `rom2.cpp`, `reader.cpp`, `rules.h`,
+    `host.cpp` (changed)
   - `ui/src/kiwami/gbpk/items.inc` (removed: its content is the data files' now)
   - `kiwami/tests/gbpk-units.cpp` (changed)
   - `kiwami/GB-POKEMON.md` (changed: *The data files*)
@@ -510,6 +512,10 @@ Common to the steps (as #28's):
     - `std::bitset<256> special, splitStats`.
 
     It refuses a file without `types` or `items` (the reason in `why`), and an unknown type name.
+  - **The guide from the ROM** (moved here from step 1, *Deviations*, 2026-11-14): `pokedaisy-extract.py` writes
+    `"guide": "rom"` in Gold's and Silver's data files, `loadData` reads it into `GameData::romGuide`, and `host.cpp`'s
+    `guideFor` builds the guide from the ROM by it instead of by the two ids, so step 14 can give it to Crystal Clear.
+    A unit test checks Gold and Silver have it and Crystal hasn't.
   - **`rom.cpp`**: `gen1Item`, `gen2Item`, `gen1Pocket` and `gen2Type` take the `GameData` (`gen1Item(d, id)`, ...)
     and read its tables instead of `items.inc`'s. Their callers pass it:
     - `gen1Item`: `rom1.cpp:123` (the `tm01`/`hm01` check), `:205, 271, 424`, `reader.cpp:568`;
@@ -1095,13 +1101,19 @@ Notes from the runs (what the logs showed, what was fixed):
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
 
+- **2026-11-14, step 1**: Gold's and Silver's ROM-built guide as the data files' `"guide": "rom"` moves to step 2. The
+  data files are `pokedaisy-extract.py`'s output, which step 1 doesn't touch and step 2 regenerates anyway; so step 1
+  needs no PokeDaisy checkout, as *Before the steps* says. Step 1 leaves `host.cpp:26` on Gold's and Silver's ids.
+- **2026-11-14, step 1**: `kiwami/tests/gbpk-roms.cpp` added to step 1's files. It calls `detect` and `confirm`, so it
+  follows the new signature: it loads `detect`'s candidates and picks among them with `confirmAny`, as the host does.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. Several games to one header title | todo | |
+| 1. Several games to one header title | done | GB Pokémon hacks: several games to one header title, the SHA-1 picks one |
 | 2. Each game's items, types and split | todo | |
 | 3. Each game's type chart from its ROM | todo | |
 | 4. Crystal Legacy | todo | |

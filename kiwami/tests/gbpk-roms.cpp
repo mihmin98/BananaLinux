@@ -515,13 +515,20 @@ int main(int argc, char** argv)
 	{
 		current = n;
 		auto rom = std::make_shared<std::vector<uint8_t>>(readRomFile(dir + "/" + n, 8u << 20));
-		std::string key, why;
-		GameData d;
-		if (detect(rom->data(), rom->size(), key) != Match::KNOWN || !loadData(key, d, &why) || confirm(*rom, d) != Match::KNOWN)
+		// (the game as the companion's host picks it: every game the header names, the SHA-1 picking one)
+		std::vector<std::string> keys;
+		std::string why;
+		std::vector<GameData> ds;
+		if (detect(rom->data(), rom->size(), keys) == Match::KNOWN) ds = loadGames(keys, &why);
+		const int k = confirmAny(*rom, ds);
+		if (k < 0)
 		{
 			fprintf(stderr, "gbpk-roms: %s: not a release the data files list, left alone\n", n.c_str());
 			continue;
 		}
+		GameData d = ds[k];
+		const std::string key = d.key;
+		why.clear();
 		CHECK(listed.count(d.game.romHash));
 		auto t0 = std::chrono::steady_clock::now();
 		auto r = readRom(rom, d, &why);

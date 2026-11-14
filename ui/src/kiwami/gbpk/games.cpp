@@ -46,8 +46,11 @@ namespace banana::kiwami::gbpk
 			return best;
 		}
 
+		// (the retail games first: a title they share with a hack names them first)
 		const struct { const char* key; nds::GameId id; } GAMES[] = {
 			{ "red", RED }, { "blue", BLUE }, { "yellow", YELLOW }, { "gold", GOLD }, { "silver", SILVER }, { "crystal", CRYSTAL },
+			{ "crystal-legacy", CRYSTAL_LEGACY }, { "yellow-legacy", YELLOW_LEGACY }, { "purered", PURERED },
+			{ "pureblue", PUREBLUE }, { "puregreen", PUREGREEN }, { "crystal-clear", CRYSTAL_CLEAR },
 		};
 
 		bool readText(const std::string& path, std::string& out)
@@ -80,7 +83,7 @@ namespace banana::kiwami::gbpk
 			return true;
 		}
 
-		// the six games' header titles, from the data files there are (read once a folder; a copy, for any thread),
+		// the games' header titles, from the data files there are (read once a folder; a copy, for any thread),
 		// and whether a game code follows the title (the Game Boy Color games' releases have one)
 		struct Title { std::string title, key; bool coded = false; };
 		struct Index { std::string dir; std::vector<Title> titles; };
@@ -149,7 +152,7 @@ namespace banana::kiwami::gbpk
 		std::string path = dataDir() + "/" + key + ".ram.json", text;
 		json::Value v;
 		auto no = [&](const std::string& w) { if (why) *why = path + ": " + w; return false; };
-		if (!id) return no("not one of the six games");
+		if (!id) return no("not one of the games");
 		if (!readText(path, text)) return no("can't be read");
 		if (!json::parse(text, v)) return no("isn't JSON");
 		if (v["kind"].str() != "gb-pokemon-ram" || v["schema"].n != 1) return no("isn't a schema 1 gb-pokemon-ram file");
@@ -204,38 +207,85 @@ namespace banana::kiwami::gbpk
 		out.game.gen = out.gen == 1 ? GEN_I : GEN_II;
 		out.game.title = v["title"].str();
 		out.game.dexSize = out.gen == 1 ? 151 : 251;
+		if (!v["dex_size"].isNull())
+		{
+			const json::Value& n = v["dex_size"];
+			if (n.type != json::Value::NUM || n.n < 1 || n.n > 1023 || n.n != (int)n.n) return no("has a dex_size it can't use");
+			out.game.dexSize = (int)n.n;
+		}
 		return true;
 	}
 
-	Match detect(const uint8_t* header, size_t n, std::string& key)
+	std::vector<GameData> loadGames(const std::vector<std::string>& keys, std::string* why)
 	{
-		key.clear();
+		std::vector<GameData> out;
+		for (const std::string& k : keys)
+		{
+			GameData d;
+			std::string w;
+			if (loadData(k, d, &w)) out.push_back(std::move(d));
+			else if (why) *why += (why->empty() ? "" : "; ") + w;
+		}
+		return out;
+	}
+
+	std::string fixtureKey(const std::string& name)
+	{
+		std::string n = name, best;
+		std::replace(n.begin(), n.end(), '_', '-');
+		for (const auto& g : GAMES)
+		{
+			const size_t k = strlen(g.key);
+			if (n.compare(0, k, g.key) == 0 && (n.size() == k || n[k] == '-') && k > best.size()) best = g.key;
+		}
+		return best;
+	}
+
+	Match detect(const uint8_t* header, size_t n, std::vector<std::string>& keys)
+	{
+		keys.clear();
 		if (!header || n < 0x150) return Match::NONE;
 		// the title at 0x134: 16 bytes in the first cartridges, 11 when a game code follows at 0x13F (the Color
 		// games'); a shorter title ends with a 0
 		const char* t = (const char*)header + 0x134;
 		for (const auto& [title, k, coded] : index().titles)
 			if (memcmp(t, title.data(), title.size()) == 0 && ((coded && title.size() >= 11) || title.size() >= 16 || t[title.size()] == 0))
-			{
-				key = k;
-				return Match::KNOWN;
-			}
-		return Match::NONE;
+				keys.push_back(k);
+		return keys.empty() ? Match::NONE : Match::KNOWN;
+	}
+
+	namespace
+	{
+		// hash: the whole ROM's SHA-1 ("" for no ROM)
+		Match confirmHash(const std::vector<uint8_t>& rom, const std::string& hash, GameData& d)
+		{
+			d.release = -1;
+			d.game.romHash = hash;
+			d.game.code.clear();
+			for (size_t i = 0; i < d.releases.size(); i++)
+				if (!rom.empty() && d.releases[i].sha1 == hash)
+				{
+					d.release = (int)i;
+					// (the file's own code: the release's, since its SHA-1 is)
+					if (rom.size() >= 0x143 && !d.releases[i].code.empty()) d.game.code.assign((const char*)rom.data() + 0x13F, 4);
+					return Match::KNOWN;
+				}
+			return Match::UNSUPPORTED;
+		}
+		std::string sha1(const std::vector<uint8_t>& rom) { return rom.empty() ? "" : nds::nitro::sha1Hex(rom.data(), rom.size()); }
 	}
 
 	Match confirm(const std::vector<uint8_t>& rom, GameData& d)
 	{
-		d.release = -1;
-		d.game.romHash = rom.empty() ? "" : nds::nitro::sha1Hex(rom.data(), rom.size());
-		d.game.code.clear();
-		for (size_t i = 0; i < d.releases.size(); i++)
-			if (!rom.empty() && d.releases[i].sha1 == d.game.romHash)
-			{
-				d.release = (int)i;
-				// (the file's own code: the release's, since its SHA-1 is)
-				if (rom.size() >= 0x143 && !d.releases[i].code.empty()) d.game.code.assign((const char*)rom.data() + 0x13F, 4);
-				return Match::KNOWN;
-			}
-		return Match::UNSUPPORTED;
+		return confirmHash(rom, sha1(rom), d);
+	}
+
+	int confirmAny(const std::vector<uint8_t>& rom, std::vector<GameData>& ds)
+	{
+		const std::string hash = sha1(rom);
+		int picked = -1;
+		for (size_t i = 0; i < ds.size(); i++)
+			if (confirmHash(rom, hash, ds[i]) == Match::KNOWN && picked < 0) picked = (int)i;
+		return picked;
 	}
 }

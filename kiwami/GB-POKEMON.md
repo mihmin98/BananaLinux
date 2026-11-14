@@ -170,15 +170,23 @@ and finds none.
 
 1. The ROM's first 0x150 bytes are read: the file, or the first `.gb`/`.gbc` in a `.zip` or `.7z` in name order (as
    RetroArch takes it; a `.7z` through the fork's LZMA SDK reader, `ra7z.cpp`, not `7zz`).
-2. Its header's title (0x134) is matched against each data file's `header_title`. Another title: no companion, nothing
-   else read. The title fills 16 bytes on the first cartridges and 11 when a game code follows (the Game Boy Color
-   games', whose releases have a `code`); a shorter one, or one of a game without a code, ends with a 0, so
-   `PM_CRYSTALX` isn't Crystal and `POKEMON REDX` isn't Red.
-3. The whole file's SHA-1 must be one of the file's `releases`. Another SHA-1, a known title (a European Yellow, a ROM
-   hack other than Fast Red and Fast Blue, a bad dump): "Not supported", and nothing is read from the game's memory.
+2. Its header's title (0x134) is matched against each data file's `header_title`, which gives every game that has it:
+   a ROM hack keeps its base game's title, so `PM_CRYSTAL` can be Crystal, Crystal Legacy or Crystal Clear. The log
+   names them, the retail game first (`gb companion: Crystal (or Crystal Legacy, Crystal Clear)`). Another title: no
+   companion, nothing else read. The title fills 16 bytes on the first cartridges and 11 when a game code follows (the
+   Game Boy Color games', whose releases have a `code`); a shorter one, or one of a game without a code, ends with a 0,
+   so `PM_CRYSTALX` isn't Crystal and `POKEMON REDX` isn't Red.
+3. The whole file's SHA-1 picks the game: the one whose `releases` have it (`confirmAny`, on the host's loading
+   thread, which reads the ROM once). Another SHA-1, a known title (a European Yellow, a ROM hack or a version of one
+   no data file lists, a bad dump): "Not supported", logged with every title it could have been (`gb companion:
+   Crystal or Crystal Legacy: not a release the companion knows (sha1 ...)`), and nothing is read from the game's
+   memory.
 
-The six games are values of upstream's `nds::Gen` and `nds::GameId` (`gbpk.h`: `GEN_I` 16, `GEN_II` 17, `RED` 100 to
-`CRYSTAL` 105), so upstream's model, session and pages take them unchanged. Names are decoded from the games' English
+The games are values of upstream's `nds::Gen` and `nds::GameId` (`gbpk.h`: `GEN_I` 16, `GEN_II` 17, `RED` 100 to
+`CRYSTAL` 105, and the ROM hacks from `CRYSTAL_LEGACY` 106 to `CRYSTAL_CLEAR` 111), so upstream's model, session and
+pages take them unchanged. Where the code differs by game, it asks the retail game whose engine a hack is
+(`baseGame`: Crystal's caught data for Crystal Legacy and Crystal Clear, Yellow's Pikachu's friendship for Yellow
+Legacy). Names are decoded from the games' English
 character set, pret's `constants/charmap.asm` (`text.cpp`), the only reference this feature uses for the games' rules
 and layouts (Bulbapedia refuses automated access).
 

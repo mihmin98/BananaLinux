@@ -88,7 +88,7 @@ namespace banana::nds
 	bool Pages::Impl::kiwamiNoFriendship(const Mon& m) const
 	{
 		if (!kiwamiOld() || dt.rom->game.gen != kiwami::gbpk::GEN_I) return false;
-		if (dt.rom->game.id == kiwami::gbpk::YELLOW && m.species == 25) return false;	// (Pikachu's, kept by Yellow)
+		if (kiwami::gbpk::baseGame(dt.rom->game.id) == kiwami::gbpk::YELLOW && m.species == 25) return false;	// (Pikachu's, kept by Yellow)
 		kiwamiTrace("no friendship");
 		return true;
 	}

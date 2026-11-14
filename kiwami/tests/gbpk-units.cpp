@@ -22,6 +22,7 @@
 #include "kiwami/gbpk/rom.h"
 #include "kiwami/gbpk/rules.h"
 #include "kiwami/gbpk/text.h"
+#include "nds/nitro.h"
 #include "nds/guide.h"
 #include "nds/logic.h"
 #include "nds/rom.h"
@@ -58,37 +59,56 @@ static std::vector<uint8_t> header(const char* title, const char* code = nullptr
 
 static void testDetect()
 {
-	std::string key;
+	std::vector<std::string> keys;
+	using K = std::vector<std::string>;
 	auto h = header("PM_CRYSTAL", "BYTE");
-	CHECK(detect(h.data(), h.size(), key) == Match::KNOWN);
-	EQ(key, "crystal");
+	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
+	CHECK(keys == K{ "crystal" });
 	// Gold's and Silver's eleven letters fill the title, the code right after
 	h = header("POKEMON_GLD", "AAUE");
-	CHECK(detect(h.data(), h.size(), key) == Match::KNOWN);
-	EQ(key, "gold");
+	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
+	CHECK(keys == K{ "gold" });
 	h = header("POKEMON_SLV", "AAXE");
-	CHECK(detect(h.data(), h.size(), key) == Match::KNOWN);
-	EQ(key, "silver");
+	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
+	CHECK(keys == K{ "silver" });
 	// Red's, Blue's and Yellow's titles: no code, the rest of the sixteen bytes 0
 	h = header("POKEMON RED");
-	CHECK(detect(h.data(), h.size(), key) == Match::KNOWN);
-	EQ(key, "red");
+	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
+	CHECK(keys == K{ "red" });
 	h = header("POKEMON BLUE");
-	CHECK(detect(h.data(), h.size(), key) == Match::KNOWN);
-	EQ(key, "blue");
+	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
+	CHECK(keys == K{ "blue" });
 	h = header("POKEMON YELLOW");
-	CHECK(detect(h.data(), h.size(), key) == Match::KNOWN);
-	EQ(key, "yellow");
+	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
+	CHECK(keys == K{ "yellow" });
 	h = header("POKEMON REDX");
-	CHECK(detect(h.data(), h.size(), key) == Match::NONE && key.empty());
+	CHECK(detect(h.data(), h.size(), keys) == Match::NONE && keys.empty());
 	h = header("TETRIS");
-	CHECK(detect(h.data(), h.size(), key) == Match::NONE);
+	CHECK(detect(h.data(), h.size(), keys) == Match::NONE && keys.empty());
 	// a longer title that starts with a known one isn't it; a header cut short isn't read
 	h = header("PM_CRYSTALX");
-	CHECK(detect(h.data(), h.size(), key) == Match::NONE);
+	CHECK(detect(h.data(), h.size(), keys) == Match::NONE && keys.empty());
 	h = header("PM_CRYSTAL", "BYTE");
-	CHECK(detect(h.data(), 0x14F, key) == Match::NONE);
-	CHECK(detect(nullptr, 0, key) == Match::NONE);
+	CHECK(detect(h.data(), 0x14F, keys) == Match::NONE && keys.empty());
+	CHECK(detect(nullptr, 0, keys) == Match::NONE && keys.empty());
+
+	// the games' ids: the retail engine each is, for the per-game branches
+	CHECK(baseGame(RED) == RED && baseGame(BLUE) == BLUE && baseGame(YELLOW) == YELLOW);
+	CHECK(baseGame(GOLD) == GOLD && baseGame(SILVER) == SILVER && baseGame(CRYSTAL) == CRYSTAL);
+	CHECK(baseGame(CRYSTAL_LEGACY) == CRYSTAL && baseGame(CRYSTAL_CLEAR) == CRYSTAL && baseGame(YELLOW_LEGACY) == YELLOW);
+	CHECK(baseGame(PURERED) == RED && baseGame(PUREGREEN) == RED && baseGame(PUREBLUE) == BLUE);
+	CHECK((int)CRYSTAL_LEGACY == 106 && (int)CRYSTAL_CLEAR == 111);
+	for (int i = 100; i <= 111; i++) CHECK(gbGame((nds::GameId)i));
+	CHECK(!gbGame((nds::GameId)99) && !gbGame((nds::GameId)112));
+
+	// a capture's folder to its game: the longest key it starts with, "_" as "-"
+	EQ(fixtureKey("crystal_clear_v2_5_11_battle"), "crystal-clear");
+	EQ(fixtureKey("crystal_battle"), "crystal");
+	EQ(fixtureKey("purered_battle_menu"), "purered");
+	EQ(fixtureKey("yellow_legacy"), "yellow-legacy");
+	EQ(fixtureKey("red"), "red");
+	EQ(fixtureKey("redx"), "");
+	EQ(fixtureKey("pinball_battle"), "");
 }
 
 static void testData()
@@ -151,7 +171,7 @@ static void testData()
 
 	// refusals: a game it doesn't know, a missing file (a folder without the data files)
 	CHECK(!loadData("pinball", d, &why));
-	CHECK(why.find("not one of the six") != std::string::npos);
+	CHECK(why.find("not one of the games") != std::string::npos);
 	setenv("KIWAMI_GBPK_DIR", testDir.c_str(), 1);
 	CHECK(!loadData("red", d, &why));
 	CHECK(why.find("can't be read") != std::string::npos);
@@ -192,9 +212,9 @@ static void testConfirm()
 	// a ROM with Crystal's title and another SHA-1 (a European release, a hack): not supported, its hash kept for the log
 	std::vector<uint8_t> rom = readRomFile(testDir + "/made-up/rom.gbc", 8u << 20);
 	CHECK(rom.size() == 0x8000);
-	std::string key;
-	CHECK(detect(rom.data(), rom.size(), key) == Match::KNOWN);
-	EQ(key, "crystal");
+	std::vector<std::string> keys;
+	CHECK(detect(rom.data(), rom.size(), keys) == Match::KNOWN);
+	CHECK(keys == std::vector<std::string>{ "crystal" });
 	CHECK(confirm(rom, d) == Match::UNSUPPORTED);
 	CHECK(d.release == -1 && d.game.romHash.size() == 40 && d.game.code.empty());
 	// with its SHA-1 listed (a stand-in for a release), it's that release, and the code is the file's
@@ -203,6 +223,82 @@ static void testConfirm()
 	CHECK(d.release == 3);
 	EQ(d.game.code, "BYTE");
 	CHECK(confirm({}, d) == Match::UNSUPPORTED);
+}
+
+// a made-up data file in dir: Crystal's with another key and title, one release (sha1), and dex_size when given
+static void madeUpData(const std::string& dir, const std::string& key, const std::string& title, const std::string& sha1,
+	int dexSize = 0)
+{
+	std::ifstream in(dataPath + "/crystal.ram.json");
+	std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	auto swap = [&](const std::string& from, const std::string& to) {
+		const size_t at = text.find(from);
+		CHECK(at != std::string::npos);
+		if (at != std::string::npos) text.replace(at, from.size(), to);
+	};
+	swap("\"game\": \"crystal\"", "\"game\": \"" + key + "\"");
+	swap("\"title\": \"Crystal\"", "\"title\": \"" + title + "\"");
+	const size_t a = text.find("\"releases\": ["), b = text.find("\n  ],", a);
+	CHECK(a != std::string::npos && b != std::string::npos);
+	if (a != std::string::npos && b != std::string::npos)
+		text.replace(a, b + 4 - a, "\"releases\": [ { \"code\": \"BYTE\", \"name\": \"Made-up\", \"sha1\": \"" + sha1 + "\" } ]");
+	if (dexSize) swap("{", "{ \"dex_size\": " + std::to_string(dexSize) + ",");
+	std::ofstream(dir + "/" + key + ".ram.json") << text;
+}
+
+// two games of one header title (a ROM hack keeps its base game's): detect gives both, the retail game first, and the
+// whole ROM's SHA-1 picks one; a third SHA-1 is neither, each with its romHash for the log. And the Pokédex's size,
+// the data file's dex_size or the generation's
+static void testSharedTitle()
+{
+	std::vector<uint8_t> rom1 = readRomFile(testDir + "/made-up/rom.gbc", 8u << 20), rom2 = rom1, rom3 = rom1;
+	CHECK(rom1.size() == 0x8000);
+	if (rom1.size() != 0x8000) return;
+	rom2[0x4000] ^= 1;
+	rom3[0x4001] ^= 1;
+	auto sha1 = [](const std::vector<uint8_t>& r) { return nds::nitro::sha1Hex(r.data(), r.size()); };
+	char dir[] = "/tmp/gbpk-units.XXXXXX";
+	CHECK(mkdtemp(dir));
+	madeUpData(dir, "crystal-clear", "Made-up Clear", sha1(rom2), 251);
+	madeUpData(dir, "crystal", "Made-up Crystal", sha1(rom1));
+	setenv("KIWAMI_GBPK_DIR", dir, 1);
+
+	std::vector<std::string> keys;
+	CHECK(detect(rom1.data(), rom1.size(), keys) == Match::KNOWN);
+	CHECK((keys == std::vector<std::string>{ "crystal", "crystal-clear" }));
+	std::string why;
+	std::vector<GameData> ds = loadGames(keys, &why);
+	EQ(why, "");
+	CHECK(ds.size() == 2 && ds[0].game.id == CRYSTAL && ds[1].game.id == CRYSTAL_CLEAR);
+	if (ds.size() == 2)
+	{
+		EQ(ds[1].game.title, "Made-up Clear");
+		CHECK(confirmAny(rom1, ds) == 0 && ds[0].release == 0 && ds[1].release == -1);
+		CHECK(confirmAny(rom2, ds) == 1 && ds[1].release == 0 && ds[0].release == -1);
+		EQ(ds[1].game.romHash, sha1(rom2));
+		EQ(ds[1].game.code, "BYTE");
+		CHECK(confirmAny(rom3, ds) == -1 && ds[0].release == -1 && ds[1].release == -1);
+		EQ(ds[0].game.romHash, sha1(rom3));
+		EQ(ds[1].game.romHash, sha1(rom3));
+	}
+	// a key without its file is left out, with the reason
+	ds = loadGames({ "crystal", "crystal-legacy" }, &why);
+	CHECK(ds.size() == 1 && why.find("crystal-legacy.ram.json: can't be read") != std::string::npos);
+
+	// the Pokédex's size: dex_size when the file gives it, else 251 for Gen II; one it can't use refuses the file
+	GameData d;
+	CHECK(loadData("crystal", d, &why) && d.game.dexSize == 251);
+	madeUpData(dir, "crystal", "Made-up Crystal", sha1(rom1), 151);
+	CHECK(loadData("crystal", d, &why) && d.game.dexSize == 151);
+	madeUpData(dir, "crystal", "Made-up Crystal", sha1(rom1), 5000);
+	CHECK(!loadData("crystal", d, &why) && why.find("dex_size") != std::string::npos);
+
+	unlink((std::string(dir) + "/crystal.ram.json").c_str());
+	unlink((std::string(dir) + "/crystal-clear.ram.json").c_str());
+	rmdir(dir);
+	setenv("KIWAMI_GBPK_DIR", dataPath.c_str(), 1);
+	// (back in the real folder: the title is Crystal's alone)
+	CHECK(detect(rom1.data(), rom1.size(), keys) == Match::KNOWN && keys == std::vector<std::string>{ "crystal" });
 }
 
 static void testRomFile()
@@ -218,9 +314,9 @@ static void testRomFile()
 	CHECK(readRomFile(m + "/game.zip", 0x150) == h);
 	// in a solid .7z, the first game in name order: other.gb, before rom.gbc
 	std::vector<uint8_t> s = readRomFile(m + "/game.7z", 0x150);
-	std::string key;
+	std::vector<std::string> keys;
 	CHECK(s.size() == 0x150 && memcmp(s.data() + 0x134, "TETRIS", 6) == 0);
-	CHECK(detect(s.data(), s.size(), key) == Match::NONE);
+	CHECK(detect(s.data(), s.size(), keys) == Match::NONE);
 	// no game: an archive with none, a missing file
 	CHECK(readRomFile(testDir + "/../ra/readme.zip", 0x150).empty());
 	CHECK(readRomFile(testDir + "/../ra/readme.7z", 0x150).empty());
@@ -2231,6 +2327,7 @@ int main(int argc, char** argv)
 	testDetect();
 	testData();
 	testConfirm();
+	testSharedTitle();
 	testRomFile();
 	testText();
 	testRomList();

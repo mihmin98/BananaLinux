@@ -1,7 +1,7 @@
 #pragma once
 // banana-ui (kiwami): the data of the Game Boy Pokémon companion's pages, as upstream's gba::Host makes the GBA
-// companion's: the player's ROM read and checked once on a thread of its own (its SHA-1 among the data file's
-// releases, then its tables: rom.h), a Session on its own thread fed with each new set of the game's memory as an
+// companion's: the player's ROM read and checked once on a thread of its own (its SHA-1 among the releases of the
+// games its header names, which picks one, then its tables: rom.h), a Session on its own thread fed with each new set of the game's memory as an
 // nds::Live (reader.h: the journey log, the advice, the notices), and the PageData the game panel's pages draw
 // (panel.h). The memory reader is opened only once the ROM is confirmed: a release the companion doesn't know ("Not
 // supported") is never asked anything. While a Game Boy game's data is in use its rules are upstream's logic's
@@ -24,11 +24,12 @@ namespace banana::kiwami::gbpk
 	class Host
 	{
 	public:
-		// d: the game the header named (its data file); rom: the file the game was started from; reader: opened here
-		// once the ROM is confirmed, closed when the host goes. stateDir: where the journey log is kept on the card
+		// ds: the games the header named (their data files, the retail game first; one for a stand-in), the ROM's
+		// SHA-1 picks the host's; rom: the file the game was started from; reader: opened here once the ROM is
+		// confirmed, closed when the host goes. stateDir: where the journey log is kept on the card
 		// (cache/gb-companion); challenge: Settings' Challenge mode row (gba_challenge). standIn (tests): the game's
 		// data without a ROM to read: no check, no tables but these
-		Host(const GameData& d, std::string rom, Reader& reader, std::string stateDir, bool challenge,
+		Host(std::vector<GameData> ds, std::string rom, Reader& reader, std::string stateDir, bool challenge,
 			std::shared_ptr<const nds::RomData> standIn = nullptr);
 		~Host();
 		// each turn of the menu's loop: the ROM's data picked up, a new set of the game's memory handed to the Session,
@@ -40,13 +41,14 @@ namespace banana::kiwami::gbpk
 		bool unsupported() const { return loadFailed && base.unsupported; }	// a release it doesn't know: "Not supported"
 		bool takeData(nds::PageData& out);
 		void markSeen(const std::vector<std::string>& ids);	// what the pages saw (Pages::takeSeen)
-		std::string title() const { return data.game.title; }
+		std::string title() const { return data.game.title; }	// the picked game's (till then the first's)
 		bool inBattle() const { return reader.active() && reader.inBattle(); }
 		uint64_t fed = 0;		// (statistics: states handed to the logic)
 	private:
 		struct Loaded { std::shared_ptr<const nds::RomData> rom; GameData d; bool unsupported = false;
 			std::shared_ptr<const nds::GuideData> guide; };
-		GameData data;
+		std::vector<GameData> games;
+		GameData data;			// the picked game (till then the first)
 		std::string romPath, stateDir;
 		Reader& reader;
 		bool challenge;

@@ -59,8 +59,9 @@ namespace banana::kiwami::gbpk
 		}
 	}
 
-	Host::Host(const GameData& d, std::string rom, Reader& r, std::string sd, bool ch, std::shared_ptr<const nds::RomData> si)
-		: data(d), romPath(std::move(rom)), stateDir(std::move(sd)), reader(r), challenge(ch), standIn(std::move(si)) {}
+	Host::Host(std::vector<GameData> ds, std::string rom, Reader& r, std::string sd, bool ch, std::shared_ptr<const nds::RomData> si)
+		: games(std::move(ds)), data(games.empty() ? GameData() : games[0]), romPath(std::move(rom)), stateDir(std::move(sd)),
+		reader(r), challenge(ch), standIn(std::move(si)) {}
 
 	Host::~Host()
 	{
@@ -88,20 +89,25 @@ namespace banana::kiwami::gbpk
 			if (standIn) begin({ standIn, data, false, guideFor(data, *standIn) });
 			else
 			{
-				// the ROM: the whole file (or the game in its .zip or .7z), its SHA-1 among the releases, then its tables
+				// the ROM: the whole file (or the game in its .zip or .7z), its SHA-1 among the games' releases (which
+				// picks the game), then its tables
 				loading = true;
-				load = std::async(std::launch::async, [d = data, path = romPath]() mutable
+				load = std::async(std::launch::async, [ds = games, path = romPath]() mutable
 				{
 					Loaded l;
 					const auto t0 = std::chrono::steady_clock::now();
 					auto rom = std::make_shared<std::vector<uint8_t>>(readRomFile(path, 8u << 20));
-					if (confirm(*rom, d) != Match::KNOWN)
+					const int k = confirmAny(*rom, ds);
+					if (k < 0)
 					{
+						std::string t;
+						for (const GameData& g : ds) t += (t.empty() ? "" : " or ") + g.game.title;
 						fprintf(stderr, "banana-ui: gb companion: %s: not a release the companion knows (sha1 %s)\n",
-							d.game.title.c_str(), d.game.romHash.c_str());
+							t.c_str(), ds.empty() ? "" : ds[0].game.romHash.c_str());
 						l.unsupported = true;
 						return l;
 					}
+					GameData& d = ds[k];
 					std::string why;
 					l.rom = readRom(rom, d, &why);
 					l.d = d;

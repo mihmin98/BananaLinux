@@ -392,7 +392,7 @@ namespace banana::kiwami::gbpk
 		if (n < 1 || n > PARTY || cnt[1 + n] != END) return l;
 		const uint8_t* ots = at("partyMonOTs", 0, PARTY * NAME);
 		const uint8_t* nicks = at("partyMonNicknames", 0, PARTY * NAME);
-		const bool caughtData = d_.game.id == CRYSTAL;
+		const bool caughtData = baseGame(d_.game.id) == CRYSTAL;
 		for (int i = 0; i < n; i++)
 		{
 			const uint8_t* p = mons + i * MON;

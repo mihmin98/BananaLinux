@@ -7,7 +7,9 @@
 #   PokeDaisy's captures (gbfeed): the pages ready, the party read, a battle showing the Battle page and its end the
 #   Party page, the corner and the Back button switching to the menu and back (F to the menu), the rules on and put
 #   back when the host goes, Crystal's guide file loaded (its 22 milestones; no hidden items, which come from the ROM);
-# - a made-up ROM with Crystal's title and another SHA-1: "Not supported", and nothing asked of the game;
+# - a made-up ROM with Crystal's title and another SHA-1: "Not supported", and nothing asked of the game; and with a
+#   second made-up game of Crystal's title (a ROM hack keeps its base game's), both named till the SHA-1 picks one,
+#   and "Not supported" for both;
 # - upstream's gamepanel after it: no companion, and not the Game Boy one again;
 # - the pages' blocks for Gen II (KIWAMI_GBPK_TRACE=1 names each drawn): DVs and stat experience, Hidden Power, the
 #   Item row alone, no abilities; the Party page as upstream draws it with them off (KIWAMI_GBPK_PAGES=0);
@@ -98,6 +100,23 @@ gamepanel 1 /nonexistent.gba; gtouch 300 300; gbutton back"
     logged "gamepanel /nonexistent.gba: companion none"
     logged "gtouch 300 300: action [0-9]+ keys 0 view $"
     grep -E 'gb(host|feed|panel)|gtouch|gamepanel' "$log" | sed "s/^banana-ui: /gbpk-ui: $size: /; s|$PWD/||g"
+
+    # two games of Crystal's title (the data files' folder with a made-up second one, Crystal's file as Crystal
+    # Legacy's): both named, the retail game first, and the made-up ROM's SHA-1 neither's
+    SHARED=$OUT/shared-data
+    rm -rf "$SHARED"; cp -r "$KIWAMI_GBPK_DIR" "$SHARED"
+    sed 's/"game": "crystal"/"game": "crystal-legacy"/; s/"title": "Crystal"/"title": "Crystal Legacy"/' \
+        "$SHARED/crystal.ram.json" > "$SHARED/crystal-legacy.ram.json"
+    export KIWAMI_GBPK_DIR=$SHARED
+    run $size shared "home 0; gbpanel 1 $CAP/crystal $MADE_UP; gbhost; gbfeed $CAP/crystal; gshot unsupported"
+    export KIWAMI_GBPK_DIR=$PWD/kiwami/rootfs/usr/share/banana/companions/gb-pokemon
+    logged "gb companion: Crystal \(or Crystal Legacy\)$"
+    logged "gbpanel .*/crystal .*rom.gbc: companion Crystal$"
+    logged "gb companion: Crystal or Crystal Legacy: not a release the companion knows \(sha1 [0-9a-f]{40}\)"
+    logged "gbhost: unsupported Crystal view pages:Party$"
+    ! grep -q 'gb companion: rules on' "$log" || { echo "FAIL $size shared: the rules on for a ROM not supported"; fail=1; }
+    [ "$(grep -E 'gbfeed ' "$log" | tail -n 1 | sed 's/.*asked \([0-9]*\).*/\1/')" = 0 ] || { echo "FAIL $size shared: a ROM not supported was asked: $(grep gbfeed "$log" | tail -n 1)"; fail=1; }
+    shown unsupported
 
     # Gen II's blocks on the pages (pages-impl.inc, traced): the Party page's Item row alone and its DVs and stat
     # experience, the wild box's DVs and Hidden Power, the Dex page with no abilities (Pidgey, the list dragged to it:

@@ -9,4 +9,4 @@
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 			{ (GameId)100, "red", "PKRD", 151 }, { (GameId)101, "blue", "PKBL", 151 }, { (GameId)102, "yellow", "PKYL", 151 },
 			{ (GameId)103, "gold", "AAUE", 251 }, { (GameId)104, "silver", "AAXE", 251 }, { (GameId)105, "crystal", "BYTE", 251 },
-			{ (GameId)106, "crystal-legacy", "BYTE", 251 },
+			{ (GameId)106, "crystal-legacy", "BYTE", 251 }, { (GameId)107, "yellow-legacy", "PKYL", 151 },

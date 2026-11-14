@@ -682,8 +682,10 @@ Common to the steps (as #28's):
 - **Files**:
   - `kiwami/tools/gbpk-symbols.txt`, `gbpk-extra.json`, `pokedaisy-extract.py` (changed)
   - `kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow-legacy.ram.json` (new), `SOURCES` (changed)
-  - `ui/src/kiwami/gbpk/guide-games.inc` (changed)
-  - `kiwami/tests/gbpk/fixtures/yellow_legacy{,_battle,_battle_menu,_battle_party}/` (new)
+  - `ui/src/kiwami/gbpk/guide-games.inc` (changed), `rom1.cpp` (changed: its Old Rod and Metapod, *Deviations*,
+    2026-11-14)
+  - `kiwami/tests/gbpk/fixtures/yellow_legacy{,_battle,_battle_menu,_battle_party}/` (new), `kiwami/tests/gbpk/NOTICE`
+    (changed)
   - `kiwami/tests/gbpk/roms.sha1`, `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp`,
     `kiwami/tests/gbpk-ui.sh` (changed)
   - `kiwami/DEPENDENCIES.md` (changed: Yellow Legacy's row, rgbds 0.6.1's)
@@ -1155,6 +1157,20 @@ Where the implementation turned out different from this plan, why, and what chan
   bits (2048-2051; Red is done by his own flag, so no fifth) and `tradeFlagBytes`, with its `CL_*` RAM constants
   checked against its build's symbols. `gbpk-roms.cpp` also compares Crystal Legacy's hidden items with PokeDaisy's
   (`GuideCrystalLegacyGen.kt`'s 85 HIDDEN lines), as it does Crystal's: a check the step didn't list.
+- **2026-11-14, step 6**: Yellow Legacy's ROM has two records the readers didn't take, so `rom1.cpp` changes (the plan
+  expected none), as the user chose. Its Metapod's evolutions hold a stray `db 7, HARDEN` before their end
+  (`data/pokemon/evos_moves.asm`, its only one), which made the reader refuse the ROM: an entry of a kind Gen I hasn't
+  now ends the evolutions (the game never evolves by it, `.evoEntryLoop`), and the moves start after the record's first
+  0 (as `.skipEvolutionDataLoop` finds them; retail records hold no 0 there, so they read the same). Its Old Rod is a
+  table, `OldRodMons` (two of level and species, at even chances as `GoodRodMons`), not retail's Magikarp in
+  `ItemUseOldRod`'s code, which the reader found nowhere and so listed no Old Rod: the data file gives `rom.oldRodMons`
+  instead of `rom.oldRod`, exactly one of the two. `SpecialTrainerMoves`' bound grows from 1 KB to its bank (Yellow
+  Legacy's is 2 KB). Its five renamed symbols get lines of their own (`STARTER_PIKACHU`, `GBCBasePalettes`,
+  `wMissableObjectFlags`, `HS_CERULEAN_CAVE_GUY` in `hide_show_constants.asm`, `HiddenObjectMaps`). `gbpk-units` checks
+  both layouts on the made-up Gen I ROM; `gbpk-roms.cpp` checks Yellow Legacy's own values from its source (Kadabra at
+  42, the rods, Brock's and Lorelei's moves, Lick special) and its hidden items against PokeDaisy's `G1L_AREAS_RAW`.
+  `kiwami/tests/gbpk/NOTICE` names its captures. `gbpk-ui.sh` also asserts Crystal Legacy's guide loaded, which step 5
+  left out (its comment still said the guide was to come).
 
 ## Progress
 
@@ -1167,7 +1183,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 3. Each game's type chart from its ROM | done | GB Pokémon hacks: each game's type chart read from its ROM |
 | 4. Crystal Legacy | done | GB Pokémon hacks: Crystal Legacy, from its build's symbols, its memory and its ROM |
 | 5. Crystal Legacy's guide | done | GB Pokémon hacks: Crystal Legacy's guide, from PokeDaisy's |
-| 6. Yellow Legacy | todo | |
+| 6. Yellow Legacy | done | GB Pokémon hacks: Yellow Legacy, from its build's symbols, its memory and its ROM |
 | 7. Yellow Legacy's guide | todo | |
 | 8. Types of the fork's own on the pages | todo | |
 | 9. PureRed, PureBlue and PureGreen | todo | |

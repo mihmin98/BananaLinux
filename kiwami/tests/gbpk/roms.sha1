@@ -24,6 +24,7 @@ e7bfd2c2245597da5016e682fca8f19665c6cfd0 gb optional red Pokemon - Red Version (
 # ROM hacks read as games of their own: each its release's patch applied to the retail ROM it names (kiwami/GB-POKEMON.md,
 # The ROM hacks)
 74a6727e4406c35bc2d4f81347a5c5fdb8970663 gb optional crystal-legacy Pokemon Crystal - Legacy (v1.3.1) (TheSmithPlays).gbc
+2ac87de42afc70ef6016805acb3b206644417f97 gb optional yellow-legacy Pokemon Yellow - Pokemon Yellow Legacy (v1.0.10) (TheSmithPlays).gb
 
 # Game Boy Advance and DS: the other mainline games PokeDaisy supports (English releases), for a later comparison of
 # upstream's guides with PokeDaisy's tables; nothing reads them yet, and none is required

@@ -9,13 +9,16 @@
 #   back when the host goes, Crystal's guide file loaded (its 22 milestones; no hidden items, which come from the ROM);
 # - a made-up ROM with Crystal's title and another SHA-1: "Not supported", and nothing asked of the game; Crystal and
 #   Crystal Legacy, which keeps Crystal's title, both named till the SHA-1 picks one, and "Not supported" for both;
-# - Crystal Legacy's pages on its captures (its own addresses): the party read, a wild battle on the Battle page;
+# - Crystal Legacy's pages on its captures (its own addresses): the party read, a wild battle on the Battle page, its
+#   guide file loaded (22 milestones);
 # - upstream's gamepanel after it: no companion, and not the Game Boy one again;
 # - the pages' blocks for Gen II (KIWAMI_GBPK_TRACE=1 names each drawn): DVs and stat experience, Hidden Power, the
 #   Item row alone, no abilities; the Party page as upstream draws it with them off (KIWAMI_GBPK_PAGES=0);
 # - Red's pages on its captures (the stand-in's species by their internal index): Gen I's rules on, the party and a
 #   wild battle, Gen I's blocks (one Special row, no Item or Friendship row, no Hidden Power, base stats with
-#   Special), its guide file loaded (13 milestones), and its rules off before Crystal's companion opens after it.
+#   Special), its guide file loaded (13 milestones), and its rules off before Crystal's companion opens after it;
+# - Yellow Legacy's pages on its captures (Yellow's title, its own addresses): Gen I's rules, the party of six and a
+#   wild battle; no guide file yet, so none loaded.
 # Needs ui/banana-ui (make ui) and ImageMagick (the shots not blank). Run by kiwami/tests/ci.sh when banana-ui is
 # built, or by hand:
 #   kiwami/tests/gbpk-ui.sh       (the shots and logs in $OUT, /tmp/kiwami-gbpk-ui by default)
@@ -113,11 +116,13 @@ gamepanel 1 /nonexistent.gba; gtouch 300 300; gbutton back"
     shown unsupported
 
     # Crystal Legacy's pages: its capture read at its own addresses (a party of two), a wild battle on the Battle page,
-    # its end the Party page; its guide comes with the next step, so none yet
+    # its end the Party page; its guide file loaded
     run $size legacy "home 0; gbpanel 1 $CAP/crystal_legacy; gbhost; gbfeed $CAP/crystal_legacy; sleep 300; gshot party; \
 wait 300; gbfeed $CAP/crystal_legacy_battle; sleep 300; gshot battle; wait 300; gbfeed $CAP/crystal_legacy; sleep 100"
     logged "gbpanel .*/crystal_legacy: companion Crystal Legacy$"
     logged "gb companion: rules on \(Generation II\)"
+    logged "gb companion: guide: 22 milestones, 0 hidden items$"
+    ! grep -q 'gb companion: no guide' "$log" || { echo "FAIL $size legacy: $(grep 'no guide' "$log")"; fail=1; }
     logged "gbhost: ready Crystal Legacy view pages:Party$"
     logged "gbfeed .*/crystal_legacy: asked [1-9][0-9]*, party 2, battle 0, view pages:Party$"
     logged "gbfeed .*/crystal_legacy_battle: asked [1-9][0-9]*, party 2, battle 1, view pages:Battle$"
@@ -187,6 +192,21 @@ gtouch 100 298; gshot species; gbpanel 1 $CAP/crystal; gbhost"
     shown party; shown battle; shown species
     differ party battle
     grep -E 'gb(host|feed|panel)|gb companion: (rules|pages:)' "$log" | sort | uniq -c | sed "s/^ */gbpk-ui: $size: red: /; s|$PWD/||g"
+
+    # Yellow Legacy's pages: Yellow's title, its capture read at its own addresses (the party of six), a wild battle on
+    # the Battle page, its end the Party page; Gen I's rules; its guide file isn't there yet, so none
+    run $size ylegacy "home 0; gbpanel 1 $CAP/yellow_legacy; gbhost; gbfeed $CAP/yellow_legacy; sleep 300; gshot party; \
+wait 300; gbfeed $CAP/yellow_legacy_battle; sleep 300; gshot battle; wait 300; gbfeed $CAP/yellow_legacy; sleep 100"
+    logged "gbpanel .*/yellow_legacy: companion Yellow Legacy$"
+    logged "gb companion: rules on \(Generation I\)$"
+    logged "gbhost: ready Yellow Legacy view pages:Party$"
+    logged "gbfeed .*/yellow_legacy: asked [1-9][0-9]*, party 6, battle 0, view pages:Party$"
+    logged "gbfeed .*/yellow_legacy_battle: asked [1-9][0-9]*, party 6, battle 1, view pages:Battle$"
+    [ "$(grep -cE 'gbfeed .*/yellow_legacy: asked [1-9][0-9]*, party 6, battle 0, view pages:Party$' "$log")" = 2 ] ||
+        { echo "FAIL $size ylegacy: the battle's end didn't show the Party page"; fail=1; }
+    shown party; shown battle
+    differ party battle
+    grep -E 'gb(host|feed|panel)|gb companion: (rules|guide)' "$log" | sed "s/^banana-ui: /gbpk-ui: $size: ylegacy: /; s|$PWD/||g"
 done
 
 [ $fail = 0 ] || exit 1

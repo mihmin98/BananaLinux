@@ -9,8 +9,8 @@ off by default. Its investigation and plan are in `.workspace/0028-gb-pokemon/`.
 
 The games are the English retail releases: Red, Blue and Yellow (USA, Europe), Gold and Silver (USA, Europe), Crystal
 (USA, USA and Europe rev 1, Australia); two ROM hacks read as the games they patch, Fast Red and Fast Blue (v1.0),
-whose patch moves nothing the companion reads; and ROM hacks read as games of their own, Crystal Legacy (v1.3.1)
-(*The ROM hacks*; the rest of `.workspace/0030-gb-pokemon-hacks/`'s are to come). A release is told by the whole
+whose patch moves nothing the companion reads; and ROM hacks read as games of their own, Crystal Legacy (v1.3.1) and
+Yellow Legacy (v1.0.10) (*The ROM hacks*; the rest of `.workspace/0030-gb-pokemon-hacks/`'s are to come). A release is told by the whole
 file's SHA-1.
 
 ## PokeDaisy, and the licence
@@ -290,8 +290,9 @@ before a save is loaded WRAM holds leftovers.
 
 ### The test captures
 
-`kiwami/tests/gbpk/fixtures/` holds PokeDaisy's RAM captures of the six games and the ROM hacks (37 folders: 17 of
-Gold, Silver and Crystal, 16 of Red, Blue and Yellow, its English ones, and 4 of Crystal Legacy; unchanged from its `app/src/test/resources/fixtures/` at
+`kiwami/tests/gbpk/fixtures/` holds PokeDaisy's RAM captures of the six games and the ROM hacks (41 folders: 17 of
+Gold, Silver and Crystal, 16 of Red, Blue and Yellow, its English ones, 4 of Crystal Legacy and 4 of Yellow Legacy;
+unchanged from its `app/src/test/resources/fixtures/` at
 `135ac809`, with their `README.txt`s), under its GPL-3.0 (the folder's `LICENSE` and `NOTICE`).
 `kiwami/tests/gbpk-units.cpp` answers the reader's requests from them as the cores' memory maps would (C000-CFFF bank
 0, D000-DFFF bank 1, banks 2-7 from 0x10000; a Game Boy game's capture is C000-DFFF alone) and checks what each README
@@ -299,7 +300,8 @@ says: CHRIS's CHIKORITA with a BERRY on Route 29 at (46, 11) in all three Crysta
 bag, money and ID, the CHAMPION's six in `gold_trainer`; Nelson's six Lv100s with their nicknames in Vermilion City's
 Pokémon Center in Red, Blue and Yellow, his money, badges, play time, Pokédex and 17 bag items, Yellow's Pikachu's
 happiness (and none for one with another OT), the wild CHARMANDER Lv12 against Joseph's PIKACHU, the fainted
-PIKACHU; Crystal Legacy's CHRIS, with Crystal's save, read at its own addresses, and its wild HOOTHOOT. No Gen I
+PIKACHU; Crystal Legacy's CHRIS, with Crystal's save, read at its own addresses, and its wild HOOTHOOT; Yellow
+Legacy's Nelson, with Yellow's save, read at its own addresses, and the wild CHARMANDER against Joseph. No Gen I
 capture is of a trainer battle, so one is made from `red_battle` (a copy of the party's second as
 the trainer's one Pokémon). The internal indexes of the captures' seven species are given as the ROM's table would
 give them (pret's `constants/pokemon_constants.asm`).
@@ -399,7 +401,10 @@ millisecond on a PC.
   tables (`GbRomData::national`) for the memory reader, which reads the party's species by it.
 - **Species**, by national number: as Gen II's, but for Special as both special stats, no gender (the pages draw no
   sign) and no friendship; the four moves `BaseStats` gives it as learned at level 1, before those learned by level;
-  the evolutions by level, stone and trade; Mew's base data apart in Red and Blue (`MewBaseStats`); the Pokédex entry's
+  the evolutions by level, stone and trade (an entry of another kind ends them, and the moves start after the
+  record's first 0, as the game reads them: Yellow Legacy's Metapod has a stray `db 7, HARDEN` among its evolutions,
+  which never evolves it and leaves Harden at 7 its move); Mew's base data apart in Red and Blue (`MewBaseStats`); the
+  Pokédex entry's
   height and weight (feet and inches, 0.1 lb) to 0.1 m and 0.1 kg, its text through its `text_far` to `<DEXEND>`, its
   full stop.
 - **Moves**: as Gen II's, but with no effect chance or description (the games have none), and Quick Attack's +1 and
@@ -409,7 +414,8 @@ millisecond on a PC.
 - **Places**: every map by its number, named as the town map names it (`LoadTownMapEntry`: an outdoor map its own
   `ExternalMapEntries` entry, an indoor one its group's in `InternalMapEntries`), with its grass and water at the
   chances of `WildMonEncounterSlotChances`, and fishing: the Old Rod's Magikarp Lv 5 (in `ItemUseOldRod`'s code, read
-  when its bytes are the call, jump and load the game has), the Good Rod's Goldeen and Poliwag at even chances
+  when its bytes are the call, jump and load the game has; or, where the data file gives `oldRodMons`, Yellow
+  Legacy's table of two at even chances, laid out as `GoodRodMons`), the Good Rod's Goldeen and Poliwag at even chances
   (`GoodRodMons`), and the Super Rod's by the map (Red's and Blue's `SuperRodData` groups at even chances, Yellow's
   `SuperRodFishingSlots` at 40, 30, 20 and 10 %). The Old and Good Rods fish any water, so they are listed where the
   Super Rod is or the map has water. A chance is the one when something bites.
@@ -510,6 +516,7 @@ a comment. PokeDaisy's config for it, where it has one, is read too and must agr
 | Hack | Key | Source | rgbds | Base |
 |---|---|---|---|---|
 | Crystal Legacy v1.3.1 | `crystal-legacy` (106) | `cRz-Shadows/Pokemon_Crystal_Legacy` at `V1.3.1`, `make pokecrystal.gbc` | 0.5.2 | Crystal |
+| Yellow Legacy v1.0.10 | `yellow-legacy` (107) | `cRz-Shadows/Pokemon_Yellow_Legacy` at `V1.0.10`, `make pokeyellow.gbc` | 0.6.1 | Yellow |
 
 **Crystal Legacy** is Crystal's engine, its WRAM mostly 11 bytes on: its bag holds 84 items (`itemsMax`, PokeDaisy's),
 its TM01 is item 0xC1 (`firstTm`), its Ghost moves are special and its Dark moves physical (its damage checks them
@@ -525,6 +532,17 @@ before `SPECIAL`: `gbpk-symbols.txt`'s `split` lines). Three of its ROM tables a
 - `rockSmashMons`: Rock Smash's sets are a table of their own, from 0 (`RockSmashMons`).
 
 Its guide, `crystal-legacy.json`, is PokeDaisy's, converted as Crystal's (*The guides*).
+
+**Yellow Legacy** is Yellow's engine and structures (its header's title is Yellow's, `POKEMON YELLOW`, with no code: a
+Color cart of 2 MB, MBC5). Its bag holds 59 items (`bagSlots`, its `BAG_ITEM_CAPACITY`), which took the padding after
+`wGameProgressFlags`, so `wPlayerMoney` to the map and the coordinates, the badges, the player's ID, Pikachu's
+happiness and the toggleable objects' flags sit 78 bytes on (and `wIsInBattle` and `wTrainerNo` one); its items are
+Yellow's, its trainer classes 51 (Yellow's 47). Its Ghost moves are special (Ghost after its `DEF SPECIAL`: no `split`
+line). It keeps pret's older names for some symbols, each given on a line of its own in `gbpk-symbols.txt`:
+`STARTER_PIKACHU`, `GBCBasePalettes`, `wMissableObjectFlags`, `HS_CERULEAN_CAVE_GUY` and `HiddenObjectMaps`. Two of
+its ROM's records are its own, read by `rom1.cpp` as the game reads them (*Red, Blue and Yellow's tables*): its Old Rod
+is a table of two (`oldRodMons`, `OldRodMons`: Goldeen and Poliwag at 5), and its Metapod has a stray entry among its
+evolutions. Its guide comes with the plan's step 7; until then its Guide page has the ROM's hidden items alone.
 
 ## The data files
 
@@ -810,12 +828,16 @@ place but the special landmark's rooms on a map; every hidden item on a named ma
 50; the game's guide file (Crystal's) loaded with every place found by name and every boss's team the ROM's, at
 its level cap; and Gold's and Silver's guide from the ROM's trainers, its 21 milestones in the order above, each gym
 done by a badge (Falkner's `badge:1`, Jasmine's 5, Chuck's 6, Pryce's 7, Clair's 8, Brock's 9, Blue's 16) and Will
-and Lance by `later`. For Red, Blue and Yellow (Fast Red and Fast Blue as Red and Blue): all 151 species named with a
+and Lance by `later`. For Red, Blue and Yellow (Fast Red and Fast Blue as Red and Blue, and Yellow Legacy with its own
+values below): all 151 species named with a
 learnset and a Pokédex text, all 165 moves; Bulbasaur's base stats, types, level 1 moves, evolution, Pokédex entry
 and height and weight; Mew; Clefairy's Moon Stone and Kadabra's trade; Quick Attack's and Counter's priorities;
 TM01 and HM01's moves; item names and prices; Route 1's grass with Pidgey and Rattata; the three rods at Pallet Town
 and none on Route 1; Brock's Geodude and Onix at Lv 12 and 14 (Yellow's 10 and 12), his Onix with Bide (Yellow's
-with Bind and Bide); Lorelei's Lapras with Blizzard; every place with wild Pokémon named; all 151 front pictures
+with Bind and Bide); Lorelei's Lapras with Blizzard; Lick, Ghost, physical; Metapod into Butterfree at 10. Yellow
+Legacy's, from its source: Kadabra into Alakazam at 42, Metapod's Harden at 7 past its stray entry, Lick special at 40
+power, the Old Rod's Goldeen and Poliwag at 5 and the Good Rod's Horsea and Krabby at 20, Brock's Onix with
+Constrict, Bide and Bind, Lorelei's Lapras with Surf, and its hidden items PokeDaisy's (`G1L_AREAS_RAW`); every place with wild Pokémon named; all 151 front pictures
 drawn at their own size, Bulbasaur's 5 x 5 tiles and Mewtwo's 7 x 7 (pret's PNGs), each with one palette and white
 inside its outline (Pikachu's body); the town map
 drawn, Pallet Town's spot on it with its cell naming it, every named place on it; every hidden item on a named map

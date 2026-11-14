@@ -79,9 +79,10 @@ static void testDetect()
 	h = header("POKEMON BLUE");
 	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
 	CHECK(keys == K{ "blue" });
+	// (Yellow Legacy keeps Yellow's title)
 	h = header("POKEMON YELLOW");
 	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
-	CHECK(keys == K{ "yellow" });
+	CHECK((keys == K{ "yellow", "yellow-legacy" }));
 	h = header("POKEMON REDX");
 	CHECK(detect(h.data(), h.size(), keys) == Match::NONE && keys.empty());
 	h = header("TETRIS");
@@ -401,7 +402,7 @@ static void testRomList()
 		required += x.need == "required";
 		CHECK(x.name.size() > 4 && (x.name.compare(x.name.size() - 3, 3, ".gb") == 0 || x.name.compare(x.name.size() - 4, 4, ".gbc") == 0));
 	}
-	CHECK(lines.size() == 29 && gb == 11 && required == 6);
+	CHECK(lines.size() == 30 && gb == 12 && required == 6);
 	// the ROM hacks read as the retail game they patch (roms.patches): each a Game Boy line, its retail ROM a required
 	// one of the same game, its ranges in order and apart, inside the bank-0 code and the header (gbpk-roms.sh compares
 	// the files themselves)
@@ -432,7 +433,7 @@ static void testRomList()
 		hacks++;
 	}
 	CHECK(hacks == 2);
-	for (const char* key : { "red", "blue", "yellow", "gold", "silver", "crystal", "crystal-legacy" })
+	for (const char* key : { "red", "blue", "yellow", "gold", "silver", "crystal", "crystal-legacy", "yellow-legacy" })
 	{
 		GameData d;
 		bool listed = false;
@@ -457,7 +458,7 @@ static void testRomList()
 			released++;
 		}
 	}
-	CHECK(games == 7 && released == 11);
+	CHECK(games == 8 && released == 12);
 }
 
 // ---- the ROM reader on a made-up ROM ----------------------------------------------------------------------------
@@ -1574,8 +1575,8 @@ static std::shared_ptr<nds::Live> checkGen1(const char* capture, const char* key
 	{
 		const nds::Mon& p = l->party[0];
 		CHECK(p.maxHp == 182 && p.moves[0] == THUNDERBOLT && p.moves[1] == THUNDER && p.moves[2] == SLAM && p.moves[3] == LIGHT_SCREEN);
-		// (no friendship in Red and Blue; Yellow's starter Pikachu has its happiness)
-		CHECK(std::string(key) == "yellow" ? p.friendship > 0 : p.friendship == 0);
+		// (no friendship in Red and Blue; Yellow's starter Pikachu has its happiness, Yellow Legacy's too)
+		CHECK(baseGame(game(key).game.id) == YELLOW ? p.friendship > 0 : p.friendship == 0);
 		for (size_t i = 1; i < 6; i++) CHECK(l->party[i].friendship == 0);
 	}
 	CHECK(l->zone == 0x59 && l->mapX == 3 && l->mapY == 5);
@@ -1586,6 +1587,7 @@ static std::shared_ptr<nds::Live> checkGen1(const char* capture, const char* key
 	for (const auto& [pocket, list] : l->bag) items += list.size();
 	CHECK(items == 17 && !inBag(*l, nds::POCKET_KEY, GEN1_ONLY + 0x05));
 	CHECK(l->timeOfDay == nds::TimeOfDay::ANY && r.error().empty());
+	if (std::string(key) == "yellow-legacy") return l;	// (Yellow Legacy's guide and its flags: the next step)
 	// the guide's flags: the 320 bytes of event flags, the 32 of the toggleable objects' from bit 2560, then a byte of
 	// derived bits; the Elite Four's rooms' flags clear (the lobby clears them), and the League not won in Red's and
 	// Blue's numbering. Yellow's save holds the same bytes, and its toggleable objects are numbered one on from the
@@ -1595,6 +1597,38 @@ static std::shared_ptr<nds::Live> checkGen1(const char* capture, const char* key
 	CHECK(l->flags.size() == 353 && l->flags[352] == (yellow ? 0x1F : 0));
 	CHECK(!flag(2273) && !flag(2305) && flag(2560 + 8) == false && flag(2560 + 9));
 	return l;
+}
+
+// Yellow Legacy's captures (PokeDaisy's: the yellow capture's save, rewritten for it, its README): the same trainer,
+// party, Pikachu's happiness, bag and place as Yellow's, read at its own addresses; a wild CHARMANDER Lv12 against
+// Joseph in its battle captures, the move list, the battle menu and the battle's party menu on screen. Its data file:
+// its bag of 59 slots (Yellow's 20), its Ghost special (after its DEF SPECIAL), Yellow's starter Pikachu by its own
+// constant's name
+static void testYellowLegacy()
+{
+	const GameData g = game("yellow-legacy");
+	CHECK(g.game.id == YELLOW_LEGACY && g.gen == 1 && g.game.gen == GEN_I && g.game.dexSize == 151 && g.headerTitle == "POKEMON YELLOW");
+	EQ(g.game.title, "Yellow Legacy");
+	CHECK(g.releases.size() == 1 && g.releases[0].sha1 == "2ac87de42afc70ef6016805acb3b206644417f97" && g.releases[0].code.empty());
+	EQ(g.releases.empty() ? "" : g.releases[0].name, "v1.0.10");
+	CHECK(g.size("bagSlots") == 59 && game("yellow").size("bagSlots") == 20 && g.size("starterPikachu") == 0x54);
+	CHECK(g.at("partyCount").addr == 0xD162 && g.at("money").addr == 0xD394 && g.at("pikachuHappiness").addr == 0xD4BD);
+	CHECK(g.special[8] && g.types[8] == nds::GHOST && category(g, 8) == nds::MoveCategory::SPECIAL);
+	CHECK(category(game("yellow"), 8) == nds::MoveCategory::PHYSICAL && category(g, 0x14) == nds::MoveCategory::SPECIAL);
+
+	auto l = checkGen1("yellow_legacy", "yellow-legacy");
+	CHECK(l->battle.kind == nds::BattleKind::NONE);
+	l = checkGen1("yellow_legacy_battle", "yellow-legacy");
+	const nds::Battle& b = l->battle;
+	CHECK(b.kind == nds::BattleKind::WILD && b.trainerId == 0 && b.foeParty.empty());
+	CHECK(b.ours[0].present && b.ours[0].mon.species == 25 && b.ours[0].mon.level == 100 && b.ours[0].mon.hp == 182);
+	EQ(b.ours[0].mon.nick, "Joseph");
+	CHECK(b.foes[0].present && b.foes[0].mon.species == 4 && b.foes[0].mon.level == 12 && b.foes[0].types[0] == nds::FIRE);
+	for (const char* c : { "yellow_legacy_battle_menu", "yellow_legacy_battle_party" })
+	{
+		l = checkGen1(c, "yellow-legacy");
+		CHECK(l->battle.kind == nds::BattleKind::WILD && l->battle.ours[0].mon.species == 25 && l->battle.foes[0].mon.species == 4);
+	}
 }
 
 static void testGen1Captures()
@@ -2126,6 +2160,57 @@ static void testGen1RomTables()
 	(*bad)[RomView{ *bad }.at(d.rom.at("townMap"))] = 0x12;
 	r = readRom(bad, d, &why);
 	CHECK(r && r->regionMaps.size() == 1 && r->regionMaps[0].rgba.empty() && r->regionMaps[0].cells.size() == 360);
+}
+
+// Yellow Legacy's ROM layouts on the made-up Gen I ROM: its Old Rod a table (OldRodMons: two of level and species,
+// half the bites each, as GoodRodMons), not the retail code's one Pokémon; and an evolution of a kind Gen I hasn't
+// (its Metapod's stray "db 7, HARDEN"), which ends the evolutions, the moves starting after the record's first 0 as
+// the game's .skipEvolutionDataLoop finds them. A data file with both Old Rods, or neither, is refused
+static void testGen1LegacyLayouts()
+{
+	GameData d;
+	auto made = madeUpGen1(d);
+	auto rom = std::make_shared<std::vector<uint8_t>>(*made);
+	std::vector<uint8_t>& b = *rom;
+	// (the bank's free end, before the hidden items' function at 7F00: bank 1 is the file's 4000-7FFF)
+	bool clear = true;
+	for (size_t i = 0x7E00; i < 0x7F00; i++) clear = clear && b[i] == 0;
+	CHECK(clear);
+	// Bulbasaur (internal $54): at 16 into internal 1, the stray entry, the end; then move 2 at 7
+	const uint8_t rec[] = { 1, 16, 1, 7, 2, 0, 7, 2, 0 };
+	memcpy(&b[0x7E00], rec, sizeof rec);
+	const size_t evos = d.rom.at("evosAttacksPointers").addr + 2 * (0x54 - 1);
+	b[evos] = 0x00;
+	b[evos + 1] = 0x7E;
+	// the Old Rod's table: Bulbasaur Lv 5, species 3 Lv 7
+	const uint8_t old[] = { 5, 0x54, 7, 3 };
+	memcpy(&b[0x7E10], old, sizeof old);
+	GameData y = d;
+	y.rom.erase("oldRod");
+	y.rom["oldRodMons"] = Addr{ 1, 0x7E10 };
+	std::string why;
+	auto r = readRom(rom, y, &why);
+	CHECK(r);
+	EQ(why, "");
+	if (!r) return;
+	const nds::Species& bu = r->species[1];
+	CHECK(bu.evolutions.size() == 1 && bu.evolutions[0].method == nds::evo::LEVEL && bu.evolutions[0].param == 16 && bu.evolutions[0].into == 2);
+	CHECK(bu.learnset.size() == 2 && bu.learnset[1].level == 7 && bu.learnset[1].move == 2);
+	int old5 = 0, old7 = 0, rods = 0;
+	for (const auto& e : r->zones.at(2).encounters)
+		if (e.kind == nds::EncounterKind::OLD_ROD)
+		{
+			rods++;
+			old5 += e.species == 1 && e.minLevel == 5 && e.percent == 50;
+			old7 += e.species == 3 && e.minLevel == 7 && e.percent == 50;
+		}
+	CHECK(rods == 2 && old5 == 1 && old7 == 1);
+	// both Old Rods, or neither
+	y.rom["oldRod"] = d.rom.at("oldRod");
+	CHECK(!readRom(rom, y, &why) && why.find("rom.oldRod nor rom.oldRodMons") != std::string::npos);
+	y.rom.erase("oldRod");
+	y.rom.erase("oldRodMons");
+	CHECK(!readRom(rom, y, &why) && why.find("rom.oldRod nor rom.oldRodMons") != std::string::npos);
 }
 
 // Crystal Legacy's captures (PokeDaisy's: the crystal capture's save, its README): the same trainer, party, bag and
@@ -2743,7 +2828,9 @@ int main(int argc, char** argv)
 	testTownMapCells();
 	testCaptures();
 	testGen1Captures();
+	testYellowLegacy();
 	testGen1RomTables();
+	testGen1LegacyLayouts();
 	testDerivedFlags();
 	testGuide();
 	testCrystalLegacyGuide();

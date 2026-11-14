@@ -62,9 +62,11 @@ GAMES = [
     ('yellow', 1, 'Yellow', 'GEN1_YELLOW', 'GEN1_DEX_YELLOW', 'YELLOW', 'Pokémon Yellow'),
     ('crystal-legacy', 2, 'Crystal Legacy', 'GEN2_CRYSTAL_LEGACY', 'GEN2_DEX_CRYSTAL_LEGACY', 'CRYSTAL_LEGACY',
      'Pokémon Crystal Legacy'),
+    ('yellow-legacy', 1, 'Yellow Legacy', 'GEN1_YELLOW_LEGACY', 'GEN1_DEX_YELLOW_LEGACY', 'YELLOW_LEGACY',
+     'Pokémon Yellow Legacy'),
 ]
 # the ROM hacks among them: their data files say their Pokédex's size (the retail games' is their generation's)
-HACK_DEX_SIZE = {'crystal-legacy': 251}
+HACK_DEX_SIZE = {'crystal-legacy': 251, 'yellow-legacy': 151}
 
 # Gen2Config's fields that are the games' own tables, or PokeDaisy's features outside the companion: left out
 SKIP = {

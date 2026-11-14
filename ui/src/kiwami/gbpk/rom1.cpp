@@ -91,7 +91,7 @@ namespace banana::kiwami::gbpk
 			dexPtrs = table("dexEntryPointers"), evos = table("evosAttacksPointers"), moves = table("moves"),
 			moveNames = table("moveNames"), itemNames = table("itemNames"), prices = table("itemPrices"), tmHm = table("tmHmMoves"),
 			external = table("externalMapEntries"), internal = table("internalMapEntries"), wildData = table("wildData"),
-			wildSlots = table("wildSlots"), oldRod = table("oldRod"), goodRod = table("goodRodMons"), trainers = table("trainerGroups"),
+			wildSlots = table("wildSlots"), oldRod = optional("oldRod"), oldRodMons = optional("oldRodMons"), goodRod = table("goodRodMons"), trainers = table("trainerGroups"),
 			trainersEnd = table("trainerGroupsEnd"), classNames = table("trainerClassNames"), paletteIds = table("monPaletteIds"),
 			palettes = table("palettes"), typeChart = table("typeChart");
 		// the front pictures' banks ("Pics 1" .. "Pics 5", each its first picture's) and the town map's tables (maps.cpp
@@ -108,6 +108,7 @@ namespace banana::kiwami::gbpk
 		table("hiddenItems");
 		if (!missing.empty()) return no("no rom." + missing + " in the data file, or it is past the ROM's end");
 		if ((superRod == RomView::NONE) == (rodSlots == RomView::NONE)) return no("the data file gives neither rom.superRod nor rom.superRodSlots, or both");
+		if ((oldRod == RomView::NONE) == (oldRodMons == RomView::NONE)) return no("the data file gives neither rom.oldRod nor rom.oldRodMons, or both");
 		if ((mew == RomView::NONE) != (mewPic == RomView::NONE)) return no("the data file gives Mew's base data apart without its picture's bank, or that without it");
 		const int nSp = d.size("numPokemon"), nIdx = d.size("numPokemonIndexes"), nMoves = d.size("numMoves"),
 			nItems = d.size("numItems"), nClasses = d.size("numTrainerClasses"), nMaps = d.size("numMaps"),
@@ -267,18 +268,23 @@ namespace banana::kiwami::gbpk
 			// the same bank)
 			size_t p = r.near(evos + 2 * (size_t)(idx - 1));
 			if (p == RomView::NONE) return no("EvosMovesPointerTable's pointer for species " + std::to_string(s) + " leaves its bank");
+			// (an entry of a kind Gen I hasn't ends them: the game never evolves by it, engine/pokemon/evos_moves.asm
+			// .evoEntryLoop; Yellow Legacy's Metapod has one, a stray "db 7, HARDEN". The moves start after the record's
+			// first 0, as the game's .skipEvolutionDataLoop finds them: no evolution entry holds a 0)
+			const size_t rec = p;
 			for (int k = 0; k < 8 && r.u8(p); k++)
 			{
 				nds::Evolution ev;
-				switch (r.u8(p))
-				{
-				case EVOLVE_LEVEL: ev.method = nds::evo::LEVEL; ev.param = r.u8(p + 1); ev.into = national(r.u8(p + 2)); p += 3; break;
-				case EVOLVE_ITEM: ev.method = nds::evo::USE_ITEM; ev.param = gen1Item(d, r.u8(p + 1)); ev.into = national(r.u8(p + 3)); p += 4; break;
-				case EVOLVE_TRADE: ev.method = nds::evo::TRADE; ev.into = national(r.u8(p + 2)); p += 3; break;
-				default: return no("species " + std::to_string(s) + " has an evolution of a kind Gen I hasn't (" + std::to_string(r.u8(p)) + ")");
-				}
+				const uint8_t kind = r.u8(p);
+				if (kind == EVOLVE_LEVEL) { ev.method = nds::evo::LEVEL; ev.param = r.u8(p + 1); ev.into = national(r.u8(p + 2)); p += 3; }
+				else if (kind == EVOLVE_ITEM) { ev.method = nds::evo::USE_ITEM; ev.param = gen1Item(d, r.u8(p + 1)); ev.into = national(r.u8(p + 3)); p += 4; }
+				else if (kind == EVOLVE_TRADE) { ev.method = nds::evo::TRADE; ev.into = national(r.u8(p + 2)); p += 3; }
+				else break;
 				if (ev.into >= 1) sp.evolutions.push_back(ev);
 			}
+			p = rec;
+			for (int k = 0; k < 64 && r.u8(p); k++) p++;
+			if (r.u8(p)) return no("species " + std::to_string(s) + "'s evolutions have no end");
 			p++;
 			for (int k = 0; k < 40 && r.u8(p); k++, p += 2)
 				if (r.u8(p + 1) >= 1 && r.u8(p + 1) <= nMoves) sp.learnset.push_back({ r.u8(p), r.u8(p + 1) });
@@ -377,13 +383,18 @@ namespace banana::kiwami::gbpk
 				if (!r.has(o, 2 + 2 * ROD_SLOTS) || o >= rodSlots + (1 + 2 * ROD_SLOTS) * 64) return no("SuperRodFishingSlots has no end");
 				for (int j = 0; j < ROD_SLOTS; j++) { superMons[r.u8(o)].push_back({ r.u8(o + 1 + 2 * j), r.u8(o + 2 + 2 * j) }); superPct[r.u8(o)].push_back(YELLOW_ROD_PERCENT[j]); }
 			}
-		const bool oldRodOk = r.has(oldRod, 9) && r.u8(oldRod) == 0xCD && r.u8(oldRod + 3) == 0xDA && r.u8(oldRod + 6) == 0x01;
+		// (the Old Rod: retail's one Pokémon in ItemUseOldRod's code, lb bc, 5, MAGIKARP after its call and jp c; or
+		// Yellow Legacy's OldRodMons, two of level and species, each half the bites as GoodRodMons' by the same loop)
+		const bool oldRodOk = oldRod != RomView::NONE && r.has(oldRod, 9) && r.u8(oldRod) == 0xCD && r.u8(oldRod + 3) == 0xDA && r.u8(oldRod + 6) == 0x01;
 		if (!r.has(goodRod, 4)) return no("GoodRodMons runs past the ROM");
+		if (oldRodMons != RomView::NONE && !r.has(oldRodMons, 4)) return no("OldRodMons runs past the ROM");
 		for (const auto& [m, mons] : superMons) if (m < nMaps) water.insert(m);
 		for (int m : water)
 		{
 			nds::Location& loc = out.zones[(uint16_t)m];
 			if (oldRodOk) add(loc, r.u8(oldRod + 7), r.u8(oldRod + 8), 100, EncounterKind::OLD_ROD);
+			if (oldRodMons != RomView::NONE)
+				for (int j = 0; j < 2; j++) add(loc, r.u8(oldRodMons + 2 * j + 1), r.u8(oldRodMons + 2 * j), 50, EncounterKind::OLD_ROD);
 			for (int j = 0; j < 2; j++) add(loc, r.u8(goodRod + 2 * j + 1), r.u8(goodRod + 2 * j), 50, EncounterKind::GOOD_ROD);
 			auto it = superMons.find(m);
 			if (it != superMons.end())
@@ -508,7 +519,7 @@ namespace banana::kiwami::gbpk
 		if (special != RomView::NONE)
 			for (size_t o = special; r.u8(o) != END;)
 			{
-				if (!r.has(o, 3) || o >= special + 1024) return no("SpecialTrainerMoves has no end");
+				if (!r.has(o, 3) || o >= special + 0x4000) return no("SpecialTrainerMoves has no end");	// (within its bank: Yellow Legacy's is 2 KB)
 				const uint16_t id = (uint16_t)(r.u8(o) << 8 | r.u8(o + 1));
 				for (o += 2; r.u8(o); o += 3)
 					if (!r.has(o, 4) || !give(id, (size_t)r.u8(o) - 1, (size_t)r.u8(o + 1) - 1, r.u8(o + 2), false))

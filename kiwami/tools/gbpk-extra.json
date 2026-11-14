@@ -5072,6 +5072,594 @@
         "7": "bug",
         "8": "ghost"
       }
+    },
+    "yellow-legacy": {
+      "balls": [
+        1,
+        2,
+        3,
+        4,
+        8
+      ],
+      "const": {
+        "bagSlots": {
+          "file": "constants/menu_constants.asm",
+          "symbol": "BAG_ITEM_CAPACITY",
+          "value": 59
+        },
+        "counter": {
+          "file": "constants/move_constants.asm",
+          "symbol": "COUNTER",
+          "value": 68
+        },
+        "firstIndoorMap": {
+          "file": "constants/map_constants.asm",
+          "symbol": "FIRST_INDOOR_MAP",
+          "value": 37
+        },
+        "hm01": {
+          "file": "constants/item_constants.asm",
+          "symbol": "HM01",
+          "value": 196
+        },
+        "numEvents": {
+          "file": "constants/event_constants.asm",
+          "symbol": "NUM_EVENTS",
+          "value": 2560
+        },
+        "numItems": {
+          "file": "constants/item_constants.asm",
+          "symbol": "NUM_ITEMS",
+          "value": 83
+        },
+        "numMaps": {
+          "file": "constants/map_constants.asm",
+          "symbol": "NUM_MAPS",
+          "value": 249
+        },
+        "numMoves": {
+          "file": "constants/move_constants.asm",
+          "symbol": "NUM_ATTACKS",
+          "value": 165
+        },
+        "numPokemon": {
+          "file": "constants/pokedex_constants.asm",
+          "symbol": "NUM_POKEMON",
+          "value": 151
+        },
+        "numPokemonIndexes": {
+          "file": "constants/pokemon_constants.asm",
+          "symbol": "NUM_POKEMON_INDEXES",
+          "value": 190
+        },
+        "numTrainerClasses": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "NUM_TRAINERS",
+          "value": 51
+        },
+        "palTownMap": {
+          "file": "constants/palette_constants.asm",
+          "symbol": "PAL_TOWNMAP",
+          "value": 12
+        },
+        "picsBeedrill": {
+          "file": "constants/pokemon_constants.asm",
+          "symbol": "BEEDRILL",
+          "value": 114
+        },
+        "picsMoltres": {
+          "file": "constants/pokemon_constants.asm",
+          "symbol": "MOLTRES",
+          "value": 73
+        },
+        "picsStarmie": {
+          "file": "constants/pokemon_constants.asm",
+          "symbol": "STARMIE",
+          "value": 152
+        },
+        "picsTangela": {
+          "file": "constants/pokemon_constants.asm",
+          "symbol": "TANGELA",
+          "value": 30
+        },
+        "quickAttack": {
+          "file": "constants/move_constants.asm",
+          "symbol": "QUICK_ATTACK",
+          "value": 98
+        },
+        "starterPikachu": {
+          "file": "constants/pokemon_constants.asm",
+          "symbol": "STARTER_PIKACHU",
+          "value": 84
+        },
+        "tm01": {
+          "file": "constants/item_constants.asm",
+          "symbol": "TM01",
+          "value": 201
+        },
+        "toggleCeruleanCaveGuy": {
+          "file": "constants/hide_show_constants.asm",
+          "symbol": "HS_CERULEAN_CAVE_GUY",
+          "value": 9
+        }
+      },
+      "files": {
+        "items": "constants/item_constants.asm",
+        "keyitems": "data/items/key_items.asm",
+        "types": "constants/type_constants.asm"
+      },
+      "header_title": "POKEMON YELLOW",
+      "items": {
+        "FIRE_STONE": [
+          32,
+          82
+        ],
+        "GOOD_ROD": [
+          77,
+          446
+        ],
+        "GREAT_BALL": [
+          3,
+          3
+        ],
+        "LEAF_STONE": [
+          47,
+          85
+        ],
+        "MASTER_BALL": [
+          1,
+          1
+        ],
+        "MOON_STONE": [
+          10,
+          81
+        ],
+        "OLD_ROD": [
+          76,
+          445
+        ],
+        "POKE_BALL": [
+          4,
+          4
+        ],
+        "SAFARI_BALL": [
+          8,
+          5
+        ],
+        "SUPER_ROD": [
+          78,
+          447
+        ],
+        "THUNDER_STONE": [
+          33,
+          83
+        ],
+        "ULTRA_BALL": [
+          2,
+          2
+        ],
+        "WATER_STONE": [
+          34,
+          84
+        ]
+      },
+      "key_items": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        31,
+        41,
+        42,
+        43,
+        44,
+        45,
+        48,
+        63,
+        64,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        76,
+        77,
+        78
+      ],
+      "ram": {
+        "badges": {
+          "addr": "0xD3A3",
+          "bank": 1,
+          "symbol": "wObtainedBadges"
+        },
+        "bagCount": {
+          "addr": "0xD31C",
+          "bank": 1,
+          "symbol": "wNumBagItems"
+        },
+        "battleMon": {
+          "addr": "0xD013",
+          "bank": 1,
+          "symbol": "wBattleMon"
+        },
+        "curMap": {
+          "addr": "0xD3AB",
+          "bank": 1,
+          "symbol": "wCurMap"
+        },
+        "dexCaught": {
+          "addr": "0xD2F6",
+          "bank": 1,
+          "symbol": "wPokedexOwned"
+        },
+        "dexSeen": {
+          "addr": "0xD309",
+          "bank": 1,
+          "symbol": "wPokedexSeen"
+        },
+        "enemyMon": {
+          "addr": "0xCFE4",
+          "bank": 0,
+          "symbol": "wEnemyMon"
+        },
+        "enemyMonPartyPos": {
+          "addr": "0xCFE7",
+          "bank": 0,
+          "symbol": "wEnemyMonPartyPos"
+        },
+        "enemyMons": {
+          "addr": "0xD8A3",
+          "bank": 1,
+          "symbol": "wEnemyMons"
+        },
+        "enemyPartyCount": {
+          "addr": "0xD89B",
+          "bank": 1,
+          "symbol": "wEnemyPartyCount"
+        },
+        "enemyStatMods": {
+          "addr": "0xCD2E",
+          "bank": 0,
+          "symbol": "wEnemyMonStatMods"
+        },
+        "eventFlags": {
+          "addr": "0xD746",
+          "bank": 1,
+          "symbol": "wEventFlags"
+        },
+        "isInBattle": {
+          "addr": "0xD057",
+          "bank": 1,
+          "symbol": "wIsInBattle"
+        },
+        "money": {
+          "addr": "0xD394",
+          "bank": 1,
+          "symbol": "wPlayerMoney"
+        },
+        "moveMenuType": {
+          "addr": "0xCCDB",
+          "bank": 0,
+          "symbol": "wMoveMenuType"
+        },
+        "partyCount": {
+          "addr": "0xD162",
+          "bank": 1,
+          "symbol": "wPartyCount"
+        },
+        "partyMenuType": {
+          "addr": "0xD07C",
+          "bank": 1,
+          "symbol": "wPartyMenuTypeOrMessageID"
+        },
+        "partyMonNicknames": {
+          "addr": "0xD2B4",
+          "bank": 1,
+          "symbol": "wPartyMonNicks"
+        },
+        "partyMonOTs": {
+          "addr": "0xD272",
+          "bank": 1,
+          "symbol": "wPartyMonOT"
+        },
+        "partyMons": {
+          "addr": "0xD16A",
+          "bank": 1,
+          "symbol": "wPartyMons"
+        },
+        "pikachuHappiness": {
+          "addr": "0xD4BD",
+          "bank": 1,
+          "symbol": "wPikachuHappiness"
+        },
+        "playTime": {
+          "addr": "0xDA40",
+          "bank": 1,
+          "symbol": "wPlayTimeHours"
+        },
+        "playerID": {
+          "addr": "0xD3A6",
+          "bank": 1,
+          "symbol": "wPlayerID"
+        },
+        "playerMonNumber": {
+          "addr": "0xCC2F",
+          "bank": 0,
+          "symbol": "wPlayerMonNumber"
+        },
+        "playerName": {
+          "addr": "0xD157",
+          "bank": 1,
+          "symbol": "wPlayerName"
+        },
+        "playerStatMods": {
+          "addr": "0xCD1A",
+          "bank": 0,
+          "symbol": "wPlayerMonStatMods"
+        },
+        "tileMap": {
+          "addr": "0xC3A0",
+          "bank": 0,
+          "symbol": "wTileMap"
+        },
+        "toggleFlags": {
+          "addr": "0xD5F3",
+          "bank": 1,
+          "symbol": "wMissableObjectFlags"
+        },
+        "topMenuItemY": {
+          "addr": "0xCC24",
+          "bank": 0,
+          "symbol": "wTopMenuItemY"
+        },
+        "trainerClass": {
+          "addr": "0xD030",
+          "bank": 1,
+          "symbol": "wTrainerClass"
+        },
+        "trainerNo": {
+          "addr": "0xD05D",
+          "bank": 1,
+          "symbol": "wTrainerNo"
+        },
+        "xCoord": {
+          "addr": "0xD3AF",
+          "bank": 1,
+          "symbol": "wXCoord"
+        },
+        "yCoord": {
+          "addr": "0xD3AE",
+          "bank": 1,
+          "symbol": "wYCoord"
+        }
+      },
+      "releases": [
+        {
+          "build": "pokeyellow",
+          "name": "v1.0.10",
+          "sha1": "2ac87de42afc70ef6016805acb3b206644417f97"
+        }
+      ],
+      "repo": "Pokemon_Yellow_Legacy",
+      "rom": {
+        "baseData": {
+          "addr": "0x5272",
+          "bank": 59,
+          "symbol": "BaseStats"
+        },
+        "dexEntryPointers": {
+          "addr": "0x46D3",
+          "bank": 16,
+          "symbol": "PokedexEntryPointers"
+        },
+        "dexOrder": {
+          "addr": "0x5279",
+          "bank": 16,
+          "symbol": "PokedexOrder"
+        },
+        "evosAttacksPointers": {
+          "addr": "0x457F",
+          "bank": 59,
+          "symbol": "EvosMovesPointerTable"
+        },
+        "externalMapEntries": {
+          "addr": "0x543A",
+          "bank": 28,
+          "symbol": "ExternalMapEntries"
+        },
+        "goodRodMons": {
+          "addr": "0x619D",
+          "bank": 3,
+          "symbol": "GoodRodMons"
+        },
+        "hiddenEventMaps": {
+          "addr": "0x6A53",
+          "bank": 60,
+          "symbol": "HiddenObjectMaps"
+        },
+        "hiddenItemCoords": {
+          "addr": "0x653A",
+          "bank": 29,
+          "symbol": "HiddenItemCoords"
+        },
+        "hiddenItems": {
+          "addr": "0x64FF",
+          "bank": 29,
+          "symbol": "HiddenItems"
+        },
+        "internalMapEntries": {
+          "addr": "0x54A9",
+          "bank": 28,
+          "symbol": "InternalMapEntries"
+        },
+        "itemNames": {
+          "addr": "0x45A9",
+          "bank": 1,
+          "symbol": "ItemNames"
+        },
+        "itemPrices": {
+          "addr": "0x4486",
+          "bank": 1,
+          "symbol": "ItemPrices"
+        },
+        "monPaletteIds": {
+          "addr": "0x68B5",
+          "bank": 28,
+          "symbol": "MonsterPalettes"
+        },
+        "moveNames": {
+          "addr": "0x4000",
+          "bank": 47,
+          "symbol": "MoveNames"
+        },
+        "moves": {
+          "addr": "0x4000",
+          "bank": 14,
+          "symbol": "Moves"
+        },
+        "oldRodMons": {
+          "addr": "0x6173",
+          "bank": 3,
+          "symbol": "OldRodMons"
+        },
+        "palettes": {
+          "addr": "0x6A8D",
+          "bank": 28,
+          "symbol": "GBCBasePalettes"
+        },
+        "pics1": {
+          "addr": "0x4000",
+          "bank": 9,
+          "symbol": "RhydonPicFront"
+        },
+        "pics2": {
+          "addr": "0x4000",
+          "bank": 10,
+          "symbol": "GrowlithePicFront"
+        },
+        "pics3": {
+          "addr": "0x4000",
+          "bank": 11,
+          "symbol": "ArticunoPicFront"
+        },
+        "pics4": {
+          "addr": "0x4000",
+          "bank": 12,
+          "symbol": "DodrioPicFront"
+        },
+        "pics5": {
+          "addr": "0x4000",
+          "bank": 13,
+          "symbol": "BulbasaurPicFront"
+        },
+        "pokemonNames": {
+          "addr": "0x4000",
+          "bank": 58,
+          "symbol": "MonsterNames"
+        },
+        "specialTrainerMoves": {
+          "addr": "0x4E72",
+          "bank": 14,
+          "symbol": "SpecialTrainerMoves"
+        },
+        "superRodSlots": {
+          "addr": "0x5D51",
+          "bank": 61,
+          "symbol": "SuperRodFishingSlots"
+        },
+        "tmHmMoves": {
+          "addr": "0x65B5",
+          "bank": 4,
+          "symbol": "TechnicalMachines"
+        },
+        "townMap": {
+          "addr": "0x522A",
+          "bank": 28,
+          "symbol": "CompressedMap"
+        },
+        "townMapOrder": {
+          "addr": "0x5035",
+          "bank": 28,
+          "symbol": "TownMapOrder"
+        },
+        "townMapOrderEnd": {
+          "addr": "0x5064",
+          "bank": 28,
+          "symbol": "TownMapOrderEnd"
+        },
+        "townMapTiles": {
+          "addr": "0x51C8",
+          "bank": 4,
+          "symbol": "WorldMapTileGraphics"
+        },
+        "trainerClassNames": {
+          "addr": "0x4B65",
+          "bank": 14,
+          "symbol": "TrainerNames"
+        },
+        "trainerGroups": {
+          "addr": "0x55B7",
+          "bank": 14,
+          "symbol": "TrainerDataPointers"
+        },
+        "trainerGroupsEnd": {
+          "addr": "0x5EF7",
+          "bank": 14,
+          "symbol": "TrainerAI"
+        },
+        "typeChart": {
+          "addr": "0x6622",
+          "bank": 15,
+          "symbol": "TypeEffects"
+        },
+        "wildData": {
+          "addr": "0x4C35",
+          "bank": 3,
+          "symbol": "WildDataPointers"
+        },
+        "wildSlots": {
+          "addr": "0x7DA9",
+          "bank": 4,
+          "symbol": "WildMonEncounterSlotChances"
+        }
+      },
+      "special": [
+        8,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "types": {
+        "0": "normal",
+        "1": "fighting",
+        "2": "flying",
+        "20": "fire",
+        "21": "water",
+        "22": "grass",
+        "23": "electric",
+        "24": "psychic",
+        "25": "ice",
+        "26": "dragon",
+        "3": "poison",
+        "4": "ground",
+        "5": "rock",
+        "7": "bug",
+        "8": "ghost"
+      }
     }
   },
   "kind": "gb-pokemon-pret",
@@ -5079,6 +5667,10 @@
     "Pokemon_Crystal_Legacy": {
       "commit": "6394641ef37d51a299a13d96ccaf0c413c6c8c42",
       "tag": "V1.3.1"
+    },
+    "Pokemon_Yellow_Legacy": {
+      "commit": "3a5358e8c9d3d0889f38cdb39a208120fea37a31",
+      "tag": "V1.0.10"
     },
     "pokecrystal": {
       "commit": "3c813b0b4d82b39bf62185aceffb76fd6026c70b",

@@ -1392,6 +1392,16 @@ Where the implementation turned out different from this plan, why, and what chan
     `gbpk-ui.sh`'s Crystal Clear run now asserts its guide made from the ROM (0 milestones on the stand-in, which has
     no leaders) instead of "no guide".
 
+- **2026-11-15, step 15**: `docs/FORK.md` added to the step's files (the user's choice): its table of the fork's places
+  names `gbpk-port.py` among the scripts that make committed data, and its note on `guide-games.inc` says the rows are
+  the six games' and the ROM hacks'. `CLAUDE.md`'s companion line names `gbpk-port.py` with the other two scripts too,
+  and is wrapped at 120 columns (it was over). The weight: banana-ui before is `105315b`'s `ui/` built from a `git
+  archive` copy (no worktree), with the same `make` as the branch's; the squashfs figures are the folder alone with the
+  image's options and `-nopad`. The code grew 134 KB, a third over *Risks*' expected 100 KB; the data 147 KB, under its
+  150 KB. Polished Crystal and Prism have no issues yet, so *What it doesn't do* names them as later features, without
+  numbers. The tests' ROM table loses Crystal Legacy's row: *The ROM hacks* lists the sixteen releases with their
+  SHA-1s.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -1412,5 +1422,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 12. Crystal Clear's addresses, ported | done | GB Pokémon hacks: Crystal Clear's addresses, mapped from pokecrystal's by the code that uses them |
 | 13. Crystal Clear | done | GB Pokémon hacks: Crystal Clear, its packed text, its memory and its ROM |
 | 14. Crystal Clear's guide | done | GB Pokémon hacks: Crystal Clear's guide, built from its ROM by region |
-| 15. The documentation and the weight | todo | |
+| 15. The documentation and the weight | done | GB Pokémon hacks: the documentation, and what the hacks weigh |
 | 16. Final check | todo | |

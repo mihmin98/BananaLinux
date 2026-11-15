@@ -56,7 +56,7 @@ The rule: a new file of the fork's own wherever the build allows one; an upstrea
 | Boot and network services | hook folders that run every file in them: `/etc/banana/sleep.d/` (around a suspend), `/usr/share/udhcpc/default.script.d/` (on an address from DHCP) |
 | banana-ui | `ui/src/kiwami/` (inside `ui/`: the package builds only that folder): its own theme behind `banana::Menu`, its own settings rows, its own handlers for the host's events. C libraries it vendors go unchanged in `ui/src/kiwami/third_party/<library>/`, each with the `SHA256SUMS` of its pinned version's files (checked by `kiwami/tests/ci.sh`) and a `VENDORED` note, and are built by `ui/src/kiwami/kiwami.mk` (the `ui/Makefile`'s third `kiwami:` line), which also compiles banana-ui's own sources one file per call (*How the build takes in the fork*) |
 | A feature's code under another licence | its own folder with its `LICENSE` and `NOTICE`: the Game Boy Pokémon companion's `ui/src/kiwami/gbpk/` (GPL-3.0 with PokeDaisy's 7(b) attribution term, `kiwami/GB-POKEMON.md`). What upstream's files' hooks call there is header-only (`gbpk.h`, `rules.h`, the `.inc` files), as upstream's test binaries link `ui/src/nds/` without the fork's sources |
-| Scripts that make the fork's committed data | `kiwami/tools/` (`pokedaisy-extract.py`, `pret-extract.py`), each with a `--check` that `kiwami/tests/ci.sh` runs against the `SOURCES` it writes |
+| Scripts that make the fork's committed data | `kiwami/tools/` (`pokedaisy-extract.py`, `pret-extract.py`, `gbpk-port.py`), each with a `--check` that `kiwami/tests/ci.sh` runs against the `SOURCES` it writes |
 | Data kept for reference, not built or installed | `kiwami/data/` (PokeDaisy's reference data in `kiwami/data/pokedaisy/`), outside `kiwami/rootfs/` so nothing of it reaches the image |
 | Tests of the fork's features | `kiwami/tests/` (a one-line `kiwami:` hook if `make test` has to run them) |
 | A feature's investigation and plan | `.workspace/<NNNN>-<name>/` |
@@ -312,7 +312,7 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    IVs, EVs or abilities draws empty or upstream's values for the Game Boy games until a hook skips it, which
    `kiwami/tests/gbpk-ui.sh`'s shots and its trace lines (`KIWAMI_GBPK_TRACE=1`) show. And the same companion's guides:
    `ui/src/nds/guide.cpp` includes `ui/src/kiwami/gbpk/guide-games.inc` as the last rows of its `GAMES` table (the six
-   games' ids as literals, keys and codes), so `loadGuideFile` takes their files; the fork's host loads them itself
+   games' and the ROM hacks' ids as literals, keys and codes), so `loadGuideFile` takes their files; the fork's host loads them itself
    from `gb-pokemon/`. A change upstream makes to `GameRow`'s fields breaks the rows at compile time; a schema upstream
    adds to the guide files (a field, a `done_when` rule) is the fork's to use or not, and `kiwami/tests/gbpk-units.cpp`
    loads Crystal's file through upstream's loader and follows its milestones through upstream's `nextMilestone`.

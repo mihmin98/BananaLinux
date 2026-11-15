@@ -5,13 +5,14 @@
 The kiwami fork's companion for Pokémon Red, Blue, Yellow, Gold, Silver and Crystal on the Game Boy and Game Boy
 Color: while one of them plays on one panel, the other shows the pages upstream's companion shows for the Game Boy
 Advance and DS games (Battle, Party, Team, Here, Map, Guide, Dex, Log). It is the fork's own, not upstream's, and is
-off by default. Its investigation and plan are in `.workspace/0028-gb-pokemon/`.
+off by default. Its investigation and plan are in `.workspace/0028-gb-pokemon/`, and the ROM hacks' in
+`.workspace/0030-gb-pokemon-hacks/`.
 
 The games are the English retail releases: Red, Blue and Yellow (USA, Europe), Gold and Silver (USA, Europe), Crystal
 (USA, USA and Europe rev 1, Australia); two ROM hacks read as the games they patch, Fast Red and Fast Blue (v1.0),
-whose patch moves nothing the companion reads; and ROM hacks read as games of their own, Crystal Legacy (v1.3.1),
-Yellow Legacy (v1.0.10), and PureRed, PureBlue and PureGreen (v2.7.6 and v2.7.7) (*The ROM hacks*; the rest of
-`.workspace/0030-gb-pokemon-hacks/`'s are to come). A release is told by the whole file's SHA-1.
+whose patch moves nothing the companion reads; and four ROM hacks read as games of their own, sixteen releases:
+Crystal Legacy (v1.3.1), Yellow Legacy (v1.0.10), PureRed, PureBlue and PureGreen (v2.7.6 and v2.7.7), and Crystal
+Clear (v2.5.11 and v2.6.0, each in four builds) (*The ROM hacks*). A release is told by the whole file's SHA-1.
 
 ## PokeDaisy, and the licence
 
@@ -604,6 +605,32 @@ a comment. PokeDaisy's config for it, where it has one, is read too and must agr
 | PureGreen v2.7.6, v2.7.7 | `puregreen` (110) | the same, `make green` | 1.0.3 | Red |
 | Crystal Clear v2.5.11, v2.6.0 | `crystal-clear` (111) | no source: its eight builds ported from the player's ROMs (`gbpk-port.py`) | - | Crystal |
 
+The sixteen releases, each its release's patch (BPS, from the hack's release page) applied to the retail ROM it
+names, and where its data file's values come from: a build line of `gbpk-symbols.txt` (the user's build at the tag,
+whose ROM must have the release's SHA-1) or a port line (the player's ROM, by its SHA-1):
+
+| Release | SHA-1 | Patch on | Data from |
+|---|---|---|---|
+| Crystal Legacy v1.3.1 | `74a6727e4406c35bc2d4f81347a5c5fdb8970663` | Crystal (USA, Europe) (Rev 1) | build, and PokeDaisy's config |
+| Yellow Legacy v1.0.10 | `2ac87de42afc70ef6016805acb3b206644417f97` | Yellow (USA, Europe) | build, and PokeDaisy's config |
+| PureRed v2.7.6 | `2e94d09c1e16a57eb079404c030f26fdeeac949d` | Red (USA, Europe) | build, and PokeDaisy's config |
+| PureRed v2.7.7 | `60d445d5a38364cc77e8fd1c043157e50e7df209` | Red (USA, Europe) | build |
+| PureBlue v2.7.6 | `d419fe244fa17196f7df46ddab47c840e7573652` | Blue (USA, Europe) | build, and PokeDaisy's config |
+| PureBlue v2.7.7 | `b96ee563112c2b17ce1828e48446e1d71d61e8b5` | Blue (USA, Europe) | build |
+| PureGreen v2.7.6 | `fe4c63a67c8b28770916cc7b1788f9eeb04ccf02` | Blue (USA, Europe) | build |
+| PureGreen v2.7.7 | `258ec7fef3d966cfb2a7e16c15fe1a329cf392ce` | Blue (USA, Europe) | build |
+| Crystal Clear v2.5.11 | `a1c4da6b0057c98fe4ebea45d6812a484fc69abd` | Crystal (USA) | port, and PokeDaisy's config |
+| Crystal Clear v2.5.11 Color Filter | `6fc677bf7a9db103cb9ee11ac08d26782e69ae41` | Crystal (USA) | port, and PokeDaisy's config |
+| Crystal Clear v2.5.11 SGB Mode | `8be3dea853b39442f36f94c3988e074788c5ecec` | Crystal (USA) | port |
+| Crystal Clear v2.5.11 Color Filter SGB Mode | `913c49bd487efb4516b94fc427a1b12628be3daa` | Crystal (USA) | port |
+| Crystal Clear v2.6.0 | `84d5c4924c3f1f3fc690669148b7e392948fb23d` | Crystal (USA) | port, and PokeDaisy's config |
+| Crystal Clear v2.6.0 Color Filter | `534876e4e4d0d79a82fef3bbe5bea11c40451727` | Crystal (USA) | port, and PokeDaisy's config |
+| Crystal Clear v2.6.0 SGB Mode | `059632e84a92d6870a1e83c313a72974224f9c1c` | Crystal (USA) | port |
+| Crystal Clear v2.6.0 Color Filter SGB Mode | `88c943e6d76dbde9f8edace5df396fe6bbc9e146` | Crystal (USA) | port |
+
+PokeDaisy's config, where it has one, is read too, and a value both give must agree. The guides: Crystal Legacy's and
+Yellow Legacy's PokeDaisy's, PureRGB's Red's and Blue's converted, Crystal Clear's built from its ROM (*The guides*).
+
 **Crystal Legacy** is Crystal's engine, its WRAM mostly 11 bytes on: its bag holds 84 items (`itemsMax`, PokeDaisy's),
 its TM01 is item 0xC1 (`firstTm`), its Ghost moves are special and its Dark moves physical (its damage checks them
 before `SPECIAL`: `gbpk-symbols.txt`'s `split` lines). Three of its ROM tables are laid out its own way, read by
@@ -708,6 +735,39 @@ descriptions' and the evolutions' pointers, each release's own. Its ROM is read 
   whole (`engineFlags`, found by its bytes), the table `setflag ENGINE_<badge>` goes through.
 
 Its guide is built from its ROM: *The guides*.
+
+### Adding a version
+
+A release no data file lists is "Not supported" (*Which game a ROM is*) until it is added. Its rules and layouts may
+have changed with it, so adding it is a step of its own, tested as the others were:
+
+1. **The ROM**: the release's patch applied to the retail ROM its page names, in `GB_ROMS`' `romhacks/`; its SHA-1 is
+   the release's.
+2. **Its values**, for a hack with a source (Crystal Legacy, Yellow Legacy, PureRGB): a checkout at the release's tag
+   beside pret's (a checkout a version, as PureRGB's two: `git clone ... <hack>-<version>`, `git checkout <tag>`),
+   built with the rgbds it was released with (its `rgbdscheck.asm` names the oldest it takes; PokeDaisy's capture
+   README, where it has one, names the one it built with): `make clean`, then `make RGBDS=<rgbds folder>/ <build>`.
+   The build's `.gbc` must have the release's SHA-1, or the rgbds or the tag is wrong. A `build` line in
+   `kiwami/tools/gbpk-symbols.txt` beside the game's others, with the folder, the build, the SHA-1 and the version.
+   For Crystal Clear (no source): a `port` line for each of the version's builds, by its SHA-1.
+3. **The scripts**, in order: `pret-extract.py`, `gbpk-port.py` (Crystal Clear), `pokedaisy-extract.py`
+   (*Running the extraction again*). A symbol the new build hasn't, a constant its builds disagree on, or a value the
+   port can't find stops the run and names it: a line of its own (a renamed symbol, another port method), with its
+   source in a comment, or code where the layout changed (a reader's key, as the hacks' own layouts are). Where the
+   versions' addresses differ, each release gets its own in the data file. Read the diff of `gbpk-extra.json`,
+   `gbpk-port.json` and the data files.
+4. **PokeDaisy**: if its pinned commit reads the version (`GameTitles.kt`'s SHA-1, a config), the script checks it
+   against the build's values (`PD_RELEASES` names the release it reads where it reads one of several; `PORTED`
+   Crystal Clear's versions). Its captures of the version, if it has any, go into `kiwami/tests/gbpk/fixtures/` as
+   they are, named in that folder's `NOTICE`, with `gbpk-units.cpp`'s checks of what their READMEs say.
+5. **The lists**: the release's line in `kiwami/tests/gbpk/roms.sha1` (the file's own name), its row in the table
+   above, and in `kiwami/DEPENDENCIES.md` the hack's tag, commit and date (and a row for an rgbds version not there
+   yet).
+6. **The tests**: `kiwami/tests/ci.sh`, then `kiwami/tests/gbpk-roms.sh <pokedaisy checkout>` with the ROM in
+   `GB_ROMS`. Its checks of a hack's own values (Falkner's levels, PureRGB's forms and signature moves, Crystal Clear's
+   road) and of each guide's bosses against the ROM's teams show what the version changed: a guide converted from
+   PokeDaisy's (Crystal Legacy's, Yellow Legacy's) has the teams of the version PokeDaisy generated it from, and a
+   change there is PokeDaisy's to take in first. Then the game on the device, as the plan's manual tests did.
 
 ## The data files
 
@@ -988,7 +1048,8 @@ Upstream's own tests in `make test` (its GBA and DS pages, logic and guide tests
 nothing for its games, and with both rows Off the renders are `main`'s.
 
 On the user's machine, with the games: `kiwami/tests/gbpk-roms.sh <pokedaisy checkout>` (*The ROMs for the tests*).
-On the device: the plan's manual tests, `.workspace/0028-gb-pokemon/plan.md`.
+On the device: the plans' manual tests, `.workspace/0028-gb-pokemon/plan.md` and
+`.workspace/0030-gb-pokemon-hacks/plan.md`.
 
 ## The ROMs for the tests
 
@@ -1014,7 +1075,6 @@ folder, and a patch beside it, `.bps`, is passed over), outside the repository s
 | `Pokemon - Crystal Version (Australia).gbc` | `a0fc810f1d4e124434f7be2c989ab5b5892ddf36` | optional |
 | `Pokemon - Red Version (USA, Europe) (Fast Red) (v1.0) (80C).gb` | `e7bfd2c2245597da5016e682fca8f19665c6cfd0` | optional |
 | `Pokemon - Blue Version (USA, Europe) (Fast Blue) (v1.0) (80C).gb` | `5030c1114554207191f2e6ffb1f2920cf3d7c668` | optional |
-| `Pokemon Crystal - Legacy (v1.3.1) (TheSmithPlays).gbc` | `74a6727e4406c35bc2d4f81347a5c5fdb8970663` | optional |
 
 A file is found by its SHA-1, whatever it is called; a name other than the list's is only noted (older No-Intro sets
 write Yellow's `(GBC,SGB Enhanced)`). The two optional Crystals share every address with rev 1, so the ROM tests'
@@ -1027,8 +1087,8 @@ unused; with the header's global checksum, that's all. No RAM address or ROM tab
 are read as Red and Blue: their SHA-1s are releases of `red` and `blue`. `kiwami/tests/gbpk/roms.patches` lists each
 hack with its retail ROM's SHA-1 and the ranges its patch changes, and the check below compares the two files when both
 are there, failing if a byte differs outside those ranges. Another hack, or another version of these, is "Not
-supported" until it is checked the same way and added. The ROM hacks read as games of their own (*The ROM hacks*) are
-listed by the SHA-1 of their release's patch applied to the retail ROM it names.
+supported" until it is checked the same way and added. The ROM hacks read as games of their own are listed by the
+SHA-1 of their release's patch applied to the retail ROM it names, all optional: their sixteen are in *The ROM hacks*.
 
 The English releases of the other mainline games PokeDaisy supports are listed too, all optional, for a later
 comparison of upstream's guides with PokeDaisy's tables; nothing reads them yet. They go in `GBA_ROMS` (by default
@@ -1112,19 +1172,50 @@ are `host.cpp` (94 KB: the guides, the hidden items and the pages' glue), `reade
 and `rom2.cpp` (50 KB each) and `gsguide.cpp` (41 KB). None of it runs unless a row is On and a Game Boy Pokémon game
 starts: the menu's frames, upstream's tests' benches and idle are as before.
 
+The ROM hacks (`.workspace/0030-gb-pokemon-hacks/`), measured on 2026-11-15 on the same machine's x86-64 build, against
+the commit before them (`105315b`, built from a copy of its `ui/`):
+
+| | before the hacks | with them | |
+|---|---|---|---|
+| banana-ui, `size` text | 6,588,286 | 6,722,781 | + 134,495 bytes |
+| banana-ui, stripped | 6,655,496 | 6,786,568 | + 131,072 bytes |
+| the image's `gb-pokemon/`, its files' bytes | 142,763 (13 files) | 289,503 (24 files) | + 146,740 bytes |
+| the same in squashfs | 36,453 | 60,308 | + 23,855 bytes |
+
+The squashfs figures are the folder alone through Buildroot's own `output/rgds-plus/host/bin/mksquashfs` (4.6.1) with
+the image's options (`-comp lz4 -Xhc -b 128K`: the defconfigs' `BR2_TARGET_ROOTFS_SQUASHFS4_LZ4` and
+`BR2_TARGET_ROOTFS_SQUASHFS_EXTREME_COMP`), and `-nopad`, as the image pads once for all of it. The hacks' eleven
+files are 124,700 bytes (15,011 in squashfs alone); the rest is `SOURCES` (+ 11,169) and the retail games' data files'
+new keys (+ 22,040: their items, types, split and chart's place, and Gen II's guide classes and badges).
+
+The plan expected under 150 KB of data, which it is, and under 100 KB of code, which it is a third over. By object
+(`size`'s text), the growth: `games.cpp` 33.6 KB (the data files' new sections, the releases' own addresses),
+`rom1.cpp` 32.5 KB (Yellow Legacy's and PureRGB's layouts), `rom.cpp` 22.1 KB (the chart, PureRGB's rules and
+switched types, Crystal Clear's parties by badges), `game.cpp` 14.8 KB (the headless verbs), `host.cpp` 11.1 KB,
+`reader.cpp` 9.6 KB, `rom2.cpp` 7.3 KB, and under 4 KB each for the rest. As before, none of it runs unless a row
+is On and a Game Boy Pokémon game starts.
+
 While a game plays, with its row On: the whole ROM kept for the pages' look-ups (1 MB for Gen I, 2 MB for Gen II), read
 once on its own thread in about a millisecond; one set of memory reads every 250 ms, about 1.2 KB (Gen I) or 1.3 KB
-(Gen II), the next only once the last is answered; upstream's session thread; the sprites decoded when a page shows
-them.
+(Gen II), the next only once the last is answered (PureRGB's switches a few bytes more); upstream's session thread;
+the sprites decoded when a page shows them. A copy of the ROM's tables is made only when PureRGB's switched species or
+Crystal Clear's badge count change.
 
-In the repository, not the image: `ui/src/kiwami/gbpk/` 318 KB, `kiwami/tests/gbpk/` 931 KB (PokeDaisy's captures),
+In the repository, not the image (bytes of the committed files): `ui/src/kiwami/gbpk/` 313 KB, `kiwami/tests/gbpk/`
+1.8 MB (PokeDaisy's captures; 0.9 MB more with the hacks', most of it their 22), `kiwami/tools/` 501 KB,
 `kiwami/data/pokedaisy/` 1.2 MB.
 
 ## What it doesn't do
 
-- **Other releases and hacks**: the releases in other languages (the European Yellows' among them) and every ROM hack
-  but Fast Red, Fast Blue and *The ROM hacks*' are "Not supported"; the rest of PokeDaisy's hacks (Polished Crystal,
-  Prism ...) are later features.
+- **Other releases and hacks**: the releases in other languages (the European Yellows' among them), every ROM hack
+  but Fast Red, Fast Blue and *The ROM hacks*' sixteen releases, and another version of one of those, are "Not
+  supported" (a version is added as *Adding a version* says). The rest of PokeDaisy's Game Boy hacks are later
+  features of their own: Polished Crystal, close to a new generation (Fairy, the physical/special split by move,
+  abilities, natures, 9-bit species ids, sixteen builds), and Prism (four new types, Gas, Sound, Tri and Prism,
+  invented species, Huffman-packed text).
+- **Crystal Legacy's gyms that follow the badges**: Chuck's, Jasmine's and Pryce's milestones show the team for the
+  badge count the story's order has there (*The guides*); taken in another order, the gym fields another of its
+  teams, which the milestone's tips name with their top levels.
 - **Crystal Clear's Arena**: its trainers' parties are the save's badge count's, but the Arena's choice of level
   (WRAM DC19), which the game takes instead there, isn't followed. A name in its text from WRAM (`<PLAYER>`) shows as
   nothing, as Crystal's.

@@ -501,6 +501,21 @@ purered,pureblue,puregreen rom.hiddenItems2 HiddenItems2
 purered,pureblue,puregreen rom.hiddenItems3 HiddenItems3
 purered,pureblue,puregreen rom.hiddenItems5 HiddenItems5
 red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.hiddenItemCoords HiddenItemCoords
+# PureRed's, PureBlue's and PureGreen's guides: Red's and Blue's converted (pokedaisy-extract.py GEN1_HACK_GUIDES), each
+# flag of theirs by its name, Red's and Blue's number to PureRGB's (each of their milestones' flags must have a line:
+# the Elite Four's rooms and the Champion, the toggleable object by toggleCeruleanCaveGuy above), and each boss's class
+# (the leaders' above) with its party in the map's object_event (data/maps/objects/LoreleisRoom.asm .. ChampionsRoom
+# by its script, scripts/ChampionsRoom.asm). Their dotted keys stay out of the data files
+red,blue,purered,pureblue,puregreen const.flag.EVENT_BEAT_LORELEIS_ROOM_TRAINER_0 constants/event_constants.asm EVENT_BEAT_LORELEIS_ROOM_TRAINER_0
+red,blue,purered,pureblue,puregreen const.flag.EVENT_BEAT_BRUNOS_ROOM_TRAINER_0 constants/event_constants.asm EVENT_BEAT_BRUNOS_ROOM_TRAINER_0
+red,blue,purered,pureblue,puregreen const.flag.EVENT_BEAT_AGATHAS_ROOM_TRAINER_0 constants/event_constants.asm EVENT_BEAT_AGATHAS_ROOM_TRAINER_0
+red,blue,purered,pureblue,puregreen const.flag.EVENT_BEAT_LANCES_ROOM_TRAINER_0 constants/event_constants.asm EVENT_BEAT_LANCES_ROOM_TRAINER_0
+red,blue,purered,pureblue,puregreen const.flag.EVENT_BEAT_CHAMPION_RIVAL constants/event_constants.asm EVENT_BEAT_CHAMPION_RIVAL
+purered,pureblue,puregreen const.class.LORELEI constants/trainer_constants.asm LORELEI
+purered,pureblue,puregreen const.class.BRUNO constants/trainer_constants.asm BRUNO
+purered,pureblue,puregreen const.class.AGATHA constants/trainer_constants.asm AGATHA
+purered,pureblue,puregreen const.class.LANCE constants/trainer_constants.asm LANCE
+purered,pureblue,puregreen const.class.RIVAL3 constants/trainer_constants.asm RIVAL3
 
 # PureRGB's switches (ui/src/kiwami/gbpk/rules.h, host.cpp): the species the type NPC gives back their original types,
 # a bit each in its list's order (engine/pokemon/remap_typings.asm OriginalTypings, IsMonTypeRemapped); the battle

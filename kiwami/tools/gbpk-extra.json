@@ -24,6 +24,31 @@
           "symbol": "FIRST_INDOOR_MAP",
           "value": 37
         },
+        "flag.EVENT_BEAT_AGATHAS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_AGATHAS_ROOM_TRAINER_0",
+          "value": 2289
+        },
+        "flag.EVENT_BEAT_BRUNOS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_BRUNOS_ROOM_TRAINER_0",
+          "value": 2281
+        },
+        "flag.EVENT_BEAT_CHAMPION_RIVAL": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_CHAMPION_RIVAL",
+          "value": 2305
+        },
+        "flag.EVENT_BEAT_LANCES_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_LANCES_ROOM_TRAINER_0",
+          "value": 2297
+        },
+        "flag.EVENT_BEAT_LORELEIS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_LORELEIS_ROOM_TRAINER_0",
+          "value": 2273
+        },
         "hm01": {
           "file": "constants/item_constants.asm",
           "symbol": "HM01",
@@ -2999,10 +3024,60 @@
           "symbol": "BASE_PICBANK",
           "value": 27
         },
+        "class.AGATHA": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "AGATHA",
+          "value": 44
+        },
+        "class.BRUNO": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BRUNO",
+          "value": 31
+        },
+        "class.LANCE": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "LANCE",
+          "value": 45
+        },
+        "class.LORELEI": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "LORELEI",
+          "value": 42
+        },
+        "class.RIVAL3": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "RIVAL3",
+          "value": 41
+        },
         "firstIndoorMap": {
           "file": "constants/map_constants.asm",
           "symbol": "FIRST_INDOOR_MAP",
           "value": 37
+        },
+        "flag.EVENT_BEAT_AGATHAS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_AGATHAS_ROOM_TRAINER_0",
+          "value": 2289
+        },
+        "flag.EVENT_BEAT_BRUNOS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_BRUNOS_ROOM_TRAINER_0",
+          "value": 2281
+        },
+        "flag.EVENT_BEAT_CHAMPION_RIVAL": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_CHAMPION_RIVAL",
+          "value": 2305
+        },
+        "flag.EVENT_BEAT_LANCES_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_LANCES_ROOM_TRAINER_0",
+          "value": 2297
+        },
+        "flag.EVENT_BEAT_LORELEIS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_LORELEIS_ROOM_TRAINER_0",
+          "value": 2273
         },
         "hm01": {
           "file": "constants/item_constants.asm",
@@ -3765,10 +3840,60 @@
           "symbol": "BASE_PICBANK",
           "value": 27
         },
+        "class.AGATHA": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "AGATHA",
+          "value": 44
+        },
+        "class.BRUNO": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BRUNO",
+          "value": 31
+        },
+        "class.LANCE": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "LANCE",
+          "value": 45
+        },
+        "class.LORELEI": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "LORELEI",
+          "value": 42
+        },
+        "class.RIVAL3": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "RIVAL3",
+          "value": 41
+        },
         "firstIndoorMap": {
           "file": "constants/map_constants.asm",
           "symbol": "FIRST_INDOOR_MAP",
           "value": 37
+        },
+        "flag.EVENT_BEAT_AGATHAS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_AGATHAS_ROOM_TRAINER_0",
+          "value": 2289
+        },
+        "flag.EVENT_BEAT_BRUNOS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_BRUNOS_ROOM_TRAINER_0",
+          "value": 2281
+        },
+        "flag.EVENT_BEAT_CHAMPION_RIVAL": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_CHAMPION_RIVAL",
+          "value": 2305
+        },
+        "flag.EVENT_BEAT_LANCES_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_LANCES_ROOM_TRAINER_0",
+          "value": 2297
+        },
+        "flag.EVENT_BEAT_LORELEIS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_LORELEIS_ROOM_TRAINER_0",
+          "value": 2273
         },
         "hm01": {
           "file": "constants/item_constants.asm",
@@ -4531,10 +4656,60 @@
           "symbol": "BASE_PICBANK",
           "value": 27
         },
+        "class.AGATHA": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "AGATHA",
+          "value": 44
+        },
+        "class.BRUNO": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "BRUNO",
+          "value": 31
+        },
+        "class.LANCE": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "LANCE",
+          "value": 45
+        },
+        "class.LORELEI": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "LORELEI",
+          "value": 42
+        },
+        "class.RIVAL3": {
+          "file": "constants/trainer_constants.asm",
+          "symbol": "RIVAL3",
+          "value": 41
+        },
         "firstIndoorMap": {
           "file": "constants/map_constants.asm",
           "symbol": "FIRST_INDOOR_MAP",
           "value": 37
+        },
+        "flag.EVENT_BEAT_AGATHAS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_AGATHAS_ROOM_TRAINER_0",
+          "value": 2289
+        },
+        "flag.EVENT_BEAT_BRUNOS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_BRUNOS_ROOM_TRAINER_0",
+          "value": 2281
+        },
+        "flag.EVENT_BEAT_CHAMPION_RIVAL": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_CHAMPION_RIVAL",
+          "value": 2305
+        },
+        "flag.EVENT_BEAT_LANCES_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_LANCES_ROOM_TRAINER_0",
+          "value": 2297
+        },
+        "flag.EVENT_BEAT_LORELEIS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_LORELEIS_ROOM_TRAINER_0",
+          "value": 2273
         },
         "hm01": {
           "file": "constants/item_constants.asm",
@@ -5295,6 +5470,31 @@
           "file": "constants/map_constants.asm",
           "symbol": "FIRST_INDOOR_MAP",
           "value": 37
+        },
+        "flag.EVENT_BEAT_AGATHAS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_AGATHAS_ROOM_TRAINER_0",
+          "value": 2289
+        },
+        "flag.EVENT_BEAT_BRUNOS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_BRUNOS_ROOM_TRAINER_0",
+          "value": 2281
+        },
+        "flag.EVENT_BEAT_CHAMPION_RIVAL": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_CHAMPION_RIVAL",
+          "value": 2305
+        },
+        "flag.EVENT_BEAT_LANCES_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_LANCES_ROOM_TRAINER_0",
+          "value": 2297
+        },
+        "flag.EVENT_BEAT_LORELEIS_ROOM_TRAINER_0": {
+          "file": "constants/event_constants.asm",
+          "symbol": "EVENT_BEAT_LORELEIS_ROOM_TRAINER_0",
+          "value": 2273
         },
         "hm01": {
           "file": "constants/item_constants.asm",

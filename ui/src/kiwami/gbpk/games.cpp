@@ -249,6 +249,9 @@ namespace banana::kiwami::gbpk
 			if (out.types[(size_t)t] == nds::NO_TYPE) return no("has a type it doesn't know (" + name.str() + ")");
 		}
 		out.romGuide = v["guide"].str() == "rom";
+		const std::string gl = v["guide_levels"].str();
+		if (gl != "" && gl != "rom") return no("has guide levels it doesn't know (" + gl + ")");
+		out.romLevels = gl == "rom";
 		const std::string cs = v["charset"].str();
 		if (cs != "" && cs != "pure") return no("has a character set it doesn't know (" + cs + ")");
 		out.pureText = cs == "pure";

@@ -184,6 +184,24 @@ GEN1_GUIDES = {'red': ('G1R', 'RED', 'PKRD', 'pret/pokered and pret/pokeyellow')
                'blue': ('G1B', 'BLUE', 'PKBL', 'pret/pokered and pret/pokeyellow'),
                'yellow': ('G1Y', 'YELLOW', 'PKYL', 'pret/pokered and pret/pokeyellow'),
                'yellow-legacy': ('G1L', 'YELLOW_LEGACY', 'PKYL', 'Yellow Legacy v1.0.10\'s build')}
+# the ROM hacks whose guide is a retail game's converted (PokeDaisy has none of theirs): the game whose bosses, order and
+# flags it takes, and what the hack's own values come from. Each flag by its name (gbpk-symbols.txt's const.flag.<NAME>
+# lines: the retail game's number to the hack's), the toggleable object by its toggleCeruleanCaveGuy; each boss by
+# trainer_ids (GEN1_BOSS_PARTIES, the hack's classes), its levels left to the ROM ("guide_levels": "rom", the host's
+# gsguide.cpp romLevels); the in-game trades left out (PureRGB's are its own: data/events/trades.asm)
+GEN1_HACK_GUIDES = {'purered': ('red', 'PKRD', 'PureRGB v2.7.6\'s and v2.7.7\'s builds'),
+                    'pureblue': ('blue', 'PKBL', 'PureRGB v2.7.6\'s and v2.7.7\'s builds'),
+                    'puregreen': ('red', 'PKRD', 'PureRGB v2.7.6\'s and v2.7.7\'s builds')}
+# each boss of <prefix>_BOSSES_RAW by its key: the const of its trainer class (the data file's leader<Name>, or
+# gbpk-symbols.txt's const.class.<NAME>) and its parties in the story, by the map's object_event (data/maps/objects/
+# PewterGym.asm OPP_BROCK, 1 .. ViridianGym.asm OPP_GIOVANNI, 3, LoreleisRoom.asm OPP_LORELEI, 1 ..) and the Champion's
+# by his script, one for each starter (scripts/ChampionsRoom.asm, OPP_RIVAL3 1-3). The ROM tests check them against
+# the trainers Red's and Blue's guides find in their ROMs
+GEN1_BOSS_PARTIES = {'BROCK': ('leaderBrock', [1]), 'MISTY': ('leaderMisty', [1]), 'LT. SURGE': ('leaderLtSurge', [1]),
+                     'ERIKA': ('leaderErika', [1]), 'KOGA': ('leaderKoga', [1]), 'SABRINA': ('leaderSabrina', [1]),
+                     'BLAINE': ('leaderBlaine', [1]), 'GIOVANNI': ('leaderGiovanni', [3]),
+                     'LORELEI': ('class.LORELEI', [1]), 'BRUNO': ('class.BRUNO', [1]), 'AGATHA': ('class.AGATHA', [1]),
+                     'LANCE': ('class.LANCE', [1]), 'CHAMPION': ('class.RIVAL3', [1, 2, 3])}
 # the games whose guide the host builds from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp): PokeDaisy has none
 ROM_GUIDES = ('gold', 'silver')
 # GuideGen1Gen.kt's RAM constants (<prefix>_<name>, Gen I's D000-DFFF the data files' bank 1), by the data file's key,
@@ -731,13 +749,17 @@ def gen1_rules(rules_src, prefix, world):
     return out
 
 
-def gen1_guide(gen_src, key, prefix, code, made_from, title, sizes, cave_guy, first_derived):
+def gen1_guide(gen_src, key, prefix, code, made_from, title, sizes, cave_guy, first_derived, hack=None):
     """The guide file of Red, Blue, Yellow or Yellow Legacy (nds-pokemon-guide, schema 1) and the bits derived from the
     save's flags its milestones read: each boss of GuideGen1Gen.kt's <prefix>_BOSSES_RAW in its order (a key's lines one boss, its
     teams the Champion's by his starter), a gym done by its badge, the others by a derived bit when any of their flags
     is set (the event flags from bit 0, the toggleable objects' after them); the in-game trades as the Pokédex's notes
     on the Pokémon given, by their place. The item balls, gifts and key items of <prefix>_AREAS_RAW are left out, and
-    its hidden items are the ROM's. Returns (guide, derived, unread)."""
+    its hidden items are the ROM's. Returns (guide, derived, unread).
+    hack (GEN1_HACK_GUIDES' games): the retail game's guide made a ROM hack's. sizes and cave_guy are the retail game's,
+    and hack gives the hack's: 'flag' (a retail event flag's number to the hack's), 'events' (its event flags' bits),
+    'cave_guy', 'ids' (each boss key's trainer_ids) and 'made_from'. Its milestones have their trainer_ids and no
+    levels (the ROM's), and it has no trades."""
     unread, groups = [], {}
     events, toggles = 8 * sizes['eventFlagBytes'], 8 * sizes['toggleFlagBytes']
     for line in raw_table(gen_src, prefix + '_BOSSES_RAW', GEN1_GUIDE):
@@ -773,12 +795,12 @@ def gen1_guide(gen_src, key, prefix, code, made_from, title, sizes, cave_guy, fi
         bits = []
         for n in flags:
             if n < events:
-                bits.append(n)
+                bits.append(hack['flag'](n) if hack else n)
             elif GEN1_BANKS['G1_MISSABLE_FLAG'] <= n < GEN1_BANKS['G1_MISSABLE_FLAG'] + toggles:
                 if n - GEN1_BANKS['G1_MISSABLE_FLAG'] != cave_guy:
                     fail('%s: %s is done by toggleable object %d, not pret\'s TOGGLE_CERULEAN_CAVE_GUY %d' %
                          (key, bkey, n - GEN1_BANKS['G1_MISSABLE_FLAG'], cave_guy))
-                bits.append(events + n - GEN1_BANKS['G1_MISSABLE_FLAG'])
+                bits.append(hack['events'] + hack['cave_guy'] if hack else events + n - GEN1_BANKS['G1_MISSABLE_FLAG'])
             else:
                 bits = None
                 break
@@ -804,12 +826,19 @@ def gen1_guide(gen_src, key, prefix, code, made_from, title, sizes, cave_guy, fi
         ms = {'id': mid, 'name': name, 'kind': kind, 'place': slug(place_name), 'level_cap': ace,
               'foe': {'name': foe, 'ace_level': ace}, 'done_when': done_when, 'quality': 'reference-only',
               'source': 'PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (%s_BOSSES_RAW %s)' % (prefix, bkey)}
+        if hack:
+            if bkey not in hack['ids']:
+                fail('%s: %s_BOSSES_RAW\'s %s has no party in GEN1_BOSS_PARTIES' % (key, prefix, bkey))
+            del ms['level_cap']
+            ms['foe'] = {'name': foe}
+            ms['trainer_ids'] = hack['ids'][bkey]
+            ms['source'] += ', with %s\'s flags and trainers' % hack['made_from']
         if leader:
             ms['leader'] = leader
         milestones.append(ms)
     # the in-game trades: map|TRADE|the Pokémon given|its flag|count|the Pokémon wanted|the place
     evolutions = []
-    for line in raw_table(gen_src, prefix + '_AREAS_RAW', GEN1_GUIDE):
+    for line in [] if hack else raw_table(gen_src, prefix + '_AREAS_RAW', GEN1_GUIDE):
         f = line.split('|')
         if len(f) < 2 or f[1] != 'TRADE':
             continue
@@ -826,6 +855,13 @@ def gen1_guide(gen_src, key, prefix, code, made_from, title, sizes, cave_guy, fi
                     'game starts (kiwami/GB-POKEMON.md)'],
         'places': places, 'milestones': milestones, 'evolutions': evolutions,
     }
+    if hack:
+        guide['sources'] = [
+            'PokeDaisy by Lidor Itzhari, %s (GPL-3.0): GuideGen1.kt\'s rules; GuideGen1Gen.kt\'s bosses, their order and '
+            'flags, generated there from %s, as the game %s is: its flags by their names and its bosses\' trainer classes '
+            'from %s' % (PIN[:8], made_from, title, hack['made_from']),
+            'The player\'s ROM: the trainers\' teams and their levels, the places\' maps and the hidden items, read when '
+            'the game starts (kiwami/GB-POKEMON.md)']
     return guide, derived, unread
 
 
@@ -995,6 +1031,8 @@ def build(checkout):
             fail('%s: PokeDaisy\'s dexEntryFirstBank %s isn\'t pret\'s first Pokédex entry\'s bank %02X' %
                  (key, dex.get('dexEntryFirstBank'), rom['dexEntryFirst'][0]))
         for k, v in g.get('const', {}).items():
+            if '.' in k:    # (the hack guides' flags and classes, for the conversion: not the data file's)
+                continue
             if k != 'numEvents':
                 if k in sizes and sizes[k] != v['value']:
                     fail('%s sizes.%s: PokeDaisy says %d, pret\'s %s %d' % (key, k, sizes[k], v['symbol'], v['value']))
@@ -1035,6 +1073,41 @@ def build(checkout):
                                         sizes['toggleCeruleanCaveGuy'], 8 * (ev + sizes['toggleFlagBytes']))
             unread += u
             files['%s/%s.json' % (FOLDER, key)] = pe.dump(gd).encode('utf-8')
+        elif key in GEN1_HACK_GUIDES:
+            base, code, made_from = GEN1_HACK_GUIDES[key]
+            bprefix = GEN1_GUIDES[base][0]
+            bc, hc = extra['games'][base]['const'], g['const']
+            # (the retail game's flags by name: each of its flag lines' number, the hack's for the same name)
+            names = {v['value']: k for k, v in bc.items() if k.startswith('flag.')}
+
+            def flag(n, key=key, base=base, names=names, hc=hc):
+                if n not in names:
+                    fail('%s: %s\'s guide names event flag %d, which no const.flag line of %s gives' % (key, base, n, base))
+                if names[n] not in hc:
+                    fail('%s: no %s line for %s, whose %s is %d' % (key, names[n], key, base, n))
+                return hc[names[n]]['value']
+            # (the toggleable objects' bytes: the retail game's, PokeDaisy's <prefix>_MISSABLE_FLAG_BYTES, as PureRGB's
+            # wToggleableObjectFlags is the same flag_array $100, ram/wram.asm)
+            bsizes = {'eventFlagBytes': bc['numEvents']['value'] // 8,
+                      'toggleFlagBytes': gen1_guide_consts[bprefix + '_MISSABLE_FLAG_BYTES']}
+            sizes['toggleFlagBytes'] = bsizes['toggleFlagBytes']
+            ev, cave = sizes['eventFlagBytes'], sizes['toggleCeruleanCaveGuy']
+            if not 0 <= cave < 8 * sizes['toggleFlagBytes']:
+                fail('%s: TOGGLE_CERULEAN_CAVE_GUY %d is past its %d bytes of toggleable objects' % (key, cave, sizes['toggleFlagBytes']))
+            ids = {}
+            for bkey, (c, parties) in GEN1_BOSS_PARTIES.items():
+                cls = sizes.get(c) if not c.startswith('class.') else hc.get(c, {}).get('value')
+                if not cls:
+                    fail('%s: no trainer class %s for %s' % (key, c, bkey))
+                ids[bkey] = [cls << 8 | n for n in parties]
+            hack = {'flag': flag, 'events': 8 * ev, 'cave_guy': cave, 'ids': ids, 'made_from': made_from}
+            flags = [{'ram': 'eventFlags', 'bytes': ev, 'first': 0},
+                     {'ram': 'toggleFlags', 'bytes': sizes['toggleFlagBytes'], 'first': 8 * ev}]
+            gd, derived, u = gen1_guide(gen1_guide_src, key, bprefix, code, GEN1_GUIDES[base][3], title, bsizes,
+                                        extra['games'][base]['const']['toggleCeruleanCaveGuy']['value'],
+                                        8 * (ev + sizes['toggleFlagBytes']), hack)
+            unread += u
+            files['%s/%s.json' % (FOLDER, key)] = pe.dump(gd).encode('utf-8')
         doc = {
             'schema': 1, 'kind': 'gb-pokemon-ram', 'game': key, 'gen': gen, 'title': title,
             'header_title': g['header_title'], 'releases': releases,
@@ -1061,6 +1134,8 @@ def build(checkout):
             doc['split_stats'] = sorted(g['split_stats'])
         if key in ROM_GUIDES:
             doc['guide'] = 'rom'
+        if key in GEN1_HACK_GUIDES:
+            doc['guide_levels'] = 'rom'
         if key in HACK_DEX_SIZE:
             doc['dex_size'] = HACK_DEX_SIZE[key]
         if key in CHARSET:
@@ -2461,7 +2536,7 @@ def main(argv):
     if len(args) > 1 or any(a.startswith('-') for a in args) or (ref and check):
         sys.exit('usage: pokedaisy-extract.py [<pokedaisy checkout>] [--check | --reference] [--any-commit]')
     outs = ['%s/%s.ram.json' % (FOLDER, g[0]) for g in GAMES] + [FOLDER + '/LICENSE'] + \
-        ['%s/%s.json' % (FOLDER, k) for k in list(CRYSTAL_GUIDES) + list(GEN1_GUIDES)]
+        ['%s/%s.json' % (FOLDER, k) for k in list(CRYSTAL_GUIDES) + list(GEN1_GUIDES) + list(GEN1_HACK_GUIDES)]
     if not args:
         if not check:
             fail('give PokeDaisy\'s checkout, or --check')

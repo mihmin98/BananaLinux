@@ -8,10 +8,64 @@
     8
   ],
   "charset": "pure",
+  "derived": [
+    {
+      "any": [
+        2273,
+        2569
+      ],
+      "bit": 2816,
+      "for": "e4-lorelei"
+    },
+    {
+      "any": [
+        2281,
+        2569
+      ],
+      "bit": 2817,
+      "for": "e4-bruno"
+    },
+    {
+      "any": [
+        2289,
+        2569
+      ],
+      "bit": 2818,
+      "for": "e4-agatha"
+    },
+    {
+      "any": [
+        2297,
+        2569
+      ],
+      "bit": 2819,
+      "for": "e4-lance"
+    },
+    {
+      "any": [
+        2305,
+        2569
+      ],
+      "bit": 2820,
+      "for": "champion-your-rival"
+    }
+  ],
   "dex_size": 151,
-  "flags": [],
+  "flags": [
+    {
+      "bytes": 320,
+      "first": 0,
+      "ram": "eventFlags"
+    },
+    {
+      "bytes": 32,
+      "first": 2560,
+      "ram": "toggleFlags"
+    }
+  ],
   "game": "pureblue",
   "gen": 1,
+  "guide_levels": "rom",
   "header_title": "POKEMON BLUE",
   "items": [
     [
@@ -614,7 +668,8 @@
     "signaturesOff": 131,
     "textFar": 21,
     "tm01": 201,
-    "toggleCeruleanCaveGuy": 9
+    "toggleCeruleanCaveGuy": 9,
+    "toggleFlagBytes": 32
   },
   "special": [
     17,

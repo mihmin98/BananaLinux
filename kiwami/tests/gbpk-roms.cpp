@@ -20,6 +20,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../third_party/stb_image_write.h"
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -572,7 +573,7 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 		CHECK(theirs.size() == 85 && ours == theirs);
 		fprintf(stderr, "gbpk-roms: %s: the %zu hidden items are PokeDaisy's, by flag and item\n", current.c_str(), theirs.size());
 	}
-	if (d.gen == 1 && !pokedaisy.empty())
+	if ((d.key == "red" || d.key == "blue" || d.key == "yellow" || d.key == "yellow-legacy") && !pokedaisy.empty())
 	{
 		std::ifstream f(pokedaisy + "/app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen1Gen.kt");
 		const std::string table = std::string(d.key == "red" ? "G1R" : d.key == "blue" ? "G1B" : d.key == "yellow" ? "G1Y" : "G1L") + "_AREAS_RAW";
@@ -634,6 +635,48 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 	const nds::GuideResolver res = nds::guideResolver(r);
 	CHECK(nds::loadGuideFile(path, g, d.game.id, &why, &res));
 	EQ(why, "");
+	// (PureRGB's: Red's and Blue's bosses by their trainer ids, at the levels of the ROM's teams, gsguide.h romLevels;
+	// each id a trainer of the boss's name, its letters: the ROM's "LT.SURGE"; the Champion's class has no name in
+	// PureRGB, data/trainers/names.asm li "" ; champion rival, shortened for some free space)
+	if (d.romLevels)
+	{
+		romLevels(g, r);
+		auto letters = [](const std::string& n) { std::string o; for (char c : n) if (isalpha((unsigned char)c)) o += (char)tolower((unsigned char)c); return o; };
+		for (const nds::Milestone& m : g.milestones)
+			for (uint16_t id : m.trainerIds)
+			{
+				auto t = r.trainers.find(id);
+				const bool same = t != r.trainers.end() && (letters(t->second.name) == letters(m.foeName) ||
+					(m.kind == "champion" && t->second.name.empty()));
+				if (!same) fprintf(stderr, "gbpk-roms: FAIL %s: %s: trainer %04X isn't %s\n", current.c_str(), m.id.c_str(), id, m.foeName.c_str());
+				CHECK(same);
+			}
+		// (PureRGB's own levels, data/trainers/parties.asm: Brock's Onix 14, Giovanni's Rhydon 64 at Viridian Gym,
+		// Lorelei's Lapras 66, Lance's Dragonite 69, the Champion's starter 72)
+		CHECK(g.milestones.size() == 13);
+		if (g.milestones.size() == 13)
+			CHECK(g.milestones[0].levelCap == 14 && g.milestones[7].levelCap == 64 && g.milestones[8].levelCap == 66 &&
+				g.milestones[11].levelCap == 69 && g.milestones[12].levelCap == 72 && g.milestones[12].foeAceLevel == 72);
+	}
+	// (Red's and Blue's: the parties PureRGB's guides name, its class each, are the ones their guides find here by name
+	// and level, the story's fights: PureGreen's are PureRed's)
+	if (d.key == "red" || d.key == "blue")
+	{
+		nds::GuideData p;
+		CHECK(nds::loadGuideFile(dataDir() + "/pure" + d.key + ".json", p, d.key == "red" ? PURERED : PUREBLUE, &why, nullptr));
+		CHECK(p.milestones.size() == g.milestones.size());
+		for (size_t i = 0; i < p.milestones.size() && i < g.milestones.size(); i++)
+		{
+			std::set<int> ours, theirs;
+			for (uint16_t id : g.milestones[i].trainerIds) ours.insert(id & 0xFF);
+			for (uint16_t id : p.milestones[i].trainerIds) theirs.insert(id & 0xFF);
+			if (ours != theirs || p.milestones[i].id != g.milestones[i].id)
+				fprintf(stderr, "gbpk-roms: FAIL %s: pure%s.json's %s doesn't name the parties of %s\n", current.c_str(), d.key.c_str(),
+					p.milestones[i].id.c_str(), g.milestones[i].id.c_str());
+			CHECK(ours == theirs && p.milestones[i].id == g.milestones[i].id);
+		}
+		fprintf(stderr, "gbpk-roms: %s: pure%s.json's bosses are this guide's parties\n", current.c_str(), d.key.c_str());
+	}
 	std::string unresolved;
 	for (const std::string& p : g.unresolved) unresolved += (unresolved.empty() ? "" : ", ") + p;
 	EQ(unresolved, "");

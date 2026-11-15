@@ -911,10 +911,12 @@ Common to the steps (as #28's):
 
 - **Files**:
   - `kiwami/tools/pokedaisy-extract.py`, `kiwami/tools/gbpk-symbols.txt`, `gbpk-extra.json` (changed)
-  - `kiwami/rootfs/usr/share/banana/companions/gb-pokemon/{purered,pureblue,puregreen}.json` (new), `SOURCES` (changed)
-  - `ui/src/kiwami/gbpk/host.cpp` (changed)
-  - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp` (changed)
-  - `kiwami/GB-POKEMON.md` (changed: *The guides*)
+  - `kiwami/rootfs/usr/share/banana/companions/gb-pokemon/{purered,pureblue,puregreen}.json` (new), their `.ram.json`
+    and `SOURCES` (changed)
+  - `ui/src/kiwami/gbpk/host.cpp`, `gsguide.h`, `gsguide.cpp`, `games.h`, `games.cpp` (changed; all but `host.cpp`:
+    *Deviations*, 2026-11-15)
+  - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp`, `kiwami/tests/gbpk-ui.sh` (changed)
+  - `kiwami/GB-POKEMON.md` (changed: *The guides*, *The data files*)
 - **Change**:
   - **`pokedaisy-extract.py`**:
     - `gen1_guide` converts Red's (`G1R_*`) for `purered` and `puregreen`, and Blue's (`G1B_*`) for `pureblue`;
@@ -922,10 +924,12 @@ Common to the steps (as #28's):
       `const.flag.<NAME>` lines, which the conversion writes into `gbpk-symbols.txt`'s generated block). A name PureRGB
       doesn't have fails the run, and is given its replacement by a hand-written line with its source (as the
       investigation's check found a few renamed: `EVENT_OAK_GOT_PARCEL`, the Elite Four's autowalk events);
-    - each boss gets `trainer_ids` (class << 8 | number, from `G1R_BOSSES_RAW`), and its `ace_level` and `level_cap`
-      are dropped.
+    - each boss gets `trainer_ids` (class << 8 | number: PureRGB's class constants and a table of the story's parties,
+      `GEN1_BOSS_PARTIES`, as `G1R_BOSSES_RAW` has neither: *Deviations*, 2026-11-15), and its `ace_level` and
+      `level_cap` are dropped.
   - **`host.cpp` `guideFor`**: a milestone with `trainer_ids` and no `level_cap` takes its `foeAceLevel` and `levelCap`
-    from the ROM's parties of those trainers (the highest level), when the data file says `"guide_levels": "rom"`.
+    from the ROM's parties of those trainers (the highest level), when the data file says `"guide_levels": "rom"`
+    (`gsguide.cpp` `romLevels`, which `guideFor` calls, so `gbpk-units` reaches it).
     That's PureRGB's three, and any later hack whose levels aren't PokeDaisy's.
 - **Tests**:
   - `gbpk-units`: the three guides load with no entry skipped. On the `purered` capture (eight badges) the next
@@ -1257,6 +1261,30 @@ Where the implementation turned out different from this plan, why, and what chan
   none of PureRGB's rules; `gbpk-roms.cpp` checks Fire Punch and Hypnosis besides Drill Peck, and Gengar's and Machamp's
   split.
 
+- **2026-11-15, step 11**: `G1R_BOSSES_RAW` has no trainer class or party number (only names, flags and teams; Red's
+  guide finds its bosses by name and top level), and PureRGB's boss classes are two lower than Red's, each with
+  Champion's Arena rematch parties after the story's. As the user chose, each boss's class is PureRGB's constant (the
+  leaders' `leader<Name>`, new `const.class.<NAME>` lines for the Elite Four and `RIVAL3`), and its party a table in
+  `pokedaisy-extract.py` (`GEN1_BOSS_PARTIES`, from the maps' `object_event`s and the Champion's script: leaders 1,
+  Giovanni 3, the Elite Four 1, the Champion 1-3). `gbpk-roms.cpp` checks it both ways: in PureRGB's ROMs each id is
+  a trainer of the boss's name (letters only: "LT.SURGE"; the Champion's class has no name there, `li ""`), and in
+  Red's and Blue's the same party numbers are the ones their guides find, and PureRGB's own levels (Brock 14,
+  Giovanni 64, Lorelei 66, Lance 69, the Champion 72).
+
+  The flags' names are five hand-written `const.flag.<NAME>` lines (the user's choice), not a block the conversion
+  writes: the conversion maps each of Red's milestone flags through Red's line to PureRGB's number, and stops on a flag
+  without a line. The Cerulean Cave guard goes through each game's `toggleCeruleanCaveGuy` (PureRGB's 9, Red's 8), and
+  PureRGB's toggleable objects are Red's 32 bytes (the same `flag_array $100`). Dotted const keys stay out of the data
+  files' `sizes`. The three `.ram.json` gain the guide's flag banks, derived bits, `toggleFlagBytes` and
+  `"guide_levels": "rom"`, which `games.h`/`games.cpp` read into `GameData::romLevels` (as steps 5 and 7 added the
+  Legacy hacks' banks). The levels are set by `romLevels` in `gsguide.h`/`gsguide.cpp`, which `host.cpp`'s
+  `guideFor` calls, as `gbpk-units` doesn't link `host.cpp` (the user's choice). The guides take no trades: PureRGB's
+  in-game trades are all its own (`data/events/trades.asm`), so Red's notes would be wrong. `gbpk-units`' PureRGB
+  captures now give the guide's flags (353 bytes, where they gave none), and `gbpk-ui.sh`'s PureRed run asserts its
+  guide's 13 milestones instead of "no guide". `gbpk-roms.cpp`'s comparison of the hidden items with PokeDaisy's areas
+  is limited to the four games PokeDaisy has them for: with a PokeDaisy checkout it compared PureRGB's with Yellow
+  Legacy's (step 9's, unseen as the ROM tests had run without the checkout).
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -1273,7 +1301,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 8. Types of the fork's own on the pages | done | GB Pokémon hacks: types of the fork's own on the pages, for PureRGB's six |
 | 9. PureRed, PureBlue and PureGreen | done | GB Pokémon hacks: PureRed, PureBlue and PureGreen, from their builds' symbols, their memory and their ROMs |
 | 10. PureRGB's switches, signatures and Hyper Ball | done | GB Pokémon hacks: PureRGB's switched types and matchups, signature moves and Hyper Ball |
-| 11. PureRGB's guides | todo | |
+| 11. PureRGB's guides | done | GB Pokémon hacks: PureRGB's guides, Red's and Blue's with its flags and its levels |
 | 12. Crystal Clear's addresses, ported | todo | |
 | 13. Crystal Clear | todo | |
 | 14. Crystal Clear's guide | todo | |

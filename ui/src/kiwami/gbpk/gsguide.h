@@ -1,5 +1,5 @@
 #pragma once
-// banana-ui (kiwami): Gold's and Silver's guide, built from the player's ROM. PokeDaisy has no guide for the two, so
+// banana-ui (kiwami): Gold's and Silver's guide, built from the player's ROM, and a guide file's levels from it. PokeDaisy has no guide for the two, so
 // the road is the ROM's own trainers, as upstream's removed nds::guideFromRom made one for a GBA ROM hack (commit
 // a103f12e): the gym leaders, the Elite Four and the Champion, each a milestone with its team's top level.
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
@@ -17,4 +17,10 @@ namespace banana::kiwami::gbpk
 	// goes with Johto's and is done by a later milestone, as the Elite Four and the Champion are. No places, secrets
 	// or notes. Empty when the ROM has none of these trainers.
 	nds::GuideData romGuide(const nds::RomData& rom, const GameData& d);
+
+	// A guide file's bosses at the ROM's levels (a data file's "guide_levels": "rom": PureRGB's guides, Red's and Blue's
+	// with its own teams): each milestone that names its trainers (trainer_ids) and no level cap gets the highest level
+	// of their teams in the ROM as its level cap and its foe's ace. Trainers the ROM hasn't are passed over; a milestone
+	// none of whose trainers it has keeps no level.
+	void romLevels(nds::GuideData& g, const nds::RomData& rom);
 }

@@ -631,7 +631,7 @@ Its ROM is laid out its own way where `rom1.cpp` reads these keys instead of the
 Its forms show their own types on the Battle page (the battle's copy) and their own stats everywhere (the memory's);
 the Party and Team pages and the team advice take a Pokémon's types from its species, as upstream does for its own
 GBA hacks' forms, so there a form shows its base's. Its switched types and matchups, its signature moves, its Ghost
-and its balls: *The battle rules*. PureRGB's guide is a later step of `.workspace/0030-gb-pokemon-hacks/`.
+and its balls: *The battle rules*. Its guides: *The guides*.
 
 ## The data files
 
@@ -699,8 +699,11 @@ ROM hacks': `crystal-legacy`, `yellow-legacy`, `purered`, `pureblue`, `puregreen
     category is its type's (`rom.h` `category`), and `rules.h`'s damage takes Attack or Special by it.
   - The file refuses to load without `items` and `types`, or with a type name it doesn't know.
 - `guide` is `"rom"` for a game whose guide the host builds from the ROM's trainers (`gsguide.cpp`: Gold and Silver);
-  the others' are their `<game>.json`. `dex_size`, when given, is the Pokédex's size (else 151 or 251). `charset`,
-  when given, is the text's character set (`pure`, PureRGB's; else the generation's).
+  the others' are their `<game>.json`. `guide_levels` is `"rom"` for a game whose guide file's bosses take the levels
+  of their trainers' teams in the ROM (PureRGB's, *The guides*). `dex_size`, when given, is the Pokédex's size (else
+  151 or 251). `charset`, when given, is the text's character set (`pure`, PureRGB's; else the generation's). A
+  `const` line whose key has a dot (`const.flag.<NAME>`, `const.class.<NAME>`) is for the guides' conversion and
+  stays out of the data file's `sizes`.
 - An `item` line of `gbpk-symbols.txt` with Gen IV id 0 is a ball Gen IV hasn't (PureRGB's Hyper Ball): in `balls`
   only, and 1000 + its id. A `const` line may name several files joined by `+`, read in that order as the game
   includes them (PureRGB's base data's constants use its battle and item constants').
@@ -717,8 +720,8 @@ The Guide page's milestones and notes, and the Here page's hidden items, in upst
 `nds::guideResolver` over the ROM's data. The six games and the ROM hacks are rows of upstream's guide loader by a
 hook (`ui/src/kiwami/gbpk/guide-games.inc`, included in `ui/src/nds/guide.cpp`'s `GAMES`): their ids, keys and codes
 (Gold's, Silver's and Crystal's headers', a hack's its base game's; Red's, Blue's and Yellow's `PKRD`, `PKBL`, `PKYL`
-are the fork's own, as their carts have none). The host (`host.cpp`) loads `<key>.json` from the data folder, or for Gold and Silver builds the guide from
-the ROM (below); no file, or one refused, logs `gb companion: no guide: <why>`, and the pages go on with the hidden
+are the fork's own, as their carts have none). The host (`host.cpp`) loads `<key>.json` from the data folder (PureRGB's at the ROM's levels, below), or for Gold and
+Silver builds the guide from the ROM (below); no file, or one refused, logs `gb companion: no guide: <why>`, and the pages go on with the hidden
 items alone. Either way it logs `gb companion: guide: <N> milestones, <M> hidden items`.
 
 **Crystal's**, `crystal.json`, is converted by `pokedaisy-extract.py` from PokeDaisy's `GuideCrystal.kt` (the bosses,
@@ -798,6 +801,29 @@ header's, Yellow's, has none), and its own teams: Lt. Surge's top level 29, Erik
 `wMissableObjectFlags`), the Cerulean Cave guard its object 9, and the same derived bits 2816-2820; its data file's RAM
 constants there are checked against its build's symbols. Its trades are eight, Yellow's seven and one in the Saffron
 Pidgey House.
+
+**PureRed's, PureBlue's and PureGreen's**, `purered.json`, `pureblue.json` and `puregreen.json`, are Red's and Blue's
+(PureGreen's Red's), converted by the same script from the same tables (`GEN1_HACK_GUIDES`), as PokeDaisy has none of
+PureRGB's. They have Red's 13 bosses in its order, with PureRGB's own values where they differ:
+
+- **Its flags, by name**: each event flag of Red's milestones goes through its name to PureRGB's number
+  (`gbpk-symbols.txt`'s `const.flag.<NAME>` lines, read in both games' `constants/event_constants.asm`; the conversion
+  stops on a flag no line names, or a name PureRGB hasn't), and the Cerulean Cave guard through each game's
+  `TOGGLE_CERULEAN_CAVE_GUY`: 9 in PureRGB, which put an object before it. The data file's `flags` are Red's banks at
+  PureRGB's addresses (its toggleable objects the same 32 bytes, `flag_array $100` in its `ram/wram.asm`), the
+  derived bits 2816-2820 after them.
+- **Its bosses by trainer id**: PureRGB has a Champion's Arena with every boss's rematch teams (Lv 70-100), parties of
+  the same classes after the story's, so finding a boss by name would take them too. Each milestone names its trainers
+  (`trainer_ids`): its class from PureRGB's constants (the leaders' `leader<Name>`, `const.class.<NAME>` for the Elite
+  Four and `RIVAL3`, two lower than Red's), its party the story's fight in the map's `object_event` (`OPP_BROCK, 1` ..
+  `OPP_GIOVANNI, 3` at Viridian Gym, `OPP_LORELEI, 1` ...), the Champion's three by his script, one for each starter
+  (`GEN1_BOSS_PARTIES`). The ROM tests check them both ways: in PureRGB's ROMs each is a trainer of the boss's name
+  (the Champion's class has none there: `li ""`, "shortened for some free space"), and in Red's and Blue's the same
+  party numbers are the ones their guides find by name and level.
+- **Its levels, from the ROM**: the milestones have no `level_cap` or `ace_level`, and the data file says
+  `"guide_levels": "rom"`: the host gives each the highest level of its trainers' teams in the ROM (`gsguide.cpp`
+  `romLevels`), so Brock's is 14, Giovanni's 64, the Champion's 72 (Red's 14, 50 and 65).
+- **No trades**: PureRGB's in-game trades are its own (`data/events/trades.asm`), so Red's notes aren't taken.
 
 **Gold's and Silver's** come from the ROM, as PokeDaisy has no guide for them: `romGuide` (`ui/src/kiwami/gbpk/
 gsguide.cpp`, after upstream's `nds::guideFromRom`, which upstream since removed) makes a milestone of each trainer

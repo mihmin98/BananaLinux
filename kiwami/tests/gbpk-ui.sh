@@ -22,7 +22,7 @@
 # - Yellow Legacy's pages on its captures (Yellow's title, its own addresses): Gen I's rules, the party of six and a
 #   wild battle, its guide file loaded (13 milestones);
 # - PureRed's pages on its captures (Red's title, v2.7.6's addresses, the release its README names): Gen I's rules, the
-#   party of six and a wild battle, no guide file yet.
+#   party of six and a wild battle, its guide file loaded (13 milestones: Red's, by PureRGB's trainer ids).
 # Needs ui/banana-ui (make ui) and ImageMagick (the shots not blank). Run by kiwami/tests/ci.sh when banana-ui is
 # built, or by hand:
 #   kiwami/tests/gbpk-ui.sh       (the shots and logs in $OUT, /tmp/kiwami-gbpk-ui by default)
@@ -229,13 +229,14 @@ wait 300; gbfeed $CAP/yellow_legacy_battle; sleep 300; gshot battle; wait 300; g
     grep -E 'gb(host|feed|panel)|gb companion: (rules|guide)' "$log" | sed "s/^banana-ui: /gbpk-ui: $size: ylegacy: /; s|$PWD/||g"
 
     # PureRed's pages: Red's title, its capture read at PureRGB's addresses in WRAM bank 1 (the party of six), a wild
-    # battle on the Battle page, its end the Party page; Gen I's rules; no guide file yet (the hidden items come from the
-    # ROM, which the stand-in hasn't)
+    # battle on the Battle page, its end the Party page; Gen I's rules; its guide file loaded (its levels and hidden items
+    # come from the ROM, which the stand-in hasn't)
     run $size purered "home 0; gbpanel 1 $CAP/purered; gbhost; gbfeed $CAP/purered; sleep 300; gshot party; \
 wait 300; gbfeed $CAP/purered_battle; sleep 300; gshot battle; wait 300; gbfeed $CAP/purered; sleep 100"
     logged "gbpanel .*/purered: companion PureRed$"
     logged "gb companion: rules on \(Generation I\)$"
-    logged "gb companion: no guide: .*purered.json"
+    logged "gb companion: guide: 13 milestones, 0 hidden items$"
+    ! grep -q 'gb companion: no guide' "$log" || { echo "FAIL $size purered: $(grep 'no guide' "$log")"; fail=1; }
     logged "gbhost: ready PureRed view pages:Party$"
     logged "gbfeed .*/purered: asked [1-9][0-9]*, party 6, battle 0, view pages:Party$"
     logged "gbfeed .*/purered_battle: asked [1-9][0-9]*, party 6, battle 1, view pages:Battle$"

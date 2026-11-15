@@ -1,4 +1,4 @@
-// banana-ui (kiwami): Gold's and Silver's guide from the ROM's trainers (gsguide.h).
+// banana-ui (kiwami): Gold's and Silver's guide from the ROM's trainers, and a guide file's levels from them (gsguide.h).
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
@@ -133,5 +133,18 @@ namespace banana::kiwami::gbpk
 			g.milestones.push_back(std::move(m));
 		}
 		return g;
+	}
+
+	void romLevels(nds::GuideData& g, const nds::RomData& rom)
+	{
+		for (nds::Milestone& m : g.milestones)
+		{
+			if (m.trainerIds.empty() || m.levelCap > 0) continue;
+			int top = 0;
+			for (uint16_t id : m.trainerIds)
+				if (auto t = rom.trainers.find(id); t != rom.trainers.end())
+					for (const nds::TrainerMon& p : t->second.team) top = std::max<int>(top, p.level);
+			m.levelCap = m.foeAceLevel = top;
+		}
 	}
 }

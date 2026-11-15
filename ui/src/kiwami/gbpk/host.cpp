@@ -16,7 +16,8 @@ namespace banana::kiwami::gbpk
 	{
 		// the game's guide: its file in the data folder (<key>.json, the places' maps found by name in the ROM), or for
 		// a game whose data file says "guide": "rom" (Gold and Silver, which have none) the one its ROM's trainers make
-		// (gsguide.h); with the ROM's hidden items as
+		// (gsguide.h), and its bosses at the ROM's levels when it says "guide_levels": "rom" (PureRGB's); with the
+		// ROM's hidden items as
 		// the Here page's secrets, each listed whether found or not, as upstream's companions list theirs. A game
 		// without a file (or with one it refuses) has the hidden items alone.
 		std::shared_ptr<const nds::GuideData> guideFor(const GameData& d, const nds::RomData& rom)
@@ -33,6 +34,7 @@ namespace banana::kiwami::gbpk
 			}
 			else
 			{
+				if (d.romLevels) romLevels(*g, rom);
 				if (!why.empty()) fprintf(stderr, "banana-ui: gb companion: guide: %s\n", why.c_str());
 				for (const std::string& p : g->unresolved) fprintf(stderr, "banana-ui: gb companion: guide: no map is %s\n", p.c_str());
 			}

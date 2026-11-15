@@ -1524,6 +1524,87 @@ static void testGen1Guides()
 	}
 }
 
+// PureRed's, PureBlue's and PureGreen's guides: Red's and Blue's converted (pokedaisy-extract.py GEN1_HACK_GUIDES), each
+// boss by its trainer ids (PureRGB's classes: BROCK $20, RIVAL3 $29) and no level, which the ROM's teams give
+// (gsguide.h romLevels, "guide_levels": "rom"); the Elite Four and the Champion done by PureRGB's flags, the Cerulean
+// Cave guard its toggleable object 9 (Red's 8); no trades (PureRGB's are its own). On the purered capture's save
+// (eight badges) the next is the Elite Four's
+static std::shared_ptr<GbRomData> gen1Rom();
+static void testPureGuides()
+{
+	nds::GuideResolver res;
+	res.zones = [](const std::string&) { return std::vector<uint16_t>{ 1 }; };
+	res.trainers = [](const std::string&, const std::string&, int) { return std::vector<uint16_t>{ 0x0101 }; };
+	for (auto [key, id] : { std::pair{ "purered", PURERED }, { "pureblue", PUREBLUE }, { "puregreen", PUREGREEN } })
+	{
+		GameData d;
+		std::string why = "-";
+		CHECK(loadData(key, d, &why) && d.romLevels && !d.romGuide);
+		CHECK(d.flags.size() == 2 && d.size("toggleFlagBytes") == 32 && d.size("toggleCeruleanCaveGuy") == 9 && d.derived.size() == 5);
+		nds::GuideData g;
+		why = "-";
+		CHECK(nds::loadGuideFile(dataPath + "/" + key + ".json", g, id, &why, &res));
+		EQ(why, "");
+		CHECK(g.unresolved.empty() && g.evolutionNotes.empty() && g.milestones.size() == 13);
+		if (g.milestones.size() != 13) continue;
+		for (const nds::Milestone& m : g.milestones)
+			CHECK(m.levelCap == 0 && m.foeAceLevel == 0 && m.trainerIds.size() == (m.kind == "champion" ? 3u : 1u) && !m.placeZones.empty());
+		CHECK((g.milestones[0].trainerIds == std::vector<uint16_t>{ 0x2001 }) && (g.milestones[7].trainerIds == std::vector<uint16_t>{ 0x1B03 }));
+		CHECK((g.milestones[12].trainerIds == std::vector<uint16_t>{ 0x2901, 0x2902, 0x2903 }));
+		EQ(g.milestones[0].name, "Gym 1: Brock");
+		EQ(g.milestones[8].doneWhen, "flag:2816");
+		// (the Elite Four's derived bits: a room's flag or the guard hidden, 2560 + 9)
+		CHECK(d.derived[0].of == std::vector<int>({ 2273, 2569 }) && d.derived[0].bit == 2816);
+
+		// the levels from a stand-in ROM: Brock's ace 20, the Champion's three teams 60, 62 and 61; a boss the ROM
+		// hasn't keeps none, and a milestone with its own level cap isn't touched
+		GbRomData rom;
+		auto team = [](std::initializer_list<int> levels) {
+			nds::Trainer t;
+			for (int lv : levels) { nds::TrainerMon m; m.species = 1; m.level = (uint8_t)lv; t.team.push_back(m); }
+			return t;
+		};
+		rom.trainers[0x2001] = team({ 18, 20 });
+		rom.trainers[0x2901] = team({ 60 });
+		rom.trainers[0x2902] = team({ 59, 62 });
+		rom.trainers[0x2903] = team({ 61 });
+		g.milestones[1].levelCap = 5;
+		romLevels(g, rom);
+		CHECK(g.milestones[0].levelCap == 20 && g.milestones[0].foeAceLevel == 20 && g.milestones[12].levelCap == 62);
+		CHECK(g.milestones[1].levelCap == 5 && g.milestones[1].foeAceLevel == 0 && g.milestones[2].levelCap == 0);
+	}
+	// the purered capture's save: eight badges, no Elite Four flag
+	GameData d = game("purered");
+	pickRelease(d, 0);
+	nds::GuideData g;
+	std::string why;
+	CHECK(nds::loadGuideFile(dataPath + "/purered.json", g, PURERED, &why, &res));
+	Dump dump;
+	if (dump.load("purered"))
+	{
+		Reader r;
+		r.open(d);
+		double now = 0;
+		auto l = replay(r, dump, now, gen1Rom().get());
+		const nds::Milestone* m = nds::nextMilestone(g, *l);
+		CHECK(l->badges == 0xFF && m && m->id == "e4-lorelei");
+		// (a room's flag set: the next member's; the guard hidden, the League won: none)
+		const int ev = d.at("eventFlags").addr;
+		dump.d((uint16_t)(ev + 2273 / 8)) |= 1 << (2273 % 8);
+		Reader r2;
+		r2.open(d);
+		l = replay(r2, dump, now, gen1Rom().get());
+		m = nds::nextMilestone(g, *l);
+		CHECK(m && m->id == "e4-bruno");
+		const int tg = d.at("toggleFlags").addr;
+		dump.d((uint16_t)(tg + 9 / 8)) |= 1 << (9 % 8);
+		Reader r3;
+		r3.open(d);
+		l = replay(r3, dump, now, gen1Rom().get());
+		CHECK(!nds::nextMilestone(g, *l));
+	}
+}
+
 // Gold's guide from a made-up ROM's trainers (gsguide.h), with gold.ram.json's class ids: the stages in the story's
 // order and by level in each, whatever the table's order; each leader done by its gym's badge, not its place (Chuck,
 // Pryce and Jasmine are fought in that order, their badges are STORM, GLACIER and MINERAL: bits 5, 6 and 4 of
@@ -1757,7 +1838,8 @@ static std::shared_ptr<nds::Live> checkPure(const char* capture, const char* key
 	CHECK(l->dexCaught.size() == 19 && bits(l->dexCaught) == 10 && bits(l->dexSeen) == 106);
 	size_t items = 0;
 	for (const auto& [pocket, list] : l->bag) items += list.size();
-	CHECK(items == 16 && l->flags.empty() && r.error().empty());
+	// (the guide's flags: 320 bytes of event flags, 32 of toggleable objects, the five derived bits after them)
+	CHECK(items == 16 && l->flags.size() == 353 && r.error().empty());
 	return l;
 }
 
@@ -3463,6 +3545,7 @@ int main(int argc, char** argv)
 	testCrystalLegacyGuide();
 	testGen1Guides();
 	testRomGuide();
+	testPureGuides();
 	testReaderRules();
 	testRules();
 	testTables();

@@ -74,10 +74,13 @@ else
 fi
 
 # the Game Boy Pokémon companion's data (kiwami/GB-POKEMON.md): the extraction scripts' committed outputs as SOURCES
-# records them (neither PokeDaisy nor pret needed), every value gbpk-symbols.txt asks for answered, and each data file
-# a gb-pokemon-ram file whose addresses are all WRAM or HRAM, beside PokeDaisy's LICENSE and NOTICE
+# records them (neither PokeDaisy nor pret nor the ROMs needed), every value gbpk-symbols.txt asks for answered, the
+# port's methods on made-up ROMs, and each data file a gb-pokemon-ram file whose addresses are all WRAM or HRAM,
+# beside PokeDaisy's LICENSE and NOTICE
 python3 -I kiwami/tools/pret-extract.py --check
 python3 -I kiwami/tools/pokedaisy-extract.py --check
+python3 -I kiwami/tools/gbpk-port.py --check
+python3 -I kiwami/tools/gbpk-port.py --self-test
 G=kiwami/rootfs/usr/share/banana/companions/gb-pokemon
 for f in LICENSE NOTICE SOURCES; do [ -s "$G/$f" ] || { echo "gb-pokemon: no $f in $G" >&2; exit 1; }; done
 grep -qF 'Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy' "$G/NOTICE" ||
@@ -100,13 +103,14 @@ EOF
 # PokeDaisy's reference data (kiwami/data/pokedaisy/, written by pokedaisy-extract.py --reference, checked against its
 # SOURCES above): its LICENSE and NOTICE, every file JSON, none of it in the image's overlay, and none of twenty of the
 # games' species, move and item names (in capitals and in title case) in it or in the image's data, but where a guide
-# names its bosses and places, and in text.json, PokeDaisy's own words, which name what they talk about
+# names its bosses and places, and in text.json, PokeDaisy's own words, which name what they talk about (and none in the
+# port's output, kiwami/tools/gbpk-port.json, made from the player's ROMs)
 P=kiwami/data/pokedaisy
 for f in LICENSE NOTICE README.md SOURCES; do [ -s "$P/$f" ] || { echo "pokedaisy: no $f in $P" >&2; exit 1; }; done
 grep -qF 'Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy' "$P/NOTICE" ||
     { echo "pokedaisy: $P/NOTICE hasn't PokeDaisy's attribution line" >&2; exit 1; }
 [ -z "$(find kiwami/rootfs -path '*pokedaisy*')" ] || { echo "pokedaisy: the reference data is in the overlay" >&2; exit 1; }
-python3 -I - "$P"/*/*.json "$G"/*.json <<'EOF'
+python3 -I - "$P"/*/*.json "$G"/*.json kiwami/tools/gbpk-port.json <<'EOF'
 import json, os, re, sys
 NAMES = ['BULBASAUR', 'CHARMANDER', 'PIKACHU', 'MEWTWO', 'CHIKORITA', 'LUGIA', 'TREECKO', 'RAYQUAZA', 'TURTWIG', 'SNIVY',
          'THUNDERBOLT', 'FLAMETHROWER', 'EARTHQUAKE', 'HYPER BEAM', 'TACKLE', 'MASTER BALL', 'RARE CANDY', 'LEFTOVERS',

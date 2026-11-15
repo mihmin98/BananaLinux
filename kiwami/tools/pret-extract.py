@@ -53,9 +53,16 @@ NOT_TYPES = ('BIRD', 'CURSE_TYPE')
 SPLITS = ('physical', 'special', 'stats')
 
 
+def ported_games(text):
+    """The games gbpk-port.py finds in their builds (a port line each): their lines are its, not this script's."""
+    return {l.split()[0] for l in (x.split('#', 1)[0] for x in text.splitlines())
+            if len(l.split()) > 1 and (l.split()[1] == 'port' or l.split()[1].startswith('port.'))}
+
+
 def read_list(text):
-    """The lines of gbpk-symbols.txt: (line number, games, kind, key, args)."""
+    """The lines of gbpk-symbols.txt: (line number, games, kind, key, args), the ported games left out."""
     out = []
+    ported = ported_games(text)
     for n, line in enumerate(text.splitlines(), 1):
         line = line.split('#', 1)[0].strip()
         if not line:
@@ -63,6 +70,12 @@ def read_list(text):
         parts = line.split(None, 2)
         if len(parts) < 3:
             fail('%s:%d: too short: %s' % (LIST, n, line))
+        if parts[0] != 'item' and ported:
+            games = [g for g in parts[0].split(',') if g not in ported]
+            if not games:
+                continue
+            parts[0] = ','.join(games)
+            line = ' '.join(parts)
         if parts[0] == 'item':
             f = line.split()
             if len(f) not in (3, 4) or not f[2].isdigit() or not int(f[2]) <= 65535 or f[3:] not in ([], ['ball']) or \
@@ -619,11 +632,12 @@ def read_sources(text):
     return secs
 
 
-HEADER = '''# Where the files of the Game Boy Pokémon companion come from, written by the two scripts that make them:
-# kiwami/tools/pokedaisy-extract.py ([pokedaisy]) and kiwami/tools/pret-extract.py ([pret]). Each section names the
-# commits read, then a line a file: "in" for what was read, "out" for what was written, with its SHA-256. Paths are
-# the repository's, or the checkout's after its name. Each script's --check, without the checkouts, verifies the
-# "out" files and the repository's own "in" files against these hashes.'''
+HEADER = '''# Where the files of the Game Boy Pokémon companion come from, written by the three scripts that make them:
+# kiwami/tools/pokedaisy-extract.py ([pokedaisy]), kiwami/tools/pret-extract.py ([pret]) and kiwami/tools/gbpk-port.py
+# ([port]). Each section names the commits read (and [port] the ROMs, by their SHA-1s), then a line a file: "in" for
+# what was read, "out" for what was written, with its SHA-256. Paths are the repository's, or the checkout's after its
+# name. Each script's --check, without the checkouts, verifies the "out" files and the repository's own "in" files
+# against these hashes.'''
 
 
 def write_sources(text, name, body):

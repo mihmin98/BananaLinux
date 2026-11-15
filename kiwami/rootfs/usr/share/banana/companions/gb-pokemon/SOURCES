@@ -1,8 +1,9 @@
-# Where the files of the Game Boy Pokémon companion come from, written by the two scripts that make them:
-# kiwami/tools/pokedaisy-extract.py ([pokedaisy]) and kiwami/tools/pret-extract.py ([pret]). Each section names the
-# commits read, then a line a file: "in" for what was read, "out" for what was written, with its SHA-256. Paths are
-# the repository's, or the checkout's after its name. Each script's --check, without the checkouts, verifies the
-# "out" files and the repository's own "in" files against these hashes.
+# Where the files of the Game Boy Pokémon companion come from, written by the three scripts that make them:
+# kiwami/tools/pokedaisy-extract.py ([pokedaisy]), kiwami/tools/pret-extract.py ([pret]) and kiwami/tools/gbpk-port.py
+# ([port]). Each section names the commits read (and [port] the ROMs, by their SHA-1s), then a line a file: "in" for
+# what was read, "out" for what was written, with its SHA-256. Paths are the repository's, or the checkout's after its
+# name. Each script's --check, without the checkouts, verifies the "out" files and the repository's own "in" files
+# against these hashes.
 
 [pokedaisy]
 commit pokedaisy 135ac809a597230c1fe3ad6359ae0fe81e233583
@@ -41,6 +42,23 @@ out 3f1fdb07462de5e1be8b052c18f9c17bba9334c50a4eae06bf4bc685db2dec33  kiwami/roo
 out b8ef39b4e34327d2f44f1a409b2ee90b649c0d660874bfacddbc086ac9c9655f  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow-legacy.ram.json
 out cbf7f2a93a5172af3878580d795401d493b524f44b26410903d8639cec1ffd0e  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow.json
 out 09bb69245ed34229ab4a65378ad4c3bf5599ca661aed429a8d147ccf0a37206d  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/yellow.ram.json
+
+[port]
+commit pokecrystal 3c813b0b4d82b39bf62185aceffb76fd6026c70b symbols 3b13ca4fa74171364afd6bba61a6e8560212860b
+rom f2f52230b536214ef7c9924f483392993e226cfb  pokecrystal pokecrystal11.gbc
+rom a1c4da6b0057c98fe4ebea45d6812a484fc69abd  crystal-clear v2.5.11
+rom 6fc677bf7a9db103cb9ee11ac08d26782e69ae41  crystal-clear v2.5.11 Color Filter
+rom 8be3dea853b39442f36f94c3988e074788c5ecec  crystal-clear v2.5.11 SGB Mode
+rom 913c49bd487efb4516b94fc427a1b12628be3daa  crystal-clear v2.5.11 Color Filter SGB Mode
+rom 84d5c4924c3f1f3fc690669148b7e392948fb23d  crystal-clear v2.6.0
+rom 534876e4e4d0d79a82fef3bbe5bea11c40451727  crystal-clear v2.6.0 Color Filter
+rom 059632e84a92d6870a1e83c313a72974224f9c1c  crystal-clear v2.6.0 SGB Mode
+rom 88c943e6d76dbde9f8edace5df396fe6bbc9e146  crystal-clear v2.6.0 Color Filter SGB Mode
+in  85f8042b02a0bde356a6b62b374d28b4caae5547d43882a0e7979da31d0264e0  pokecrystal roms.sha1
+in  70648bb46af4aa7bcbbce30ed064337aab544af6115d3de6ab9892401328832b  pokecrystal symbols:pokecrystal11.sym
+in  338558304f22defabe11e5407c91baa1233317396a862a108b038d79d5586c82  kiwami/tools/gbpk-symbols.txt
+in  d2bbe7e3a680bb55f149e181b24e76bba7e97728fb02808e7614f9c2ab5ed3dc  kiwami/tools/gbpk-extra.json
+out 3c37b2ff37a4d4c4794bcae6586bc105a67e37a08d7523abba56c8fc4d2c37d9  kiwami/tools/gbpk-port.json
 
 [pret]
 commit Pokemon_Crystal_Legacy 6394641ef37d51a299a13d96ccaf0c413c6c8c42 tag V1.3.1
@@ -164,6 +182,6 @@ in  1946d43ae015364ae14ceb267ab2779513908cd2c05a6749dc570b83aeefd4d8  pureRGB-2.
 in  ddc4c1aba224d5af86356227dd247a53880eeb78c6fed65758fcae00db42e151  pureRGB-2.7.7 pokeblue.sym
 in  0220ca88b049a9879e25bb415d4704f8ce39ebf7b32a7b09fff82da2dc3a6daa  pureRGB-2.7.7 pokegreen.sym
 in  c01d535e6f845509f31888a7686c7b9edca4526c77b9faec99fc77ef1933bce8  pureRGB-2.7.7 pokered.sym
-in  0e16a28d8f24f6851dac0e4a28abf75ae71e92c06f57941cafb86d2f8dfc0ca6  kiwami/tools/gbpk-symbols.txt
+in  338558304f22defabe11e5407c91baa1233317396a862a108b038d79d5586c82  kiwami/tools/gbpk-symbols.txt
 in  8347055098f870e8067f2945f057833f1bcb7c6f9e85ee600dc2aa5df421fbe1  kiwami/tests/gbpk/roms.patches
 out d2bbe7e3a680bb55f149e181b24e76bba7e97728fb02808e7614f9c2ab5ed3dc  kiwami/tools/gbpk-extra.json

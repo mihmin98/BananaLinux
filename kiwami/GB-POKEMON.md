@@ -44,7 +44,7 @@ Where the attribution is:
 
 ## Where the data comes from
 
-Two sources, each read by its own script into files that are committed, so a build needs neither:
+Three sources, each read by its own script into files that are committed, so a build needs none of them:
 
 - **PokeDaisy**, by `kiwami/tools/pokedaisy-extract.py`: the RAM addresses in its readers' configs (`Gen2Reader.kt`'s
   `Gen2Config` and `Gen1Reader.kt`'s `Gen1Config`, read by a small evaluator of their named arguments,
@@ -73,8 +73,32 @@ Two sources, each read by its own script into files that are committed, so a bui
   aside, and stops the run only when it is the one asked for, and so is a `DEF` whose name is made with such a
   symbol, `toggle_constants.asm`'s `TOGGLEMAP{\1}_ID` by a map's id). pret publishes no licence; only these facts about the retail ROMs are taken, none of its code
   or tables, as PokeDaisy's own `NOTICE` describes its use of them.
+- **The player's ROMs**, for a hack that publishes no source (Crystal Clear), by `kiwami/tools/gbpk-port.py`, into
+  `kiwami/tools/gbpk-port.json`: pret's symbols for the retail build the hack was made from (`pokecrystal11.sym`,
+  Crystal rev 1) ported into each of its builds through the code that uses them, PokeDaisy's `scripts/port_gen1.py`
+  method (the script is the fork's own, GPL-3.0 as the companion). The hack's lines in `gbpk-symbols.txt` are its
+  base game's, which name the symbol, and lines of its own that name another method where the votes don't do, each
+  with its routine in a comment:
+  - **the votes** (by default): each use of the symbol in Crystal's code (`ld a,[nn]`, `ld hl,nn`, `call`, ...; a ROM
+    symbol's only in its own bank's code or beside an `ld a,BANK`), the 10 bytes each side of it (the other 16-bit
+    operands masked) found once in the build, votes for the operand there and its bank. Two votes at least, any other
+    value under an eighth of the winner's, or the run fails listing every value;
+  - **`port.data`**: a table the hack kept, found by Crystal's bytes, once (the Pokémon's names and the moves whole,
+    so their counts are Crystal's: `port.same`; the type chart whole, so its types are: `types from crystal`);
+  - **`port.code`**: a pattern of the build's own bytes (`{addr}`, `{bank}`, `{byte}` or `{hi}` the value), found
+    once. Where it is Crystal's code it must be found in Crystal too, giving Crystal's own value: it is then the code
+    that uses the symbol. Where the hack rewrote the code (its wild Pokémon, fishing, trees and trainers moved to
+    other banks and read in other ways) it is the hack's own code;
+  - **`port.count`**: a table's length, up to the lowest of its pointers (its landmarks, as many as come before the
+    first name: Crystal's 96 by the same rule).
 
-What the two agree on is checked: every address PokeDaisy gives is also looked up in pret's symbols and must be the
+  Its items are Crystal's, found by their names in each ROM's `ItemNames`. The builds of a version (its Standard
+  Colors and Color Filter, each with and without SGB Mode) must agree on every value; where the two versions differ
+  (the move descriptions and the evolutions' pointers) each release has its own. `SOURCES`' `[port]` names the ROMs by
+  their SHA-1s, and `--check` without them verifies the output by its hash. Only addresses, ids and the header are
+  taken, as from pret.
+
+What PokeDaisy and pret agree on is checked: every address PokeDaisy gives is also looked up in pret's symbols and must be the
 same, a game's releases (Crystal's three) must agree on every address, and PokeDaisy's SHA-1s for a game must be
 pret's. Each value in a data file says where it came from (`src`: `pokedaisy`, `pret (<symbol>)`, or both).
 
@@ -90,14 +114,19 @@ its release's tag beside them (*The ROM hacks*):
 
 ```sh
 python3 -I kiwami/tools/pret-extract.py ~/Documents/Projects/pret          # first: gbpk-extra.json, SOURCES' [pret]
+python3 -I kiwami/tools/gbpk-port.py ~/Documents/Projects/pret ~/gb-companion/roms   # gbpk-port.json, [port]
 python3 -I kiwami/tools/pokedaisy-extract.py ~/Documents/Projects/pokedaisy   # the data files, LICENSE, [pokedaisy]
 ```
+
+`gbpk-port.py` finds Crystal rev 1 and the hack's builds in the ROMs' folder and its subfolders one level down by
+their SHA-1s, and prints each value with how it was found. `--self-test` runs its methods on made-up ROMs.
 
 `pokedaisy-extract.py` refuses a checkout at another commit than its `PIN` unless `--any-commit` is given; taking in a
 newer PokeDaisy is changing `PIN`, running it, and reading the diff. Each script with `--check` and its checkout
 writes to a temporary folder and compares with what is committed; with `--check` alone (as `kiwami/tests/ci.sh` runs
 them) it verifies the committed files against `SOURCES`' hashes, and `pret-extract.py` that every line of
-`gbpk-symbols.txt` has its value. A re-run is byte for byte the same.
+`gbpk-symbols.txt` has its value (`gbpk-port.py` that every line of a ported game's has). A re-run is byte for byte
+the same.
 
 ```sh
 python3 -I kiwami/tools/pokedaisy-extract.py ~/Documents/Projects/pokedaisy --reference   # kiwami/data/pokedaisy/

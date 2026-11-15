@@ -945,6 +945,7 @@ Common to the steps (as #28's):
   - `kiwami/tools/gbpk-port.py` (new)
   - `kiwami/tools/gbpk-port.json` (new: its output)
   - `kiwami/tools/gbpk-symbols.txt` (changed: Crystal Clear's lines)
+  - `kiwami/tools/pret-extract.py` (changed: the ported game's lines passed over, *Deviations*, 2026-11-15)
   - `kiwami/rootfs/usr/share/banana/companions/gb-pokemon/SOURCES` (changed: `[port]`)
   - `kiwami/tests/ci.sh` (changed)
   - `kiwami/GB-POKEMON.md` (changed: *Where the data comes from*)
@@ -1285,6 +1286,38 @@ Where the implementation turned out different from this plan, why, and what chan
   is limited to the four games PokeDaisy has them for: with a PokeDaisy checkout it compared PureRGB's with Yellow
   Legacy's (step 9's, unseen as the ROM tests had run without the checkout).
 
+- **2026-11-15, step 12**: Crystal's code ports 46 of Crystal Clear's 49 RAM symbols by its votes, but about half of
+  its 39 ROM tables: the hack moved its wild Pokémon, fishing, tree and rock tables with their code to bank 0x11, made
+  its trainer groups a bank and a pointer, and rewrote the code around others. One single vote was wrong
+  (`MapGroupPointers` at 40:4000), and several constants are its own. As the user chose, each value has a method,
+  named by a line of its own in `gbpk-symbols.txt` where it isn't the votes (two at least, strays under an eighth):
+  - `port.data`: Crystal's bytes, found once;
+  - `port.code`: a pattern of the build's bytes, found once. Where it is also found in Crystal, it must give Crystal's
+    value there (28 of the 47 are);
+  - `port.count`: a table's length to its lowest pointer (the landmarks: 96 on Crystal, 117 here);
+  - `port.same`: Crystal's constant, its table found whole by `port.data`;
+  - `items|types from crystal`: by the item names in each ROM, and the whole type chart.
+
+  Every value is found in all eight builds, the four of a version agree, and every address PokeDaisy also has agrees
+  with it. `pret-extract.py` changes too (not in the step's files): it passes over the lines of a game with port lines,
+  and `SOURCES`' header names the three scripts (`gbpk-extra.json` is unchanged). `--self-test` checks the votes,
+  a pattern and a count on made-up ROMs. Besides Crystal's keys, the port gives the keys steps 13 and 14 need, found
+  in the hack's own code: `rom.landmarkRegions` and `const.landmarkRegionsFirst` (RegionCheck's stand-ins, from
+  landmark 96), `rom.textDict` and `const.textDictFirst` (PlaceNextChar's table, from byte 0x16), and the second
+  block of event flags (as the user chose: below). Found for step 13, which reads them:
+  - **Event flags**: `EventFlagAction` keeps flags from 2048 (`const.numEvents`, its `cp 8`) in a second block,
+    `ram.eventFlags2` (D6F6), which runs at most to `ram.eventFlags2End` (`wMapObjects`, D71E: the 40 bytes Crystal
+    leaves after `wCmdQueue`). The data file's `flags` gets it as a second block.
+  - **`wPlayerGender`** (D472) holds 0-2, a player of three, not Crystal's bit.
+  - **Fishing**: `FishGroups`' entries are 6 bytes (Crystal's 7), and its `Fish` routine is its own.
+  - **Trees**: `TreeMons` counts its sets from 1 (19 of them; Crystal's 8 from 0).
+  - **Trainers**: `rom.trainerGroupsFar` (a bank and a pointer a class, as Crystal Legacy's), and 105 classes. Its party
+    types are still to be read.
+  - **Palettes**: `GetMonPalettePointer` picks between two tables by bit 2 of D9C4 (an option). `rom.monPalettes` is
+    02:6A2C, Crystal's own bytes (PokeDaisy's); the hack's own, 02:622C, is the one used while the bit is clear.
+  - **Versions**: the evolutions' pointers differ between v2.5.11 and v2.6.0 too, not only the move descriptions.
+    Its base data isn't Crystal's byte for byte, as PokeDaisy says: the held items and TM bits differ.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -1302,7 +1335,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 9. PureRed, PureBlue and PureGreen | done | GB Pokémon hacks: PureRed, PureBlue and PureGreen, from their builds' symbols, their memory and their ROMs |
 | 10. PureRGB's switches, signatures and Hyper Ball | done | GB Pokémon hacks: PureRGB's switched types and matchups, signature moves and Hyper Ball |
 | 11. PureRGB's guides | done | GB Pokémon hacks: PureRGB's guides, Red's and Blue's with its flags and its levels |
-| 12. Crystal Clear's addresses, ported | todo | |
+| 12. Crystal Clear's addresses, ported | done | GB Pokémon hacks: Crystal Clear's addresses, mapped from pokecrystal's by the code that uses them |
 | 13. Crystal Clear | todo | |
 | 14. Crystal Clear's guide | todo | |
 | 15. The documentation and the weight | todo | |

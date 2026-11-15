@@ -40,6 +40,20 @@
 #                                           know stops the run), and those at or past SPECIAL its special types
 #   <games> split <TYPE> physical|special|stats   an exception to the type constants' split, the source in a comment:
 #                                           the type moved out of or into special, or to the attacker's stats
+#
+# A ROM hack with no source (Crystal Clear) is ported instead: kiwami/tools/gbpk-port.py, not pret-extract.py, reads
+# its lines (pret-extract.py passes over every game with a port line) and writes kiwami/tools/gbpk-port.json. It is on
+# its base game's ram., rom. and const. lines, which name the base's symbol, and has lines of its own:
+#   <game> port <repo> <build> <sha1> <name>   one of its builds, by the user's ROM's SHA-1; ported from <build>.sym on
+#                                           <repo>'s symbols branch and the base's ROM (its roms.sha1's). <name>'s
+#                                           first word is the version, whose builds must agree on every value
+#   <game> port.data <kind>.<key> <len>     found by the base's first <len> bytes at the symbol, once in the build
+#   <game> port.code <kind>.<key> <pattern> found by a pattern of the build's bytes, once (gbpk-port.py's header):
+#                                           a key the base hasn't (no base line) is found only so
+#   <game> port.count const.<key> rom.<table> <size> <offset>   a table's length, its entries up to the lowest pointer
+#   <game> port.same const.<key> rom.<table>   the base's constant, the table (port.data) being the base's bytes
+#   <game> items|types from <base game>     the base game's items, by their names in the ROMs, and its types
+# A line with no port.* method is found by the votes of the base's code that uses the symbol.
 
 # The releases (PokeDaisy's GameTitles.kt must list the same SHA-1s for each game)
 crystal release pokecrystal pokecrystal USA
@@ -69,139 +83,237 @@ pureblue build pureRGB-2.7.6 pokeblue d419fe244fa17196f7df46ddab47c840e7573652 v
 pureblue build pureRGB-2.7.7 pokeblue b96ee563112c2b17ce1828e48446e1d71d61e8b5 v2.7.7
 puregreen build pureRGB-2.7.6 pokegreen fe4c63a67c8b28770916cc7b1788f9eeb04ccf02 v2.7.6
 puregreen build pureRGB-2.7.7 pokegreen 258ec7fef3d966cfb2a7e16c15fe1a329cf392ce v2.7.7
+# (Crystal Clear, ShockSlayer's, no source: its eight builds, each its release's patch on Crystal (USA), ported from
+# Crystal rev 1, pokecrystal11. PokeDaisy's GameTitles.kt has the four Standard Colors and Color Filter builds'
+# SHA-1s; the four SGB Mode builds' are the user's patched ROMs'. Its lines of its own are after Gen II's ROM tables)
+crystal-clear port pokecrystal pokecrystal11 a1c4da6b0057c98fe4ebea45d6812a484fc69abd v2.5.11
+crystal-clear port pokecrystal pokecrystal11 6fc677bf7a9db103cb9ee11ac08d26782e69ae41 v2.5.11 Color Filter
+crystal-clear port pokecrystal pokecrystal11 8be3dea853b39442f36f94c3988e074788c5ecec v2.5.11 SGB Mode
+crystal-clear port pokecrystal pokecrystal11 913c49bd487efb4516b94fc427a1b12628be3daa v2.5.11 Color Filter SGB Mode
+crystal-clear port pokecrystal pokecrystal11 84d5c4924c3f1f3fc690669148b7e392948fb23d v2.6.0
+crystal-clear port pokecrystal pokecrystal11 534876e4e4d0d79a82fef3bbe5bea11c40451727 v2.6.0 Color Filter
+crystal-clear port pokecrystal pokecrystal11 059632e84a92d6870a1e83c313a72974224f9c1c v2.6.0 SGB Mode
+crystal-clear port pokecrystal pokecrystal11 88c943e6d76dbde9f8edace5df396fe6bbc9e146 v2.6.0 Color Filter SGB Mode
 
 # Gen II's WRAM that PokeDaisy reads too (Gen2Reader.kt's Gen2Config): pret's value must agree with it
-crystal,crystal-legacy,gold,silver ram.partyCount wPartyCount
-crystal,crystal-legacy,gold,silver ram.partyMons wPartyMons
-crystal,crystal-legacy,gold,silver ram.numItems wNumItems
-crystal,crystal-legacy,gold,silver ram.numKeyItems wNumKeyItems
-crystal,crystal-legacy,gold,silver ram.numBalls wNumBalls
-crystal,crystal-legacy,gold,silver ram.tmsHms wTMsHMs
-crystal,crystal-legacy,gold,silver ram.money wMoney
-crystal,crystal-legacy,gold,silver ram.mapGroup wMapGroup
-crystal,crystal-legacy,gold,silver ram.backupMapGroup wBackupMapGroup
-crystal,crystal-legacy,gold,silver ram.battleMode wBattleMode
-crystal,crystal-legacy,gold,silver ram.battleMon wBattleMon
-crystal,crystal-legacy,gold,silver ram.enemyMon wEnemyMon
-crystal,crystal-legacy,gold,silver ram.otPartyCount wOTPartyCount
-crystal,crystal-legacy,gold,silver ram.otPartyMons wOTPartyMons
-crystal,crystal-legacy,gold,silver ram.curOTMon wCurOTMon
-crystal,crystal-legacy ram.playerGender wPlayerGender
-crystal,crystal-legacy,gold,silver ram.gameTime wGameTimeHours
-crystal,crystal-legacy,gold,silver ram.dexCaught wPokedexCaught
-crystal,crystal-legacy,gold,silver ram.dexSeen wPokedexSeen
-crystal,crystal-legacy,gold,silver ram.menu2D w2DMenuCursorInitY
-crystal,crystal-legacy,gold,silver ram.menuCursor wMenuCursorY
-crystal,crystal-legacy,gold,silver ram.moveMenuType wMoveSelectionMenuType
-crystal,crystal-legacy,gold,silver ram.tileMap wTilemap
-crystal,crystal-legacy,gold,silver ram.partyMenuAction wPartyMenuActionText
-crystal,crystal-legacy,gold,silver ram.curBattleMon wCurBattleMon
+crystal,crystal-legacy,crystal-clear,gold,silver ram.partyCount wPartyCount
+crystal,crystal-legacy,crystal-clear,gold,silver ram.partyMons wPartyMons
+crystal,crystal-legacy,crystal-clear,gold,silver ram.numItems wNumItems
+crystal,crystal-legacy,crystal-clear,gold,silver ram.numKeyItems wNumKeyItems
+crystal,crystal-legacy,crystal-clear,gold,silver ram.numBalls wNumBalls
+crystal,crystal-legacy,crystal-clear,gold,silver ram.tmsHms wTMsHMs
+crystal,crystal-legacy,crystal-clear,gold,silver ram.money wMoney
+crystal,crystal-legacy,crystal-clear,gold,silver ram.mapGroup wMapGroup
+crystal,crystal-legacy,crystal-clear,gold,silver ram.backupMapGroup wBackupMapGroup
+crystal,crystal-legacy,crystal-clear,gold,silver ram.battleMode wBattleMode
+crystal,crystal-legacy,crystal-clear,gold,silver ram.battleMon wBattleMon
+crystal,crystal-legacy,crystal-clear,gold,silver ram.enemyMon wEnemyMon
+crystal,crystal-legacy,crystal-clear,gold,silver ram.otPartyCount wOTPartyCount
+crystal,crystal-legacy,crystal-clear,gold,silver ram.otPartyMons wOTPartyMons
+crystal,crystal-legacy,crystal-clear,gold,silver ram.curOTMon wCurOTMon
+crystal,crystal-legacy,crystal-clear ram.playerGender wPlayerGender
+crystal,crystal-legacy,crystal-clear,gold,silver ram.gameTime wGameTimeHours
+crystal,crystal-legacy,crystal-clear,gold,silver ram.dexCaught wPokedexCaught
+crystal,crystal-legacy,crystal-clear,gold,silver ram.dexSeen wPokedexSeen
+crystal,crystal-legacy,crystal-clear,gold,silver ram.menu2D w2DMenuCursorInitY
+crystal,crystal-legacy,crystal-clear,gold,silver ram.menuCursor wMenuCursorY
+crystal,crystal-legacy,crystal-clear,gold,silver ram.moveMenuType wMoveSelectionMenuType
+crystal,crystal-legacy,crystal-clear,gold,silver ram.tileMap wTilemap
+crystal,crystal-legacy,crystal-clear,gold,silver ram.partyMenuAction wPartyMenuActionText
+crystal,crystal-legacy,crystal-clear,gold,silver ram.curBattleMon wCurBattleMon
 # (PokeDaisy's GuideCrystalGen.kt has Crystal's)
-crystal,crystal-legacy,gold,silver ram.eventFlags wEventFlags
-crystal,crystal-legacy,gold,silver ram.timeOfDay wTimeOfDay
-crystal,crystal-legacy,gold,silver ram.johtoBadges wJohtoBadges
-crystal,crystal-legacy,gold,silver ram.tradeFlags wTradeFlags
+crystal,crystal-legacy,crystal-clear,gold,silver ram.eventFlags wEventFlags
+crystal,crystal-legacy,crystal-clear,gold,silver ram.timeOfDay wTimeOfDay
+crystal,crystal-legacy,crystal-clear,gold,silver ram.johtoBadges wJohtoBadges
+crystal,crystal-legacy,crystal-clear,gold,silver ram.tradeFlags wTradeFlags
 
 # Gen II's WRAM that PokeDaisy doesn't read
-crystal,crystal-legacy,gold,silver ram.kantoBadges wKantoBadges
-crystal,crystal-legacy,gold,silver ram.playerID wPlayerID
-crystal,crystal-legacy,gold,silver ram.playerName wPlayerName
-crystal,crystal-legacy,gold,silver ram.mapNumber wMapNumber
-crystal,crystal-legacy,gold,silver ram.yCoord wYCoord
-crystal,crystal-legacy,gold,silver ram.xCoord wXCoord
-crystal,crystal-legacy,gold,silver ram.partyMonOTs wPartyMonOTs
-crystal,crystal-legacy,gold,silver ram.partyMonNicknames wPartyMonNicknames
-crystal,crystal-legacy,gold,silver ram.playerStatLevels wPlayerStatLevels
-crystal,crystal-legacy,gold,silver ram.enemyStatLevels wEnemyStatLevels
-crystal,crystal-legacy,gold,silver ram.dayCareMan wDayCareMan
-crystal,crystal-legacy,gold,silver ram.breedMon1 wBreedMon1
-crystal,crystal-legacy,gold,silver ram.dayCareLady wDayCareLady
-crystal,crystal-legacy,gold,silver ram.breedMon2 wBreedMon2
-crystal,crystal-legacy,gold,silver ram.roamMon1 wRoamMon1
-crystal,crystal-legacy,gold,silver ram.roamMon2 wRoamMon2
-crystal,crystal-legacy,gold,silver ram.roamMon3 wRoamMon3
-crystal,crystal-legacy,gold,silver ram.stepsToEgg wStepsToEgg
-crystal,crystal-legacy,gold,silver ram.otherTrainerClass wOtherTrainerClass
-crystal,crystal-legacy,gold,silver ram.otherTrainerID wOtherTrainerID
+crystal,crystal-legacy,crystal-clear,gold,silver ram.kantoBadges wKantoBadges
+crystal,crystal-legacy,crystal-clear,gold,silver ram.playerID wPlayerID
+crystal,crystal-legacy,crystal-clear,gold,silver ram.playerName wPlayerName
+crystal,crystal-legacy,crystal-clear,gold,silver ram.mapNumber wMapNumber
+crystal,crystal-legacy,crystal-clear,gold,silver ram.yCoord wYCoord
+crystal,crystal-legacy,crystal-clear,gold,silver ram.xCoord wXCoord
+crystal,crystal-legacy,crystal-clear,gold,silver ram.partyMonOTs wPartyMonOTs
+crystal,crystal-legacy,crystal-clear,gold,silver ram.partyMonNicknames wPartyMonNicknames
+crystal,crystal-legacy,crystal-clear,gold,silver ram.playerStatLevels wPlayerStatLevels
+crystal,crystal-legacy,crystal-clear,gold,silver ram.enemyStatLevels wEnemyStatLevels
+crystal,crystal-legacy,crystal-clear,gold,silver ram.dayCareMan wDayCareMan
+crystal,crystal-legacy,crystal-clear,gold,silver ram.breedMon1 wBreedMon1
+crystal,crystal-legacy,crystal-clear,gold,silver ram.dayCareLady wDayCareLady
+crystal,crystal-legacy,crystal-clear,gold,silver ram.breedMon2 wBreedMon2
+crystal,crystal-legacy,crystal-clear,gold,silver ram.roamMon1 wRoamMon1
+crystal,crystal-legacy,crystal-clear,gold,silver ram.roamMon2 wRoamMon2
+crystal,crystal-legacy,crystal-clear,gold,silver ram.roamMon3 wRoamMon3
+crystal,crystal-legacy,crystal-clear,gold,silver ram.stepsToEgg wStepsToEgg
+crystal,crystal-legacy,crystal-clear,gold,silver ram.otherTrainerClass wOtherTrainerClass
+crystal,crystal-legacy,crystal-clear,gold,silver ram.otherTrainerID wOtherTrainerID
 
 # The event flags' count (a bit each at wEventFlags)
-crystal,crystal-legacy,gold,silver const.numEvents constants/event_flags.asm NUM_EVENTS
+crystal,crystal-legacy,crystal-clear,gold,silver const.numEvents constants/event_flags.asm NUM_EVENTS
 
 # Gen II's ROM tables (ui/src/kiwami/gbpk/rom2.cpp reads them; their layouts are named there). PokeDaisy's Gen2Dex.kt
 # gives some of them too (GEN2_DEX_CRYSTAL, GEN2_DEX_GOLD_SILVER): pret's value must agree with it
-crystal,crystal-legacy,gold,silver rom.baseData BaseData
-crystal,crystal-legacy,gold,silver rom.pokemonNames PokemonNames
-crystal,crystal-legacy,gold,silver rom.moves Moves
-crystal,crystal-legacy,gold,silver rom.moveNames MoveNames
-crystal,crystal-legacy,gold,silver rom.moveDescriptions MoveDescriptions
-crystal,crystal-legacy,gold,silver rom.moveEffectPriorities MoveEffectPriorities
-crystal,crystal-legacy,gold,silver rom.itemNames ItemNames
-crystal,crystal-legacy,gold,silver rom.itemAttributes ItemAttributes
-crystal,crystal-legacy,gold,silver rom.itemDescriptions ItemDescriptions
-crystal,crystal-legacy,gold,silver rom.evosAttacksPointers EvosAttacksPointers
-crystal,crystal-legacy,gold,silver rom.tmHmMoves TMHMMoves
-crystal,gold,silver rom.dexEntryPointers PokedexDataPointerTable
+crystal,crystal-legacy,crystal-clear,gold,silver rom.baseData BaseData
+crystal,crystal-legacy,crystal-clear,gold,silver rom.pokemonNames PokemonNames
+crystal,crystal-legacy,crystal-clear,gold,silver rom.moves Moves
+crystal,crystal-legacy,crystal-clear,gold,silver rom.moveNames MoveNames
+crystal,crystal-legacy,crystal-clear,gold,silver rom.moveDescriptions MoveDescriptions
+crystal,crystal-legacy,crystal-clear,gold,silver rom.moveEffectPriorities MoveEffectPriorities
+crystal,crystal-legacy,crystal-clear,gold,silver rom.itemNames ItemNames
+crystal,crystal-legacy,crystal-clear,gold,silver rom.itemAttributes ItemAttributes
+crystal,crystal-legacy,crystal-clear,gold,silver rom.itemDescriptions ItemDescriptions
+crystal,crystal-legacy,crystal-clear,gold,silver rom.evosAttacksPointers EvosAttacksPointers
+crystal,crystal-legacy,crystal-clear,gold,silver rom.tmHmMoves TMHMMoves
+crystal,crystal-clear,gold,silver rom.dexEntryPointers PokedexDataPointerTable
 # (Crystal looks a Pokédex entry's bank up in a table, a bank for each 64 species; Gold and Silver count from the
 # first entry's bank; Crystal Legacy's table has the bank in each entry, a bank and a pointer a species, under its own
 # key, and no table of banks: engine/pokedex/pokedex_2.asm GetDexEntryPointer)
-crystal rom.dexEntryBanks GetDexEntryPointer.PokedexEntryBanks
+crystal,crystal-clear rom.dexEntryBanks GetDexEntryPointer.PokedexEntryBanks
 gold,silver rom.dexEntryFirst BulbasaurPokedexEntry
 crystal-legacy rom.dexEntryFar PokedexDataPointerTable
-crystal,crystal-legacy,gold,silver rom.johtoGrass JohtoGrassWildMons
-crystal,crystal-legacy,gold,silver rom.johtoWater JohtoWaterWildMons
-crystal,crystal-legacy,gold,silver rom.kantoGrass KantoGrassWildMons
-crystal,crystal-legacy,gold,silver rom.kantoWater KantoWaterWildMons
-crystal,crystal-legacy,gold,silver rom.grassProbs GrassMonProbTable
-crystal,crystal-legacy,gold,silver rom.waterProbs WaterMonProbTable
-crystal,crystal-legacy,gold,silver rom.fishGroups FishGroups
-crystal,crystal-legacy,gold,silver rom.timeFishGroups TimeFishGroups
-crystal,crystal-legacy,gold,silver rom.treeMonMaps TreeMonMaps
-crystal,crystal-legacy,gold,silver rom.rockMonMaps RockMonMaps
-crystal,crystal-legacy,gold,silver rom.treeMons TreeMons
+crystal,crystal-legacy,crystal-clear,gold,silver rom.johtoGrass JohtoGrassWildMons
+crystal,crystal-legacy,crystal-clear,gold,silver rom.johtoWater JohtoWaterWildMons
+crystal,crystal-legacy,crystal-clear,gold,silver rom.kantoGrass KantoGrassWildMons
+crystal,crystal-legacy,crystal-clear,gold,silver rom.kantoWater KantoWaterWildMons
+crystal,crystal-legacy,crystal-clear,gold,silver rom.grassProbs GrassMonProbTable
+crystal,crystal-legacy,crystal-clear,gold,silver rom.waterProbs WaterMonProbTable
+crystal,crystal-legacy,crystal-clear,gold,silver rom.fishGroups FishGroups
+crystal,crystal-legacy,crystal-clear,gold,silver rom.timeFishGroups TimeFishGroups
+crystal,crystal-legacy,crystal-clear,gold,silver rom.treeMonMaps TreeMonMaps
+crystal,crystal-legacy,crystal-clear,gold,silver rom.rockMonMaps RockMonMaps
+crystal,crystal-legacy,crystal-clear,gold,silver rom.treeMons TreeMons
 # (Crystal Legacy's Rock Smash sets are a table of their own, from 0: engine/events/treemons.asm GetRockSmashMons)
 crystal-legacy rom.rockSmashMons RockSmashMons
 crystal,gold,silver rom.trainerGroups TrainerGroups
 # (Crystal Legacy's groups are a bank and a pointer a class, under their own key, and its party types have four more
 # fields before the item and moves, by these bits: a nickname, two DVs, five words of stat experience, happiness;
 # data/trainers/party_pointers.asm, engine/battle/read_trainer_party.asm ReadTrainerPartyPieces)
-crystal-legacy rom.trainerGroupsFar TrainerGroups
+crystal-legacy,crystal-clear rom.trainerGroupsFar TrainerGroups
 crystal-legacy const.trainerNickname constants/trainer_data_constants.asm TRAINERTYPE_NICKNAME
 crystal-legacy const.trainerDvs constants/trainer_data_constants.asm TRAINERTYPE_DVS
 crystal-legacy const.trainerStatExp constants/trainer_data_constants.asm TRAINERTYPE_STAT_EXP
 crystal-legacy const.trainerHappiness constants/trainer_data_constants.asm TRAINERTYPE_HAPPINESS
-crystal,crystal-legacy,gold,silver rom.trainerClassNames TrainerClassNames
-crystal,crystal-legacy,gold,silver rom.landmarks Landmarks
-crystal,crystal-legacy,gold,silver rom.mapGroups MapGroupPointers
+crystal,crystal-legacy,crystal-clear,gold,silver rom.trainerClassNames TrainerClassNames
+crystal,crystal-legacy,crystal-clear,gold,silver rom.landmarks Landmarks
+crystal,crystal-legacy,crystal-clear,gold,silver rom.mapGroups MapGroupPointers
 # (the first map's attributes follow the last map group's headers: where that group ends)
-crystal,crystal-legacy,gold,silver rom.mapHeadersEnd NewBarkTown_MapAttributes
+crystal,crystal-legacy,crystal-clear,gold,silver rom.mapHeadersEnd NewBarkTown_MapAttributes
 # (the type chart, data/types/type_matchups.asm: attacker, defender and multiplier triples; the Foresight pairs after
 # its -2, then -1)
-crystal,crystal-legacy,gold,silver rom.typeChart TypeMatchups
+crystal,crystal-legacy,crystal-clear,gold,silver rom.typeChart TypeMatchups
 
 # Gen II's counts and the one move its priority names
-crystal,crystal-legacy,gold,silver const.numPokemon constants/pokemon_constants.asm NUM_POKEMON
-crystal,crystal-legacy,gold,silver const.numMoves constants/move_constants.asm NUM_ATTACKS
-crystal,crystal-legacy,gold,silver const.vitalThrow constants/move_constants.asm VITAL_THROW
-crystal,crystal-legacy,gold,silver const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINER_CLASSES
-crystal,crystal-legacy,gold,silver const.numLandmarks constants/landmark_constants.asm NUM_LANDMARKS
+crystal,crystal-legacy,crystal-clear,gold,silver const.numPokemon constants/pokemon_constants.asm NUM_POKEMON
+crystal,crystal-legacy,crystal-clear,gold,silver const.numMoves constants/move_constants.asm NUM_ATTACKS
+crystal,crystal-legacy,crystal-clear,gold,silver const.vitalThrow constants/move_constants.asm VITAL_THROW
+crystal,crystal-legacy,crystal-clear,gold,silver const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINER_CLASSES
+crystal,crystal-legacy,crystal-clear,gold,silver const.numLandmarks constants/landmark_constants.asm NUM_LANDMARKS
 # (the Pokégear: a landmark from KANTO_LANDMARK up is on the Kanto map, the Fast Ship's on Johto's)
-crystal,crystal-legacy,gold,silver const.kantoLandmark constants/landmark_constants.asm KANTO_LANDMARK
-crystal,crystal-legacy,gold,silver const.fastShipLandmark constants/landmark_constants.asm LANDMARK_FAST_SHIP
+crystal,crystal-legacy,crystal-clear,gold,silver const.kantoLandmark constants/landmark_constants.asm KANTO_LANDMARK
+crystal,crystal-legacy,crystal-clear,gold,silver const.fastShipLandmark constants/landmark_constants.asm LANDMARK_FAST_SHIP
+
+# Crystal Clear's values Crystal's code doesn't find by its votes (gbpk-port.py): where Crystal's code is kept around
+# the use, a pattern of it that gives Crystal's own value in Crystal too; where the hack rewrote it, a pattern of the
+# hack's own code, its routine named (the names are pokecrystal's for the routine it stands for)
+# (its RAM: Crystal's, but for the map ids and caught flags, which the votes find moved)
+# (ResetMapBufferEventFlags; EventFlagAction keeps flags 2048 and up in a second block: wEventFlags is its first 2048,
+# NUM_EVENTS by its cp, and the second block runs at most to wMapObjects, the 40 bytes Crystal leaves after wCmdQueue)
+crystal-clear port.code ram.eventFlags af 21 {addr} 22 c9
+crystal-clear port.code ram.eventFlags2 fe .. 21 .. .. 38 06 21 {addr} d6
+crystal-clear port.code const.numEvents 7a fe {hi} 21 .. .. 38 06 21
+crystal-clear ram.eventFlags2End wMapObjects
+# (TradeFlagAction)
+crystal-clear port.code ram.tradeFlags 21 {addr} fa .. .. 4f 3e 03 cd
+# (its player is one of three, 0-2 in wPlayerGender, not Crystal's bit: the hack's own check of it)
+crystal-clear port.code ram.playerGender fa {addr} fe 03 38 05 3e 02 ea
+# (InitRoamMons, DoEggStep, the battle's end, a single use each that the votes take only as one)
+crystal-clear port.code ram.roamMon1 cd .. .. af ea {addr} ea .. .. ea .. .. 3e ff
+crystal-clear port.code ram.roamMon2 cd .. .. af ea .. .. ea {addr} ea .. .. 3e ff
+crystal-clear port.code ram.roamMon3 cd .. .. af ea .. .. ea .. .. ea {addr} 3e ff
+crystal-clear port.code ram.stepsToEgg cb 6e c8 21 {addr} 35 c0
+crystal-clear port.code ram.otherTrainerID fa .. .. ea {addr} c9 3e 80 ea
+# (its ROM: the tables it kept as Crystal's, by their bytes; the Pokémon's names and the moves whole, so their counts are
+# Crystal's; the type chart whole, to its -1, so its types are)
+crystal-clear port.data rom.baseData 32
+crystal-clear port.data rom.pokemonNames 2510
+crystal-clear port.data rom.moves 1757
+crystal-clear port.data rom.moveNames 16
+crystal-clear port.data rom.itemNames 16
+crystal-clear port.data rom.typeChart 332
+crystal-clear port.data rom.johtoMap 32
+crystal-clear port.data rom.kantoMap 32
+crystal-clear port.same const.numPokemon rom.pokemonNames
+crystal-clear port.same const.numMoves rom.moves
+crystal-clear port.same const.vitalThrow rom.moves
+crystal-clear items from crystal
+crystal-clear types from crystal
+# (GetMoveDescription, GetMoveEffectPriority ... the code Crystal keeps around them)
+crystal-clear port.code rom.moveDescriptions e5 21 {addr} fa .. .. 3d 4f 06 00 09 09 2a
+crystal-clear port.code rom.moveEffectPriorities cd .. .. 21 {addr} 2a b8 28 08
+crystal-clear port.code rom.itemAttributes e5 c5 21 {addr} 4f 06 00 09 af ea .. .. fa .. .. 3d 4f 3e 07 cd .. .. 3e {bank} cd
+crystal-clear port.code rom.itemDescriptions d5 21 {addr} fa .. .. 3d 4f 06 00 09 09 5e
+crystal-clear port.code rom.tmHmMoves 47 0e 00 21 {addr} 2a a7 28 .. b8 28 03 0c
+crystal-clear port.code rom.dexEntryPointers e5 21 {addr} 78 3d 16 00 5f
+crystal-clear port.code rom.dexEntryBanks 07 07 e6 03 21 {addr} 16 00 5f 19 46
+crystal-clear port.code rom.landmarks 29 29 11 {addr} 19 2a 5f 56
+crystal-clear port.code rom.picsBanks d6 12 4f 06 00 21 {addr} 09 7e c1 e1 c9
+crystal-clear port.code rom.townMapPalMap fe 60 30 1f 21 {addr} cb 3f 38 0b
+crystal-clear port.code rom.unownPicPointers fa 34 d2 16 {bank} 21 {addr} 3d 01 06 00
+crystal-clear port.code rom.townMapGfx 21 {addr} 11 00 90 01 30 {bank} c3
+crystal-clear port.code rom.pokegearPals 21 {addr} 11 00 d0 01 30 00 3e 05
+# (the wild Pokémon's lookup, moved with the tables to another bank: _GrassWildmonLookup and _WaterWildmonLookup, each a
+# Johto and a Kanto table, the grass's 47 bytes a map and the water's 9; the odds before them, ChooseWildEncounter)
+crystal-clear port.code rom.johtoGrass 21 {addr} 11 .. .. cd .. .. 01 2f 00
+crystal-clear port.code rom.kantoGrass 21 .. .. 11 {addr} cd .. .. 01 2f 00
+crystal-clear port.code rom.johtoWater 21 {addr} 11 .. .. cd .. .. 01 09 00
+crystal-clear port.code rom.kantoWater 21 .. .. 11 {addr} cd .. .. 01 09 00
+crystal-clear port.code rom.grassProbs 01 0e 00 cd .. .. 11 {addr}
+crystal-clear port.code rom.waterProbs 23 23 23 cd .. .. 11 {addr} 28 0e
+# (the hack's own code: Fish, its groups 6 bytes each, Crystal's 7; GetFishGroupIndex's time table, 4 bytes as Crystal's)
+crystal-clear port.code rom.fishGroups 43 15 5a 16 00 21 {addr} 19
+crystal-clear port.code rom.timeFishGroups 5e 16 00 21 {addr} 19 19 19 19 fa
+# (TreeMonEncounter and RockMonEncounter, rewritten; GetTreeMons, its sets from 1, 19 of them, Crystal's from 0)
+crystal-clear port.code rom.treeMonMaps 21 {addr} cd .. .. 30 .. cd .. .. 30 .. 3e 0a cd .. .. fe 08 30 .. cd .. .. 30 .. 3e 08
+crystal-clear port.code rom.rockMonMaps 21 {addr} cd .. .. 30 .. cd .. .. 30 .. 3e 0a cd .. .. fe 08 30 .. cd .. .. 30 .. 3e 23
+crystal-clear port.code rom.treeMons a7 28 .. 3d 5f 16 00 21 {addr} 19 19 2a 66 6f
+# (ReadTrainerParty: its groups a bank and a pointer a class, as Crystal Legacy's; TrainerClassNames through
+# NamesPointers, the entry after wPartyMonOTs' and wOTPartyMonOTs'; its trainer class viewer, from 1 to the last)
+crystal-clear port.code rom.trainerGroupsFar fa 2f d2 3d 4f 06 00 21 {addr} 09 09 09
+crystal-clear port.code rom.trainerClassNames 00 00 00 .. 00 40 00 ff dd 00 .. .. {bank} {addr}
+crystal-clear port.code const.numTrainerClasses fa 2f d2 fe {byte} 28 .. 3c ea 2f d2
+# (GetAnyMapPointer, and the bank its rewritten callers switch to; the map headers end where the first map's attributes, New Bark Town's,
+# begin: Route 29's header and New Bark Town's)
+crystal-clear port.code rom.mapGroups c5 05 48 06 00 21 {addr} 09 09 2a 66 6f c1 0d 06 00 3e 09 / f0 9d f5 3e {bank} d7 cd .. .. 11 03 00 19 2a 66 6f
+crystal-clear port.code rom.mapHeadersEnd 25 01 02 .. .. 02 .. 00 .. 25 01 01 {addr} 01 .. 00 02
+# (GetFrontpicPointer; GetMonPalettePointer, whose second table, the one an option picks, is Crystal's palettes)
+crystal-clear port.code rom.picPointers 21 {addr} 16 {bank} fe c9 20 03 79 16
+crystal-clear port.code rom.monPalettes cb 57 28 03 01 {addr} e1 f1 09 c9
+# (its landmarks: as many as come before the first name; RegionCheck's, rewritten: the landmarks from the first past
+# Crystal's take their region from a stand-in landmark in a table of its own)
+crystal-clear port.count const.numLandmarks rom.landmarks 4 2
+crystal-clear port.code const.kantoLandmark 09 7e fe .. 28 04 fe {byte} 30 05
+crystal-clear port.code const.fastShipLandmark 09 7e fe {byte} 28 04 fe .. 30 05
+crystal-clear port.code rom.landmarkRegions 7b fe .. 38 0a d6 .. 4f 06 00 21 {addr} 09 7e
+crystal-clear port.code const.landmarkRegionsFirst 7b fe {byte} 38 0a d6 .. 4f 06 00 21
+# (its text is packed: PlaceNextChar's table of words and routines, a byte from the first)
+crystal-clear port.code rom.textDict d6 16 4f 06 00 21 {addr} 09 09 09 2a a7 20
+crystal-clear port.code const.textDictFirst d6 {byte} 4f 06 00 21 .. .. 09 09 09 2a a7 20
 
 # Gen II's front pictures and their palettes (ui/src/kiwami/gbpk/pics.cpp), the Pokégear's Johto and Kanto maps
 # (maps.cpp). PokeDaisy's Gen2Dex.kt and Gen2Art.kt give them too: pret's value must agree with it. Crystal fixes a
 # picture's bank by an index into a table, Gold and Silver by a list of pairs (engine/gfx/load_pics.asm FixPicBank)
-crystal,crystal-legacy,gold,silver rom.picPointers PokemonPicPointers
-crystal,crystal-legacy,gold,silver rom.unownPicPointers UnownPicPointers
-crystal,crystal-legacy rom.picsBanks FixPicBank.PicsBanks
+crystal,crystal-legacy,crystal-clear,gold,silver rom.picPointers PokemonPicPointers
+crystal,crystal-legacy,crystal-clear,gold,silver rom.unownPicPointers UnownPicPointers
+crystal,crystal-legacy,crystal-clear rom.picsBanks FixPicBank.PicsBanks
 gold,silver rom.picBankFixes FixPicBank.FixPicBankTable
-crystal,crystal-legacy,gold,silver rom.monPalettes PokemonPalettes
-crystal,crystal-legacy,gold,silver rom.townMapGfx TownMapGFX
-crystal,crystal-legacy,gold,silver rom.johtoMap JohtoMap
-crystal,crystal-legacy,gold,silver rom.kantoMap KantoMap
-crystal,crystal-legacy,gold,silver rom.townMapPalMap TownMapPals.PalMap
+crystal,crystal-legacy,crystal-clear,gold,silver rom.monPalettes PokemonPalettes
+crystal,crystal-legacy,crystal-clear,gold,silver rom.townMapGfx TownMapGFX
+crystal,crystal-legacy,crystal-clear,gold,silver rom.johtoMap JohtoMap
+crystal,crystal-legacy,crystal-clear,gold,silver rom.kantoMap KantoMap
+crystal,crystal-legacy,crystal-clear,gold,silver rom.townMapPalMap TownMapPals.PalMap
 # (Crystal's boy's; the girl's differ only in the cities' colour, and the map is read once, not by the save)
-crystal,crystal-legacy rom.pokegearPals MalePokegearPals
+crystal,crystal-legacy,crystal-clear rom.pokegearPals MalePokegearPals
 gold,silver rom.pokegearPals PokegearPals
 
 # Gold and Silver's guide, built from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp): each gym leader's trainer

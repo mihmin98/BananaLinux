@@ -798,7 +798,7 @@ static void testRomTables()
 	// the type chart: Water on Fire, and past the -2 Normal on Ghost (Foresight's pair counts as any other); the rest
 	// neutral, upstream's Gen II cells not among them (Fire on Grass)
 	{
-		const TypeChart& c = static_cast<const GbRomData&>(*r).chart;
+		const TypeChart& c = static_cast<const GbRomData&>(*r).rules.chart;
 		auto cell = [&](nds::Type a, nds::Type t) { return c[(size_t)(chartIndex(a) * CHART_TYPES + chartIndex(t))]; };
 		CHECK(cell(nds::WATER, nds::FIRE) == 8 && cell(nds::NORMAL, nds::GHOST) == 0 && cell(nds::FIRE, nds::GRASS) == -1);
 		int listed = 0;
@@ -1790,6 +1790,32 @@ static void testPureRGB()
 		auto l = checkPure(c, c);
 		CHECK(l->battle.kind == nds::BattleKind::NONE);
 	}
+	// the save's switches: none in the captures (no species switched back, the matchups the game's own, the signature
+	// moves on); set by hand, the first species of the list switched back, Ghost on Psychic 0x and Bug on Poison 0.5x
+	// (bits 0 and 2; bit 4, the experience bar, isn't a matchup), and the signature moves off (event flag 131)
+	{
+		GameData g = game("purered");
+		pickRelease(g, 0);
+		CHECK(g.size("signaturesOff") == 131 && g.at("typeRemapFlags").addr == 0xDA3D && g.at("options3").addr == 0xDA48);
+		Dump d;
+		if (d.load("purered"))
+		{
+			Reader r;
+			r.open(g);
+			double now = 0;
+			replay(r, d, now, gen1Rom().get());
+			CHECK(r.typeRemap() == 0 && (r.options3() & 15) == 0 && !r.signaturesOff());
+			d.d(0xDA3D) = 0x01;
+			d.d(0xDA3F) = 0x40;
+			d.d(0xDA48) = 0x15;
+			d.d((uint16_t)(g.at("eventFlags").addr + 131 / 8)) |= 1 << (131 % 8);
+			Reader r2;
+			r2.open(g);
+			replay(r2, d, now, gen1Rom().get());
+			CHECK(r2.typeRemap() == 0x400001 && (r2.options3() & 15) == 5 && r2.signaturesOff());
+		}
+		CHECK(Reader().typeRemap() == 0 && !Reader().signaturesOff());
+	}
 	// a wild CHARMANDER Lv12 against Joseph (PIKACHU Lv100, 182/182) out of the first slot: 31 HP in PureRed's, 32 in
 	// PureBlue's
 	for (auto [cap, key, hp] : { std::tuple{ "purered_battle", "purered", 31 }, { "pureblue_battle", "pureblue", 32 } })
@@ -2164,7 +2190,7 @@ static void testGen1RomTables()
 	{
 		using namespace nds;
 		GameRules g;
-		g.chart = static_cast<const GbRomData&>(*r).chart;
+		g.chart = static_cast<const GbRomData&>(*r).rules.chart;
 		useRules(GEN_II);
 		useGameRules(&g);
 		CHECK(effectiveness(WATER, FIRE, NO_TYPE) == 8 && effectiveness(GHOST, PSYCHIC, NO_TYPE) == 0);
@@ -2495,6 +2521,17 @@ static void testPureLayouts()
 	const size_t h2 = r16(b, d.rom.at("hiddenEventPointers").addr + 2);
 	b[h2 + 4] = 0x08;
 	p.rom["hiddenItems2"] = Addr{ 1, 0x7F08 };
+	// the species the type NPC switches back: Bulbasaur to Bug and Flying (7, 2), the form (internal 2) to Fire (0x14);
+	// the moves stronger by a species: Pound for any (a battle rule, -2: passed over), Ember by Bulbasaur at 90 and by
+	// species 2 at 50 (Ember's second entry: the game takes the first), Quick Attack by species 3 at its own power and
+	// 85 % (0xD8)
+	key2("originalTypings", put2({ IDX, 7, 2, 2, 0x14, 0x14, 0xFF }));
+	key2("remappableMoves", put2({ 1, 0xFF, 0xFE, 1, 3, IDX, 90, 0, 3, 1, 50, 0, 2, 3, 0xFF, 0xD8, 0xFF }));
+	// Ghost's category by the attacker's stats, the options' byte, the Hyper Ball (item 5)
+	p.types[8] = nds::GHOST;
+	p.splitStats.set(8);
+	p.ram["options3"] = Addr{ 1, 0xDA48 };
+	p.sizes["hyperBall"] = 5;
 	CHECK(at1 < 0x7F00 && at2 < 0xC000);
 
 	std::string why;
@@ -2547,6 +2584,45 @@ static void testPureLayouts()
 	q.rom.erase("hiddenItems2");
 	auto r2 = readRom(rom, q, &why);
 	CHECK(r2 && static_cast<const GbRomData&>(*r2).hidden.size() == 2);
+	// PureRGB's rules: the two lists, Ghost by the attacker's base stats (Bulbasaur's and species 2's Special above their
+	// Attack, species 3's equal), the options and the Hyper Ball by the data file; a retail game has none of them
+	CHECK(g.originalTypes.size() == 2 && g.originalTypes[0].species == 1 && g.originalTypes[0].types[0] == nds::BUG &&
+		g.originalTypes[0].types[1] == nds::FLYING && g.originalTypes[1].species == 4 && g.originalTypes[1].types[0] == nds::FIRE);
+	CHECK(g.rules.signatures.size() == 2);
+	if (g.rules.signatures.size() == 2)
+	{
+		const Signature &s1 = g.rules.signatures[0], &s2 = g.rules.signatures[1];
+		EQ(s1.move, "Ember");
+		EQ(s2.move, "Quick Attack");
+		CHECK(s1.species == 1 && s1.power == 90 && s1.accuracy == 0 && s2.species == 3 && s2.power == 0 && s2.accuracy == 85);
+	}
+	CHECK(g.rules.statsSpecial[1] && g.rules.statsSpecial[2] && !g.rules.statsSpecial[3] && g.rules.byStats[nds::GHOST] &&
+		!g.rules.byStats[nds::BUG] && g.rules.pureOptions && g.rules.hyperBall == GEN1_ONLY + 5);
+	{
+		auto rr = readRom(made, d, &why);
+		const GbRomData* gr = rr ? static_cast<const GbRomData*>(rr.get()) : nullptr;
+		CHECK(gr && gr->originalTypes.empty() && gr->rules.signatures.empty() && !gr->rules.pureOptions && !gr->rules.hyperBall &&
+			!gr->rules.byStats[nds::GHOST]);
+	}
+	// the save's switches as a copy of the data: bit 0 Bulbasaur Bug/Flying, bit 1 the form Fire; the ROM's data as read
+	// untouched, and itself with no bit (or only bits past the list)
+	{
+		auto s1 = withOriginalTypes(r, 1), s2 = withOriginalTypes(r, 2);
+		CHECK(s1 != r && s1->species[1].types[0] == nds::BUG && s1->species[1].types[1] == nds::FLYING && s1->species[4].types[1] == CRYSTAL_TYPE);
+		CHECK(s2->species[4].types[0] == nds::FIRE && s2->species[4].types[1] == nds::FIRE && s2->species[1].types[1] == nds::POISON);
+		CHECK(r->species[1].types[0] == nds::GRASS && r->species[1].types[1] == nds::POISON && withOriginalTypes(r, 0) == r);
+		CHECK(withOriginalTypes(r, 4)->species[1].types[0] == nds::GRASS && dynamic_cast<const GbRomData*>(s1.get()));
+	}
+	// an original typing of a type the game hasn't, and a signature of a move it hasn't, refuse the read
+	q = p;
+	{
+		std::vector<uint8_t> bad = *rom;
+		bad[0x8000 + q.rom.at("originalTypings").addr - 0x4000 + 1] = 0x30;
+		CHECK(!readRom(std::make_shared<std::vector<uint8_t>>(bad), q, &why) && why.find("OriginalTypings") != std::string::npos);
+		bad = *rom;
+		bad[0x8000 + q.rom.at("remappableMoves").addr - 0x4000 + 4] = 9;
+		CHECK(!readRom(std::make_shared<std::vector<uint8_t>>(bad), q, &why) && why.find("RemappableMoves") != std::string::npos);
+	}
 	// a form's base data without its list refuses the read, and so do PureRGB's TeamMoves without its LoneMoves
 	q = p;
 	q.rom.erase("nonDexSpecies");
@@ -3101,6 +3177,104 @@ static void testForkTypes()
 	useRules(Gen::IV);
 }
 
+// PureRGB's rules (rules.h GameRules): its four matchup options over its chart, each cell alone and only with them on;
+// the signature moves' power by the species that uses them, unless the save turned them off; Ghost special by the
+// attacker's base stats; the Hyper Ball's catch and the Safari Ball's factor (engine/items/item_effects.asm ItemUseBall)
+static void testPureRules()
+{
+	using namespace nds;
+	// its table's four pairs as PureRGB lists them (data/types/type_matchups.asm: Ghost on Psychic 2x, Ice on Fire 1x,
+	// Poison and Bug 2x on each other), Water on Fire for the read's check
+	GameData d;
+	retailTables(d, "red");
+	const std::vector<uint8_t> b = { 0x15, 0x14, 20, 0x08, 0x18, 20, 0x19, 0x14, 10, 0x07, 0x03, 20, 0x03, 0x07, 20, 0xFF };
+	GameRules g;
+	std::string why;
+	CHECK(readTypeChart(RomView{ b, Charset::GEN1 }, d, 0, "TypeEffects", g.chart, &why));
+	EQ(why, "");
+	g.pureOptions = true;
+	useRules(GEN_I);
+	useGameRules(&g);
+	auto cells = [] { return std::array<int, 5>{ effectiveness(GHOST, PSYCHIC, NO_TYPE), effectiveness(ICE, FIRE, NO_TYPE),
+		effectiveness(BUG, POISON, NO_TYPE), effectiveness(POISON, BUG, NO_TYPE), effectiveness(WATER, FIRE, NO_TYPE) }; };
+	CHECK((cells() == std::array<int, 5>{ 8, 4, 8, 8, 8 }));
+	setSwitches(1, false);
+	CHECK((cells() == std::array<int, 5>{ 0, 4, 8, 8, 8 }));
+	setSwitches(2, false);
+	CHECK((cells() == std::array<int, 5>{ 8, 2, 8, 8, 8 }));
+	setSwitches(4, false);
+	CHECK((cells() == std::array<int, 5>{ 8, 4, 2, 8, 8 }));
+	setSwitches(8, false);
+	CHECK((cells() == std::array<int, 5>{ 8, 4, 8, 4, 8 }));
+	setSwitches(0xFF, false);	// (bits 4-7 aren't matchups)
+	CHECK(matchupOptions.load() == 15 && (cells() == std::array<int, 5>{ 0, 2, 2, 4, 8 }));
+	g.pureOptions = false;		// (a game without them: the ROM's cells whatever the byte)
+	CHECK((cells() == std::array<int, 5>{ 8, 4, 8, 8, 8 }));
+	setSwitches(0, false);
+
+	// Drill Peck (Flying, 80) by Fearow (22) at 110, as a move of 110; by Spearow (21) and with the signatures off at its 80
+	g.signatures = { Signature{ "Drill Peck", 22, 110, 0 } };
+	MoveData peck = move(FLYING, 80);
+	peck.name = "Drill Peck";
+	MoveData peck110 = peck, peck80 = peck;
+	peck110.power = 110;
+	peck110.name = peck80.name = "Peck";
+	const Fighter fearow = fighter(22, 50, NORMAL, FLYING, { 100, 80, 120, 70, 70 }), spearow = fighter(21, 50, NORMAL, FLYING, { 100, 80, 120, 70, 70 });
+	const Fighter foe = fighter(19, 50, NORMAL, NO_TYPE, { 80, 90, 90, 60, 60 });
+	const DamageRange r110 = damage(GEN_I, peck110, fearow, foe), r80 = damage(GEN_I, peck80, fearow, foe);
+	RANGE(damage(GEN_I, peck, fearow, foe), r110.lo, r110.hi);
+	RANGE(damage(GEN_I, peck, spearow, foe), r80.lo, r80.hi);
+	CHECK(r110.hi > r80.hi);
+	setSwitches(0, true);
+	RANGE(damage(GEN_I, peck, fearow, foe), r80.lo, r80.hi);
+	setSwitches(0, false);
+
+	// Ghost by the attacker's base stats: Lick at 60 (as the game's 35 would do 1-2 damage) at Lv 50, Special 150 and
+	// Attack 50, on a Fire foe (Defense 100, Special 50). Gengar's (94) base Special is above its Attack: special,
+	//   (22 * 60 * 150 / 50) / 50 = 79, + 2 = 81, STAB 121; random 102 .. 121
+	// Machamp's (68) isn't: physical with the same stats, (22 * 60 * 50 / 100) / 50 = 13, + 2 = 15; random 12 .. 15
+	g.byStats[(size_t)chartIndex(GHOST)] = true;
+	g.statsSpecial[94] = true;
+	MoveData lick = move(GHOST, 60);
+	lick.name = "Lick";
+	const Fighter fire = fighter(58, 50, FIRE, NO_TYPE, { 80, 100, 90, 50, 50 });
+	RANGE(damage(GEN_I, lick, fighter(94, 50, GHOST, POISON, { 50, 60, 110, 150, 150 }), fire), 102, 121);
+	RANGE(damage(GEN_I, lick, fighter(68, 50, FIGHTING, NO_TYPE, { 50, 60, 110, 150, 150 }), fire), 12, 15);
+
+	// the Hyper Ball (1005): a catch rate above 25, or HP below a third (29 of 90; 30 isn't), catches outright; else
+	// Ultra's N 150 with Great's F 8. Catch rate 3 at 90/90 HP, no status:
+	//   W = (90 * 255 / 8) / (90 / 4) = 2868 / 22 = 130, so (3 + 1) of 151 first numbers pass, then 131 of 256 bytes:
+	//   4 * 131 / 256 / 151
+	// the Ultra Ball the same with F 12: W = 1912 / 22 = 86; the Safari Ball F 8 in PureRGB, 12 in retail
+	g.hyperBall = GEN1_ONLY + 5;
+	GbRomData rom;
+	rom.species.resize(3);
+	rom.species[1].catchRate = 3;
+	rom.species[2].catchRate = 45;
+	Mon wild;
+	wild.species = 1;
+	wild.hp = wild.maxHp = 90;
+	CatchContext c{};
+	float mult = 0;
+	NEAR(nds::catchChance(GEN_I, rom, wild, GEN1_ONLY + 5, c, &mult), 4.0 * 131 / 256 / 151);
+	CHECK(mult == 2);
+	NEAR(nds::catchChance(GEN_I, rom, wild, ULTRA_BALL, c, nullptr), 4.0 * 87 / 256 / 151);
+	NEAR(nds::catchChance(GEN_I, rom, wild, SAFARI_BALL, c, nullptr), 4.0 * 131 / 256 / 151);
+	wild.hp = 30;
+	CHECK(nds::catchChance(GEN_I, rom, wild, GEN1_ONLY + 5, c, nullptr) < 1);
+	wild.hp = 29;
+	CHECK(nds::catchChance(GEN_I, rom, wild, GEN1_ONLY + 5, c, &mult) == 1 && mult == 255);
+	wild.hp = 90;
+	wild.species = 2;
+	CHECK(nds::catchChance(GEN_I, rom, wild, GEN1_ONLY + 5, c, nullptr) == 1);
+	wild.species = 1;
+	g.hyperBall = 0;	// (retail's: 1005 is no ball of its rules, a Poké Ball's chance; the Safari Ball's F 12)
+	NEAR(nds::catchChance(GEN_I, rom, wild, SAFARI_BALL, c, nullptr), 4.0 * 87 / 256 / 151);
+	useGameRules(nullptr);
+	NEAR(nds::catchChance(GEN_I, rom, wild, SAFARI_BALL, c, nullptr), 4.0 * 87 / 256 / 151);
+	useRules(Gen::IV);
+}
+
 static void testRules()
 {
 	using namespace nds;
@@ -3293,6 +3467,7 @@ int main(int argc, char** argv)
 	testRules();
 	testTables();
 	testForkTypes();
+	testPureRules();
 	if (failed)
 	{
 		fprintf(stderr, "gbpk-units: %d of %d checks failed\n", failed, checks);

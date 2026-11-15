@@ -181,7 +181,7 @@ namespace banana::kiwami::gbpk
 			v.description = r.text(r.near(moveDesc + 2 * (m - 1)), 200);
 		}
 		// the type chart (data/types/type_matchups.asm TypeMatchups, rom.cpp readTypeChart)
-		if (!readTypeChart(r, d, typeChart, "TypeMatchups", out.chart, why)) return false;
+		if (!readTypeChart(r, d, typeChart, "TypeMatchups", out.rules.chart, why)) return false;
 
 		// items: below TM01 each its name, attributes and description, at its Gen IV id or GEN2_ONLY + its own; the TMs
 		// and HMs as Gen IV numbers them (TM01 328, HM01 420)

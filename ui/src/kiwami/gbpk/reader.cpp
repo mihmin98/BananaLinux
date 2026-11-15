@@ -18,6 +18,7 @@ namespace banana::kiwami::gbpk
 	namespace
 	{
 		const int PARTY = 6, MON = 48, BOX_MON = 32, BATTLE_MON = 32, NAME = 11, TMS_HMS = 57, FLAG_READ = 256;
+		const int REMAP_FLAGS = 3;		// PureRGB's ram/wram.asm wPkmnTypeRemapFlags: a bit a species of OriginalTypings
 		const int MON1 = 44, BATTLE_MON1 = 29, STAT_MODS1 = 6, DEX1 = 19;
 		const uint8_t EGG = 0xFD, END = 0xFF;
 
@@ -246,6 +247,7 @@ namespace banana::kiwami::gbpk
 			{ "enemyMon", BATTLE_MON1 }, { "playerStatMods", STAT_MODS1 }, { "enemyStatMods", STAT_MODS1 },
 			{ "playerMonNumber", 1 }, { "trainerClass", 1 }, { "trainerNo", 1 }, { "enemyPartyCount", 1 + PARTY + 1 },
 			{ "enemyMons", PARTY * MON1 }, { "enemyMonPartyPos", 1 }, { "pikachuHappiness", 1 },
+			{ "typeRemapFlags", REMAP_FLAGS }, { "options3", 1 },
 		};
 		const std::vector<std::pair<const char*, int>> KEYS2 = {
 			{ "partyCount", 1 + PARTY + 1 }, { "partyMons", PARTY * MON }, { "partyMonOTs", PARTY * NAME },
@@ -265,6 +267,9 @@ namespace banana::kiwami::gbpk
 			Addr a = d_.at(k);
 			if (a.ok()) rs.push_back(Read{ a.core(), n, {}, false });
 		}
+		// PureRGB's signature moves' flag: its byte of the event flags
+		if (const int f = d_.size("signaturesOff", -1); f >= 0 && d_.at("eventFlags").ok())
+			rs.push_back(Read{ d_.at("eventFlags").core() + (uint32_t)(f / 8), 1, {}, false });
 		// the guide's flag banks, 256 bytes a read at most (before neighbours are merged)
 		for (const FlagBank& f : d_.flags)
 			for (int off = 0; off < f.bytes; off += FLAG_READ)
@@ -352,6 +357,25 @@ namespace banana::kiwami::gbpk
 		for (const Read& r : last_)
 			if (c >= r.addr && c + (uint32_t)len <= r.addr + r.bytes.size()) return r.bytes.data() + (c - r.addr);
 		return nullptr;
+	}
+
+	uint32_t Reader::typeRemap() const
+	{
+		const uint8_t* p = at("typeRemapFlags", 0, REMAP_FLAGS);
+		return p ? (uint32_t)(p[0] | p[1] << 8 | p[2] << 16) : 0;
+	}
+
+	uint8_t Reader::options3() const
+	{
+		const uint8_t* p = at("options3", 0, 1);
+		return p ? *p : 0;
+	}
+
+	bool Reader::signaturesOff() const
+	{
+		const int f = d_.size("signaturesOff", -1);
+		const uint8_t* p = f >= 0 ? at("eventFlags", f / 8, 1) : nullptr;
+		return p && (*p >> (f & 7) & 1);
 	}
 
 	bool Reader::inBattle() const

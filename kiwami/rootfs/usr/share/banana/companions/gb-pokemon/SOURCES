@@ -6,7 +6,7 @@
 
 [pokedaisy]
 commit pokedaisy 135ac809a597230c1fe3ad6359ae0fe81e233583
-in  90653f9a99112c1f345be4542e19bbce1fa43216704cf0a14db8875e552f6f6b  kiwami/tools/gbpk-extra.json
+in  b9d0b80f6563387014a4de590062f132a58f65c95956a05b0052ad78990ff5c8  kiwami/tools/gbpk-extra.json
 in  e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  pokedaisy LICENSE
 in  02efcb677831c264613b4313be1c24e9e042f577636b20469fc3f984734c7085  pokedaisy app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt
 in  63c1c1e7c2fef1af92c3abe2235091fc3d41768fd590d68469594a974c51f286  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Art.kt
@@ -28,9 +28,9 @@ out e3290cf4801664281e64ebd2af87b08d432c5bc082f1cb23f8c2b092f3b1d29c  kiwami/roo
 out 477bd98fc9e34e70ae72bb62bc38b42cf76633e0e7589c6213af7f4dbe9adba1  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.json
 out bed0d06315cf32480e3b7dc31a869f1a2697ab5e69a466efc6b0f759f55f8dd7  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.ram.json
 out de47c63bfe95770df1a707ab1dbac47f84561ea94544f66e641733f8c4641193  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/gold.ram.json
-out 1441f87edd08b5da7bcc32d0feda813a4ef941c0ba7f157cfc1e172438f28635  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/pureblue.ram.json
-out 9fd603153a2cc9b151cdaa72e83af436fe927b26afdbd4df0cdc299e046a601e  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/puregreen.ram.json
-out 3d7ef67a0457f10b287df508968dc4a13b028b037d4f7e896d2fdd773071261a  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/purered.ram.json
+out 15624760737952e6d477cd5c6e80aa8c4e91f19e1c6fe9e7bdc290db70f10403  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/pureblue.ram.json
+out ec1e516c9d2ed4cd27980c172c2d97c3e70f0bf130f449313f4cef914df72978  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/puregreen.ram.json
+out fab653656fe3e22464793f903c5022d6bafb168ab53dd106f1702f079fa67793  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/purered.ram.json
 out 4b07e3bb9740c74cfded1346b1d77b302ff044eede08724830233c8f07c3dd32  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/red.json
 out f1e686d523aad0faf926c47c68187c53a906884b38b8e136db6e5e270d46230c  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/red.ram.json
 out d34f3f961ed85c93212aa4b322351891540114929fcabc16c32451f138ed79b5  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/silver.ram.json
@@ -161,6 +161,6 @@ in  1946d43ae015364ae14ceb267ab2779513908cd2c05a6749dc570b83aeefd4d8  pureRGB-2.
 in  ddc4c1aba224d5af86356227dd247a53880eeb78c6fed65758fcae00db42e151  pureRGB-2.7.7 pokeblue.sym
 in  0220ca88b049a9879e25bb415d4704f8ce39ebf7b32a7b09fff82da2dc3a6daa  pureRGB-2.7.7 pokegreen.sym
 in  c01d535e6f845509f31888a7686c7b9edca4526c77b9faec99fc77ef1933bce8  pureRGB-2.7.7 pokered.sym
-in  6b7ea3a8f49e990ae2bc88b8fb7fcad76eda87927818586929d6bebd0e95bcc0  kiwami/tools/gbpk-symbols.txt
+in  a473c379f1495e6f3bfb8b4d9c80f7e01235a6f0e7b415ffe604f19d6df31a52  kiwami/tools/gbpk-symbols.txt
 in  8347055098f870e8067f2945f057833f1bcb7c6f9e85ee600dc2aa5df421fbe1  kiwami/tests/gbpk/roms.patches
-out 90653f9a99112c1f345be4542e19bbce1fa43216704cf0a14db8875e552f6f6b  kiwami/tools/gbpk-extra.json
+out b9d0b80f6563387014a4de590062f132a58f65c95956a05b0052ad78990ff5c8  kiwami/tools/gbpk-extra.json

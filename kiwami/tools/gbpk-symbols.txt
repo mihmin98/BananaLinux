@@ -501,3 +501,15 @@ purered,pureblue,puregreen rom.hiddenItems2 HiddenItems2
 purered,pureblue,puregreen rom.hiddenItems3 HiddenItems3
 purered,pureblue,puregreen rom.hiddenItems5 HiddenItems5
 red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.hiddenItemCoords HiddenItemCoords
+
+# PureRGB's switches (ui/src/kiwami/gbpk/rules.h, host.cpp): the species the type NPC gives back their original types,
+# a bit each in its list's order (engine/pokemon/remap_typings.asm OriginalTypings, IsMonTypeRemapped); the battle
+# options' four matchups, wOptions3's bits 0-3 (ram/wram.asm, engine/battle/core.asm RemapTypeMatchupBasedOnOptions);
+# the signature moves and the event flag that turns them off (engine/battle/remap_move_data.asm RemappableMoves,
+# CheckRemapMoveData); the Hyper Ball (engine/items/item_effects.asm ItemUseBall)
+purered,pureblue,puregreen ram.typeRemapFlags wPkmnTypeRemapFlags
+purered,pureblue,puregreen ram.options3 wOptions3
+purered,pureblue,puregreen rom.originalTypings OriginalTypings
+purered,pureblue,puregreen rom.remappableMoves RemappableMoves
+purered,pureblue,puregreen const.signaturesOff constants/event_constants.asm FLAG_SIGNATURE_MOVES_TURNED_OFF
+purered,pureblue,puregreen const.hyperBall constants/item_constants.asm HYPER_BALL

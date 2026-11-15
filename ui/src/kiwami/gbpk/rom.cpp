@@ -149,6 +149,27 @@ namespace banana::kiwami::gbpk
 		std::string w;
 		if (d.gen != 1 && d.gen != 2) return no(d.game.title + ": not a Game Boy game's data file");
 		if (!(d.gen == 1 ? readGen1(r, d, *out, &w) : readGen2(r, d, *out, &w))) return no(d.game.title + "'s ROM: " + w);
+		// the rules the data file names: the types whose category goes by the attacker's stats, PureRGB's options (the
+		// game has them where its data file reads them) and its Hyper Ball (an item of its own: rom.h gen1Item)
+		for (int t = 0; t < 256; t++)
+			if (d.splitStats[t] && chartIndex(d.types[t]) >= 0) out->rules.byStats[(size_t)chartIndex(d.types[t])] = true;
+		out->rules.pureOptions = d.at("options3").ok();
+		if (const int h = d.size("hyperBall"); d.gen == 1 && h > 0 && h < 256) out->rules.hyperBall = gen1Item(d, (uint8_t)h);
+		return out;
+	}
+
+	std::shared_ptr<const nds::RomData> withOriginalTypes(std::shared_ptr<const nds::RomData> rom, uint32_t remap)
+	{
+		const auto* gb = dynamic_cast<const GbRomData*>(rom.get());
+		if (!gb || gb->originalTypes.empty() || !remap) return rom;
+		auto out = std::make_shared<GbRomData>(*gb);
+		for (size_t n = 0; n < gb->originalTypes.size() && n < 32; n++)
+		{
+			const GbRomData::OriginalTyping& o = gb->originalTypes[n];
+			if (!(remap >> n & 1) || o.species >= out->species.size()) continue;
+			out->species[o.species].types[0] = o.types[0];
+			out->species[o.species].types[1] = o.types[1];
+		}
 		return out;
 	}
 }

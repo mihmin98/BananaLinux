@@ -72,6 +72,7 @@ namespace banana::kiwami::gbpk
 		if (rules)	// (the Session has stopped: nothing asks the chart now)
 		{
 			useGameRules(nullptr);
+			setSwitches(0, false);
 			rules.reset();
 		}
 		// (upstream's hosts don't put the chart back: an Emerald after Red would be judged by Gen I's)
@@ -149,6 +150,7 @@ namespace banana::kiwami::gbpk
 			if (l->valid)
 			{
 				setBadges(l->badges);
+				if (pure) switches();
 				session->feed(l);
 				fed++;
 			}
@@ -178,21 +180,57 @@ namespace banana::kiwami::gbpk
 		base.guide = l.guide ? l.guide : std::make_shared<nds::GuideData>();
 		useRules(data.game.gen);
 		fprintf(stderr, "banana-ui: gb companion: rules on (Generation %s)\n", data.gen == 1 ? "I" : "II");
-		// the game's own type chart, read from its ROM (none for the tests' stand-in: rules.h falls back on the
-		// generation's)
+		// the game's own rules, read from its ROM: its type chart, and PureRGB's (none for the tests' stand-in: rules.h
+		// falls back on the generation's)
+		asRead = base.rom;
+		pure = false;
+		switchesSeen = false;
 		if (const auto* gb = dynamic_cast<const GbRomData*>(base.rom.get()); gb && gb->rom)
 		{
-			rules = std::make_unique<GameRules>();
-			rules->chart = gb->chart;
+			rules = std::make_unique<GameRules>(gb->rules);
 			useGameRules(rules.get());
+			pure = gb->rules.pureOptions || !gb->originalTypes.empty();
 		}
+		setSwitches(0, false);
 		reader.open(data);
+		startSession();
+		lastSerial = 0;
+	}
+
+	void Host::startSession()
+	{
+		session.reset();	// (the one before, stopped first: it saves the journey, which this one reads)
 		auto ss = std::make_unique<nds::Session>(base.rom, base.guide, stateDir);
 		ss->setChallenge(challenge);
 		session = std::make_unique<nds::SessionThread>(std::move(ss));
 		out = base;
 		fresh = true;
-		lastSerial = 0;
+	}
+
+	// PureRGB's switches in the set just read: the options and the signature moves to the rules (each set, as the
+	// badges); a change of the species given back their original types starts the Session again on a copy of the ROM's
+	// data with those types (its pages and advice take a species' types from it), logged with the options
+	void Host::switches()
+	{
+		const auto* gb = dynamic_cast<const GbRomData*>(asRead.get());
+		const uint32_t remap = reader.typeRemap();
+		const uint8_t options = reader.options3() & 15;
+		const bool sigOff = reader.signaturesOff();
+		setSwitches(options, sigOff);
+		if (switchesSeen && remap == lastRemap && options == lastOptions && sigOff == lastSigOff) return;
+		if (switchesSeen ? remap != lastRemap : remap != 0)
+		{
+			base.rom = withOriginalTypes(asRead, remap);
+			startSession();
+		}
+		int n = 0;
+		for (size_t i = 0; gb && i < gb->originalTypes.size() && i < 32; i++) n += remap >> i & 1;
+		fprintf(stderr, "banana-ui: gb companion: PureRGB: %d species with their original types, matchups 0x%x%s\n", n,
+			options, sigOff ? ", signature moves off" : "");
+		switchesSeen = true;
+		lastRemap = remap;
+		lastOptions = options;
+		lastSigOff = sigOff;
 	}
 
 	bool Host::takeData(nds::PageData& d)

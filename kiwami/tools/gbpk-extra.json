@@ -3009,6 +3009,11 @@
           "symbol": "HM01",
           "value": 196
         },
+        "hyperBall": {
+          "file": "constants/item_constants.asm",
+          "symbol": "HYPER_BALL",
+          "value": 5
+        },
         "leaderBlaine": {
           "file": "constants/trainer_constants.asm",
           "symbol": "BLAINE",
@@ -3088,6 +3093,11 @@
           "file": "constants/palette_constants.asm",
           "symbol": "PAL_TOWNMAP",
           "value": 12
+        },
+        "signaturesOff": {
+          "file": "constants/event_constants.asm",
+          "symbol": "FLAG_SIGNATURE_MOVES_TURNED_OFF",
+          "value": 131
         },
         "textFar": {
           "file": "macros/scripts/text.asm",
@@ -3276,6 +3286,11 @@
           "bank": 0,
           "symbol": "wMoveMenuType"
         },
+        "options3": {
+          "addr": "0xDA48",
+          "bank": 1,
+          "symbol": "wOptions3"
+        },
         "partyCount": {
           "addr": "0xD16B",
           "bank": 1,
@@ -3350,6 +3365,11 @@
           "addr": "0xD05D",
           "bank": 1,
           "symbol": "wTrainerNo"
+        },
+        "typeRemapFlags": {
+          "addr": "0xDA3D",
+          "bank": 1,
+          "symbol": "wPkmnTypeRemapFlags"
         },
         "xCoord": {
           "addr": "0xD36A",
@@ -3620,6 +3640,11 @@
           "bank": 44,
           "symbol": "NonDexPokemonSpecies"
         },
+        "originalTypings": {
+          "addr": "0x681E",
+          "bank": 53,
+          "symbol": "OriginalTypings"
+        },
         "pokemonNames": {
           "addr": "0x55C6",
           "bank": 51,
@@ -3629,6 +3654,11 @@
           "addr": "0x5FAE",
           "bank": 15,
           "symbol": "PriorityMoves"
+        },
+        "remappableMoves": {
+          "addr": "0x7826",
+          "bank": 53,
+          "symbol": "RemappableMoves"
         },
         "teamMoveSixth": {
           "addr": "0x5515",
@@ -3745,6 +3775,11 @@
           "symbol": "HM01",
           "value": 196
         },
+        "hyperBall": {
+          "file": "constants/item_constants.asm",
+          "symbol": "HYPER_BALL",
+          "value": 5
+        },
         "leaderBlaine": {
           "file": "constants/trainer_constants.asm",
           "symbol": "BLAINE",
@@ -3824,6 +3859,11 @@
           "file": "constants/palette_constants.asm",
           "symbol": "PAL_TOWNMAP",
           "value": 12
+        },
+        "signaturesOff": {
+          "file": "constants/event_constants.asm",
+          "symbol": "FLAG_SIGNATURE_MOVES_TURNED_OFF",
+          "value": 131
         },
         "textFar": {
           "file": "macros/scripts/text.asm",
@@ -4012,6 +4052,11 @@
           "bank": 0,
           "symbol": "wMoveMenuType"
         },
+        "options3": {
+          "addr": "0xDA48",
+          "bank": 1,
+          "symbol": "wOptions3"
+        },
         "partyCount": {
           "addr": "0xD16B",
           "bank": 1,
@@ -4086,6 +4131,11 @@
           "addr": "0xD05D",
           "bank": 1,
           "symbol": "wTrainerNo"
+        },
+        "typeRemapFlags": {
+          "addr": "0xDA3D",
+          "bank": 1,
+          "symbol": "wPkmnTypeRemapFlags"
         },
         "xCoord": {
           "addr": "0xD36A",
@@ -4356,6 +4406,11 @@
           "bank": 44,
           "symbol": "NonDexPokemonSpecies"
         },
+        "originalTypings": {
+          "addr": "0x681E",
+          "bank": 53,
+          "symbol": "OriginalTypings"
+        },
         "pokemonNames": {
           "addr": "0x55C6",
           "bank": 51,
@@ -4365,6 +4420,11 @@
           "addr": "0x5FAE",
           "bank": 15,
           "symbol": "PriorityMoves"
+        },
+        "remappableMoves": {
+          "addr": "0x7826",
+          "bank": 53,
+          "symbol": "RemappableMoves"
         },
         "teamMoveSixth": {
           "addr": "0x5515",
@@ -4481,6 +4541,11 @@
           "symbol": "HM01",
           "value": 196
         },
+        "hyperBall": {
+          "file": "constants/item_constants.asm",
+          "symbol": "HYPER_BALL",
+          "value": 5
+        },
         "leaderBlaine": {
           "file": "constants/trainer_constants.asm",
           "symbol": "BLAINE",
@@ -4560,6 +4625,11 @@
           "file": "constants/palette_constants.asm",
           "symbol": "PAL_TOWNMAP",
           "value": 12
+        },
+        "signaturesOff": {
+          "file": "constants/event_constants.asm",
+          "symbol": "FLAG_SIGNATURE_MOVES_TURNED_OFF",
+          "value": 131
         },
         "textFar": {
           "file": "macros/scripts/text.asm",
@@ -4748,6 +4818,11 @@
           "bank": 0,
           "symbol": "wMoveMenuType"
         },
+        "options3": {
+          "addr": "0xDA48",
+          "bank": 1,
+          "symbol": "wOptions3"
+        },
         "partyCount": {
           "addr": "0xD16B",
           "bank": 1,
@@ -4822,6 +4897,11 @@
           "addr": "0xD05D",
           "bank": 1,
           "symbol": "wTrainerNo"
+        },
+        "typeRemapFlags": {
+          "addr": "0xDA3D",
+          "bank": 1,
+          "symbol": "wPkmnTypeRemapFlags"
         },
         "xCoord": {
           "addr": "0xD36A",
@@ -5092,6 +5172,11 @@
           "bank": 44,
           "symbol": "NonDexPokemonSpecies"
         },
+        "originalTypings": {
+          "addr": "0x681E",
+          "bank": 53,
+          "symbol": "OriginalTypings"
+        },
         "pokemonNames": {
           "addr": "0x55C6",
           "bank": 51,
@@ -5101,6 +5186,11 @@
           "addr": "0x5FAE",
           "bank": 15,
           "symbol": "PriorityMoves"
+        },
+        "remappableMoves": {
+          "addr": "0x7826",
+          "bank": 53,
+          "symbol": "RemappableMoves"
         },
         "teamMoveSixth": {
           "addr": "0x5515",

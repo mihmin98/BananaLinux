@@ -286,7 +286,10 @@ games agree, and otherwise:
   foe's over the trainer's party member out (`wEnemyMonPartyPos`), the stat mods (7 none) with Special's for both
   special stats, and the trainer as `wTrainerClass` << 8 | `wTrainerNo`;
 - the place is the map's number (`wCurMap`), the money three BCD bytes, the badges one byte, the Pokédex 19 bytes a
-  bit set, and no time of day (`ANY`).
+  bit set, and no time of day (`ANY`);
+- PureRGB's switches, for its rules (*The battle rules*): the 3 bytes of species given back their original types
+  (`wPkmnTypeRemapFlags`), its options byte (`wOptions3`, the matchups in bits 0-3), and the byte of event flags that
+  holds `FLAG_SIGNATURE_MOVES_TURNED_OFF` (`signaturesOff`, its number).
 
 The snapshot counts as the game's only once the party has a count of 1-6 whose species list matches the structures:
 before a save is loaded WRAM holds leftovers.
@@ -359,6 +362,31 @@ for Generations III to V. For Gen I and II, four hook lines in `ui/src/nds/logic
   `TypeNames` gives it, in Ground's colour, Tri 0xc8b0e8, Floating 0x98a8f0, Magma 0xd05038); `ui/src/nds/logic.cpp`'s
   `typeName` names them in the advice ("Tri moves can't touch ..."), where upstream's says "?". The Battle page's
   matchup rows list the attacking types upstream counts, so a Pokémon's weakness to one of these isn't among them.
+- **PureRGB's**, read from its ROM with the other tables into the same `GameRules`, and switched by its save, which
+  the host reads with each set (*Reading the game's memory*):
+  - **its four matchup options** (`wOptions3`'s bits 0-3, `engine/battle/core.asm` `RemapTypeMatchupBasedOnOptions`)
+    over its chart's cells: Ghost on Psychic 0x (else its 2x), Ice on Fire 0.5x (1x), Bug on Poison 0.5x (2x), Poison
+    on Bug 1x (2x). Its table lists the four pairs, as the game's rule needs; the rules lay the options over them from
+    the next set on;
+  - **the species given back their original types** at the type NPC (`wPkmnTypeRemapFlags`, a bit each of the 23 of
+    `OriginalTypings`, read from the ROM in its order): the host starts its Session again on a copy of the ROM's data
+    with those species' types (`rom.h` `withOriginalTypes`), so the pages and the advice take them, and logs
+    `gb companion: PureRGB: <n> species with their original types, matchups 0x<bits>` at the first set and at each
+    change. A form is never switched (the game compares the internal index; none of the 23 has one). The Battle page's
+    battlers have the game's own types already (it switches the battle's copy);
+  - **its signature moves** (`engine/battle/remap_move_data.asm` `RemappableMoves`, read from the ROM): Drill Peck at
+    110 by Fearow, Fire Punch at 105 by Magmar, and 17 more, take that power in the damage when their species uses
+    them, unless the save turned them off (the event flag `FLAG_SIGNATURE_MOVES_TURNED_OFF`). The species goes by its
+    national number, so Volcanic Magmar is Magmar, as the game counts it, and no other form can use its base's (the
+    only one whose base has a signature, Spirit Irradiated, a Hitmonchan, knows none of them). The move is found by
+    its name in the ROM, which the ROM tests check is one move's only (upstream's `damage()` gets the move's data, not
+    its id). The three that change only the accuracy (Hypnosis, Fire Blast, Blizzard) change nothing here: upstream's
+    logic takes no accuracy;
+  - **Ghost by the attacker's base stats** (`split_stats`, `engine/battle/core.asm` `DynamicTypeCheckPlayer`): special
+    when the species' base Special is above its Attack (`statsSpecial`, read from the base data), else physical;
+  - **its balls** (`engine/items/item_effects.asm` `ItemUseBall`): the Hyper Ball catches outright a species whose
+    catch rate is above 25, or one below a third of its HP, else it is thrown as Ultra's first number (0-150) with
+    Great's factor (8); the Safari Ball's factor is 8 too (retail's 12).
 
 `kiwami/tests/gbpk-units.cpp` checks each rule through upstream's own entry points (`effectiveness`, `damage`,
 `effectiveSpeed`, `catchChance`), with the expected values worked by hand from pret's code in its comments.
@@ -602,8 +630,8 @@ Its ROM is laid out its own way where `rom1.cpp` reads these keys instead of the
 
 Its forms show their own types on the Battle page (the battle's copy) and their own stats everywhere (the memory's);
 the Party and Team pages and the team advice take a Pokémon's types from its species, as upstream does for its own
-GBA hacks' forms, so there a form shows its base's. PureRGB's guide, its switched types and matchups, its signature
-moves and its Hyper Ball's rule are later steps of `.workspace/0030-gb-pokemon-hacks/`.
+GBA hacks' forms, so there a form shows its base's. Its switched types and matchups, its signature moves, its Ghost
+and its balls: *The battle rules*. PureRGB's guide is a later step of `.workspace/0030-gb-pokemon-hacks/`.
 
 ## The data files
 
@@ -971,6 +999,16 @@ In the repository, not the image: `ui/src/kiwami/gbpk/` 318 KB, `kiwami/tests/gb
   Polished Crystal ...) are later features.
 - **PureRGB's forms** show their base's types on the Party and Team pages and in the team advice (*The ROM hacks*), and
   its real MissingNo. isn't shown in a trainer's team.
+- **PureRGB's rules not followed** (*The battle rules*):
+  - the eight moves whose power or effect the battle decides (`RemappableMoves`' first eight, by `ModifierFuncs`):
+    Sing, DoubleSlap, Explosion, Selfdestruct, Firewall (Kinesis), Toxic, Skull Bash and Filthy Slam (Slam) are
+    judged at their listed power;
+  - a form's Ghost moves go by its base species' stats (upstream's `Fighter` has no form): Winter Dragonair's Barrage,
+    special in the game (its Special 130 above its Attack 84), is judged physical, as Dragonair's; every other form
+    splits as its base does;
+  - the signature moves' accuracy (Hypnosis 85 %, Fire Blast and Blizzard 100 %), as upstream's logic takes none;
+  - the volcano's Magmar and Moltres, whose catch rate the battle sets to 17 (`engine/battle/volcano_battle_init.asm`),
+    are judged by their species' rate.
 - **English labels**: the fork's new labels (DV, Stat exp., Special, the rows) show in English in every language.
 - **Gen I's Team score** counts 17 types (*The battle rules*).
 - **Gold's and Silver's guide** has no places or flags: the Elite Four and the Champion are done by a later milestone.

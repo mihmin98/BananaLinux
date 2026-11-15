@@ -445,8 +445,40 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 		int forms = 0;
 		for (size_t i = 0; i < g.form.size(); i++) forms += g.form[i] != 0 && g.national[i] >= 1;
 		CHECK(forms == 12);
+		// its rules: the 23 species the type NPC switches back, Butterfree (Bug and Flying) first, Kabutops (Rock and Water)
+		// last, each once and none a form (engine/pokemon/remap_typings.asm OriginalTypings)
+		std::set<uint16_t> switchable;
+		for (const auto& o : g.originalTypes) switchable.insert(o.species);
+		CHECK(g.originalTypes.size() == 23 && switchable.size() == 23 && *switchable.rbegin() <= 151);
+		if (g.originalTypes.size() == 23)
+			CHECK(g.originalTypes[0].species == 12 && g.originalTypes[0].types[0] == nds::BUG && g.originalTypes[0].types[1] == nds::FLYING &&
+				g.originalTypes[22].species == 141 && g.originalTypes[22].types[0] == nds::ROCK && g.originalTypes[22].types[1] == nds::WATER);
+		// the 19 signature moves (the eight battle rules before them passed over): Drill Peck by Fearow at 110, Fire Punch
+		// by Magmar at 105, Hypnosis by Hypno at its own power and 85 %; each move's name the ROM's for one move only, as
+		// the damage finds it by its name (engine/battle/remap_move_data.asm RemappableMoves)
+		CHECK(g.rules.signatures.size() == 19);
+		int peck = 0, punch = 0, hypnosis = 0;
+		for (const Signature& s : g.rules.signatures)
+		{
+			peck += s.move == "Drill Peck" && s.species == 22 && s.power == 110 && !s.accuracy;
+			punch += s.move == "Fire Punch" && s.species == 126 && s.power == 105;
+			hypnosis += s.move == "Hypnosis" && s.species == 97 && !s.power && s.accuracy == 85;
+			int named = 0;
+			for (const auto& m : r.moves) named += m.name == s.move;
+			if (named != 1) fprintf(stderr, "gbpk-roms: FAIL %s: %d moves are named %s\n", current.c_str(), named, s.move.c_str());
+			CHECK(named == 1);
+		}
+		CHECK(peck == 1 && punch == 1 && hypnosis == 1);
+		// Ghost by the attacker's base stats: Gengar's Special above its Attack, Machamp's not; the options, the Hyper Ball
+		CHECK(g.rules.byStats[nds::GHOST] && g.rules.statsSpecial[94] && !g.rules.statsSpecial[68] && g.rules.pureOptions &&
+			g.rules.hyperBall == GEN1_ONLY + 5);
 	}
 	else
+	{
+		const GbRomData& g = static_cast<const GbRomData&>(r);
+		CHECK(g.originalTypes.empty() && g.rules.signatures.empty() && !g.rules.pureOptions && !g.rules.hyperBall && !g.rules.byStats[nds::GHOST]);
+	}
+	if (!pure)
 		CHECK(lorelei && lorelei->team.size() == 5 && lorelei->team[4].species == 131 && lorelei->team[4].moves[2] == (legacy ? 57 : 59));
 	// every place with wild Pokémon is named
 	std::set<nds::EncounterKind> kinds;
@@ -477,7 +509,7 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 // chart is its own
 static void checkChart(const nds::RomData& r, const GameData& d)
 {
-	const TypeChart& c = static_cast<const GbRomData&>(r).chart;
+	const TypeChart& c = static_cast<const GbRomData&>(r).rules.chart;
 	// (a ROM hack's own chart: read, which checks Water on Fire, and its entries counted; PureRGB's with its own types:
 	// Water on Crystal 0.5x, Ground on Floating 0x, Bonemerang on Flying no entry (neutral), data/types/type_matchups.asm)
 	if (baseGame(d.game.id) != d.game.id)

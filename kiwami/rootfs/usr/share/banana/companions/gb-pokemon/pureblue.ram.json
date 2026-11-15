@@ -175,6 +175,11 @@
       "bank": 0,
       "src": "pokedaisy pret (wMoveMenuType)"
     },
+    "options3": {
+      "addr": "0xDA48",
+      "bank": 1,
+      "src": "pret (wOptions3)"
+    },
     "partyCount": {
       "addr": "0xD16B",
       "bank": 1,
@@ -249,6 +254,11 @@
       "addr": "0xD05D",
       "bank": 1,
       "src": "pret (wTrainerNo)"
+    },
+    "typeRemapFlags": {
+      "addr": "0xDA3D",
+      "bank": 1,
+      "src": "pret (wPkmnTypeRemapFlags)"
     },
     "xCoord": {
       "addr": "0xD36A",
@@ -516,6 +526,11 @@
       "bank": 44,
       "src": "pret (NonDexPokemonSpecies)"
     },
+    "originalTypings": {
+      "addr": "0x681E",
+      "bank": 53,
+      "src": "pret (OriginalTypings)"
+    },
     "pokemonNames": {
       "addr": "0x55C6",
       "bank": 51,
@@ -525,6 +540,11 @@
       "addr": "0x5FAE",
       "bank": 15,
       "src": "pret (PriorityMoves)"
+    },
+    "remappableMoves": {
+      "addr": "0x7826",
+      "bank": 53,
+      "src": "pret (RemappableMoves)"
     },
     "teamMoveSixth": {
       "addr": "0x5515",
@@ -575,6 +595,7 @@
     "eventFlagBytes": 320,
     "firstIndoorMap": 37,
     "hm01": 196,
+    "hyperBall": 5,
     "leaderBlaine": 37,
     "leaderBrock": 32,
     "leaderErika": 35,
@@ -590,6 +611,7 @@
     "numPokemonIndexes": 190,
     "numTrainerClasses": 56,
     "palTownMap": 12,
+    "signaturesOff": 131,
     "textFar": 21,
     "tm01": 201,
     "toggleCeruleanCaveGuy": 9

@@ -112,9 +112,18 @@ namespace banana::kiwami::gbpk
 		std::vector<uint8_t> form;			// Gen I: the form an internal index is (PureRGB's forms, internal species of
 											// their own that carry a base species' number: 1 up, in species past the
 											// Pokédex from the base's formsAt), 0 for the species itself
-		TypeChart chart;					// the type chart (rules.h), the host's GameRules once read
+		GameRules rules;					// the game's own rules (rules.h): its type chart, and PureRGB's; the host's
+		// PureRGB's species the type NPC can give back their original types (engine/pokemon/remap_typings.asm
+		// OriginalTypings), in the list's order, which is their bits' in the save (wPkmnTypeRemapFlags): the species
+		// index (a form never: the game compares its internal index) and its original types
+		struct OriginalTyping { uint16_t species = 0; nds::Type types[2] = { nds::NORMAL, nds::NORMAL }; };
+		std::vector<OriginalTyping> originalTypes;
 		std::shared_ptr<const nds::Sprite> sprite(uint16_t species, bool female = false, uint8_t form = 0) const override;
 	};
+	// a copy of rom's data with the species whose bit is set in remap (the save's wPkmnTypeRemapFlags, bit n the n-th
+	// of originalTypes) given their original types, as the game's IsMonTypeRemapped gives them in battle and on the
+	// summary; rom itself when it has no such list or no bit is set
+	std::shared_ptr<const nds::RomData> withOriginalTypes(std::shared_ptr<const nds::RomData> rom, uint32_t remap);
 	// the games' "n percent" (n * 255 / 100) as n
 	uint8_t percent(uint8_t raw);
 	// the four moves a Pokémon knows at its level without a trainer's own (the games' FillMoves and WriteMonMoves: the

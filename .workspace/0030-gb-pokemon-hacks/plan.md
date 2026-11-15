@@ -859,15 +859,17 @@ Common to the steps (as #28's):
 
 - **Files**:
   - `kiwami/tools/gbpk-symbols.txt`, `gbpk-extra.json`, the three `pure*.ram.json`, `SOURCES` (changed)
-  - `ui/src/kiwami/gbpk/rom.h`, `rom1.cpp`, `reader.h`, `reader.cpp`, `rules.h`, `host.h`, `host.cpp` (changed)
+  - `ui/src/kiwami/gbpk/rom.h`, `rom.cpp`, `rom1.cpp`, `rom2.cpp`, `reader.h`, `reader.cpp`, `rules.h`, `host.h`,
+    `host.cpp` (changed; `rom.cpp` and `rom2.cpp`: *Deviations*, 2026-11-15)
   - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp` (changed)
-  - `kiwami/GB-POKEMON.md` (changed: *The battle rules*, what PureRGB's isn't followed)
+  - `kiwami/GB-POKEMON.md` (changed: *The battle rules*, *Reading the game's memory*, what PureRGB's isn't followed)
 - **Change**:
   - **`gbpk-symbols.txt`**:
     - `ram.typeRemapFlags wPkmnTypeRemapFlags`, `ram.options3 wOptions3`;
     - `rom.originalTypings OriginalTypings`, `rom.remappableMoves RemappableMoves`;
     - `const.signaturesOff constants/event_constants.asm FLAG_SIGNATURE_MOVES_TURNED_OFF`;
-    - `const.volcanicMagmar`, `const.magmar` (the signature check treats one as the other).
+    - `const.hyperBall constants/item_constants.asm HYPER_BALL` (*Deviations*, 2026-11-15: no `const.volcanicMagmar`
+      and `const.magmar`, as the signatures go by national number).
   - **`rom1.cpp`**:
     - `OriginalTypings` (species, type, type to -1) into `GbRomData::originalTypes`, in the list's order: its bit n is
       the n-th entry, as `IsMonTypeRemapped` counts;
@@ -1231,6 +1233,30 @@ Where the implementation turned out different from this plan, why, and what chan
   data-file flag (`GameData::pureText`, `charset()`), which `RomView` and the reader take; `rom.cpp` changes for it and
   for a form's picture (`GbRomData::sprite`), and `pics.cpp` doesn't. `kiwami/tests/gbpk/NOTICE` names the captures.
 
+- **2026-11-15, step 10**: upstream's `damage()` gets a `Fighter` (the national number, no form) and a `MoveData` (no
+  move id), so three of PureRGB's rules are matched another way than its code's internal ids, as the user chose:
+  - the signature moves go by the species' national number. Volcanic Magmar is Magmar's number, so the plan's
+    `const.volcanicMagmar` and `const.magmar` lines aren't needed; no other form can use its base's signature (Spirit
+    Irradiated, a Hitmonchan, knows Growth, Sludge, Struggle and Egg Bomb only). The move is matched by its ROM name
+    (`Signature::move`), and the ROM tests check each signature's name is one move's only. The accuracy is read but
+    reaches nothing, as upstream's logic takes no accuracy (Hypnosis, Fire Blast, Blizzard);
+  - Ghost by the attacker's base stats goes by its national number (`GameRules::statsSpecial`, generalised from the
+    plan's `ghostSpecial` to the data file's `split_stats`, `byStats`): of the twelve forms only Winter Dragonair splits
+    otherwise than its base (Special 130, Dragonair's 70), so its Barrage is judged physical where the game makes it
+    special. `kiwami/GB-POKEMON.md` lists it with what isn't followed.
+
+  Also: the Safari Ball's factor is 8 in PureRGB's `ItemUseBall` too, the same function as the Hyper Ball's, and the
+  rules follow it (the user's choice). A form is never switched back at the type NPC (the game compares the internal
+  index; none of the 23 has a form), not "its forms' too" as the step said. An options change applies from the next
+  set and is logged, without restarting the Session (only a change of the switched species restarts it, for its copy
+  of the ROM's data); the log also says when the signature moves are off. `GbRomData` holds the game's `GameRules`
+  (`rules`, its chart among them) instead of the chart alone, so `rom2.cpp`'s chart read and the tests' three uses
+  name `rules.chart`; `rom.cpp`'s `readRom` sets the rules the data file names (the by-stats types, the options, the
+  Hyper Ball) and has `withOriginalTypes`. The reader's flag byte is read by `const.signaturesOff` over
+  `ram.eventFlags`. `gbpk-units` also checks the read refuses a bad entry in either list, and the retail games have
+  none of PureRGB's rules; `gbpk-roms.cpp` checks Fire Punch and Hypnosis besides Drill Peck, and Gengar's and Machamp's
+  split.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -1246,7 +1272,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 7. Yellow Legacy's guide | done | GB Pokémon hacks: Yellow Legacy's guide, from PokeDaisy's |
 | 8. Types of the fork's own on the pages | done | GB Pokémon hacks: types of the fork's own on the pages, for PureRGB's six |
 | 9. PureRed, PureBlue and PureGreen | done | GB Pokémon hacks: PureRed, PureBlue and PureGreen, from their builds' symbols, their memory and their ROMs |
-| 10. PureRGB's switches, signatures and Hyper Ball | todo | |
+| 10. PureRGB's switches, signatures and Hyper Ball | done | GB Pokémon hacks: PureRGB's switched types and matchups, signature moves and Hyper Ball |
 | 11. PureRGB's guides | todo | |
 | 12. Crystal Clear's addresses, ported | todo | |
 | 13. Crystal Clear | todo | |

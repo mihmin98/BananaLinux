@@ -55,6 +55,10 @@ namespace banana::kiwami::gbpk
 											// the text's text_far_end (its command, address and bank)
 		const uint8_t OWN_LEVELS_ALT = 0xFE, OWN_MOVES = 0xFD;	// PureRGB's data/trainers/parties.asm: a level each, bit 7
 											// an alternate palette; and a moveset (MoveSetMappings') then the same
+		const int ORIGINAL_TYPING = 3, REMAP_BITS = 24;	// PureRGB's engine/pokemon/remap_typings.asm OriginalTypings:
+														// species, two types; ram/wram.asm wPkmnTypeRemapFlags: 3 bytes
+		const int REMAPPABLE_MOVE = 4;		// PureRGB's engine/battle/remap_move_data.asm RemappableMoves: move, species,
+		const int ANY_SPECIES = 0xFF, SAME_POWER = 0xFF, MODIFIER_FUNCTION = 0xFE;	// power, accuracy (-1, -1, -2)
 		const int LONE_SLOT = 3;			// PureRGB's data/trainers/special_moves.asm LoneMoves: member, move's place, move
 		const uint8_t END = 0xFF;
 		enum { EVOLVE_LEVEL = 1, EVOLVE_ITEM, EVOLVE_TRADE };	// constants/pokemon_data_constants.asm
@@ -274,7 +278,7 @@ namespace banana::kiwami::gbpk
 			v.priority = (uint8_t)(int8_t)(first.count(m) ? 1 : m == counter ? -1 : 0);
 		}
 		// the type chart (data/types/type_matchups.asm TypeEffects, rom.cpp readTypeChart)
-		if (!readTypeChart(r, d, typeChart, "TypeEffects", out.chart, why)) return false;
+		if (!readTypeChart(r, d, typeChart, "TypeEffects", out.rules.chart, why)) return false;
 
 		// items: each its name (ItemNames, a list of strings; the elevators' floors after them aren't read) and price
 		// (ItemPrices, bcd3), at its Gen IV id or GEN1_ONLY + its own (rom.cpp gen1Item); the TMs and HMs as Gen IV
@@ -701,6 +705,57 @@ namespace banana::kiwami::gbpk
 						return no("SpecialTrainerMoves' entry for trainer " + std::to_string(id >> 8) + ":" + std::to_string(id & 0xFF) + " isn't its party's");
 				o++;
 			}
+
+		// PureRGB's rules (rules.h GameRules). The species whose category of a type goes by its base stats: base Special
+		// above Attack (engine/battle/core.asm DynamicTypeCheckPlayer), by national number
+		for (int s = 1; s <= nSp && s < 256; s++)
+			out.rules.statsSpecial[(size_t)s] = out.species[s].base[4] > out.species[s].base[1];
+		// the species the type NPC gives back their original types: species, two types, to -1 (engine/pokemon/
+		// remap_typings.asm OriginalTypings), at most the save's 24 bits (wPkmnTypeRemapFlags, 3 bytes)
+		const size_t originals = optional("originalTypings");
+		if (originals != RomView::NONE)
+			for (size_t o = originals;; o += ORIGINAL_TYPING)
+			{
+				if (!r.has(o, 1)) return no("OriginalTypings runs past the ROM");
+				if (r.u8(o) == END) break;
+				const size_t n = out.originalTypes.size();
+				const uint8_t i = r.u8(o);
+				if (n >= REMAP_BITS || !r.has(o, ORIGINAL_TYPING)) return no("OriginalTypings has no end");
+				GbRomData::OriginalTyping t;
+				const nds::Species& base = out.species[national(i)];
+				t.species = out.form[i] ? (uint16_t)(base.formsAt + out.form[i] - 1) : national(i);
+				t.types[0] = gen2Type(d, r.u8(o + 1));
+				t.types[1] = gen2Type(d, r.u8(o + 2));
+				if (!national(i) || t.types[0] == nds::NO_TYPE || t.types[1] == nds::NO_TYPE)
+					return no("OriginalTypings' entry " + std::to_string(n + 1) + " isn't a species and two types");
+				out.originalTypes.push_back(t);
+			}
+		// the moves stronger by the species that uses them: move, species (-1 any), power (-1 the move's, -2 a rule of the
+		// battle's, by the function the fourth byte names), accuracy (0 the move's), to -1; the game takes a move's first
+		// entry (engine/battle/remap_move_data.asm CheckRemapMoveData, IsInArray), so a move's later ones are passed over.
+		// Only the species' (the signatures) are kept: those of any species depend on the battle (Sing's, Explosion's ..)
+		const size_t remappable = optional("remappableMoves");
+		if (remappable != RomView::NONE)
+		{
+			std::set<int> seen;
+			for (size_t o = remappable;; o += REMAPPABLE_MOVE)
+			{
+				if (!r.has(o, 1)) return no("RemappableMoves runs past the ROM");
+				if (r.u8(o) == END) break;
+				const size_t n = (o - remappable) / REMAPPABLE_MOVE + 1;
+				if (n > 64 || !r.has(o, REMAPPABLE_MOVE)) return no("RemappableMoves has no end");
+				const int m = r.u8(o), sp = r.u8(o + 1), power = r.u8(o + 2), acc = r.u8(o + 3);
+				if (m < 1 || m > nMoves || (sp != ANY_SPECIES && !national((uint8_t)sp)) || (power == MODIFIER_FUNCTION && sp != ANY_SPECIES))
+					return no("RemappableMoves' entry " + std::to_string(n) + " isn't a move and a species");
+				if (!seen.insert(m).second || sp == ANY_SPECIES) continue;
+				Signature s;
+				s.move = out.moves[m].name;
+				s.species = national((uint8_t)sp);
+				s.power = power == SAME_POWER ? 0 : (uint8_t)power;
+				s.accuracy = acc ? percent((uint8_t)acc) : 0;
+				out.rules.signatures.push_back(s);
+			}
+		}
 		return true;
 	}
 }

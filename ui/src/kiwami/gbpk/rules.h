@@ -12,7 +12,10 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <bitset>
 #include <cstdint>
+#include <string>
+#include <vector>
 
 namespace banana::kiwami::gbpk
 {
@@ -41,22 +44,56 @@ namespace banana::kiwami::gbpk
 	}
 	using TypeChart = std::array<int8_t, CHART_TYPES * CHART_TYPES>;
 
-	// what the game in use plays by beyond its generation's rules: its type chart. Set by the host once the ROM is read
-	// (useGameRules), after useRules, and cleared (nullptr) before the host frees it, once its Session has stopped.
-	struct GameRules { TypeChart chart; };
+	// a move that is stronger used by one species (PureRGB's signature moves, engine/battle/remap_move_data.asm
+	// RemappableMoves): the move by its name in the ROM (upstream's damage() is given its MoveData, which has no id),
+	// the species by its national number (a form is its base species: Volcanic Magmar as Magmar, as the game counts it),
+	// the power it has then and its accuracy (0: the move's own; the accuracy reaches nothing, as upstream's logic takes
+	// none)
+	struct Signature { std::string move; uint16_t species = 0; uint8_t power = 0, accuracy = 0; };
+
+	// what the game in use plays by beyond its generation's rules, read from its ROM and its data file: its type chart;
+	// PureRGB's four matchup options over it (pureOptions: matchupOptions, below), the types whose category goes by the
+	// attacker's base stats (byStats, by chart index: the data file's split_stats) and the species whose base Special is
+	// above their Attack (statsSpecial, by national number), its signature moves, and its Hyper Ball (hyperBall, its
+	// item number: PureRGB's ItemUseBall, 0 for retail's). Set by the host once the ROM is read (useGameRules), after
+	// useRules, and cleared (nullptr) before the host frees it, once its Session has stopped.
+	struct GameRules
+	{
+		TypeChart chart;
+		bool pureOptions = false;
+		std::array<bool, CHART_TYPES> byStats{};
+		std::bitset<256> statsSpecial;
+		std::vector<Signature> signatures;
+		uint16_t hyperBall = 0;
+	};
 	inline std::atomic<const GameRules*> gameRules{ nullptr };
 	inline void useGameRules(const GameRules* r) { gameRules.store(r); }
+	// what the save has switched, set by the host from each set of the game's memory, as the badges are: PureRGB's
+	// matchup options (wOptions3's bits 0-3) and its signature moves turned off (FLAG_SIGNATURE_MOVES_TURNED_OFF)
+	inline std::atomic<uint8_t> matchupOptions{ 0 };
+	inline std::atomic<bool> signaturesOff{ false };
+	inline void setSwitches(uint8_t options, bool sigOff) { matchupOptions.store(options & 15); signaturesOff.store(sigOff); }
 
 	// a cell of the chart in use, in quarters, for upstream's effectiveness(); -1 for upstream's own. With a game's rules
-	// set, its ROM's cell (4 where the table has none, or for a type outside the game's). Without them (the tests'
-	// stand-in, which has no ROM) Gen I's while oldChart is on, where it differs from upstream's (which is Gen II's:
-	// pret's pokecrystal data/types/type_matchups.asm): Gen I's (pokered data/types/type_matchups.asm) has no Steel or
-	// Dark, Ghost does nothing to Psychic, Bug and Poison are super effective on each other, Ice is neutral on Fire.
+	// set, its ROM's cell (4 where the table has none, or for a type outside the game's), and PureRGB's options over it
+	// (engine/battle/core.asm RemapTypeMatchupBasedOnOptions, as the game walks its table, which lists the four pairs;
+	// ram/wram.asm wOptions3): bit 0 Ghost on Psychic 0x (else the table's 2x), bit 1 Ice on Fire 0.5x (1x), bit 2 Bug
+	// on Poison 0.5x (2x), bit 3 Poison on Bug 1x (2x). Without them (the tests' stand-in, which has no ROM) Gen I's
+	// while oldChart is on, where it differs from upstream's (which is Gen II's: pret's pokecrystal
+	// data/types/type_matchups.asm): Gen I's (pokered data/types/type_matchups.asm) has no Steel or Dark, Ghost does
+	// nothing to Psychic, Bug and Poison are super effective on each other, Ice is neutral on Fire.
 	inline int chart(nds::Type a, nds::Type d)
 	{
 		using namespace nds;
 		if (const GameRules* g = gameRules.load())
 		{
+			if (const uint8_t o = g->pureOptions ? matchupOptions.load() : 0)
+			{
+				if (o & 1 && a == GHOST && d == PSYCHIC) return 0;
+				if (o & 2 && a == ICE && d == FIRE) return 2;
+				if (o & 4 && a == BUG && d == POISON) return 2;
+				if (o & 8 && a == POISON && d == BUG) return 4;
+			}
 			const int i = chartIndex(a), j = chartIndex(d);
 			const int q = i < 0 || j < 0 ? -1 : g->chart[(size_t)(i * CHART_TYPES + j)];
 			return q < 0 ? 4 : q;
@@ -105,8 +142,12 @@ namespace banana::kiwami::gbpk
 	// The games' formula: pokered engine/battle/core.asm (GetDamageVarsForPlayerAttack, CalculateDamage,
 	// AdjustDamageForMoveType, RandomizeDamage), pokecrystal engine/battle/effect_commands.asm (PlayerAttackDamage,
 	// BattleCommand_DamageCalc, BattleCommand_Stab, BattleCommand_DamageVariation) and misc.asm (DoBadgeTypeBoosts).
+	//   PureRGB's signature move used by its species: the signature's power, unless the save turned them off
+	//   (engine/battle/remap_move_data.asm CheckRemapMoveData);
 	//   physical or special by the move's category, which the ROM reader gives by its type and the game's split (the
-	//   retail games': Fire and after special; Gen I's Special is both special stats);
+	//   retail games': Fire and after special; Gen I's Special is both special stats); a type whose category goes by
+	//   the attacker's base stats (PureRGB's Ghost) special when its species' base Special is above its Attack
+	//   (engine/battle/core.asm DynamicTypeCheckPlayer; a form judged as its base species, which upstream's Fighter is);
 	//   the battle's own Attack and Defense: the battle copy's stats already hold the stat stages, the badges' stat
 	//   boosts, burn's halved Attack and paralysis's quartered Speed (the games recompute them), so none is applied
 	//   again; Gen II: Thick Club doubles Cubone's and Marowak's Attack, Light Ball Pikachu's Special Attack;
@@ -129,7 +170,15 @@ namespace banana::kiwami::gbpk
 		r.quarters = e1 * e2 / 4;
 		if (r.quarters == 0) { r.note = "no effect"; return r; }
 		if (mv.power <= 1) { r.note = "power varies"; return r; }
-		const bool phys = mv.cat == MoveCategory::PHYSICAL;
+		int power = mv.power;
+		bool phys = mv.cat == MoveCategory::PHYSICAL;
+		if (const GameRules* g = gameRules.load())
+		{
+			if (!signaturesOff.load())
+				for (const Signature& s : g->signatures)
+					if (s.species == a.species && s.power && s.move == mv.name) { power = s.power; break; }
+			if (const int i = chartIndex(t); i >= 0 && g->byStats[(size_t)i]) phys = !(a.species < 256 && g->statsSpecial[a.species]);
+		}
 		int atk = phys ? a.stats[0] : a.stats[3], def = phys ? d.stats[1] : d.stats[4];
 		if (g == GEN_II)
 		{
@@ -144,7 +193,7 @@ namespace banana::kiwami::gbpk
 		} while (g == GEN_II);
 		atk = std::max(1, std::min(255, atk));
 		def = std::max(1, std::min(255, def));
-		int dmg = ((2 * a.level / 5 + 2) * mv.power * atk / def) / 50;
+		int dmg = ((2 * a.level / 5 + 2) * power * atk / def) / 50;
 		if (g == GEN_II && boostType(a.item) == t) dmg = dmg * 110 / 100;
 		dmg = std::min(dmg, 997) + 2;
 		if (g == GEN_II)
@@ -170,11 +219,16 @@ namespace banana::kiwami::gbpk
 	// Great 200, Ultra and Safari 150) less the status' S (sleep, freeze 25; burn, paralysis, poison 12) catches outright
 	// below 0, fails above the catch rate; else W = (MaxHP * 255 / F) / max(HP / 4, 1) (F: Great 8, the others 12)
 	// catches above 255, else a second random byte catches at most W. Worked out as the probability.
-	inline float catchGen1(const nds::Species& s, const nds::Mon& wild, uint16_t ball, float* mult)
+	// PureRGB's (its engine/items/item_effects.asm ItemUseBall, hyperBall its Hyper Ball's item number): the Safari Ball's
+	// F is 8; the Hyper Ball catches outright a species whose catch rate is above 25, or one below a third of its HP
+	// (FarCheckIfEnemyHPBelowFraction), else it is thrown as N 150 and F 8
+	inline float catchGen1(const nds::Species& s, const nds::Mon& wild, uint16_t ball, float* mult, uint16_t hyperBall = 0)
 	{
-		const int n = ball == GREAT_BALL ? 200 : ball == ULTRA_BALL || ball == SAFARI_BALL ? 150 : 255;
-		const int f = ball == GREAT_BALL ? 8 : 12;
-		if (mult) *mult = ball == GREAT_BALL ? 1.5f : ball == ULTRA_BALL || ball == SAFARI_BALL ? 2 : 1;
+		const bool hyper = hyperBall && ball == hyperBall;
+		if (hyper && (s.catchRate > 25 || wild.hp < wild.maxHp / 3)) { if (mult) *mult = 255; return 1; }
+		const int n = ball == GREAT_BALL ? 200 : ball == ULTRA_BALL || ball == SAFARI_BALL || hyper ? 150 : 255;
+		const int f = ball == GREAT_BALL || (hyperBall && (ball == SAFARI_BALL || hyper)) ? 8 : 12;
+		if (mult) *mult = ball == GREAT_BALL ? 1.5f : ball == ULTRA_BALL || ball == SAFARI_BALL || hyper ? 2 : 1;
 		const uint32_t st = wild.status;
 		const int sv = (st & 7) || (st & 0x20) ? 25 : (st & 0xFF) ? 12 : 0;
 		const int m = wild.maxHp, h = std::min<int>(wild.hp, m);
@@ -250,7 +304,8 @@ namespace banana::kiwami::gbpk
 		if (!wild.species || wild.species >= rom.species.size() || !wild.maxHp) return 0;
 		if (ball == MASTER_BALL) { if (mult) *mult = 255; return 1; }
 		const nds::Species& s = rom.species[wild.species];
-		return g == GEN_I ? catchGen1(s, wild, ball, mult) : catchGen2(rom, s, wild, ball, c, mult);
+		const GameRules* r = gameRules.load();
+		return g == GEN_I ? catchGen1(s, wild, ball, mult, r ? r->hyperBall : 0) : catchGen2(rom, s, wild, ball, c, mult);
 	}
 
 	// ---- Hidden Power and the stats (Gen II) ------------------------------------------------------------------------

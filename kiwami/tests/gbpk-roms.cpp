@@ -187,11 +187,71 @@ static void checkMaps(const nds::RomData& r, const std::string& out, const std::
 		const uint16_t id = cx >= 0 && cy >= 0 && cx < j.gridW && cy < j.gridH ? j.cells[(size_t)cy * j.gridW + cx] : 0xFFFF;
 		EQ(id < r.locationNames.size() ? r.locationNames[id] : "", "New Bark Town");
 	}
+	// (every named place on a map, but Crystal Clear's Origin Plains, whose landmark reads the code past its table of
+	// stand-ins: on none)
 	int placed = 0, named = 0;
+	std::set<std::string> unplaced;
 	for (const auto& [z, l] : r.zones)
-		if (!l.name.empty() && l.name != "Special") { named++; placed += l.spot.map >= 0; }
-	CHECK(placed == named && named > 300);
+		if (!l.name.empty() && l.name != "Special") { named++; placed += l.spot.map >= 0; if (l.spot.map < 0) unplaced.insert(l.name); }
+	CHECK(named > 300 && (key == "crystal-clear" ? unplaced == std::set<std::string>{ "Origin Plains" } : placed == named));
 	fprintf(stderr, "gbpk-roms: %s: %d places on the Pokégear's maps\n", current.c_str(), placed);
+}
+
+// Crystal Clear's own, on each of its eight builds: its packed text decoded whole (Crystal's words: every move
+// description and Pokédex page Crystal's, when its ROM was read before, but Natu's and Teddiursa's categories, which
+// the hack wrote "LITTLEBIRD" and "LITTLEBEAR"), its trainers with a party for each badge count (Falkner's first
+// Crystal's, his last Lv70-75 with a Zapdos; class 39's eleventh record, with no name, passed over to the twentieth),
+// its rods' chances out of 100 (New Bark Town's), Headbutt from TreeMons' set 1 (New Bark Town's: AIPOM first, Lv11,
+// 20 %), and the landmarks past the Fast Ship named and placed by their stand-ins' regions
+static std::vector<std::string> crystalTexts;		// (each species' and move's, Crystal's: kept as its ROM is read)
+static std::vector<std::string> texts(const nds::RomData& r)
+{
+	std::vector<std::string> v;
+	for (int i = 1; i <= 251; i++)
+		v.push_back(r.moves[i].description + "|" + (i == 177 || i == 216 ? "" : r.species[i].category) + "|" + r.species[i].dexText);
+	return v;
+}
+static void checkClear(const nds::RomData& r)
+{
+	EQ(r.moves[1].description, "Pounds with fore- legs or tail.");
+	EQ(r.species[1].dexText, "While it is young, it uses the nutrients that are stored in the seeds on its back in order to grow.");
+	if (!crystalTexts.empty()) CHECK(texts(r) == crystalTexts);
+	const auto* gb = dynamic_cast<const GbRomData*>(&r);
+	CHECK(gb && r.trainers.size() == 538 && gb->teams.size() == 386);
+	if (!gb) return;
+	auto f = gb->teams.find(1 << 8 | 1);
+	CHECK(f != gb->teams.end() && f->second.size() == 16);
+	if (f != gb->teams.end() && f->second.size() == 16)
+	{
+		const auto& last = f->second[15];
+		CHECK(last.size() == 6 && last[0].species == 18 && last[0].level == 70 && last[5].species == 145 && last[5].level == 75);
+		auto later = withBadgeTeams(std::shared_ptr<const nds::RomData>(&r, [](const nds::RomData*) {}), badgeTeam(0xFFFF));
+		CHECK(later->trainers.at(1 << 8 | 1).team.size() == 6 && later->trainers.at(1 << 8 | 1).team[5].level == 75);
+	}
+	int class39 = 0;
+	for (const auto& [id, t] : r.trainers) class39 += id >> 8 == 39;
+	CHECK(class39 == 19 && !r.trainers.count(39 << 8 | 11) && r.trainers.count(39 << 8 | 20));
+	EQ(r.species[177].category, "Littlebird");
+	const nds::Location* nb = nullptr;
+	for (const auto& [z, l] : r.zones) if (z == (24 << 8 | 4)) nb = &l;
+	CHECK(nb && nb->name == "New Bark Town");
+	int rods[3] = { 0, 0, 0 };
+	const nds::Encounter* tree = nullptr;
+	for (const auto& e : nb ? nb->encounters : std::vector<nds::Encounter>{})
+	{
+		const int rod = e.kind == nds::EncounterKind::OLD_ROD ? 0 : e.kind == nds::EncounterKind::GOOD_ROD ? 1 : e.kind == nds::EncounterKind::SUPER_ROD ? 2 : -1;
+		if (rod >= 0 && e.time != nds::TimeOfDay::DAY && e.time != nds::TimeOfDay::NIGHT) rods[rod] += e.percent;
+		if (e.kind == nds::EncounterKind::HEADBUTT && !tree) tree = &e;
+	}
+	CHECK(rods[0] == 100 && rods[1] == 100 && rods[2] == 100);
+	CHECK(tree && tree->species == 190 && tree->minLevel == 11 && tree->percent == 20);
+	auto mapOf = [&](const std::string& name) -> int {
+		for (const auto& [z, l] : r.zones) if (l.name == name) return l.spot.map;
+		return -2;
+	};
+	CHECK(r.locationNames.size() == 117 && r.locationNames[96] == "Viridian Forest" && r.locationNames[116] == "Origin Plains");
+	CHECK(mapOf("Viridian Forest") == 1 && mapOf("Cherrygrove Bay") == 0 && mapOf("Safari Zone") == 1 && mapOf("Origin Plains") == -1);
+	fprintf(stderr, "gbpk-roms: %s: its text decoded, %zu trainers with a party for each badge count\n", current.c_str(), gb->teams.size());
 }
 
 static void checkGen2(const nds::RomData& r, const std::string& key, const std::string& pokedaisy)
@@ -274,6 +334,8 @@ static void checkGen2(const nds::RomData& r, const std::string& key, const std::
 	CHECK(r.trainers.size() > 400);
 	fprintf(stderr, "gbpk-roms: %s: %zu places, %d with wild Pokémon, %zu trainers, %zu place names\n", current.c_str(),
 		r.zones.size(), places, r.trainers.size(), r.locationNames.size());
+	if (key == "crystal") crystalTexts = texts(r);
+	if (key == "crystal-clear") checkClear(r);
 
 	// PokeDaisy's gender ratios and growth rates (its tables are Crystal's; Gold's and Silver's species are the same)
 	if (!pokedaisy.empty())

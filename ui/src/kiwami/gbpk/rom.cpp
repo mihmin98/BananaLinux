@@ -53,6 +53,7 @@ namespace banana::kiwami::gbpk
 	std::string RomView::text(size_t o, size_t max) const
 	{
 		if (o == NONE || o >= b.size()) return "";
+		if (dict != NONE) return decode(charset, b.data() + o, std::min(max, b.size() - o), TextDict{ b.data(), b.size(), dict, dictFirst });
 		return decode(charset, b.data() + o, std::min(max, b.size() - o));
 	}
 
@@ -148,6 +149,14 @@ namespace banana::kiwami::gbpk
 		RomView r{ *rom, d.charset() };
 		std::string w;
 		if (d.gen != 1 && d.gen != 2) return no(d.game.title + ": not a Game Boy game's data file");
+		// (Crystal Clear's packed text: its dictionary, from its first byte to 0x5F, three bytes an entry)
+		if (d.rom.count("textDict"))
+		{
+			r.dict = r.at(d.rom.at("textDict"));
+			r.dictFirst = d.size("textDictFirst");
+			if (r.dictFirst < 1 || r.dictFirst >= 0x60 || !r.has(r.dict, 3 * (size_t)(0x60 - r.dictFirst)))
+				return no(d.game.title + "'s ROM: its text's dictionary (rom.textDict, textDictFirst) isn't in the ROM");
+		}
 		if (!(d.gen == 1 ? readGen1(r, d, *out, &w) : readGen2(r, d, *out, &w))) return no(d.game.title + "'s ROM: " + w);
 		// the rules the data file names: the types whose category goes by the attacker's stats, PureRGB's options (the
 		// game has them where its data file reads them) and its Hyper Ball (an item of its own: rom.h gen1Item)
@@ -155,6 +164,24 @@ namespace banana::kiwami::gbpk
 			if (d.splitStats[t] && chartIndex(d.types[t]) >= 0) out->rules.byStats[(size_t)chartIndex(d.types[t])] = true;
 		out->rules.pureOptions = d.at("options3").ok();
 		if (const int h = d.size("hyperBall"); d.gen == 1 && h > 0 && h < 256) out->rules.hyperBall = gen1Item(d, (uint8_t)h);
+		return out;
+	}
+
+	int badgeTeam(uint16_t badges)
+	{
+		int n = 0;
+		for (int b = 0; b < 16; b++) n += badges >> b & 1;
+		return std::min(n, 15);
+	}
+
+	std::shared_ptr<const nds::RomData> withBadgeTeams(std::shared_ptr<const nds::RomData> rom, int team)
+	{
+		const auto* gb = dynamic_cast<const GbRomData*>(rom.get());
+		if (!gb || gb->teams.empty() || team <= 0) return rom;
+		auto out = std::make_shared<GbRomData>(*gb);
+		for (const auto& [id, parties] : gb->teams)
+			if (auto t = out->trainers.find(id); t != out->trainers.end() && !parties.empty())
+				t->second.team = parties[std::min((size_t)team, parties.size() - 1)];
 		return out;
 	}
 

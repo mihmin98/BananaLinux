@@ -1,0 +1,845 @@
+{
+  "balls": [
+    1,
+    2,
+    4,
+    5,
+    157,
+    159,
+    160,
+    161,
+    164,
+    165,
+    166,
+    177
+  ],
+  "dex_size": 251,
+  "flags": [
+    {
+      "bytes": 256,
+      "first": 0,
+      "ram": "eventFlags"
+    },
+    {
+      "bytes": 40,
+      "first": 2048,
+      "ram": "eventFlags2"
+    }
+  ],
+  "game": "crystal-clear",
+  "gen": 2,
+  "header_title": "PM_CRYSTAL",
+  "items": [
+    [
+      1,
+      1
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      4,
+      3
+    ],
+    [
+      5,
+      4
+    ],
+    [
+      8,
+      81
+    ],
+    [
+      22,
+      82
+    ],
+    [
+      23,
+      83
+    ],
+    [
+      24,
+      84
+    ],
+    [
+      34,
+      85
+    ],
+    [
+      58,
+      445
+    ],
+    [
+      59,
+      446
+    ],
+    [
+      61,
+      447
+    ],
+    [
+      76,
+      237
+    ],
+    [
+      77,
+      244
+    ],
+    [
+      81,
+      245
+    ],
+    [
+      82,
+      221
+    ],
+    [
+      88,
+      222
+    ],
+    [
+      95,
+      243
+    ],
+    [
+      96,
+      248
+    ],
+    [
+      98,
+      241
+    ],
+    [
+      102,
+      240
+    ],
+    [
+      107,
+      246
+    ],
+    [
+      108,
+      242
+    ],
+    [
+      113,
+      247
+    ],
+    [
+      117,
+      239
+    ],
+    [
+      118,
+      258
+    ],
+    [
+      125,
+      238
+    ],
+    [
+      138,
+      249
+    ],
+    [
+      143,
+      233
+    ],
+    [
+      144,
+      250
+    ],
+    [
+      151,
+      235
+    ],
+    [
+      157,
+      495
+    ],
+    [
+      159,
+      493
+    ],
+    [
+      160,
+      494
+    ],
+    [
+      161,
+      492
+    ],
+    [
+      163,
+      236
+    ],
+    [
+      164,
+      497
+    ],
+    [
+      165,
+      498
+    ],
+    [
+      166,
+      496
+    ],
+    [
+      169,
+      80
+    ],
+    [
+      172,
+      252
+    ],
+    [
+      177,
+      499
+    ]
+  ],
+  "kind": "gb-pokemon-ram",
+  "ram": {
+    "backupMapGroup": {
+      "addr": "0xDCAD",
+      "bank": 1,
+      "src": "pokedaisy port (wBackupMapGroup: votes 2)"
+    },
+    "battleMode": {
+      "addr": "0xD22D",
+      "bank": 1,
+      "src": "pokedaisy port (wBattleMode: votes 28)"
+    },
+    "battleMon": {
+      "addr": "0xC62C",
+      "bank": 0,
+      "src": "pokedaisy port (wBattleMon: votes 6)"
+    },
+    "breedMon1": {
+      "addr": "0xDF0C",
+      "bank": 1,
+      "src": "port (wBreedMon1: votes 14)"
+    },
+    "breedMon2": {
+      "addr": "0xDF45",
+      "bank": 1,
+      "src": "port (wBreedMon2: votes 12)"
+    },
+    "curBattleMon": {
+      "addr": "0xD0D4",
+      "bank": 1,
+      "src": "pokedaisy port (wCurBattleMon: votes 28)"
+    },
+    "curOTMon": {
+      "addr": "0xC663",
+      "bank": 0,
+      "src": "pokedaisy port (wCurOTMon: votes 18)"
+    },
+    "dayCareLady": {
+      "addr": "0xDF2C",
+      "bank": 1,
+      "src": "port (wDayCareLady: votes 3)"
+    },
+    "dayCareMan": {
+      "addr": "0xDEF5",
+      "bank": 1,
+      "src": "port (wDayCareMan: votes 2)"
+    },
+    "dexCaught": {
+      "addr": "0xDA0E",
+      "bank": 1,
+      "src": "pokedaisy port (wPokedexCaught: votes 2)"
+    },
+    "dexSeen": {
+      "addr": "0xDEB9",
+      "bank": 1,
+      "src": "pokedaisy port (wPokedexSeen: votes 3)"
+    },
+    "enemyMon": {
+      "addr": "0xD206",
+      "bank": 1,
+      "src": "pokedaisy port (wEnemyMon: votes 9)"
+    },
+    "enemyStatLevels": {
+      "addr": "0xC6D4",
+      "bank": 0,
+      "src": "port (wEnemyStatLevels: votes 18)"
+    },
+    "eventFlags": {
+      "addr": "0xDA72",
+      "bank": 1,
+      "src": "port (wEventFlags: code, the base's too)"
+    },
+    "eventFlags2": {
+      "addr": "0xD6F6",
+      "bank": 1,
+      "src": "port (its own: code)"
+    },
+    "gameTime": {
+      "addr": "0xD4C4",
+      "bank": 1,
+      "src": "pokedaisy port (wGameTimeHours: votes 5)"
+    },
+    "johtoBadges": {
+      "addr": "0xD857",
+      "bank": 1,
+      "src": "port (wJohtoBadges: votes 3)"
+    },
+    "kantoBadges": {
+      "addr": "0xD858",
+      "bank": 1,
+      "src": "port (wKantoBadges: votes 3)"
+    },
+    "mapGroup": {
+      "addr": "0xDA3A",
+      "bank": 1,
+      "src": "pokedaisy port (wMapGroup: votes 11)"
+    },
+    "mapNumber": {
+      "addr": "0xDA3B",
+      "bank": 1,
+      "src": "port (wMapNumber: votes 12 (1 stray))"
+    },
+    "menu2D": {
+      "addr": "0xCFA1",
+      "bank": 0,
+      "src": "pokedaisy port (w2DMenuCursorInitY: votes 11)"
+    },
+    "menuCursor": {
+      "addr": "0xCFA9",
+      "bank": 0,
+      "src": "pokedaisy port (wMenuCursorY: votes 72)"
+    },
+    "money": {
+      "addr": "0xD84E",
+      "bank": 1,
+      "src": "pokedaisy port (wMoney: votes 6)"
+    },
+    "moveMenuType": {
+      "addr": "0xD235",
+      "bank": 1,
+      "src": "pokedaisy port (wMoveSelectionMenuType: votes 8)"
+    },
+    "numBalls": {
+      "addr": "0xD8D7",
+      "bank": 1,
+      "src": "pokedaisy port (wNumBalls: votes 4)"
+    },
+    "numItems": {
+      "addr": "0xD892",
+      "bank": 1,
+      "src": "pokedaisy port (wNumItems: votes 15)"
+    },
+    "numKeyItems": {
+      "addr": "0xD8BC",
+      "bank": 1,
+      "src": "pokedaisy port (wNumKeyItems: votes 7)"
+    },
+    "otPartyCount": {
+      "addr": "0xD280",
+      "bank": 1,
+      "src": "pokedaisy port (wOTPartyCount: votes 20)"
+    },
+    "otPartyMons": {
+      "addr": "0xD288",
+      "bank": 1,
+      "src": "pokedaisy port (wOTPartyMons: votes 11)"
+    },
+    "otherTrainerClass": {
+      "addr": "0xD22F",
+      "bank": 1,
+      "src": "port (wOtherTrainerClass: votes 4)"
+    },
+    "otherTrainerID": {
+      "addr": "0xD231",
+      "bank": 1,
+      "src": "port (wOtherTrainerID: code, the base's too)"
+    },
+    "partyCount": {
+      "addr": "0xDCD7",
+      "bank": 1,
+      "src": "pokedaisy port (wPartyCount: votes 84)"
+    },
+    "partyMenuAction": {
+      "addr": "0xD141",
+      "bank": 1,
+      "src": "pokedaisy port (wPartyMenuActionText: votes 9)"
+    },
+    "partyMonNicknames": {
+      "addr": "0xDE41",
+      "bank": 1,
+      "src": "port (wPartyMonNicknames: votes 28 (1 stray))"
+    },
+    "partyMonOTs": {
+      "addr": "0xDDFF",
+      "bank": 1,
+      "src": "port (wPartyMonOTs: votes 22 (1 stray))"
+    },
+    "partyMons": {
+      "addr": "0xDCDF",
+      "bank": 1,
+      "src": "pokedaisy port (wPartyMons: votes 30 (1 stray))"
+    },
+    "playerGender": {
+      "addr": "0xD472",
+      "bank": 1,
+      "src": "pokedaisy port (wPlayerGender: code)"
+    },
+    "playerID": {
+      "addr": "0xD47B",
+      "bank": 1,
+      "src": "port (wPlayerID: votes 10)"
+    },
+    "playerName": {
+      "addr": "0xD47D",
+      "bank": 1,
+      "src": "port (wPlayerName: votes 14)"
+    },
+    "playerStatLevels": {
+      "addr": "0xC6CC",
+      "bank": 0,
+      "src": "port (wPlayerStatLevels: votes 7)"
+    },
+    "roamMon1": {
+      "addr": "0xDFCF",
+      "bank": 1,
+      "src": "port (wRoamMon1: code, the base's too)"
+    },
+    "roamMon2": {
+      "addr": "0xDFD6",
+      "bank": 1,
+      "src": "port (wRoamMon2: code, the base's too)"
+    },
+    "roamMon3": {
+      "addr": "0xDFDD",
+      "bank": 1,
+      "src": "port (wRoamMon3: code, the base's too)"
+    },
+    "stepsToEgg": {
+      "addr": "0xDF2D",
+      "bank": 1,
+      "src": "port (wStepsToEgg: code, the base's too)"
+    },
+    "tileMap": {
+      "addr": "0xC4A0",
+      "bank": 0,
+      "src": "pokedaisy port (wTilemap: votes 44)"
+    },
+    "timeOfDay": {
+      "addr": "0xD269",
+      "bank": 1,
+      "src": "port (wTimeOfDay: votes 11)"
+    },
+    "tmsHms": {
+      "addr": "0xD859",
+      "bank": 1,
+      "src": "pokedaisy port (wTMsHMs: votes 6)"
+    },
+    "tradeFlags": {
+      "addr": "0xD960",
+      "bank": 1,
+      "src": "port (wTradeFlags: code, the base's too)"
+    },
+    "xCoord": {
+      "addr": "0xDCB8",
+      "bank": 1,
+      "src": "port (wXCoord: votes 12)"
+    },
+    "yCoord": {
+      "addr": "0xDCB7",
+      "bank": 1,
+      "src": "pokedaisy port (wYCoord: votes 8)"
+    }
+  },
+  "releases": [
+    {
+      "code": "BYTE",
+      "name": "v2.5.11",
+      "rom": {
+        "evosAttacksPointers": {
+          "addr": "0x4CF9",
+          "bank": 16,
+          "src": "port (EvosAttacksPointers: votes 5)"
+        },
+        "moveDescriptions": {
+          "addr": "0x4E80",
+          "bank": 11,
+          "src": "pokedaisy port (MoveDescriptions: code, the base's too)"
+        }
+      },
+      "sha1": "a1c4da6b0057c98fe4ebea45d6812a484fc69abd"
+    },
+    {
+      "code": "BYTE",
+      "name": "v2.5.11 Color Filter",
+      "rom": {
+        "evosAttacksPointers": {
+          "addr": "0x4CF9",
+          "bank": 16,
+          "src": "port (EvosAttacksPointers: votes 5)"
+        },
+        "moveDescriptions": {
+          "addr": "0x4E80",
+          "bank": 11,
+          "src": "pokedaisy port (MoveDescriptions: code, the base's too)"
+        }
+      },
+      "sha1": "6fc677bf7a9db103cb9ee11ac08d26782e69ae41"
+    },
+    {
+      "code": "BYTE",
+      "name": "v2.5.11 SGB Mode",
+      "rom": {
+        "evosAttacksPointers": {
+          "addr": "0x4CF9",
+          "bank": 16,
+          "src": "port (EvosAttacksPointers: votes 5)"
+        },
+        "moveDescriptions": {
+          "addr": "0x4E80",
+          "bank": 11,
+          "src": "pokedaisy port (MoveDescriptions: code, the base's too)"
+        }
+      },
+      "sha1": "8be3dea853b39442f36f94c3988e074788c5ecec"
+    },
+    {
+      "code": "BYTE",
+      "name": "v2.5.11 Color Filter SGB Mode",
+      "rom": {
+        "evosAttacksPointers": {
+          "addr": "0x4CF9",
+          "bank": 16,
+          "src": "port (EvosAttacksPointers: votes 5)"
+        },
+        "moveDescriptions": {
+          "addr": "0x4E80",
+          "bank": 11,
+          "src": "pokedaisy port (MoveDescriptions: code, the base's too)"
+        }
+      },
+      "sha1": "913c49bd487efb4516b94fc427a1b12628be3daa"
+    },
+    {
+      "code": "BYTE",
+      "name": "v2.6.0",
+      "rom": {
+        "evosAttacksPointers": {
+          "addr": "0x4D0E",
+          "bank": 16,
+          "src": "port (EvosAttacksPointers: votes 5)"
+        },
+        "moveDescriptions": {
+          "addr": "0x4EA0",
+          "bank": 11,
+          "src": "pokedaisy port (MoveDescriptions: code, the base's too)"
+        }
+      },
+      "sha1": "84d5c4924c3f1f3fc690669148b7e392948fb23d"
+    },
+    {
+      "code": "BYTE",
+      "name": "v2.6.0 Color Filter",
+      "rom": {
+        "evosAttacksPointers": {
+          "addr": "0x4D0E",
+          "bank": 16,
+          "src": "port (EvosAttacksPointers: votes 5)"
+        },
+        "moveDescriptions": {
+          "addr": "0x4EA0",
+          "bank": 11,
+          "src": "pokedaisy port (MoveDescriptions: code, the base's too)"
+        }
+      },
+      "sha1": "534876e4e4d0d79a82fef3bbe5bea11c40451727"
+    },
+    {
+      "code": "BYTE",
+      "name": "v2.6.0 SGB Mode",
+      "rom": {
+        "evosAttacksPointers": {
+          "addr": "0x4D0E",
+          "bank": 16,
+          "src": "port (EvosAttacksPointers: votes 5)"
+        },
+        "moveDescriptions": {
+          "addr": "0x4EA0",
+          "bank": 11,
+          "src": "pokedaisy port (MoveDescriptions: code, the base's too)"
+        }
+      },
+      "sha1": "059632e84a92d6870a1e83c313a72974224f9c1c"
+    },
+    {
+      "code": "BYTE",
+      "name": "v2.6.0 Color Filter SGB Mode",
+      "rom": {
+        "evosAttacksPointers": {
+          "addr": "0x4D0E",
+          "bank": 16,
+          "src": "port (EvosAttacksPointers: votes 5)"
+        },
+        "moveDescriptions": {
+          "addr": "0x4EA0",
+          "bank": 11,
+          "src": "pokedaisy port (MoveDescriptions: code, the base's too)"
+        }
+      },
+      "sha1": "88c943e6d76dbde9f8edace5df396fe6bbc9e146"
+    }
+  ],
+  "rom": {
+    "baseData": {
+      "addr": "0x5698",
+      "bank": 20,
+      "src": "pokedaisy port (BaseData: data 32)"
+    },
+    "dexEntryBanks": {
+      "addr": "0x7DDC",
+      "bank": 21,
+      "src": "pokedaisy port (GetDexEntryPointer.PokedexEntryBanks: code, the base's too)"
+    },
+    "dexEntryPointers": {
+      "addr": "0x7E03",
+      "bank": 21,
+      "src": "pokedaisy port (PokedexDataPointerTable: code, the base's too)"
+    },
+    "fishGroups": {
+      "addr": "0x7D25",
+      "bank": 17,
+      "src": "port (FishGroups: code)"
+    },
+    "grassProbs": {
+      "addr": "0x5BE7",
+      "bank": 17,
+      "src": "port (GrassMonProbTable: code, the base's too)"
+    },
+    "itemAttributes": {
+      "addr": "0x7587",
+      "bank": 1,
+      "src": "port (ItemAttributes: code, the base's too)"
+    },
+    "itemDescriptions": {
+      "addr": "0x49D1",
+      "bank": 114,
+      "src": "pokedaisy port (ItemDescriptions: code, the base's too)"
+    },
+    "itemNames": {
+      "addr": "0x4000",
+      "bank": 114,
+      "src": "port (ItemNames: data 16)"
+    },
+    "johtoGrass": {
+      "addr": "0x5DB4",
+      "bank": 17,
+      "src": "port (JohtoGrassWildMons: code, the base's too)"
+    },
+    "johtoMap": {
+      "addr": "0x60A5",
+      "bank": 36,
+      "src": "pokedaisy port (JohtoMap: data 32)"
+    },
+    "johtoWater": {
+      "addr": "0x6B1C",
+      "bank": 17,
+      "src": "port (JohtoWaterWildMons: code, the base's too)"
+    },
+    "kantoGrass": {
+      "addr": "0x6CD6",
+      "bank": 17,
+      "src": "port (KantoGrassWildMons: code, the base's too)"
+    },
+    "kantoMap": {
+      "addr": "0x620E",
+      "bank": 36,
+      "src": "pokedaisy port (KantoMap: data 32)"
+    },
+    "kantoWater": {
+      "addr": "0x77AC",
+      "bank": 17,
+      "src": "port (KantoWaterWildMons: code, the base's too)"
+    },
+    "landmarkRegions": {
+      "addr": "0x6F8B",
+      "bank": 114,
+      "src": "port (its own: code)"
+    },
+    "landmarks": {
+      "addr": "0x6833",
+      "bank": 114,
+      "src": "port (Landmarks: code, the base's too)"
+    },
+    "mapGroups": {
+      "addr": "0x4000",
+      "bank": 37,
+      "src": "port (MapGroupPointers: code)"
+    },
+    "mapHeadersEnd": {
+      "addr": "0x515C",
+      "bank": 37,
+      "src": "port (NewBarkTown_MapAttributes: code, the base's too)"
+    },
+    "monPalettes": {
+      "addr": "0x622C",
+      "bank": 2,
+      "src": "port (PokemonPalettes: code)"
+    },
+    "moveEffectPriorities": {
+      "addr": "0x450A",
+      "bank": 15,
+      "src": "port (MoveEffectPriorities: code, the base's too)"
+    },
+    "moveNames": {
+      "addr": "0x5E9B",
+      "bank": 114,
+      "src": "port (MoveNames: data 16)"
+    },
+    "moves": {
+      "addr": "0x4166",
+      "bank": 16,
+      "src": "port (Moves: data 1757)"
+    },
+    "picPointers": {
+      "addr": "0x4000",
+      "bank": 72,
+      "src": "pokedaisy port (PokemonPicPointers: code)"
+    },
+    "picsBanks": {
+      "addr": "0x542D",
+      "bank": 20,
+      "src": "pokedaisy port (FixPicBank.PicsBanks: code, the base's too)"
+    },
+    "pokegearPals": {
+      "addr": "0x799B",
+      "bank": 2,
+      "src": "pokedaisy port (MalePokegearPals: code, the base's too)"
+    },
+    "pokemonNames": {
+      "addr": "0x75F8",
+      "bank": 20,
+      "src": "port (PokemonNames: data 2510)"
+    },
+    "rockMonMaps": {
+      "addr": "0x7B31",
+      "bank": 17,
+      "src": "port (RockMonMaps: code)"
+    },
+    "textDict": {
+      "addr": "0x11FF",
+      "bank": 0,
+      "src": "pokedaisy port (its own: code)"
+    },
+    "timeFishGroups": {
+      "addr": "0x7F1B",
+      "bank": 17,
+      "src": "port (TimeFishGroups: code, the base's too)"
+    },
+    "tmHmMoves": {
+      "addr": "0x4F8F",
+      "bank": 4,
+      "src": "pokedaisy port (TMHMMoves: code, the base's too)"
+    },
+    "townMapGfx": {
+      "addr": "0x53A0",
+      "bank": 62,
+      "src": "pokedaisy port (TownMapGFX: code)"
+    },
+    "townMapPalMap": {
+      "addr": "0x602D",
+      "bank": 36,
+      "src": "pokedaisy port (TownMapPals.PalMap: code, the base's too)"
+    },
+    "trainerClassNames": {
+      "addr": "0x43FB",
+      "bank": 11,
+      "src": "port (TrainerClassNames: code, the base's too)"
+    },
+    "trainerGroupsFar": {
+      "addr": "0x4416",
+      "bank": 14,
+      "src": "port (TrainerGroups: code)"
+    },
+    "treeMonMaps": {
+      "addr": "0x7AC8",
+      "bank": 17,
+      "src": "port (TreeMonMaps: code)"
+    },
+    "treeMons": {
+      "addr": "0x7AA4",
+      "bank": 17,
+      "src": "port (TreeMons: code)"
+    },
+    "typeChart": {
+      "addr": "0x4BCD",
+      "bank": 13,
+      "src": "port (TypeMatchups: data 332)"
+    },
+    "unownPicPointers": {
+      "addr": "0x4000",
+      "bank": 73,
+      "src": "pokedaisy port (UnownPicPointers: code, the base's too)"
+    },
+    "waterProbs": {
+      "addr": "0x5BF5",
+      "bank": 17,
+      "src": "port (WaterMonProbTable: code, the base's too)"
+    }
+  },
+  "schema": 1,
+  "sizes": {
+    "ballsMax": 12,
+    "eventFlagBytes": 256,
+    "fastShipLandmark": 95,
+    "firstTm": 191,
+    "fishChances": 100,
+    "fishGroupSize": 6,
+    "itemsMax": 20,
+    "kantoLandmark": 47,
+    "keyItemsMax": 25,
+    "landmarkRegionsFirst": 96,
+    "numLandmarks": 117,
+    "numMoves": 251,
+    "numPokemon": 251,
+    "numTrainerClasses": 105,
+    "speciesCount": 251,
+    "textDictFirst": 22,
+    "trainerItem": 4,
+    "trainerMoves": 16,
+    "trainerNickname": 8,
+    "trainerTeams": 2,
+    "treeMonsFirst": 1,
+    "vitalThrow": 233
+  },
+  "special": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27
+  ],
+  "title": "Crystal Clear",
+  "types": {
+    "0": "normal",
+    "1": "fighting",
+    "2": "flying",
+    "20": "fire",
+    "21": "water",
+    "22": "grass",
+    "23": "electric",
+    "24": "psychic",
+    "25": "ice",
+    "26": "dragon",
+    "27": "dark",
+    "3": "poison",
+    "4": "ground",
+    "5": "rock",
+    "7": "bug",
+    "8": "ghost",
+    "9": "steel"
+  }
+}

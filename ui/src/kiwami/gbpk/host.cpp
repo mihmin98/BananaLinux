@@ -153,6 +153,7 @@ namespace banana::kiwami::gbpk
 			{
 				setBadges(l->badges);
 				if (pure) switches();
+				if (teams) badgeTeams(l->badges);
 				session->feed(l);
 				fed++;
 			}
@@ -187,11 +188,14 @@ namespace banana::kiwami::gbpk
 		asRead = base.rom;
 		pure = false;
 		switchesSeen = false;
+		teams = false;
+		lastTeam = 0;	// (the ROM's data as read: each trainer's first party)
 		if (const auto* gb = dynamic_cast<const GbRomData*>(base.rom.get()); gb && gb->rom)
 		{
 			rules = std::make_unique<GameRules>(gb->rules);
 			useGameRules(rules.get());
 			pure = gb->rules.pureOptions || !gb->originalTypes.empty();
+			teams = !gb->teams.empty();
 		}
 		setSwitches(0, false);
 		reader.open(data);
@@ -233,6 +237,20 @@ namespace banana::kiwami::gbpk
 		lastRemap = remap;
 		lastOptions = options;
 		lastSigOff = sigOff;
+	}
+
+	// Crystal Clear's trainers whose party goes by the badge count: a change of the party the save's badges give starts
+	// the Session again on a copy of the ROM's data with each one's (its Battle page's foe and the guide's next fight
+	// take a trainer's team from it), logged. (A game has these or PureRGB's switches, never both: the copy is of the
+	// data as read)
+	void Host::badgeTeams(uint16_t badges)
+	{
+		const int t = badgeTeam(badges);
+		if (t == lastTeam) return;
+		lastTeam = t;
+		base.rom = withBadgeTeams(asRead, t);
+		startSession();
+		fprintf(stderr, "banana-ui: gb companion: the trainers' parties for %d badges\n", t);
 	}
 
 	bool Host::takeData(nds::PageData& d)

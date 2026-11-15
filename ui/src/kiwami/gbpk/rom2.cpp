@@ -44,6 +44,7 @@ namespace banana::kiwami::gbpk
 		const int GRASS = 2 + 3 + 3 * GRASS_SLOTS * 2;	// data/wild/*_grass.asm: map, three rates, morning, day, night
 		const int WATER = 2 + 1 + WATER_SLOTS * 2;		// data/wild/*_water.asm: map, rate, the slots
 		const int FISH_GROUP = 7;			// data/wild/fish.asm: the bite chance, the three rods' tables
+		const int FISH_RODS = 6;			// (the three rods' pointers: Crystal Clear's group, no bite chance)
 		const int TIME_FISH = 4;			// data/wild/fish.asm TimeFishGroups: day species and level, night's
 		const int NUM_TMS = 50, NUM_HMS = 7;	// constants/item_constants.asm (the TM/HM bits, then the tutors')
 		const uint8_t BASE_HAPPINESS = 70;	// constants/pokemon_data_constants.asm
@@ -55,6 +56,8 @@ namespace banana::kiwami::gbpk
 		enum { TR_ANYTIME = 1, TR_MORNDAY, TR_NITE };
 		enum { ATK_GT_DEF = 1, ATK_LT_DEF, ATK_EQ_DEF };
 		enum { TRAINERTYPE_MOVES = 1, TRAINERTYPE_ITEM = 2 };
+		const uint8_t TEAM_END = 0xFE;		// (Crystal Clear's ReadTrainerParty: one of a trainer's parties ends)
+		const int MAX_TEAMS = 16;			// (a party for 0-15 badges)
 		enum { ITEM = 1, KEY_ITEM, BALL, TM_HM };
 
 		// a map's hidden items: the events its attributes point to (in the scripts' bank: two filler bytes, then the
@@ -139,7 +142,8 @@ namespace banana::kiwami::gbpk
 		for (int m = 1; m <= nMoves; m++)
 			if (r.u8(moves + MOVE * (m - 1)) != m) return no("Moves' record " + std::to_string(m) + " isn't move " + std::to_string(m) + "'s");
 		if (r.u8(moves + 2) != 40 || r.u8(moves + 3) != 0 || r.u8(moves + 5) != 35) return no("Moves' first record isn't Pound's");
-		// the pictures, checked (PokemonPalettes' first entry, no species', is RGB 30, 22, 17 and 16, 14, 19 twice;
+		// the pictures, checked (PokemonPalettes' first entry, no species', has the same two colours as normal and as
+		// shiny, not black: RGB 30, 22, 17 and 16, 14, 19 in the games, filtered in Crystal Clear's Color Filter builds;
 		// Bulbasaur's front picture decodes)
 		out.pics.pointers = picPointers;
 		out.pics.unown = unownPics;
@@ -148,8 +152,8 @@ namespace banana::kiwami::gbpk
 		out.pics.palettes = monPalettes;
 		out.pics.baseData = baseData;
 		out.pics.count = nSp;
-		static const uint8_t PALETTE_0[8] = { 0xDE, 0x46, 0xD0, 0x4D, 0xDE, 0x46, 0xD0, 0x4D };
-		if (!r.has(monPalettes, 8 * ((size_t)nSp + 1)) || memcmp(r.b.data() + monPalettes, PALETTE_0, 8) != 0)
+		if (!r.has(monPalettes, 8 * ((size_t)nSp + 1)) || memcmp(r.b.data() + monPalettes, r.b.data() + monPalettes + 4, 4) != 0 ||
+			r.le16(monPalettes) == 0)
 			return no("PokemonPalettes' first entry isn't the games'");
 		if (!gen2FrontPic(r, out.pics, 1)) return no("Bulbasaur's front picture doesn't decode");
 
@@ -396,22 +400,28 @@ namespace banana::kiwami::gbpk
 		// 256 taken when the roll is at or below it, a species and level, to the one at 255; species 0 is a level of
 		// TimeFishGroups: its day species by morning and day, its night species at night). The games give every map
 		// with no water of its own the first group, Shore (data/maps/maps.asm: the Pokémon Centers, the towers, the
-		// gates), so a map of that group fishes only when it has water to surf (its water table)
+		// gates), so a map of that group fishes only when it has water to surf (its water table). Crystal Clear's group
+		// is the rods' pointers alone (the data file's fishGroupSize, 6), and its chances are out of fishChances (100:
+		// RandomRange's, the roll from 1, to the one at 100)
 		static const EncounterKind RODS[3] = { EncounterKind::OLD_ROD, EncounterKind::GOOD_ROD, EncounterKind::SUPER_ROD };
 		const uint8_t SHORE = 1;
+		const int fishGroup = d.size("fishGroupSize", FISH_GROUP), chances = d.size("fishChances", 256);
+		if ((fishGroup != FISH_GROUP && fishGroup != FISH_RODS) || chances < 2 || chances > 256)
+			return no("the data file's fishGroupSize or fishChances isn't a layout of FishGroups");
+		const int firstRoll = chances == 256 ? 0 : 1, lastRoll = firstRoll + chances - 1;
 		for (const auto& [z, fg] : fishGroupOf)
 		{
-			const size_t f = fish + FISH_GROUP * (size_t)(fg - 1);
-			if (fg > 32 || !r.has(f, FISH_GROUP)) return no("map " + std::to_string(z) + "'s fishing group isn't in FishGroups");
+			const size_t f = fish + fishGroup * (size_t)(fg - 1);
+			if (fg > 32 || !r.has(f, fishGroup)) return no("map " + std::to_string(z) + "'s fishing group isn't in FishGroups");
 			nds::Location& loc = out.zones[z];
 			if (fg == SHORE && !has(loc, EncounterKind::SURF)) continue;
 			for (int rod = 0; rod < 3; rod++)
 			{
-				size_t q = r.near(f + 1 + 2 * rod);
-				int last = -1;
+				size_t q = r.near(f + (fishGroup - FISH_RODS) + 2 * rod);
+				int last = firstRoll - 1;
 				for (int k = 0; k < 8 && q != RomView::NONE && r.has(q, 3); k++, q += 3)
 				{
-					const int cum = r.u8(q), pct = ((cum - last) * 100 + 128) / 256;
+					const int cum = r.u8(q), pct = ((cum - last) * 100 + chances / 2) / chances;
 					last = cum;
 					if (r.u8(q + 1) == 0)
 					{
@@ -422,23 +432,27 @@ namespace banana::kiwami::gbpk
 						add(loc, r.u8(tf + 2), r.u8(tf + 3), r.u8(tf + 3), pct, RODS[rod], TimeOfDay::NIGHT);
 					}
 					else add(loc, r.u8(q + 1), r.u8(q + 2), r.u8(q + 2), pct, RODS[rod], TimeOfDay::ANY);
-					if (cum == END) break;
+					if (cum >= lastRoll) break;
 				}
 			}
 		}
 		// Headbutt and Rock Smash (data/wild/treemon_maps.asm: map and set to -1; data/wild/treemons.asm: a set's
 		// percent, species and level to -1, the common trees' then the rare trees'; Rock Smash takes the first list).
 		// Set 0 is none, but in Crystal Legacy's RockSmashMons, a table of Rock Smash's sets of its own from 0
-		// (engine/events/treemons.asm GetRockSmashMons)
+		// (engine/events/treemons.asm GetRockSmashMons). Crystal Clear's TreeMons begins at set 1 (the data file's
+		// treeMonsFirst; Crystal's has a set 0)
 		const size_t rockSets = d.rom.count("rockSmashMons") ? r.at(d.rom.at("rockSmashMons")) : RomView::NONE;
+		const int treeFirst = d.size("treeMonsFirst");
+		if (treeFirst < 0 || treeFirst > 1) return no("the data file's treeMonsFirst isn't TreeMons' 0 or 1");
 		auto trees = [&](size_t maps, EncounterKind k, int lists, size_t sets) {
 			const bool fromZero = sets != treeMons;
+			const int first = fromZero ? 0 : treeFirst;
 			for (size_t o = maps; r.u8(o) != END && o < maps + 3 * 128; o += 3)
 			{
 				nds::Location& loc = zone(o);
 				const uint8_t set = r.u8(o + 2);
-				if ((!set && !fromZero) || has(loc, k)) continue;
-				size_t q = r.near(sets + 2 * (size_t)set);
+				if ((!set && !fromZero) || set < first || has(loc, k)) continue;
+				size_t q = r.near(sets + 2 * (size_t)(set - first));
 				if (q == RomView::NONE) return false;
 				for (int list = 0; list < lists; list++, q++)
 					for (int n = 0; n < 16 && r.u8(q) != END; n++, q += 3)
@@ -458,7 +472,13 @@ namespace banana::kiwami::gbpk
 		// items, four moves when it has moves, to -1), by class << 8 | number, the class's name from TrainerClassNames.
 		// Crystal Legacy's types have more bits, each a field read before the item (engine/battle/read_trainer_party.asm
 		// ReadTrainerPartyPieces): a nickname (a byte, then a string), two DVs, five words of stat experience, happiness;
-		// they are passed over (a game without them, the data file's sizes, has none)
+		// they are passed over (a game without them, the data file's sizes, has none). Crystal Clear's ReadTrainerParty
+		// is its own (the data file's trainerTeams, its type's bit for it): a trainer of that type has a party for each
+		// badge count, each with a type of its own and ended by -2, the last by -1, and a member's fields are its item, a
+		// nickname (a string, or its end alone for none) and its moves, in that order, by trainerItem, trainerNickname
+		// and trainerMoves. The trainer's team is its first party, the rest kept in teams (withBadgeTeams). It finds a
+		// trainer by counting the -1s before it (FindTrainer), so a record with no name, -1 before any end of a name,
+		// is passed over to its -1, its number kept. A name is read once its record is a trainer's
 		std::vector<std::string> classes;
 		size_t cn = classNames;
 		for (int c = 0; c < nClasses && cn != RomView::NONE; c++) { classes.push_back(nameCase(r.text(cn, 16))); cn = r.skip(cn, 16); }
@@ -468,41 +488,78 @@ namespace banana::kiwami::gbpk
 		for (int c = 0; c < nClasses; c++)
 			starts.push_back(groupsFar ? r.at(r.u8(trainers + 3 * c), r.le16(trainers + 3 * c + 1)) : r.near(trainers + 2 * c));
 		const int nickname = d.size("trainerNickname"), dvs = d.size("trainerDvs"), statExp = d.size("trainerStatExp"),
-			happiness = d.size("trainerHappiness"), types = TRAINERTYPE_MOVES | TRAINERTYPE_ITEM | nickname | dvs | statExp | happiness;
+			happiness = d.size("trainerHappiness"), teams = d.size("trainerTeams"),
+			item = d.size("trainerItem", TRAINERTYPE_ITEM), withMoves = d.size("trainerMoves", TRAINERTYPE_MOVES),
+			types = withMoves | item | nickname | dvs | statExp | happiness;
+		if (teams & types) return no("the data file's trainer type bits overlap");
+		size_t end = 0;
+		// a party's members from q, of a type, to its end (q left there); false for one that isn't a member
+		auto party = [&](size_t& q, uint8_t type, std::vector<nds::TrainerMon>& team) {
+			while (q < end && r.u8(q) != END && !(teams && r.u8(q) == TEAM_END))
+			{
+				nds::TrainerMon m;
+				m.level = r.u8(q);
+				m.species = r.u8(q + 1);
+				q += 2;
+				if (!teams)
+				{
+					if (type & nickname) q = r.skip(q + 1, 16);
+					if (q == RomView::NONE) return false;
+					q += (type & dvs ? 2 : 0) + (type & statExp ? 10 : 0) + (type & happiness ? 1 : 0);
+				}
+				if (type & item) m.item = gen2Item(d, r.u8(q++));
+				if (teams && (type & nickname) && (q = r.skip(q, 16)) == RomView::NONE) return false;
+				if (type & withMoves) { for (int j = 0; j < 4; j++) m.moves[j] = r.u8(q + j); q += 4; }
+				else defaultMoves(out, m);
+				if (m.level < 1 || m.level > 100 || m.species < 1 || m.species > nSp || team.size() >= 6) return false;
+				team.push_back(m);
+			}
+			return true;
+		};
 		for (int c = 0; c < nClasses; c++)
 		{
 			size_t o = starts[c];
 			if (o == RomView::NONE) return no("TrainerGroups' pointer for class " + std::to_string(c + 1) + " leaves its bank");
-			size_t end = (o / 0x4000 + 1) * 0x4000;
+			end = (o / 0x4000 + 1) * 0x4000;
 			for (size_t s : starts) if (s != RomView::NONE && s > o) end = std::min(end, s);
 			for (int n = 1; n < 256 && o < end; n++)
 			{
 				nds::Trainer tr;
 				tr.id = (uint16_t)((c + 1) << 8 | n);
 				tr.cls = c < (int)classes.size() ? classes[c] : "";
-				tr.name = nameCase(r.text(o, 16));
+				if (teams)
+				{
+					size_t f = o;
+					while (f < end && r.u8(f) != END && r.u8(f) != 0x50) f++;
+					if (f < end && r.u8(f) == END) { o = f + 1; continue; }
+				}
 				size_t q = r.skip(o, 16);
 				if (q == RomView::NONE || q >= end) break;
 				const uint8_t type = r.u8(q++);
-				if (type & ~types) break;
+				std::vector<std::vector<nds::TrainerMon>> parties;
 				bool ok = true;
-				while (q < end && r.u8(q) != END && ok)
+				if (teams && type == teams)
 				{
-					nds::TrainerMon m;
-					m.level = r.u8(q);
-					m.species = r.u8(q + 1);
-					q += 2;
-					if (type & nickname) q = r.skip(q + 1, 16);
-					if (q == RomView::NONE) break;
-					q += (type & dvs ? 2 : 0) + (type & statExp ? 10 : 0) + (type & happiness ? 1 : 0);
-					if (type & TRAINERTYPE_ITEM) m.item = gen2Item(d, r.u8(q++));
-					if (type & TRAINERTYPE_MOVES) { for (int j = 0; j < 4; j++) m.moves[j] = r.u8(q + j); q += 4; }
-					else defaultMoves(out, m);
-					ok = m.level >= 1 && m.level <= 100 && m.species >= 1 && m.species <= nSp && tr.team.size() < 6;
-					tr.team.push_back(m);
+					for (int k = 0; k < MAX_TEAMS && ok; k++)
+					{
+						const uint8_t own = r.u8(q++);
+						parties.emplace_back();
+						ok = !(own & ~types) && party(q, own, parties.back()) && q < end && !parties.back().empty();
+						if (!ok || r.u8(q) == END) break;
+						q++;
+					}
 				}
-				if (!ok || q >= end || tr.team.empty()) break;	// (past the last group: not a trainer)
+				else
+				{
+					parties.emplace_back();
+					ok = !(type & ~types) && party(q, type, parties.back());
+				}
+				// (past the last group: not a trainer)
+				if (!ok || q >= end || r.u8(q) != END || parties[0].empty()) break;
+				tr.name = nameCase(r.text(o, 16));
 				o = q + 1;
+				tr.team = parties[0];
+				if (parties.size() > 1) out.teams[tr.id] = std::move(parties);
 				out.trainers[tr.id] = std::move(tr);
 			}
 		}

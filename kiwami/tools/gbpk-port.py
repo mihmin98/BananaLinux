@@ -38,6 +38,9 @@
 #                    base's constant on the base's table
 #   port.same        a constant the base's, as the table named with it is the base's bytes (port.data, its length
 #                    covering every entry)
+#   port.fixed       a constant of the hack's own layout that its code holds in its shape rather than as a byte (six
+#                    add hl,de for 6-byte entries, bit 4,a for a type's bit 16): the line's <value>, given only if the
+#                    pattern (port.code's, without captures) is found once in the build
 # and its items and types by `<game> items|types from <base game>`: the base game's items (gbpk-extra.json's) by their
 # names in each ROM's ItemNames, and its types as they are, its type chart being the base's (port.data over the whole
 # chart, to its -1). A version's builds (the first word of the release's name) must agree on every value; where the
@@ -71,7 +74,7 @@ LD_A = 0x3E
 WINDOW = 10
 MIN_VOTES = 2
 STRAY = 8           # another value with under 1/STRAY of the winner's votes is a stray (code the hack reused)
-METHODS = ('port.data', 'port.code', 'port.count', 'port.same')
+METHODS = ('port.data', 'port.code', 'port.count', 'port.same', 'port.fixed')
 
 
 class PortError(Exception):
@@ -148,9 +151,9 @@ def read_port_list(text):
             ported[gm]['asks'][kind] = (a, n)    # (the base's symbol, or a const's file and name)
     for name, g in ported.items():
         for key, (m, a, n) in g['methods'].items():
-            if key.startswith('const.') != (m in ('port.count', 'port.same')) and m != 'port.code':
+            if key.startswith('const.') != (m in ('port.count', 'port.same', 'port.fixed')) and m != 'port.code':
                 fail('%s:%d: %s %s' % (LIST, n, m, 'finds a table' if m == 'port.data' else 'is for a constant'))
-            if key not in g['asks'] and m != 'port.code':
+            if key not in g['asks'] and m not in ('port.code', 'port.fixed'):
                 fail('%s:%d: %s has no line naming the base\'s symbol for %s' % (LIST, n, name, key))
         for key, (a, n) in g['asks'].items():
             if key.startswith('const.') and key not in g['methods']:
@@ -420,6 +423,15 @@ class Port:
             if own is None:
                 fail('%s:%d: the base game has no %s' % (LIST, n, key))
             return own, 'the base\'s'
+        if method == 'port.fixed':
+            if len(args) < 2 or not args[0].isdigit():
+                fail('%s:%d: port.fixed const.<key> <value> <pattern>' % (LIST, n))
+            pats = compile_pattern(args[1:], n)
+            if any(caps for _, caps in pats):
+                fail('%s:%d: a port.fixed pattern captures nothing' % (LIST, n))
+            if find_code(pats, rom, False, what) is None:
+                raise PortError('%s: the pattern of its code isn\'t found' % what)
+            return int(args[0]), 'fixed by its code'
         fail('%s:%d: unknown method %s' % (LIST, n, method))
 
     def keys(self):
@@ -612,6 +624,16 @@ def self_test():
     for i, p in enumerate((0x400C, 0x4010, 0x4012)):
         t[0x4000 + 4 * i + 2:0x4000 + 4 * i + 4] = bytes([p & 0xFF, p >> 8])
     assert table_count(bytes(t), 0x4000, 4, 2) == 3
+    # (a fixed value: its code's pattern once, else none)
+    fixed = Port('made-up', {'methods': {'const.groupSize': ('port.fixed', '6 21 .. .. 19 19 19 19 19 19 cd'.split(), 0)},
+                             'asks': {}}, {}, bytes(base), {})
+    six = bytes(hack[:0x300]) + bytes.fromhex('21 25 7d 19 19 19 19 19 19 cd') + bytes(hack[0x30A:])
+    assert fixed.one('const.groupSize', six, {}) == (6, 'fixed by its code')
+    try:
+        fixed.one('const.groupSize', bytes(hack), {})
+        raise AssertionError('a fixed value without its code passed')
+    except PortError as e:
+        assert 'const.groupSize' in str(e), e
     print('gbpk-port: self-test passed')
 
 

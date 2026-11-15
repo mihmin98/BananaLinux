@@ -68,9 +68,30 @@ GAMES = [
     ('pureblue', 1, 'PureBlue', 'GEN1_PURE_BLUE', 'GEN1_DEX_PURE_RED', 'PURE_BLUE', 'Pokémon PureBlue'),
     # (PokeDaisy reads no PureGreen: pret-extract's values alone)
     ('puregreen', 1, 'PureGreen', None, None, None, None),
+    # (a version a config: PORTED's)
+    ('crystal-clear', 2, 'Crystal Clear', None, None, None, 'Pokémon Crystal Clear'),
 ]
 # the ROM hacks among them: their data files say their Pokédex's size (the retail games' is their generation's)
-HACK_DEX_SIZE = {'crystal-legacy': 251, 'yellow-legacy': 151, 'purered': 151, 'pureblue': 151, 'puregreen': 151}
+HACK_DEX_SIZE = {'crystal-legacy': 251, 'yellow-legacy': 151, 'purered': 151, 'pureblue': 151, 'puregreen': 151,
+                 'crystal-clear': 251}
+# the ROM hacks with no source, whose values kiwami/tools/gbpk-port.py finds in the player's ROMs (PORT, its
+# gbpk-port.json, instead of pret's EXTRA): PokeDaisy's configs for each version (Gen2Reader.kt's, Gen2Dex.kt's and
+# Gen2Art.kt's), each checked against that version's builds (a release's name's first word). GameTitles.kt lists some
+# of the builds (Crystal Clear's Standard Colors and Color Filter, not its SGB Mode ones: the user's, gbpk-symbols.txt)
+PORT = 'kiwami/tools/gbpk-port.json'
+PORTED = {'crystal-clear': {
+    'v2.6.0': ('GEN2_CRYSTAL_CLEAR_V2_6_0', 'GEN2_DEX_CRYSTAL_CLEAR_V2_6_0', 'CRYSTAL_CLEAR_V2_6_0'),
+    'v2.5.11': ('GEN2_CRYSTAL_CLEAR_V2_5_11', 'GEN2_DEX_CRYSTAL_CLEAR_V2_5_11', 'CRYSTAL_CLEAR_V2_5_11')}}
+# their configs' fields read another way than the retail games': PokeDaisy's coords (wYCoord, then wXCoord, where
+# Crystal Clear keeps them, apart from its moved map ids) checked against ram.yCoord; Gen2DexTables' textDict
+# (PlaceNextChar's table) against rom.textDict; Gen2ArtTables' party icons, PokeDaisy's own art
+PORT_RAM = {'coords': 'yCoord'}
+PORT_DEX = {'textDict': 'textDict'}
+# (and left out: PokeDaisy colours the front pictures with Crystal's palettes, which Crystal Clear shows only with an
+# option's bit set; the data file has its own, a new game's: gbpk-symbols.txt's rom.monPalettes)
+PORT_DEX_SKIP = {'palettes': 'Crystal\'s colours, an option of the hack\'s; its own palettes instead'}
+PORT_ART_SKIP = {k: 'PokeDaisy\'s own art (the party icons), not the companion\'s'
+                 for k in ('iconBanks', 'unownIcons', 'iconPalettes')}
 # the releases GameTitles.kt lists for a game whose other releases PokeDaisy doesn't read (PureRGB's v2.7.7, which
 # came after; the others' SHA-1s are the release patches' on the user's ROMs, gbpk-symbols.txt's build lines). Its
 # configs are that release's: where the game's releases disagree on an address, PokeDaisy's is checked against it
@@ -401,17 +422,38 @@ def config_values(name, fields, configs, skip=None):
 def read_dex(src, name):
     """A Gen2DexTables config's fields: name -> (bank, address) for a pair, an int, or the text it couldn't read."""
     s = strip_comments(src)
-    m = re.search(r'\bval\s+%s\s*=\s*Gen2DexTables\(' % name, s)
-    if not m:
-        fail('no %s = Gen2DexTables(...) in %s' % (name, GEN2_DEX))
-    out = {}
-    for a in split_args(s[m.end():closing(s, m.end() - 1)]):
-        am = re.fullmatch(r'(\w+)\s*=\s*(.+)', a, re.S)
-        if not am:
-            fail('%s: an argument it can\'t read: %s' % (name, a))
-        v = am.group(2).strip()
+
+    def value(v):
+        v = v.strip()
         pm = re.fullmatch(r'(0x[0-9A-Fa-f]+|\d+)\s+to\s+(0x[0-9A-Fa-f]+|\d+)', v)
-        out[am.group(1)] = (int(pm.group(1), 0), int(pm.group(2), 0)) if pm else evaluate(v) if evaluate(v) is not None else v
+        return (int(pm.group(1), 0), int(pm.group(2), 0)) if pm else evaluate(v) if evaluate(v) is not None else v
+    m = re.search(r'\bval\s+%s\s*=\s*Gen2DexTables\(' % name, s)
+    if m:
+        out = {}
+        for a in split_args(s[m.end():closing(s, m.end() - 1)]):
+            am = re.fullmatch(r'(\w+)\s*=\s*(.+)', a, re.S)
+            if not am:
+                fail('%s: an argument it can\'t read: %s' % (name, a))
+            out[am.group(1)] = value(am.group(2))
+        return out
+    # (one made from another, X.let { Gen2DexTables(...) }, by position, its 'it.field' the other's field: Crystal
+    # Clear v2.5.11's, v2.6.0's but for the move descriptions)
+    m = re.search(r'\bval\s+%s\s*=\s*(\w+)\.let\s*\{\s*Gen2DexTables\(' % name, s)
+    c = re.search(r'class Gen2DexTables\(', s)
+    if not m or not c:
+        fail('no %s = Gen2DexTables(...) in %s' % (name, GEN2_DEX))
+    order = [re.match(r'val\s+(\w+)\s*:', p).group(1) for p in split_args(s[c.end():closing(s, c.end() - 1)], angles=True)]
+    base, out = read_dex(src, m.group(1)), {}
+    for i, a in enumerate(split_args(s[m.end():closing(s, m.end() - 1)])):
+        if i >= len(order) or '=' in a:
+            fail('%s: an argument it can\'t read: %s' % (name, a))
+        im = re.fullmatch(r'it\.(\w+)', a.strip())
+        if im and im.group(1) != order[i]:
+            fail('%s: %s is given %s' % (name, order[i], a))
+        if im and order[i] in base:
+            out[order[i]] = base[order[i]]
+        elif not im:
+            out[order[i]] = value(a)
     return out
 
 
@@ -867,6 +909,106 @@ def gen1_guide(gen_src, key, prefix, code, made_from, title, sizes, cave_guy, fi
 
 # --- The data files ---
 
+def ported(key, title, pd_title, port, gen2_configs, dex_src, art_src, titles):
+    """A ported ROM hack's data file (PORTED): gbpk-port.json's values, each version's PokeDaisy configs checked against
+    them (a value both give must agree), and what PokeDaisy has that isn't read. Its flags: the event flags' two blocks
+    (Crystal Clear keeps those from NUM_EVENTS on in a second, up to ram.eventFlags2End: gbpk-symbols.txt)."""
+    g = port['games'].get(key)
+    if g is None:
+        fail('%s has no %s' % (PORT, key))
+    unread = []
+    fields, configs = gen2_configs
+    versions = {r['name'].split()[0] for r in g['releases']}
+    if versions != set(PORTED[key]):
+        fail('%s: %s\'s versions are %s, PORTED\'s %s' % (key, PORT, sorted(versions), sorted(PORTED[key])))
+
+    def where(v):
+        return 'port (%s: %s)' % (v.get('symbol', 'its own'), v['how'])
+    src = {kind: {k: where(v) for k, v in g[kind].items()} for kind in ('ram', 'rom')}
+    sizes, pd_own = {}, set()
+    for version, (cfg, dex_cfg, art_cfg) in PORTED[key].items():
+        rels = [r for r in g['releases'] if r['name'].split()[0] == version]
+        ram, pd_sizes, u = config_values(cfg, fields, configs)
+        unread += u
+        rom = {}
+        for k, v in read_dex(dex_src, dex_cfg).items():
+            if (k in DEX_SKIP and k not in PORT_DEX) or k in PORT_DEX_SKIP:
+                continue
+            if k in DEX_ROM and isinstance(v, tuple):
+                rom[DEX_ROM[k]] = v
+            elif k in PORT_DEX and isinstance(v, tuple):
+                rom[PORT_DEX[k]] = v
+            elif k in DEX_SIZES and isinstance(v, int) and not isinstance(v, bool):
+                pd_sizes[DEX_SIZES[k]] = v
+            else:
+                unread.append('%s.%s = %s' % (dex_cfg, k, v))
+        for k, v in read_art(art_src, art_cfg).items():
+            if k in ART_SKIP or k in PORT_ART_SKIP:
+                continue
+            if k in ART_ROM and isinstance(v, tuple):
+                rom[ART_ROM[k]] = v
+            elif k in ART_LISTS and isinstance(v, list) and len(v) == len(ART_LISTS[k]):
+                rom.update(zip(ART_LISTS[k], v))
+            else:
+                unread.append('%s.%s = %s' % (art_cfg, k, v))
+        for kind, have in (('ram', ram), ('rom', rom)):
+            for k, pv in have.items():
+                pk = PORT_RAM.get(k, k) if kind == 'ram' else k
+                for r in rels:
+                    v = r.get(kind, {}).get(pk) or g[kind].get(pk)
+                    if v is None:
+                        fail('%s %s.%s: PokeDaisy\'s %s has it, %s hasn\'t' % (key, kind, pk, version, PORT))
+                    if (v['bank'], int(v['addr'], 16)) != pv:
+                        fail('%s %s.%s: PokeDaisy says %02X:%04X, %s %s:%s for %s' %
+                             (key, kind, pk, pv[0], pv[1], PORT, v['bank'], v['addr'], r['name']))
+                if pk in g[kind]:
+                    src[kind][pk] = 'pokedaisy ' + where(g[kind][pk])
+                else:
+                    pd_own.add((kind, pk))
+        for k, v in pd_sizes.items():
+            if sizes.setdefault(k, v) != v:
+                fail('%s sizes.%s: PokeDaisy\'s versions say %d and %d' % (key, k, sizes[k], v))
+    for k, v in g['const'].items():
+        n = v['value'] if k != 'numEvents' else v['value'] // 8
+        k = k if k != 'numEvents' else 'eventFlagBytes'
+        if k == 'eventFlagBytes' and v['value'] % 8:
+            fail('%s: NUM_EVENTS %d isn\'t whole bytes' % (key, v['value']))
+        if sizes.setdefault(k, n) != n:
+            fail('%s sizes.%s: PokeDaisy says %d, %s %d (%s)' % (key, k, sizes[k], PORT, n, v['how']))
+    sha1s = {r['sha1'] for r in g['releases']}
+    if not titles.get(pd_title) or not titles[pd_title] <= sha1s:
+        fail('%s: GameTitles.kt\'s "%s" SHA-1s %s aren\'t among %s\'s' % (key, pd_title, sorted(titles.get(pd_title, ())), PORT))
+    # (the second block of event flags: its bytes up to ram.eventFlags2End, which isn't read itself)
+    ram = {k: v for k, v in g['ram'].items() if k != 'eventFlags2End'}
+    flags = [{'ram': 'eventFlags', 'bytes': sizes['eventFlagBytes'], 'first': 0}]
+    if 'eventFlags2' in ram:
+        a, end = g['ram']['eventFlags2'], g['ram'].get('eventFlags2End')
+        n = int(end['addr'], 16) - int(a['addr'], 16) if end and end['bank'] == a['bank'] else 0
+        if n <= 0:
+            fail('%s: ram.eventFlags2End isn\'t after ram.eventFlags2' % key)
+        flags.append({'ram': 'eventFlags2', 'bytes': n, 'first': 8 * sizes['eventFlagBytes']})
+
+    def addrs(kind, have, srcs):
+        return {k: {'bank': v['bank'], 'addr': v['addr'], 'src': srcs.get(k, where(v))} for k, v in sorted(have.items())}
+    releases = []
+    for r in g['releases']:
+        rel = {k: r[k] for k in ('sha1', 'name', 'code')}
+        for kind in ('ram', 'rom'):
+            if r.get(kind):
+                rel[kind] = addrs(kind, r[kind], {k: ('pokedaisy ' if (kind, k) in pd_own else '') + where(v)
+                                                  for k, v in r[kind].items()})
+        releases.append(rel)
+    doc = {
+        'schema': 1, 'kind': 'gb-pokemon-ram', 'game': key, 'gen': 2, 'title': title,
+        'header_title': g['header_title'], 'releases': releases,
+        'ram': addrs('ram', ram, src['ram']), 'sizes': dict(sorted(sizes.items())), 'flags': flags,
+        'rom': addrs('rom', g['rom'], src['rom']),
+        'items': sorted(v for v in g['items'].values() if v[1]), 'balls': g['balls'], 'types': g['types'],
+        'special': g['special'], 'dex_size': HACK_DEX_SIZE[key],
+    }
+    return doc, unread
+
+
 def build(checkout):
     inputs = {}
 
@@ -891,7 +1033,15 @@ def build(checkout):
     inputs[EXTRA] = pe.sha256(extra_text.encode('utf-8'))
     extra = json.loads(extra_text)
     files, unread = {}, []
+    port_text = open(os.path.join(REPO, PORT), encoding='utf-8').read()
+    inputs[PORT] = pe.sha256(port_text.encode('utf-8'))
+    port = json.loads(port_text)
     for key, gen, title, cfg, dex_cfg, art_cfg, pd_title in GAMES:
+        if key in PORTED:
+            doc, u = ported(key, title, pd_title, port, (fields, configs), dex_src, art_src, titles)
+            unread += u
+            files['%s/%s.ram.json' % (FOLDER, key)] = pe.dump(doc).encode('utf-8')
+            continue
         g = extra['games'].get(key)
         if g is None:
             fail('%s has no %s' % (EXTRA, key))

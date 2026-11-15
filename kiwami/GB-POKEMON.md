@@ -74,7 +74,8 @@ Three sources, each read by its own script into files that are committed, so a b
   symbol, `toggle_constants.asm`'s `TOGGLEMAP{\1}_ID` by a map's id). pret publishes no licence; only these facts about the retail ROMs are taken, none of its code
   or tables, as PokeDaisy's own `NOTICE` describes its use of them.
 - **The player's ROMs**, for a hack that publishes no source (Crystal Clear), by `kiwami/tools/gbpk-port.py`, into
-  `kiwami/tools/gbpk-port.json`: pret's symbols for the retail build the hack was made from (`pokecrystal11.sym`,
+  `kiwami/tools/gbpk-port.json`, which `pokedaisy-extract.py` merges into its data file with PokeDaisy's configs for
+  each of its versions (`PORTED`; a value both give must agree): pret's symbols for the retail build the hack was made from (`pokecrystal11.sym`,
   Crystal rev 1) ported into each of its builds through the code that uses them, PokeDaisy's `scripts/port_gen1.py`
   method (the script is the fork's own, GPL-3.0 as the companion). The hack's lines in `gbpk-symbols.txt` are its
   base game's, which name the symbol, and lines of its own that name another method where the votes don't do, each
@@ -90,7 +91,10 @@ Three sources, each read by its own script into files that are committed, so a b
     that uses the symbol. Where the hack rewrote the code (its wild Pokémon, fishing, trees and trainers moved to
     other banks and read in other ways) it is the hack's own code;
   - **`port.count`**: a table's length, up to the lowest of its pointers (its landmarks, as many as come before the
-    first name: Crystal's 96 by the same rule).
+    first name: Crystal's 96 by the same rule);
+  - **`port.fixed`**: a layout of the hack's own that its code holds in its shape rather than in a byte (a fishing
+    group's six `add hl,de`, a party type's `bit 4,a`): the line gives the value, kept only if the pattern of that code
+    is found once in each build.
 
   Its items are Crystal's, found by their names in each ROM's `ItemNames`. The builds of a version (its Standard
   Colors and Color Filter, each with and without SGB Mode) must agree on every value; where the two versions differ
@@ -595,6 +599,7 @@ a comment. PokeDaisy's config for it, where it has one, is read too and must agr
 | PureRed v2.7.6, v2.7.7 | `purered` (108) | `Vortyne/pureRGB` at `v2.7.6` and at `v2.7.7`, a checkout each, `make red` | 1.0.3 | Red |
 | PureBlue v2.7.6, v2.7.7 | `pureblue` (109) | the same, `make blue` | 1.0.3 | Blue |
 | PureGreen v2.7.6, v2.7.7 | `puregreen` (110) | the same, `make green` | 1.0.3 | Red |
+| Crystal Clear v2.5.11, v2.6.0 | `crystal-clear` (111) | no source: its eight builds ported from the player's ROMs (`gbpk-port.py`) | - | Crystal |
 
 **Crystal Legacy** is Crystal's engine, its WRAM mostly 11 bytes on: its bag holds 84 items (`itemsMax`, PokeDaisy's),
 its TM01 is item 0xC1 (`firstTm`), its Ghost moves are special and its Dark moves physical (its damage checks them
@@ -662,10 +667,43 @@ the Party and Team pages and the team advice take a Pokémon's types from its sp
 GBA hacks' forms, so there a form shows its base's. Its switched types and matchups, its signature moves, its Ghost
 and its balls: *The battle rules*. Its guides: *The guides*.
 
+**Crystal Clear** (ShockSlayer's open-world hack of Crystal) publishes no source, so its values are found in the
+player's ROMs (*Where the data comes from*): its eight builds, v2.5.11 and v2.6.0 each in Standard Colors and Color
+Filter, each with and without SGB Mode, all with Crystal's header (`PM_CRYSTAL`, `BYTE`). PokeDaisy's configs
+(`GEN2_CRYSTAL_CLEAR_V2_6_0` and `_V2_5_11`, its Pokédex's and art's) cover the four that aren't SGB Mode and agree
+with the port. Its RAM is Crystal's but for the map ids (DA3A), the caught flags (DA0E) and its event flags from
+2048 on, kept in a second block (`eventFlags2`, D6F6, the 40 bytes Crystal leaves after `wCmdQueue`); its species,
+moves, types and chart are Crystal's, its items Crystal's by their names. The two versions differ in the move
+descriptions' and the evolutions' pointers, each release's own. Its ROM is read with these of its own:
+
+- `textDict`, `textDictFirst`: its text is packed. `PlaceNextChar` looks each byte from 0x16 to 0x5F up in a table of
+  three bytes: a word in bank 0, expanded in place (itself packed: "POKéMON" is "#MON"), or a routine; a routine for
+  one of the character set's breaks, or a name in WRAM (`<PLAYER>`), decodes as the character set has it, and any
+  other stops the text there, logged once (`gb companion: text: unknown routine for 0x..`). Every move description
+  and Pokédex page decodes as Crystal's (two categories the hack shortened, "LITTLEBIRD" and "LITTLEBEAR");
+- `landmarkRegions`, `landmarkRegionsFirst`: its 21 landmarks past the Fast Ship (Viridian Forest, Cherrygrove Bay,
+  ...) are each on the Pokégear map of a stand-in landmark its table names (its `RegionCheck`); the last, Origin
+  Plains, reads the code after the table, and is on no map;
+- `fishGroupSize` 6 and `fishChances` 100: a fishing group is its three rods' pointers (no bite chance), and a rod's
+  chances are out of 100;
+- `treeMonsFirst` 1: `TreeMons` begins at set 1 (Crystal's has a set 0);
+- `trainerGroupsFar` (Crystal Legacy's) and `trainerTeams`, `trainerItem`, `trainerNickname`, `trainerMoves`: its
+  `ReadTrainerParty` is its own. A trainer whose type is `trainerTeams` has a party for each badge count, 0 to 15, each
+  with a type of its own (386 of its 538); a member's item, nickname and moves come in that order. Its trainers are
+  found by counting the `-1`s before them, so a record with no name (class 39's eleventh) is passed over, its number
+  kept. The ROM's data gives each trainer its first party; the host gives the pages the parties for the save's badges
+  (Johto's and Kanto's counted, 15 at most), a copy of the ROM's data made when that count changes, which starts the
+  Session again (`gb companion: the trainers' parties for N badges`);
+- `monPalettes`: its own palettes, which a new game shows (an option's bit, D9C4 bit 2, picks Crystal's colours
+  instead; PokeDaisy took those). The Color Filter builds' are all filtered: the reader checks the first entry's two
+  colours are the same, not Crystal's own.
+
+Its guide is built from its ROM: *The guides*.
+
 ## The data files
 
 `/usr/share/banana/companions/gb-pokemon/<game>.ram.json` (`red`, `blue`, `yellow`, `gold`, `silver`, `crystal`, and the
-ROM hacks': `crystal-legacy`, `yellow-legacy`, `purered`, `pureblue`, `puregreen`), JSON with sorted keys:
+ROM hacks': `crystal-legacy`, `yellow-legacy`, `purered`, `pureblue`, `puregreen`, `crystal-clear`), JSON with sorted keys:
 
 ```json
 { "schema": 1, "kind": "gb-pokemon-ram", "game": "crystal", "gen": 2, "title": "Crystal",
@@ -714,7 +752,11 @@ ROM hacks': `crystal-legacy`, `yellow-legacy`, `purered`, `pureblue`, `puregreen
   `mewPicsBank` checked against them). Crystal looks a Pokédex entry's bank up in a table (`dexEntryBanks`); Gold and Silver count it from the
   first entry's (`dexEntryFirst`, checked against PokeDaisy's `dexEntryFirstBank`). Crystal fixes a picture's bank by
   `picsBanks`, Gold and Silver by `picBankFixes`. A ROM hack's own layouts have keys of their own, which `rom2.cpp`
-  reads instead of the retail tables' (*The ROM hacks*): `dexEntryFar`, `trainerGroupsFar`, `rockSmashMons`.
+  reads instead of the retail tables' (*The ROM hacks*): `dexEntryFar`, `trainerGroupsFar`, `rockSmashMons`, and
+  Crystal Clear's `textDict` and `landmarkRegions` with their `sizes` (`textDictFirst`, `landmarkRegionsFirst`,
+  `fishGroupSize`, `fishChances`, `treeMonsFirst`, `trainerTeams`, `trainerItem`, `trainerNickname`,
+  `trainerMoves`). A ported game's `src` says how the port found the value (`port (<symbol>: votes 12)`, `code`,
+  `data 32`, ...), with `pokedaisy` where PokeDaisy has it too.
 - `items`, `balls`, `key_items`, `types`, `special` and `split_stats` are the game's own ids (pret's constants, read
   by `pret-extract.py` through `gbpk-symbols.txt`'s `item`, `items`, `keyitems`, `types` and `split` lines):
   - `items` pairs an item's id with its Gen IV id, for the items upstream's logic knows by number (the balls, the
@@ -740,7 +782,8 @@ ROM hacks': `crystal-legacy`, `yellow-legacy`, `purered`, `pureblue`, `puregreen
   `Live::flags` from bit `first` (a byte's first; no two over one bit). `derived` are bits worked out from those
   after each read: `bit` is set when `all` (or `any`) of the listed bits are, and `for` names the milestone that reads
   it. Crystal has its event flags and five derived bits; Red, Blue and Yellow their event flags, their toggleable
-  objects' after them, and five derived bits (*The guides*). The reader asks for a bank 256 bytes at a time.
+  objects' after them, and five derived bits (*The guides*); Crystal Clear its two blocks of event flags, the second
+  from bit 2048. The reader asks for a bank 256 bytes at a time.
 
 ## The guides
 
@@ -1050,8 +1093,11 @@ In the repository, not the image: `ui/src/kiwami/gbpk/` 318 KB, `kiwami/tests/gb
 ## What it doesn't do
 
 - **Other releases and hacks**: the releases in other languages (the European Yellows' among them) and every ROM hack
-  but Fast Red, Fast Blue and *The ROM hacks*' are "Not supported"; the rest of PokeDaisy's hacks (Crystal Clear,
-  Polished Crystal ...) are later features.
+  but Fast Red, Fast Blue and *The ROM hacks*' are "Not supported"; the rest of PokeDaisy's hacks (Polished Crystal,
+  Prism ...) are later features.
+- **Crystal Clear's Arena**: its trainers' parties are the save's badge count's, but the Arena's choice of level
+  (WRAM DC19), which the game takes instead there, isn't followed. A name in its text from WRAM (`<PLAYER>`) shows as
+  nothing, as Crystal's.
 - **PureRGB's forms** show their base's types on the Party and Team pages and in the team advice (*The ROM hacks*), and
   its real MissingNo. isn't shown in a trainer's team.
 - **PureRGB's rules not followed** (*The battle rules*):

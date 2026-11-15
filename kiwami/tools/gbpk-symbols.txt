@@ -52,6 +52,8 @@
 #                                           a key the base hasn't (no base line) is found only so
 #   <game> port.count const.<key> rom.<table> <size> <offset>   a table's length, its entries up to the lowest pointer
 #   <game> port.same const.<key> rom.<table>   the base's constant, the table (port.data) being the base's bytes
+#   <game> port.fixed const.<key> <value> <pattern>   a layout of its own its code holds in its shape (not as a byte):
+#                                           <value>, if the pattern is found once in the build
 #   <game> items|types from <base game>     the base game's items, by their names in the ROMs, and its types
 # A line with no port.* method is found by the votes of the base's code that uses the symbol.
 
@@ -286,9 +288,10 @@ crystal-clear port.code const.numTrainerClasses fa 2f d2 fe {byte} 28 .. 3c ea 2
 # begin: Route 29's header and New Bark Town's)
 crystal-clear port.code rom.mapGroups c5 05 48 06 00 21 {addr} 09 09 2a 66 6f c1 0d 06 00 3e 09 / f0 9d f5 3e {bank} d7 cd .. .. 11 03 00 19 2a 66 6f
 crystal-clear port.code rom.mapHeadersEnd 25 01 02 .. .. 02 .. 00 .. 25 01 01 {addr} 01 .. 00 02
-# (GetFrontpicPointer; GetMonPalettePointer, whose second table, the one an option picks, is Crystal's palettes)
+# (GetFrontpicPointer; GetMonPalettePointer, its own palettes, unless an option's bit picks its second table, Crystal's
+# colours: D9C4 bit 2, clear in a new game, as in PokeDaisy's six captures)
 crystal-clear port.code rom.picPointers 21 {addr} 16 {bank} fe c9 20 03 79 16
-crystal-clear port.code rom.monPalettes cb 57 28 03 01 {addr} e1 f1 09 c9
+crystal-clear port.code rom.monPalettes 01 {addr} 3e 01 21 c4 d9 cd .. .. cb 57 28 03 01 .. .. e1 f1 09 c9
 # (its landmarks: as many as come before the first name; RegionCheck's, rewritten: the landmarks from the first past
 # Crystal's take their region from a stand-in landmark in a table of its own)
 crystal-clear port.count const.numLandmarks rom.landmarks 4 2
@@ -299,6 +302,19 @@ crystal-clear port.code const.landmarkRegionsFirst 7b fe {byte} 38 0a d6 .. 4f 0
 # (its text is packed: PlaceNextChar's table of words and routines, a byte from the first)
 crystal-clear port.code rom.textDict d6 16 4f 06 00 21 {addr} 09 09 09 2a a7 20
 crystal-clear port.code const.textDictFirst d6 {byte} 4f 06 00 21 .. .. 09 09 09 2a a7 20
+# (its own layouts, in the shape of the code that reads them. Fish: a group is its three rods' pointers, no bite chance
+# before them (six add hl,de), and a rod's chances are cumulative out of RandomRange's 100, the roll from 1 (Crystal's
+# out of a byte's 256). GetTreeMons: TreeMons' first set is 1 (its dec a; Crystal's has a set 0). ReadTrainerParty: a
+# trainer whose type has bit 1 has a party for each badge count, Johto's and Kanto's (CountSetBits over both, 15 at
+# most), each with a type of its own and ended by -2, the last by -1; a member's item, nickname and moves by bits 2, 3
+# and 4, in that order, Crystal's moves and item bits 0 and 1)
+crystal-clear port.fixed const.fishGroupSize 6 43 15 5a 16 00 21 .. .. 19 19 19 19 19 19 cd
+crystal-clear port.code const.fishChances 3e {byte} cd .. .. 3c be 28 07 38 05 23 23 23
+crystal-clear port.fixed const.treeMonsFirst 1 a7 28 .. 3d 5f 16 00 21 .. .. 19 19 2a 66 6f
+crystal-clear port.fixed const.trainerTeams 2 ea .. .. cb 4f 28 28 cd .. .. 38 0f e5 21 .. .. 06 02 cd .. .. e1 cb 61 28 01 0d 79 a7 28 0a cd .. .. fe fe 20 f9 0d 18 f2
+crystal-clear port.fixed const.trainerItem 4 fa .. .. cb 57 28 15 e5 fa .. .. 3d 21 .. .. 01 30 00
+crystal-clear port.fixed const.trainerNickname 8 fa .. .. cb 5f 28 55 d5 11 .. .. cd .. .. fe 50
+crystal-clear port.fixed const.trainerMoves 16 fa .. .. cb 67 28 6b e5 fa .. .. 3d 21 .. .. 01 30 00
 
 # Gen II's front pictures and their palettes (ui/src/kiwami/gbpk/pics.cpp), the Pokégear's Johto and Kanto maps
 # (maps.cpp). PokeDaisy's Gen2Dex.kt and Gen2Art.kt give them too: pret's value must agree with it. Crystal fixes a

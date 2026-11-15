@@ -6,6 +6,8 @@
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "text.h"
+#include <algorithm>
+#include <cstdio>
 
 namespace banana::kiwami::gbpk
 {
@@ -96,6 +98,58 @@ namespace banana::kiwami::gbpk
 			const char* g1 = !own && cs != Charset::GEN2 ? gen1(p[i]) : nullptr;
 			out += own ? own : g1 ? g1 : p[i] >= 0x80 ? HIGH[p[i] - 0x80] : low(p[i]);
 		}
+		return out;
+	}
+
+	namespace
+	{
+		const int DICT_END = 0x60;			// (PlaceNextChar's cp $60: from it the bytes are characters)
+		const int DICT_DEPTH = 4, WORD_MAX = 64;
+		const uint8_t BSP = 0x1F, TERMINATOR = 0x50;
+		enum { DICT_WORD = 0, DICT_ROUTINE = 1 };
+		// the routines a byte of Crystal's control characters stands for that decode as the character set has them:
+		// the line and page breaks and the word break (pokecrystal's constants/charmap.asm)
+		bool knownRoutine(uint8_t b) { return b == 0x22 || b == 0x25 || b == 0x4E || b == 0x4F || b == 0x51 || b == 0x55; }
+
+		// p's bytes up to max or the terminator, the dictionary's words expanded (depth: how deep in words); false
+		// when an unknown routine stopped it
+		bool packed(Charset cs, const uint8_t* p, size_t max, const TextDict& dict, int depth, std::string& out)
+		{
+			for (size_t i = 0; p && i < max && p[i] != TERMINATOR; i++)
+			{
+				const uint8_t c = p[i];
+				const size_t e = c >= dict.first ? dict.table + 3 * (size_t)(c - dict.first) : dict.size;
+				if (c >= DICT_END || c == BSP || e + 3 > dict.size)
+				{
+					out += decode(cs, &p[i], 1);
+					continue;
+				}
+				const uint8_t kind = dict.rom[e];
+				const uint16_t to = (uint16_t)(dict.rom[e + 1] | dict.rom[e + 2] << 8);
+				if (kind == DICT_WORD && to < 0x4000 && to < dict.size && depth < DICT_DEPTH)
+				{
+					if (!packed(cs, dict.rom + to, std::min<size_t>(WORD_MAX, dict.size - to), dict, depth + 1, out)) return false;
+				}
+				else if ((kind == DICT_WORD && to >= 0x4000) || (kind == DICT_ROUTINE && knownRoutine(c)))
+					out += decode(cs, &p[i], 1);
+				else
+				{
+					static bool logged = false;
+					if (!logged)
+						fprintf(stderr, "banana-ui: gb companion: text: unknown routine for 0x%02X, the text stops there\n", c);
+					logged = true;
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+
+	std::string decode(Charset cs, const uint8_t* p, size_t max, const TextDict& dict)
+	{
+		std::string out;
+		if (!dict.rom || dict.first < 1 || dict.first >= DICT_END) return decode(cs, p, max);
+		packed(cs, p, max, dict, 0, out);
 		return out;
 	}
 

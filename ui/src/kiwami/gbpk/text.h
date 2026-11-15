@@ -16,6 +16,13 @@ namespace banana::kiwami::gbpk
 	// max bytes at most, up to the terminator (0x50), as UTF-8; the line breaks and breakable spaces as a space, bytes
 	// with no character (the text's other commands, the Japanese) left out
 	std::string decode(Charset cs, const uint8_t* p, size_t max);
+	// a ROM hack's packed text, Crystal Clear's: PlaceNextChar's table (at the file offset `table` in the ROM) of three
+	// bytes for each byte from `first` to 0x5F but 0x1F (a space) and 0x50 (the end). 0 and a pointer into bank 0: a
+	// word, expanded in place (itself packed); 0 and a pointer past bank 0: a name in WRAM (<PLAYER>, <RIVAL>), and 1
+	// and a routine for one of the character set's breaks (<LF>, <WBR>, <NEXT>, <LINE>, <PARA>, <CONT>), each as the
+	// character set decodes its byte. Any other routine stops the text there, logged once
+	struct TextDict { const uint8_t* rom = nullptr; size_t size = 0, table = 0; int first = 0; };
+	std::string decode(Charset cs, const uint8_t* p, size_t max, const TextDict& dict);
 	// a name the games write in capitals as the pages write names: each word's first letter kept, the rest lower
 	// case ("CHIKORITA" to "Chikorita", "DOUBLE-EDGE" to "Double-Edge", "MR.MIME" to "Mr.Mime", "FARFETCH'D" to
 	// "Farfetch'd"), with HP, PP, PKMN, GS, PC, TV and "TM01" kept ("HP UP" to "HP Up"): for the names of species,

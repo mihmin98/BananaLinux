@@ -15,6 +15,7 @@
 #include "rules.h"
 #include "../../nds/model.h"
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -49,12 +50,15 @@ namespace banana::kiwami::gbpk
 	// ---- for rom.cpp, rom1.cpp and rom2.cpp ----
 
 	// the ROM's bytes by bank and address: bank 0 at 0000-3FFF, bank n at its 4000-7FFF window; its text in the
-	// game's character set
+	// game's character set, packed by the dictionary at file offset dict from byte dictFirst (Crystal Clear's: the data
+	// file's rom.textDict and textDictFirst, text.h)
 	struct RomView
 	{
 		static constexpr size_t NONE = (size_t)-1;
 		const std::vector<uint8_t>& b;
 		Charset charset = Charset::GEN2;
+		size_t dict = NONE;
+		int dictFirst = 0;
 		// the file offset of bank:addr; NONE outside the ROM
 		size_t at(int bank, uint32_t addr) const
 		{
@@ -118,8 +122,19 @@ namespace banana::kiwami::gbpk
 		// index (a form never: the game compares its internal index) and its original types
 		struct OriginalTyping { uint16_t species = 0; nds::Type types[2] = { nds::NORMAL, nds::NORMAL }; };
 		std::vector<OriginalTyping> originalTypes;
+		// Crystal Clear's trainers whose party goes by the badge count (rom2.cpp): each one's parties by trainer id, the
+		// first its team in trainers
+		std::map<uint16_t, std::vector<std::vector<nds::TrainerMon>>> teams;
 		std::shared_ptr<const nds::Sprite> sprite(uint16_t species, bool female = false, uint8_t form = 0) const override;
 	};
+	// the party of a trainer with one for each badge count that Crystal Clear's ReadTrainerParty takes for a save with
+	// these badges (Live::badges: Johto's bits, Kanto's in the high byte): their count, 15 at most (its CountSetBits
+	// over wJohtoBadges and wKantoBadges, then bit 4 taken away). The Arena's choice of level (wram DC19), which the game
+	// takes instead there, isn't followed
+	int badgeTeam(uint16_t badges);
+	// a copy of rom's data with each such trainer's team its party `team` (its last when it has fewer); rom itself when
+	// it has none, or for the first party, which its teams already are
+	std::shared_ptr<const nds::RomData> withBadgeTeams(std::shared_ptr<const nds::RomData> rom, int team);
 	// a copy of rom's data with the species whose bit is set in remap (the save's wPkmnTypeRemapFlags, bit n the n-th
 	// of originalTypes) given their original types, as the game's IsMonTypeRemapped gives them in battle and on the
 	// summary; rom itself when it has no such list or no bit is set

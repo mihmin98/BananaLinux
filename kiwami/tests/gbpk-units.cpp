@@ -61,10 +61,10 @@ static void testDetect()
 {
 	std::vector<std::string> keys;
 	using K = std::vector<std::string>;
-	// (Crystal Legacy keeps Crystal's title and code: both, the retail game first)
+	// (Crystal Legacy and Crystal Clear keep Crystal's title and code: the three, the retail game first)
 	auto h = header("PM_CRYSTAL", "BYTE");
 	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
-	CHECK((keys == K{ "crystal", "crystal-legacy" }));
+	CHECK((keys == K{ "crystal", "crystal-legacy", "crystal-clear" }));
 	// Gold's and Silver's eleven letters fill the title, the code right after
 	h = header("POKEMON_GLD", "AAUE");
 	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
@@ -220,7 +220,7 @@ static void testConfirm()
 	CHECK(rom.size() == 0x8000);
 	std::vector<std::string> keys;
 	CHECK(detect(rom.data(), rom.size(), keys) == Match::KNOWN);
-	CHECK((keys == std::vector<std::string>{ "crystal", "crystal-legacy" }));
+	CHECK((keys == std::vector<std::string>{ "crystal", "crystal-legacy", "crystal-clear" }));
 	CHECK(confirm(rom, d) == Match::UNSUPPORTED);
 	CHECK(d.release == -1 && d.game.romHash.size() == 40 && d.game.code.empty());
 	// with its SHA-1 listed (a stand-in for a release), it's that release, and the code is the file's
@@ -336,8 +336,9 @@ static void testSharedTitle()
 	unlink((std::string(dir) + "/crystal-clear.ram.json").c_str());
 	rmdir(dir);
 	setenv("KIWAMI_GBPK_DIR", dataPath.c_str(), 1);
-	// (back in the real folder: the title is Crystal's and Crystal Legacy's)
-	CHECK(detect(rom1.data(), rom1.size(), keys) == Match::KNOWN && (keys == std::vector<std::string>{ "crystal", "crystal-legacy" }));
+	// (back in the real folder: the title is Crystal's, Crystal Legacy's and Crystal Clear's)
+	CHECK(detect(rom1.data(), rom1.size(), keys) == Match::KNOWN &&
+		(keys == std::vector<std::string>{ "crystal", "crystal-legacy", "crystal-clear" }));
 }
 
 static void testRomFile()
@@ -407,6 +408,31 @@ static void testText()
 	const uint8_t pure[] = { 0x80, 0x41, 0x7F, 0x45, 0xE7, 0x48, 0x9E, 0x8B, 0x9F, 0x4D, 0x56, 0x5B, 0x7F, 0x5D, 0xE9, 0xEA, 0xEB, 0x33, 0xBB, 0x50 };
 	EQ(decode(Charset::PURE, pure, sizeof pure), "Athe POKéMON! “L”is...PC TRAINER→+%like'd");
 	EQ(decode(Charset::GEN1, pure, sizeof pure), "A ![L]…… 'd");
+
+	// Crystal Clear's packed text (a made-up PlaceNextChar table from 0x16 at 0x200, its words in bank 0): 0x2D the word
+	// "with ", 0x5E "#MON" whose # is the word 0x54 "POKé", 0x4E a routine (a line break: a space), 0x52 a name in WRAM
+	// (<PLAYER>: nothing), 0x5A a routine it doesn't know, which stops the text; 0x1F a space, and from 0x60 characters
+	std::vector<uint8_t> rom(0x400, 0);
+	const uint8_t with[] = { 0xB6, 0xA8, 0xB3, 0xA7, 0x7F, 0x50 }, poke[] = { 0x8F, 0x8E, 0x8A, 0xEA, 0x50 }, mon[] = { 0x54, 0x8C, 0x8E, 0x8D, 0x50 };
+	std::copy(std::begin(with), std::end(with), rom.begin() + 0x100);
+	std::copy(std::begin(poke), std::end(poke), rom.begin() + 0x110);
+	std::copy(std::begin(mon), std::end(mon), rom.begin() + 0x120);
+	auto entry = [&](int c, int kind, int to) { const size_t e = 0x200 + 3 * (size_t)(c - 0x16); rom[e] = (uint8_t)kind; rom[e + 1] = (uint8_t)to; rom[e + 2] = (uint8_t)(to >> 8); };
+	entry(0x2D, 0, 0x100);
+	entry(0x54, 0, 0x110);
+	entry(0x5E, 0, 0x120);
+	entry(0x4E, 1, 0x141E);
+	entry(0x52, 0, 0xD47D);
+	entry(0x5A, 1, 0x12F2);
+	const TextDict dict{ rom.data(), rom.size(), 0x200, 0x16 };
+	const uint8_t packed[] = { 0x80, 0x7F, 0x2D, 0x5E, 0x4E, 0x52, 0x1F, 0x81, 0x50 };
+	EQ(decode(Charset::GEN2, packed, sizeof packed, dict), "A with POKéMON  B");
+	const uint8_t stops[] = { 0x80, 0x5A, 0x81, 0x50 };
+	EQ(decode(Charset::GEN2, stops, sizeof stops, dict), "A");
+	EQ(decode(Charset::GEN2, packed, 3, dict), "A with ");
+	// (without a table, or a first byte past 0x5F, as Gen II's)
+	EQ(decode(Charset::GEN2, packed, sizeof packed, TextDict{}), decode(Charset::GEN2, packed, sizeof packed));
+	EQ(decode(Charset::GEN2, packed, sizeof packed, TextDict{ rom.data(), rom.size(), 0x200, 0x60 }), decode(Charset::GEN2, packed, sizeof packed));
 }
 
 // the list of ROMs the ROM tests expect (kiwami/tests/gbpk/roms.sha1, checked in the player's folders by gbpk-roms.sh)
@@ -445,7 +471,7 @@ static void testRomList()
 		required += x.need == "required";
 		CHECK(x.name.size() > 4 && (x.name.compare(x.name.size() - 3, 3, ".gb") == 0 || x.name.compare(x.name.size() - 4, 4, ".gbc") == 0));
 	}
-	CHECK(lines.size() == 36 && gb == 18 && required == 6);
+	CHECK(lines.size() == 44 && gb == 26 && required == 6);
 	// the ROM hacks read as the retail game they patch (roms.patches): each a Game Boy line, its retail ROM a required
 	// one of the same game, its ranges in order and apart, inside the bank-0 code and the header (gbpk-roms.sh compares
 	// the files themselves)
@@ -556,8 +582,14 @@ struct MadeUpRom
 };
 
 // legacy: Crystal Legacy's layouts for the same tables (rom2.cpp): the Pokédex's pointers with their banks, the
-// trainers' groups with theirs and Falkner's party with every field its types add, Rock Smash's sets a table from 0
-static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool notBulbasaur = false, bool legacy = false)
+// trainers' groups with theirs and Falkner's party with every field its types add, Rock Smash's sets a table from 0.
+// clear: Crystal Clear's, giving the same as the retail ones but where said: its fishing groups the rods' pointers alone
+// and their chances out of 100, TreeMons from set 1, Falkner with a party for each of two badge counts (the first the
+// retail one, the second with a nickname) and a record with no name before Bob, Pound's description packed by a
+// dictionary, two landmarks past the Fast Ship placed by a stand-in's region (the second reading the byte after the
+// table: on no map), each a map's, and PokemonPalettes' first entry filtered
+static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool notBulbasaur = false, bool legacy = false,
+	bool clear = false)
 {
 	MadeUpRom m;
 	using R = MadeUpRom;
@@ -583,7 +615,25 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	// effect, Vital Throw by its id
 	m.key("moves", m.put({ 1, 0, 40, 0, 255, 35, 0, 2, 0x67, 40, 20, 242, 30, 76, 3, 0x11, 70, 1, 255, 10, 0 }));
 	m.key("moveNames", m.put(R::cat(R::cat(R::str("POUND"), R::str("QUICK FIRE")), R::str("VITAL THROW"))));
-	const int md1 = m.put(R::str("A HIT|THAT POUNDS")), md2 = m.put(R::str("FIRST")), md3 = m.put(R::str("LAST"));
+	// (Crystal Clear's: "A " then the dictionary's word 0x2D "HIT", a routine's line break, its 0x5E "#OUNDS" whose # is
+	// its 0x54 "THAT P"; the table from 0x16, its words in bank 0)
+	const int md1 = clear ? m.put({ 0x80, 0x7F, 0x2D, 0x4E, 0x5E, 0x50 }) : m.put(R::str("A HIT|THAT POUNDS")),
+		md2 = m.put(R::str("FIRST")), md3 = m.put(R::str("LAST"));
+	if (clear)
+	{
+		std::vector<int> dict(3 * (0x60 - 0x16), 0);
+		const std::vector<int> hit = R::str("HIT"), thatP = R::str("THAT P"), ounds = R::cat({ 0x54 }, R::str("OUNDS"));
+		std::copy(hit.begin(), hit.end(), m.b.begin() + 0x1000);
+		std::copy(thatP.begin(), thatP.end(), m.b.begin() + 0x1010);
+		std::copy(ounds.begin(), ounds.end(), m.b.begin() + 0x1020);
+		auto entry = [&](int c, int kind, int to) { dict[3 * (c - 0x16)] = kind; dict[3 * (c - 0x16) + 1] = to & 0xFF; dict[3 * (c - 0x16) + 2] = to >> 8; };
+		entry(0x2D, 0, 0x1000);
+		entry(0x54, 0, 0x1010);
+		entry(0x5E, 0, 0x1020);
+		entry(0x4E, 1, 0x141E);
+		m.key("textDict", m.put(dict));
+		m.d.sizes["textDictFirst"] = 0x16;
+	}
 	m.key("moveDescriptions", m.put(R::words({ md1, md2, md3 })));
 	m.key("moveEffectPriorities", m.put({ 0x67, 2, 0xFF }));
 	// TypeMatchups (pokecrystal's ids: Normal 0, Ghost 8, Fire $14, Water $15): Water on Fire 20, then -2 and the pair
@@ -616,8 +666,19 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	// Johto's)
 	const int l0 = m.put(R::str("SPECIAL")), l1 = m.put(R::str("NEW_BARK_TOWN")), l2 = m.put(R::str("PALLET TOWN")),
 		l3 = m.put(R::str("FAST SHIP"));
-	m.key("landmarks", m.put({ 8, 16, l0 & 0xFF, l0 >> 8, 100, 100, l1 & 0xFF, l1 >> 8, 60, 124, l2 & 0xFF, l2 >> 8,
-		148, 132, l3 & 0xFF, l3 >> 8 }));
+	std::vector<int> lms = { 8, 16, l0 & 0xFF, l0 >> 8, 100, 100, l1 & 0xFF, l1 >> 8, 60, 124, l2 & 0xFF, l2 >> 8,
+		148, 132, l3 & 0xFF, l3 >> 8 };
+	if (clear)
+	{
+		// (Cherrygrove Bay at 108, 92 as New Bark Town's, landmark 1, on Johto's; Origin Plains at 28, 84, past the
+		// table, its 0xC5 standing for the code after it)
+		const int l4 = m.put(R::str("CHERRYGROVE BAY")), l5 = m.put(R::str("ORIGIN PLAINS"));
+		lms = R::cat(lms, { 116, 108, l4 & 0xFF, l4 >> 8, 36, 100, l5 & 0xFF, l5 >> 8 });
+		m.key("landmarkRegions", m.put({ 1, 0xC5 }));
+		m.d.sizes["landmarkRegionsFirst"] = 4;
+		m.d.sizes["numLandmarks"] = 6;
+	}
+	m.key("landmarks", m.put(lms));
 	// map 1's attributes (border, height, width, the blocks' bank and pointer, the scripts' bank and pointer, the
 	// events' pointer, connections) and its events in the scripts' bank: two filler bytes, a warp, no coord events, a
 	// sign and a hidden item (y 5, x 9) whose hiddenitem is flag 0x123 and item 3, then no object events
@@ -630,6 +691,7 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	const int mg = m.next;
 	m.key("mapGroups", m.put(R::words({ mg + 2 })));
 	m.put({ 1, 0, 2, attr & 0xFF, attr >> 8, 1, 0, 0, 2, 0, 0, 3, 0, 0, 0, 0, 0, 1 });
+	if (clear) m.put({ 0, 0, 3, 0, 0, 4, 0, 0, 0, 0, 0, 3, 0, 0, 5, 0, 0, 0 });	// (maps 3 and 4: the two landmarks past)
 	m.key("mapHeadersEnd", m.next);
 	// grass on map 1.1: map, three rates, morning's slots then day's and night's (level 3 + slot); morning's first is
 	// species 1, the rest 2
@@ -644,19 +706,39 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	m.key("kantoWater", m.put({ 0xFF }));
 	// fishing groups 1 (Shore) and 2: the old rod species 1 Lv 5 at or under 0x7F, else 2 Lv 10; the good rod by the
 	// time (TimeFishGroups' 0: 1 Lv 20 by day, 2 Lv 25 at night); the super rod 2 Lv 40
-	const int oldRod = m.put({ 0x7F, 1, 5, 0xFF, 2, 10 }), goodRod = m.put({ 0xFF, 0, 0 }), superRod = m.put({ 0xFF, 2, 40 });
-	m.key("fishGroups", m.put(R::cat({ 128 }, R::cat(R::words({ oldRod, oldRod, oldRod }), R::cat({ 128 }, R::words({ oldRod, goodRod, superRod }))))));
+	if (!clear)
+	{
+		const int oldRod = m.put({ 0x7F, 1, 5, 0xFF, 2, 10 }), goodRod = m.put({ 0xFF, 0, 0 }), superRod = m.put({ 0xFF, 2, 40 });
+		m.key("fishGroups", m.put(R::cat({ 128 }, R::cat(R::words({ oldRod, oldRod, oldRod }), R::cat({ 128 }, R::words({ oldRod, goodRod, superRod }))))));
+	}
+	else
+	{
+		// (at or under 50 of 100, the same half; no bite chance)
+		const int oldRod = m.put({ 50, 1, 5, 100, 2, 10 }), goodRod = m.put({ 100, 0, 0 }), superRod = m.put({ 100, 2, 40 });
+		m.key("fishGroups", m.put(R::cat(R::words({ oldRod, oldRod, oldRod }), R::words({ oldRod, goodRod, superRod }))));
+		m.d.sizes.insert({ { "fishGroupSize", 6 }, { "fishChances", 100 } });
+	}
 	m.key("timeFishGroups", m.put({ 1, 20, 2, 25 }));
 	// Headbutt (set 1: the common trees' 1 and 2 Lv 10 at 50 % each, the rare trees' 2 Lv 12) and Rock Smash (set 2)
 	const int set1 = m.put({ 50, 1, 10, 50, 2, 10, 0xFF, 100, 2, 12, 0xFF }), set2 = m.put({ 90, 1, 15, 10, 2, 15, 0xFF });
-	m.key("treeMons", m.put(R::words({ set1, set1, set2 })));
+	m.key("treeMons", m.put(clear ? R::words({ set1, set2 }) : R::words({ set1, set1, set2 })));
+	if (clear) m.d.sizes["treeMonsFirst"] = 1;
 	m.key("treeMonMaps", m.put({ 1, 1, 1, 0xFF }));
 	if (legacy) m.key("rockSmashMons", m.put(R::words({ set2 })));
 	m.key("rockMonMaps", m.put({ 1, 1, (uint8_t)(legacy ? 0 : 2), 0xFF }));
 	// trainers: one class, its group right after its pointer: Falkner with items and moves, then Bob with neither
 	m.key("trainerClassNames", m.put(R::str("LEADER")));
 	const int tg = m.next;
-	if (!legacy)
+	if (clear)
+	{
+		// (Falkner's two parties, each its own type: items and moves, as retail's; a nickname - "BIRD", then none - and
+		// the moves by level. The record with no name: a type, a party, -1)
+		m.d.sizes.insert({ { "trainerTeams", 2 }, { "trainerItem", 4 }, { "trainerNickname", 8 }, { "trainerMoves", 16 } });
+		m.key("trainerGroupsFar", m.put({ 1, (tg + 3) & 0xFF, (tg + 3) >> 8 }));
+		m.put(R::cat(R::str("FALKNER"), { 2, 4 | 16, 7, 1, 0, 1, 2, 0, 0, 9, 2, 2, 3, 0, 0, 0, 0xFE, 8, 20, 1 }));
+		m.put(R::cat(R::cat(R::str("BIRD"), { 21, 2, 0x50, 0xFF, 2, 0, 5, 1, 0xFF }), R::cat(R::str("BOB"), { 0, 8, 1, 0xFF })));
+	}
+	else if (!legacy)
 	{
 		m.key("trainerGroups", m.put(R::words({ tg + 2 })));
 		m.put(R::cat(R::cat(R::str("FALKNER"), { 3, 7, 1, 0, 1, 2, 0, 0, 9, 2, 2, 3, 0, 0, 0, 0xFF }), R::cat(R::str("BOB"), { 0, 8, 1, 0xFF })));
@@ -689,7 +771,8 @@ static std::shared_ptr<const std::vector<uint8_t>> madeUpRom(GameData& d, bool n
 	std::vector<int> banks(24);
 	for (int i = 0; i < 24; i++) banks[i] = 1 + i;
 	m.key("picsBanks", m.put(banks));
-	m.key("monPalettes", m.put({ 0xDE, 0x46, 0xD0, 0x4D, 0xDE, 0x46, 0xD0, 0x4D, 0x1F, 0, 0xE0, 0x03, 0, 0x7C, 0xFF, 0x03,
+	m.key("monPalettes", m.put({ clear ? 0x3E : 0xDE, clear ? 0x5F : 0x46, clear ? 0xD6 : 0xD0, clear ? 0x62 : 0x4D,
+		clear ? 0x3E : 0xDE, clear ? 0x5F : 0x46, clear ? 0xD6 : 0xD0, clear ? 0x62 : 0x4D, 0x1F, 0, 0xE0, 0x03, 0, 0x7C, 0xFF, 0x03,
 		0, 0, 0, 0, 0, 0, 0, 0 }));
 	// the Pokégear: 48 tiles (0 blank, 1 all colour 3, 2 all colour 1 - LZ: zero 16, iterate 16, alternate 16, a long
 	// zero fill of 720), tile 1 in palette 1 and tile 2 in palette 5 (the palette map's nybbles, the even id's low),
@@ -755,6 +838,86 @@ static void testLegacyTables()
 	d3.sizes.erase("trainerHappiness");
 	auto r3 = readRom(rom3, d3, &why);
 	CHECK(r3 && r3->trainers.empty());
+}
+
+// Crystal Clear's layouts on the made-up ROM (madeUpRom's clear): the same species, moves (Pound's description through
+// the dictionary), items, places and encounters as the retail layouts give; Falkner's two parties, the first his team,
+// the second the save's with a badge (withBadgeTeams), the record with no name passed over to Bob as the third; the
+// landmarks past the Fast Ship on their stand-in's map or on none
+static void testClearTables()
+{
+	GameData d1, d2;
+	std::string why;
+	auto r1 = readRom(madeUpRom(d1), d1, &why), r2 = readRom(madeUpRom(d2, false, false, true), d2, &why);
+	CHECK(r1 && r2);
+	EQ(why, "");
+	if (!r1 || !r2) return;
+	EQ(r2->moves[1].description, "A HIT THAT POUNDS");
+	EQ(r2->moves[1].description, r1->moves[1].description);
+	for (int s = 1; s <= 2; s++)
+	{
+		EQ(r2->species[s].name, r1->species[s].name);
+		EQ(r2->species[s].dexText, r1->species[s].dexText);
+	}
+	// (the encounters of map 1.1, every kind: grass, water, the three rods, Headbutt, Rock Smash)
+	auto encounters = [](const nds::RomData& r) {
+		std::vector<std::tuple<int, int, int, int, int>> v;
+		auto z = r.zones.find(1 << 8 | 1);
+		if (z != r.zones.end())
+			for (const auto& e : z->second.encounters) v.push_back({ (int)e.kind, (int)e.time, e.species, e.minLevel, e.percent });
+		return v;
+	};
+	CHECK(encounters(*r1).size() > 20 && encounters(*r2) == encounters(*r1));
+	// the trainers: Falkner's first party is his team, as retail's; his second, by a badge, its own moves by level
+	const auto* gb = dynamic_cast<const GbRomData*>(r2.get());
+	auto f1 = r1->trainers.find(1 << 8 | 1), f2 = r2->trainers.find(1 << 8 | 1);
+	CHECK(f1 != r1->trainers.end() && f2 != r2->trainers.end());
+	if (f1 == r1->trainers.end() || f2 == r2->trainers.end() || !gb) return;
+	EQ(f2->second.name, "Falkner");
+	CHECK(f2->second.team.size() == 2 && f1->second.team.size() == 2);
+	for (size_t i = 0; i < 2 && i < f2->second.team.size() && i < f1->second.team.size(); i++)
+	{
+		const nds::TrainerMon &a = f1->second.team[i], &b = f2->second.team[i];
+		CHECK(a.level == b.level && a.species == b.species && a.item == b.item && memcmp(a.moves, b.moves, sizeof a.moves) == 0);
+	}
+	CHECK(gb->teams.size() == 1 && gb->teams.count(1 << 8 | 1) && gb->teams.at(1 << 8 | 1).size() == 2);
+	CHECK(!r2->trainers.count(1 << 8 | 2) && r2->trainers.count(1 << 8 | 3) && r2->trainers.size() == 2);
+	if (auto bob = r2->trainers.find(1 << 8 | 3); bob != r2->trainers.end())
+	{
+		EQ(bob->second.name, "Bob");
+		CHECK(bob->second.team.size() == 1 && bob->second.team[0].level == 8 && bob->second.team[0].species == 1);
+	}
+	CHECK(badgeTeam(0) == 0 && badgeTeam(0x0101) == 2 && badgeTeam(0x0F0F) == 8 && badgeTeam(0xFFFF) == 15);
+	CHECK(withBadgeTeams(r2, 0) == r2 && withBadgeTeams(r1, 3) == r1);
+	auto later = withBadgeTeams(r2, 1), last = withBadgeTeams(r2, 15);
+	CHECK(later != r2);
+	for (const auto& r : { later, last })
+	{
+		auto f = r->trainers.find(1 << 8 | 1);
+		CHECK(f != r->trainers.end() && f->second.team.size() == 2);
+		if (f == r->trainers.end() || f->second.team.size() != 2) continue;
+		CHECK(f->second.team[0].level == 20 && f->second.team[0].species == 1 && f->second.team[1].level == 21 && f->second.team[1].species == 2);
+		CHECK(f->second.team[0].item == 0 && f->second.team[0].moves[0] == 1 && f->second.team[0].moves[1] == 2);	// (by level)
+	}
+	CHECK(r2->trainers.at(1 << 8 | 1).team[0].level == 7);	// (the data as read is left alone)
+	// the landmarks: Cherrygrove Bay on Johto's map by New Bark Town's region, Origin Plains on none; the retail ones as
+	// they were
+	CHECK(r2->locationNames.size() == 6);
+	auto spot = [&](uint16_t z) { auto l = r2->zones.find(z); return l == r2->zones.end() ? -2 : l->second.spot.map; };
+	EQ(r2->zones.count(1 << 8 | 3) ? r2->zones.at(1 << 8 | 3).name : "", "Cherrygrove Bay");
+	CHECK(spot(1 << 8 | 1) == 0 && spot(1 << 8 | 3) == 0 && spot(1 << 8 | 4) == -1);
+	// (a table of stand-ins that runs past the ROM, or begins among Crystal's landmarks, refuses the read)
+	GameData d3;
+	auto rom3 = madeUpRom(d3, false, false, true);
+	d3.sizes["landmarkRegionsFirst"] = 3;
+	CHECK(!readRom(rom3, d3, &why) && why.find("landmarkRegions") != std::string::npos);
+	// (a fishing layout it doesn't know, or TreeMons from 2, refuses it too)
+	d3 = d2;
+	d3.sizes["fishGroupSize"] = 5;
+	CHECK(!readRom(rom3, d3, &why) && why.find("fishGroupSize") != std::string::npos);
+	d3 = d2;
+	d3.sizes["treeMonsFirst"] = 2;
+	CHECK(!readRom(rom3, d3, &why) && why.find("treeMonsFirst") != std::string::npos);
 }
 
 static void testRomTables()
@@ -2775,12 +2938,120 @@ static void testCrystalLegacy()
 	}
 }
 
+// Crystal Clear's captures (PokeDaisy's, their READMEs: a new game of v2.6.0's, loaded as it is in v2.5.11): CHRIS with
+// BULBASAUR (Lv5, holding a MIRACLE SEED) and the SENTRET he caught with one of the five POKé BALLs, on ROUTE 29 at
+// (45, 11) by its map ids at DA3A; a wild PIDGEY (Lv2) against BULBASAUR (21/21: TACKLE, GROWL, PETAL DANCE,
+// SAFEGUARD) in the battle captures; MOM's HYPNO (Lv81) and her six against BULBASAUR in the trainer capture. Each
+// capture's release by its README, v2.5.11's own addresses laid over the game's. Its data file: its eight releases,
+// the event flags' two blocks, its layouts' values and its packed text's dictionary (gbpk-port.py's)
+static const uint16_t MIRACLE_SEED = 239, PETAL_DANCE = 80, SAFEGUARD = 219;
+static void testCrystalClear()
+{
+	GameData g = game("crystal-clear");
+	CHECK(g.game.id == CRYSTAL_CLEAR && g.game.dexSize == 251 && g.headerTitle == "PM_CRYSTAL" && g.gen == 2);
+	EQ(g.game.title, "Crystal Clear");
+	CHECK(g.releases.size() == 8);
+	const char* const names[8] = { "v2.5.11", "v2.5.11 Color Filter", "v2.5.11 SGB Mode", "v2.5.11 Color Filter SGB Mode",
+		"v2.6.0", "v2.6.0 Color Filter", "v2.6.0 SGB Mode", "v2.6.0 Color Filter SGB Mode" };
+	for (size_t i = 0; i < g.releases.size() && i < 8; i++)
+	{
+		EQ(g.releases[i].name, names[i]);
+		CHECK(g.releases[i].code == "BYTE" && g.releases[i].rom.count("moveDescriptions") && g.releases[i].rom.count("evosAttacksPointers"));
+	}
+	CHECK(!g.rom.count("moveDescriptions") && !g.rom.count("evosAttacksPointers"));
+	CHECK(g.at("mapGroup").addr == 0xDA3A && g.at("yCoord").addr == 0xDCB7 && g.at("dexCaught").addr == 0xDA0E);
+	CHECK(g.flags.size() == 2 && g.flags[0].ram == "eventFlags" && g.flags[0].bytes == 256 && g.flags[1].ram == "eventFlags2" &&
+		g.flags[1].first == 2048 && g.flags[1].bytes == 40 && g.at("eventFlags2").addr == 0xD6F6 && g.derived.empty());
+	CHECK(g.size("fishGroupSize") == 6 && g.size("fishChances") == 100 && g.size("treeMonsFirst") == 1 && g.size("trainerTeams") == 2 &&
+		g.size("trainerItem") == 4 && g.size("trainerNickname") == 8 && g.size("trainerMoves") == 16);
+	CHECK(g.rom.count("textDict") && g.size("textDictFirst") == 0x16 && g.rom.count("landmarkRegions") && g.size("landmarkRegionsFirst") == 96);
+	CHECK(g.rom.count("trainerGroupsFar") && g.size("numTrainerClasses") == 105 && g.size("numLandmarks") == 117);
+	CHECK(g.rom.count("monPalettes") && g.rom.at("monPalettes").bank == 2 && g.rom.at("monPalettes").addr == 0x622C);
+	CHECK(g.types[8] == nds::GHOST && g.special[20] && !g.special[8] && g.size("firstTm") == 0xBF);
+
+	auto load = [&](const char* capture, Dump& d, GameData& gd) {
+		gd = g;
+		if (!d.load(capture)) { failed++; return false; }
+		std::ifstream rf(testDir + "/fixtures/" + capture + "/README.txt");
+		pickRelease(gd, captureRelease(gd, std::string(std::istreambuf_iterator<char>(rf), std::istreambuf_iterator<char>())));
+		return true;
+	};
+	double now = 0;
+	for (const char* c : { "crystal_clear", "crystal_clear_v2_5_11" })
+	{
+		Dump d;
+		GameData gd;
+		if (!load(c, d, gd)) continue;
+		const bool v25 = strcmp(c, "crystal_clear_v2_5_11") == 0;
+		EQ(gd.releases[(size_t)gd.release].name, v25 ? "v2.5.11" : "v2.6.0");
+		CHECK(gd.rom.at("moveDescriptions").addr == (v25 ? 0x4E80 : 0x4EA0) && gd.rom.at("evosAttacksPointers").addr == (v25 ? 0x4CF9 : 0x4D0E));
+		Reader r;
+		r.open(gd);
+		auto l = replay(r, d, now);
+		CHECK(l->valid && l->trainerKnown);
+		EQ(l->trainerName, "CHRIS");
+		CHECK(l->party.size() == 2);
+		if (l->party.size() == 2)
+		{
+			const nds::Mon& b = l->party[0];
+			CHECK(b.species == 1 && b.item == MIRACLE_SEED && b.level == 5 && !b.egg);
+			EQ(b.nick, "BULBASAUR");
+			EQ(b.otName, "CHRIS");
+			CHECK(b.moves[0] == TACKLE && b.moves[1] == GROWL && b.moves[2] == PETAL_DANCE && b.moves[3] == SAFEGUARD);
+			CHECK(l->party[1].species == 161);
+		}
+		const nds::BagItem* balls = inBag(*l, nds::POCKET_BALLS, POKE_BALL);
+		CHECK(balls && balls->count == 4);
+		CHECK(l->zone == (24 << 8 | 3) && l->mapX == 45 && l->mapY == 11);
+		CHECK(l->battle.kind == nds::BattleKind::NONE && !r.inBattle());
+		CHECK(l->dexCaught.size() == 32 && (l->dexCaught[0] & 1) && (l->dexCaught[(161 - 1) / 8] >> ((161 - 1) % 8) & 1));
+		CHECK(l->badges == 0);
+		// (the guide's flags: both blocks of event flags, 296 bytes)
+		CHECK(l->flags.size() == 296);
+	}
+	for (const char* c : { "crystal_clear_battle", "crystal_clear_v2_5_11_battle", "crystal_clear_battle_menu" })
+	{
+		Dump d;
+		GameData gd;
+		if (!load(c, d, gd)) continue;
+		Reader r;
+		r.open(gd);
+		auto l = replay(r, d, now);
+		const nds::Battle& b = l->battle;
+		CHECK(l->valid && r.inBattle() && b.kind == nds::BattleKind::WILD);
+		CHECK(b.ours[0].present && b.ours[0].mon.species == 1 && b.ours[0].mon.level == 5 && b.ours[0].mon.hp == 21 && b.ours[0].mon.maxHp == 21);
+		CHECK(b.ours[0].mon.moves[2] == PETAL_DANCE && b.ours[0].mon.item == MIRACLE_SEED);
+		CHECK(b.ours[0].types[0] == nds::GRASS && b.ours[0].types[1] == nds::POISON);
+		CHECK(b.foes[0].present && b.foes[0].mon.species == 16 && b.foes[0].mon.level == 2);
+		CHECK(b.foeParty.empty() && b.trainerId == 0);
+	}
+	{
+		Dump d;
+		GameData gd;
+		if (load("crystal_clear_trainer", d, gd))
+		{
+			Reader r;
+			r.open(gd);
+			auto l = replay(r, d, now);
+			const nds::Battle& b = l->battle;
+			CHECK(l->valid && r.inBattle() && b.kind == nds::BattleKind::TRAINER);
+			CHECK(b.ours[0].present && b.ours[0].mon.species == 1 && b.ours[0].mon.level == 5);
+			CHECK(b.foes[0].present && b.foes[0].mon.species == 97 && b.foes[0].mon.level == 81);
+			const uint16_t six[6] = { 97, 192, 28, 242, 226, 176 };
+			CHECK(b.foeParty.size() == 6);
+			for (size_t i = 0; i < b.foeParty.size() && i < 6; i++) CHECK(b.foeParty[i].species == six[i]);
+			CHECK(b.trainerId != 0);
+		}
+	}
+}
+
 static void testCaptures()
 {
 	checkCrystal("crystal", "crystal");
 	checkCrystal("crystal_rev0", "crystal");
 	checkCrystal("crystal_au", "crystal");
 	testCrystalLegacy();
+	testCrystalClear();
 
 	Dump d;
 	double now = 0;
@@ -3529,6 +3800,7 @@ int main(int argc, char** argv)
 	testRomList();
 	testRomTables();
 	testLegacyTables();
+	testClearTables();
 	testLz();
 	testPictureFormats();
 	testPic1();

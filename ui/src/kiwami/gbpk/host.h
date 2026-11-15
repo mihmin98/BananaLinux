@@ -8,7 +8,7 @@
 // (rules.h useRules, and useGameRules with its ROM's type chart), and put back when the host goes. The guide is the game's file in the data folder (Crystal's),
 // with the ROM's hidden items. PureRGB's save switches some of its rules: the matchup options and the signature moves
 // go to the rules with each set, and the species given back their original types make the Session start again on a
-// copy of the ROM's data with those types.
+// copy of the ROM's data with those types; Crystal Clear's trainers' parties go by the save's badges the same way.
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
@@ -69,8 +69,12 @@ namespace banana::kiwami::gbpk
 		bool pure = false, switchesSeen = false, lastSigOff = false;
 		uint32_t lastRemap = 0;
 		uint8_t lastOptions = 0;
+		// Crystal Clear's trainers whose party goes by the badge count (rom.h withBadgeTeams): the party base.rom has
+		bool teams = false;
+		int lastTeam = 0;
 		void begin(Loaded l);
 		void switches();
+		void badgeTeams(uint16_t badges);
 		void startSession();
 	};
 }

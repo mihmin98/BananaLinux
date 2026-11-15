@@ -8,6 +8,7 @@
 [pokedaisy]
 commit pokedaisy 135ac809a597230c1fe3ad6359ae0fe81e233583
 in  d2bbe7e3a680bb55f149e181b24e76bba7e97728fb02808e7614f9c2ab5ed3dc  kiwami/tools/gbpk-extra.json
+in  e86b79cccd7f142b0e8b4ff0b13a5aaebe7d92603391787af6cf1d196e874604  kiwami/tools/gbpk-port.json
 in  e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  pokedaisy LICENSE
 in  02efcb677831c264613b4313be1c24e9e042f577636b20469fc3f984734c7085  pokedaisy app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt
 in  63c1c1e7c2fef1af92c3abe2235091fc3d41768fd590d68469594a974c51f286  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Art.kt
@@ -24,6 +25,7 @@ in  cd54badd8a22eba6a86ab348b4bb2a0870a883ffa0c063b07178a577deb4ae5d  pokedaisy 
 out e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/LICENSE
 out 11b4ed90876ff042ebe01a95a2f92c8cd436138d31f90942cbb069758acaed7e  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/blue.json
 out cf7c976e3d3424b0ef4d4192387b869867b909b097d4809c19b3686c21877b99  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/blue.ram.json
+out ece36f6fe9371090821d233bb1f08562dd73820e1793b81c5b5ae4f6560b9b65  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal-clear.ram.json
 out b7a35fa3f08c07fa9161c8afd8a6174013e6ac02c3eefe88a537e31dd6115fe9  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal-legacy.json
 out e3290cf4801664281e64ebd2af87b08d432c5bc082f1cb23f8c2b092f3b1d29c  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal-legacy.ram.json
 out 477bd98fc9e34e70ae72bb62bc38b42cf76633e0e7589c6213af7f4dbe9adba1  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.json
@@ -56,9 +58,9 @@ rom 059632e84a92d6870a1e83c313a72974224f9c1c  crystal-clear v2.6.0 SGB Mode
 rom 88c943e6d76dbde9f8edace5df396fe6bbc9e146  crystal-clear v2.6.0 Color Filter SGB Mode
 in  85f8042b02a0bde356a6b62b374d28b4caae5547d43882a0e7979da31d0264e0  pokecrystal roms.sha1
 in  70648bb46af4aa7bcbbce30ed064337aab544af6115d3de6ab9892401328832b  pokecrystal symbols:pokecrystal11.sym
-in  338558304f22defabe11e5407c91baa1233317396a862a108b038d79d5586c82  kiwami/tools/gbpk-symbols.txt
+in  e37c7b7b468e67e9a5189fadcd80acb33a57817bb29f2bfc15d8058f8f0570e8  kiwami/tools/gbpk-symbols.txt
 in  d2bbe7e3a680bb55f149e181b24e76bba7e97728fb02808e7614f9c2ab5ed3dc  kiwami/tools/gbpk-extra.json
-out 3c37b2ff37a4d4c4794bcae6586bc105a67e37a08d7523abba56c8fc4d2c37d9  kiwami/tools/gbpk-port.json
+out e86b79cccd7f142b0e8b4ff0b13a5aaebe7d92603391787af6cf1d196e874604  kiwami/tools/gbpk-port.json
 
 [pret]
 commit Pokemon_Crystal_Legacy 6394641ef37d51a299a13d96ccaf0c413c6c8c42 tag V1.3.1
@@ -182,6 +184,6 @@ in  1946d43ae015364ae14ceb267ab2779513908cd2c05a6749dc570b83aeefd4d8  pureRGB-2.
 in  ddc4c1aba224d5af86356227dd247a53880eeb78c6fed65758fcae00db42e151  pureRGB-2.7.7 pokeblue.sym
 in  0220ca88b049a9879e25bb415d4704f8ce39ebf7b32a7b09fff82da2dc3a6daa  pureRGB-2.7.7 pokegreen.sym
 in  c01d535e6f845509f31888a7686c7b9edca4526c77b9faec99fc77ef1933bce8  pureRGB-2.7.7 pokered.sym
-in  338558304f22defabe11e5407c91baa1233317396a862a108b038d79d5586c82  kiwami/tools/gbpk-symbols.txt
+in  e37c7b7b468e67e9a5189fadcd80acb33a57817bb29f2bfc15d8058f8f0570e8  kiwami/tools/gbpk-symbols.txt
 in  8347055098f870e8067f2945f057833f1bcb7c6f9e85ee600dc2aa5df421fbe1  kiwami/tests/gbpk/roms.patches
 out d2bbe7e3a680bb55f149e181b24e76bba7e97728fb02808e7614f9c2ab5ed3dc  kiwami/tools/gbpk-extra.json

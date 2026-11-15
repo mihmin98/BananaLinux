@@ -29,6 +29,14 @@
           "symbol": "LANDMARK_FAST_SHIP",
           "value": 95
         },
+        "fishChances": {
+          "how": "code",
+          "value": 100
+        },
+        "fishGroupSize": {
+          "how": "fixed by its code",
+          "value": 6
+        },
         "kantoLandmark": {
           "how": "code",
           "symbol": "KANTO_LANDMARK",
@@ -66,6 +74,26 @@
         "textDictFirst": {
           "how": "code",
           "value": 22
+        },
+        "trainerItem": {
+          "how": "fixed by its code",
+          "value": 4
+        },
+        "trainerMoves": {
+          "how": "fixed by its code",
+          "value": 16
+        },
+        "trainerNickname": {
+          "how": "fixed by its code",
+          "value": 8
+        },
+        "trainerTeams": {
+          "how": "fixed by its code",
+          "value": 2
+        },
+        "treeMonsFirst": {
+          "how": "fixed by its code",
+          "value": 1
         },
         "vitalThrow": {
           "how": "the base's",
@@ -818,7 +846,7 @@
           "symbol": "NewBarkTown_MapAttributes"
         },
         "monPalettes": {
-          "addr": "0x6A2C",
+          "addr": "0x622C",
           "bank": 2,
           "how": "code",
           "symbol": "PokemonPalettes"

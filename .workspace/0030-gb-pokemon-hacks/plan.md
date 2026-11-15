@@ -995,6 +995,9 @@ Common to the steps (as #28's):
   - `kiwami/tests/gbpk/roms.sha1`, `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp`,
     `kiwami/tests/gbpk-ui.sh` (changed)
   - `kiwami/GB-POKEMON.md` (changed)
+  - (*Deviations*, 2026-11-15) `kiwami/tools/gbpk-port.py`, `gbpk-symbols.txt`, `gbpk-port.json` (changed: `port.fixed`,
+    the layouts' lines, the hack's own palettes), `ui/src/kiwami/gbpk/host.h`, `host.cpp` (changed: the parties by the
+    save's badges), `kiwami/tests/gbpk/NOTICE` (changed: the captures)
 - **Change**:
   - **`pokedaisy-extract.py`** merges `gbpk-port.json`, checks it against PokeDaisy's Crystal Clear values (a key in
     both must agree), and writes `crystal-clear.ram.json` (`"title": "Crystal Clear"`, `"dex_size": 251`,
@@ -1318,6 +1321,41 @@ Where the implementation turned out different from this plan, why, and what chan
   - **Versions**: the evolutions' pointers differ between v2.5.11 and v2.6.0 too, not only the move descriptions.
     Its base data isn't Crystal's byte for byte, as PokeDaisy says: the held items and TM bits differ.
 
+- **2026-11-15, step 13**: Crystal Clear's ROM had more of its own than step 12 had found; the user chose each way
+  below (2026-11-15).
+  - **Its trainers scale with the badges**: 386 of its 538 trainers have a party for each badge count, 0-15, each
+    with a type of its own, ended by -2 and the last by -1 (`ReadTrainerParty`, 0E:4000: `CountSetBits` over both
+    badge bytes, 16 taken as 15); a member's fields are its item, a nickname and its moves, in that order. As the
+    user chose, every party is read (`GbRomData::teams`, the first as the trainer's team), and the host gives the
+    pages the parties for the save's badge count: a copy of the ROM's data when the count changes (`withBadgeTeams`,
+    `badgeTeam` in `rom.h`), the Session started again on it, as PureRGB's switched species (`host.h`, `host.cpp`:
+    not in the step's files). The Arena's choice of level (WRAM DC19), which the game takes there, isn't followed
+    (`kiwami/GB-POKEMON.md`, *What it doesn't do*). The game finds a trainer by counting the -1s before it, and class
+    39's eleventh record has no name: it is passed over, the numbers after it kept. A trainer's name is now read
+    once its record has read whole (garbage past the last group in a bank had logged an unknown routine).
+  - **Its layouts with no byte to capture**, as the user chose, come from port lines (step 12's files change:
+    `gbpk-port.py`, `gbpk-symbols.txt`, `gbpk-port.json`, `SOURCES`' `[port]` and `[pret]`): a new method,
+    `port.fixed const.<key> <value> <pattern>`, keeps the line's value only if the pattern of the code is found once
+    in each build (`--self-test` checks it). `fishGroupSize` 6 (three rods' pointers, no bite chance), `treeMonsFirst`
+    1, `trainerTeams` 2, `trainerItem` 4, `trainerNickname` 8, `trainerMoves` 16; `fishChances` 100 is a `port.code`
+    `{byte}` (its `RandomRange`'s). `rom2.cpp` reads each with Crystal's as the default.
+  - **Its palettes**: the game uses its own table (02:622C) while an option's bit (D9C4 bit 2) is clear, as in all
+    six captures (a new game's); 02:6A2C, which step 12 and PokeDaisy took, is Crystal's colours. As the user chose,
+    `rom.monPalettes` is the hack's own (its `port.code` line changed), and `pokedaisy-extract.py` leaves PokeDaisy's
+    `palettes` out for it, saying why. The Color Filter builds' palettes are all filtered, so `rom2.cpp`'s check of
+    the first entry is now that its normal and shiny colours are the same and not black (true of every game), rather
+    than Crystal's bytes.
+  - **Smaller**: landmark 116, Origin Plains, reads the code after its table of stand-ins (0xC5, as PokeDaisy notes):
+    it is on no map, and `gbpk-roms.cpp`'s map check names it. Natu's and Teddiursa's categories are the hack's own
+    ("LITTLEBIRD", "LITTLEBEAR"); every other description and page decodes as Crystal's. The data file has no
+    `"charset": "gen2"` or `"text_dict"` field as the step listed: the dictionary is `rom.textDict` and
+    `textDictFirst`, the character set Gen II's by default. `pokedaisy-extract.py` reads a `Gen2DexTables` made by
+    position from another (`.let`, v2.5.11's), and checks PokeDaisy's `coords` against `ram.yCoord` and its `textDict`
+    against the port's; GameTitles.kt's four SHA-1s must be among the eight. `kiwami/tests/gbpk/NOTICE` names the
+    captures.
+  - **Step 14** builds the guide "each region's leaders by level": with the parties by badges, every leader's levels
+    follow the save's badge count, so the order by level is to be settled there.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -1336,7 +1374,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 10. PureRGB's switches, signatures and Hyper Ball | done | GB Pokémon hacks: PureRGB's switched types and matchups, signature moves and Hyper Ball |
 | 11. PureRGB's guides | done | GB Pokémon hacks: PureRGB's guides, Red's and Blue's with its flags and its levels |
 | 12. Crystal Clear's addresses, ported | done | GB Pokémon hacks: Crystal Clear's addresses, mapped from pokecrystal's by the code that uses them |
-| 13. Crystal Clear | todo | |
+| 13. Crystal Clear | done | GB Pokémon hacks: Crystal Clear, its packed text, its memory and its ROM |
 | 14. Crystal Clear's guide | todo | |
 | 15. The documentation and the weight | todo | |
 | 16. Final check | todo | |

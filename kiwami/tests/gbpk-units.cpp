@@ -1832,6 +1832,88 @@ static void testRomGuide()
 	EQ(next(), "none");
 }
 
+// Crystal Clear's guide from a made-up ROM's trainers (gsguide.h), with crystal-clear.ram.json's classes (ported by
+// their names: Brock's is 16, not Crystal's 17): its sixteen leaders, each with a party for each badge count (level 10
+// + 4 a badge), the Elite Four, Lance, and its post-game Champion and Elite 4 classes, which aren't on the road. A save
+// with no badge, or with Falkner's (ZEPHYRBADGE, bit 0), starts in Johto: its eight leaders by their badges, the Elite
+// Four by level, Lance, then Kanto's; one with Brock's only (BOULDERBADGE, bit 0 of wKantoBadges) starts in Kanto. Each
+// gym not yet beaten shows the party it will have, the save's count and one more for each gym before it, a beaten one
+// the count's; a gym's id is its badge's, whatever the order
+static void testClearGuide()
+{
+	const GameData d = game("crystal-clear");
+	CHECK(d.size("leaderBrock") == 16 && d.size("eliteWill") == 10 && d.size("champion") == 15 && d.size("badgeEarth") == 7);
+	GbRomData rom;
+	auto trainer = [&](int cls, const char* clsName, const char* name, std::vector<int> levels, bool teams)
+	{
+		nds::Trainer t;
+		t.id = (uint16_t)(cls << 8 | 1);
+		t.cls = clsName;
+		t.name = name;
+		for (int lv : levels) { nds::TrainerMon m; m.level = (uint8_t)lv; m.species = 1; t.team.push_back(m); }
+		if (teams)
+			for (int k = 0; k < 16; k++)
+			{
+				std::vector<nds::TrainerMon> p = t.team;
+				for (nds::TrainerMon& m : p) m.level = (uint8_t)(m.level + 4 * k);
+				rom.teams[t.id].push_back(p);
+			}
+		rom.trainers[t.id] = t;
+	};
+	const std::pair<const char*, const char*> LEADERS[] = {
+		{ "leaderBlue", "Blue" }, { "leaderClair", "Clair" }, { "leaderFalkner", "Falkner" }, { "leaderBrock", "Brock" },
+		{ "leaderWhitney", "Whitney" }, { "leaderBugsy", "Bugsy" }, { "leaderMorty", "Morty" }, { "leaderJasmine", "Jasmine" },
+		{ "leaderChuck", "Chuck" }, { "leaderPryce", "Pryce" }, { "leaderMisty", "Misty" }, { "leaderLtSurge", "Lt.Surge" },
+		{ "leaderErika", "Erika" }, { "leaderJanine", "Janine" }, { "leaderSabrina", "Sabrina" }, { "leaderBlaine", "Blaine" },
+	};
+	for (auto [k, name] : LEADERS) trainer(d.size(k), "Leader", name, { 8, 10 }, true);
+	trainer(d.size("eliteWill"), "Elite Four", "Will", { 42 }, false);
+	trainer(d.size("eliteBruno"), "Elite Four", "Bruno", { 46 }, false);
+	trainer(d.size("eliteKaren"), "Elite Four", "Karen", { 47 }, false);
+	trainer(d.size("eliteKoga"), "Elite Four", "Koga", { 44 }, false);
+	trainer(d.size("champion"), "Champion", "Lance", { 50 }, false);
+	trainer(0x47, "Champion", "Ss", { 70 }, true);
+	trainer(0x48, "Elite 4", "Honeybun", { 60 }, false);
+	auto road = [&](uint16_t badges)
+	{
+		std::string got;
+		for (const nds::Milestone& m : romGuide(rom, d, badges).milestones)
+			got += (got.empty() ? "" : ", ") + m.id + " " + std::to_string(m.levelCap);
+		return got;
+	};
+	EQ(road(0), "gym-1-falkner 10, gym-2-bugsy 14, gym-3-whitney 18, gym-4-morty 22, gym-5-jasmine 26, gym-6-chuck 30, "
+		"gym-7-pryce 34, gym-8-clair 38, e4-will 42, e4-koga 44, e4-bruno 46, e4-karen 47, champion-lance 50, "
+		"gym-9-brock 42, gym-10-misty 46, gym-11-lt-surge 50, gym-12-erika 54, gym-13-janine 58, gym-14-sabrina 62, "
+		"gym-15-blaine 66, gym-16-blue 70");
+	EQ(road(1), "gym-1-falkner 14, gym-2-bugsy 14, gym-3-whitney 18, gym-4-morty 22, gym-5-jasmine 26, gym-6-chuck 30, "
+		"gym-7-pryce 34, gym-8-clair 38, e4-will 42, e4-koga 44, e4-bruno 46, e4-karen 47, champion-lance 50, "
+		"gym-9-brock 42, gym-10-misty 46, gym-11-lt-surge 50, gym-12-erika 54, gym-13-janine 58, gym-14-sabrina 62, "
+		"gym-15-blaine 66, gym-16-blue 70");
+	EQ(road(1 << 8), "gym-9-brock 14, gym-10-misty 14, gym-11-lt-surge 18, gym-12-erika 22, gym-13-janine 26, "
+		"gym-14-sabrina 30, gym-15-blaine 34, gym-16-blue 38, e4-will 42, e4-koga 44, e4-bruno 46, e4-karen 47, "
+		"champion-lance 50, gym-1-falkner 42, gym-2-bugsy 46, gym-3-whitney 50, gym-4-morty 54, gym-5-jasmine 58, "
+		"gym-6-chuck 62, gym-7-pryce 66, gym-8-clair 70");
+	// (fifteen badges and more: the last party, 15's)
+	EQ(road(0x7FFF).substr(0, 16), "gym-1-falkner 70");
+	const nds::GuideData g = romGuide(rom, d, 1 << 8);
+	EQ(g.title, "Pokémon Crystal Clear");
+	if (g.milestones.size() == 21)
+	{
+		EQ(g.milestones[1].name, "Gym 2: Misty");
+		EQ(g.milestones[1].doneWhen, "badge:10");
+		EQ(g.milestones[13].name, "Gym 9: Falkner");
+	}
+	nds::Live l;
+	l.valid = true;
+	l.badges = 1 << 8;
+	const nds::Milestone* next = nds::nextMilestone(g, l);
+	EQ(next ? next->id : "none", "gym-10-misty");
+	// (Gold's, in the story's order, takes no badges: the same road for any)
+	FakeRom gold;
+	gold.trainers = rom.trainers;
+	CHECK(romGuide(gold, game("gold"), 1 << 8).milestones.size() == romGuide(gold, game("gold")).milestones.size());
+}
+
 // ---- Generation I's captures ----
 
 // the internal indexes of the Pokémon in Gen I's captures (pret's pokered constants/pokemon_constants.asm), as the ROM's
@@ -3401,6 +3483,11 @@ static void testTables()
 	CHECK(!edited("\"types\": {", "\"typez\": {", x, w) && w.find("no items or no types") != std::string::npos);
 	CHECK(!edited("\"items\": [", "\"itemz\": [", x, w) && w.find("no items or no types") != std::string::npos);
 	CHECK(!edited("\"special\": [", "\"special\": [\n    300,", x, w) && w.find("list of ids") != std::string::npos);
+	// the guide from the ROM in the story's order, or in its regions' (Crystal Clear's); another one refused
+	CHECK(edited("\"special\": [", "\"guide\": \"rom\", \"special\": [", x, w) && x.romGuide && !x.guideRegions);
+	CHECK(edited("\"special\": [", "\"guide\": \"rom-regions\", \"special\": [", x, w) && x.romGuide && x.guideRegions);
+	CHECK(!edited("\"special\": [", "\"guide\": \"rom-zones\", \"special\": [", x, w) && w.find("a guide it doesn't know") != std::string::npos);
+	CHECK(game("crystal-clear").romGuide && game("crystal-clear").guideRegions && !game("gold").guideRegions);
 
 	// the ROM reader takes a move's category from the split: the made-up ROM's Normal move (1) Special, its Fire move
 	// (2) Physical
@@ -3817,6 +3904,7 @@ int main(int argc, char** argv)
 	testCrystalLegacyGuide();
 	testGen1Guides();
 	testRomGuide();
+	testClearGuide();
 	testPureGuides();
 	testReaderRules();
 	testRules();

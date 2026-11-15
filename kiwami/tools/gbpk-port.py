@@ -41,6 +41,11 @@
 #   port.fixed       a constant of the hack's own layout that its code holds in its shape rather than as a byte (six
 #                    add hl,de for 6-byte entries, bit 4,a for a type's bit 16): the line's <value>, given only if the
 #                    pattern (port.code's, without captures) is found once in the build
+#   port.trainer     a trainer class: the build's class whose name (rom.trainerClassNames) and first trainer's name
+#                    (the bytes to the 0x50 that ends each) are the base's class's, its constant's, compared in the
+#                    two ROMs and found in one class of the build: the build's groups a bank and a pointer a class (a
+#                    rom. key found before it, const.numTrainerClasses of them), the base's a pointer a class (its
+#                    symbol)
 # and its items and types by `<game> items|types from <base game>`: the base game's items (gbpk-extra.json's) by their
 # names in each ROM's ItemNames, and its types as they are, its type chart being the base's (port.data over the whole
 # chart, to its -1). A version's builds (the first word of the release's name) must agree on every value; where the
@@ -74,7 +79,8 @@ LD_A = 0x3E
 WINDOW = 10
 MIN_VOTES = 2
 STRAY = 8           # another value with under 1/STRAY of the winner's votes is a stray (code the hack reused)
-METHODS = ('port.data', 'port.code', 'port.count', 'port.same', 'port.fixed')
+METHODS = ('port.data', 'port.code', 'port.count', 'port.same', 'port.fixed', 'port.trainer')
+CONST_METHODS = ('port.count', 'port.same', 'port.fixed', 'port.trainer')
 
 
 class PortError(Exception):
@@ -151,7 +157,7 @@ def read_port_list(text):
             ported[gm]['asks'][kind] = (a, n)    # (the base's symbol, or a const's file and name)
     for name, g in ported.items():
         for key, (m, a, n) in g['methods'].items():
-            if key.startswith('const.') != (m in ('port.count', 'port.same', 'port.fixed')) and m != 'port.code':
+            if key.startswith('const.') != (m in CONST_METHODS) and m != 'port.code':
                 fail('%s:%d: %s %s' % (LIST, n, m, 'finds a table' if m == 'port.data' else 'is for a constant'))
             if key not in g['asks'] and m not in ('port.code', 'port.fixed'):
                 fail('%s:%d: %s has no line naming the base\'s symbol for %s' % (LIST, n, name, key))
@@ -322,6 +328,14 @@ def table_count(d, off, size, ptr):
     return n
 
 
+def first_name(d, off):
+    """The bytes of the name at off, to the 0x50 that ends it (a trainer's group's first), or None."""
+    if off is None or off >= len(d):
+        return None
+    e = d.find(b'\x50', off, off + 16)
+    return d[off:e + 1] if e >= 0 else None
+
+
 def names_list(d, off, count):
     out = []
     for _ in range(count):
@@ -432,12 +446,36 @@ class Port:
             if find_code(pats, rom, False, what) is None:
                 raise PortError('%s: the pattern of its code isn\'t found' % what)
             return int(args[0]), 'fixed by its code'
+        if method == 'port.trainer':
+            if len(args) != 2 or not args[0].startswith('rom.') or args[1] not in self.sym:
+                fail('%s:%d: port.trainer const.<key> rom.<groups> <the base\'s groups symbol>' % (LIST, n))
+            if any(k not in values for k in (args[0], 'const.numTrainerClasses', 'rom.trainerClassNames')):
+                fail('%s:%d: %s comes after %s, const.numTrainerClasses and rom.trainerClassNames in the list' %
+                     (LIST, n, key, args[0]))
+            own = self.base_value(key)
+            if own is None:
+                fail('%s:%d: the base game has no %s' % (LIST, n, key))
+            bank, addr = self.sym[args[1]]
+            p = file_off(bank, addr) + 2 * (own - 1)
+            ptr = self.base[p] | self.base[p + 1] << 8
+            name = first_name(self.base, file_off(bank, ptr))
+            if not name:
+                raise PortError('%s: the base\'s class %d has no first trainer\'s name' % (what, own))
+            cls = names_list(self.base, file_off(*self.sym[self.symbol('rom.trainerClassNames')]), own)[own - 1]
+            t, count = file_off(*values[args[0]][0]), values['const.numTrainerClasses'][0]
+            classes = names_list(rom, file_off(*values['rom.trainerClassNames'][0]), count)
+            hits = [c + 1 for c in range(count) if classes[c] == cls and
+                    first_name(rom, file_off(rom[t + 3 * c], rom[t + 3 * c + 1] | rom[t + 3 * c + 2] << 8)) == name]
+            if len(hits) != 1:
+                raise PortError('%s: the base\'s class %d, by its name and its first trainer\'s, is %d classes' %
+                                (what, own, len(hits)))
+            return hits[0], 'by its class\'s and first trainer\'s names'
         fail('%s:%d: unknown method %s' % (LIST, n, method))
 
     def keys(self):
         out = [k for k in self.g['asks']] + [k for k in self.g['methods'] if k not in self.g['asks']]
         # (counts after the tables they count)
-        return sorted(out, key=lambda k: self.g['methods'].get(k, ('',))[0] in ('port.count', 'port.same'))
+        return sorted(out, key=lambda k: self.g['methods'].get(k, ('',))[0] in ('port.count', 'port.same', 'port.trainer'))
 
     def build(self, rom):
         values, bad = {}, []
@@ -634,6 +672,31 @@ def self_test():
         raise AssertionError('a fixed value without its code passed')
     except PortError as e:
         assert 'const.groupSize' in str(e), e
+    # (a trainer class by its name and its first trainer's: the base's class 2, the build's 3, its classes one fewer
+    # before it and a bank and a pointer each; its class 1, of another name, has the same first trainer; a class that
+    # two of the build's classes are isn't one)
+    tb = bytearray(0x8000 * 2)
+    tb[0x200:0x20B] = b'X\x50LEADER\x50Y\x50'
+    for c, nm in enumerate((b'ANNA\x50', b'BOB\x50', b'CY\x50')):
+        tb[0x100 + 2 * c:0x102 + 2 * c] = bytes([0x00, 0x60 + c])
+        tb[0x2000 + 0x100 * c:0x2000 + 0x100 * c + len(nm)] = nm
+    th = bytearray(0x8000 * 2)
+    th[0x4800:0x4812] = b'BOSS\x50Z\x50LEADER\x50ANY\x50'
+    for c, nm in enumerate((b'BOB\x50', b'CY\x50', b'BOB\x50', b'ANNA\x50')):
+        th[0x4000 + 3 * c:0x4003 + 3 * c] = bytes([1, 0x00, 0x50 + c])
+        th[0x5000 + 0x100 * c:0x5000 + 0x100 * c + len(nm)] = nm
+    tp = Port('made-up', {'methods': {'const.bob': ('port.trainer', ['rom.groups', 'Groups'], 0)}, 'asks': {}},
+              {'Groups': (0, 0x100), 'Classes': (0, 0x200)}, bytes(tb), {'const': {'bob': {'value': 2}}})
+    tp.symbol = lambda key: 'Classes'
+    vals = {'rom.groups': ((1, 0x4000), ''), 'const.numTrainerClasses': (4, ''),
+            'rom.trainerClassNames': ((1, 0x4800), '')}
+    assert tp.one('const.bob', bytes(th), vals) == (3, 'by its class\'s and first trainer\'s names')
+    th[0x4800:0x4812] = b'LEADER\x50Z\x50LEADER\x50A\x50'
+    try:
+        tp.one('const.bob', bytes(th), vals)
+        raise AssertionError('a class two of the build\'s are passed')
+    except PortError as e:
+        assert 'const.bob' in str(e) and '2 classes' in str(e), e
     print('gbpk-port: self-test passed')
 
 

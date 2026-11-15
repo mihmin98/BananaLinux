@@ -689,6 +689,46 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 			g.milestones.size(), order.c_str());
 		return;
 	}
+	if (d.guideRegions)
+	{
+		// Crystal Clear's, from the ROM's trainers in its regions' order (gsguide.h): its sixteen leaders, the Elite Four
+		// and Lance, by their ported classes (not its post-game Champion and Elite 4 of the same names); a save with no
+		// badge starts in Johto, its leaders by their badges, one with Brock's in Kanto; each leader with the party it
+		// will have (the save's badge count and one more for each gym before it), so the levels of the gyms not yet
+		// beaten rise along the road, in each region and from one to the other (a beaten one shows the count's party,
+		// as the next gym does: a level or two either way)
+		auto road = [&](uint16_t badges, std::string& order, std::string& late)
+		{
+			const nds::GuideData g = romGuide(r, d, badges);
+			int last = 0, gyms = 0;
+			for (const nds::Milestone& m : g.milestones)
+			{
+				order += (order.empty() ? "" : ", ") + m.foeName;
+				if (m.kind != "gym") continue;
+				gyms++;
+				if (m.doneWhen != "badge:" + std::to_string(m.badge) || m.badge < 1) late += " " + m.foeName + " (" + m.doneWhen + ")";
+				if (m.badge >= 1 && (badges >> (m.badge - 1) & 1)) continue;
+				if (m.levelCap < last) late += " " + m.foeName + " (" + std::to_string(m.levelCap) + ")";
+				last = m.levelCap;
+			}
+			return gyms;
+		};
+		std::string johto, kanto, late;
+		CHECK(road(0, johto, late) == 16);
+		CHECK(road(1 << 8, kanto, late) == 16);
+		EQ(johto, "Falkner, Bugsy, Whitney, Morty, Jasmine, Chuck, Pryce, Clair, Will, Koga, Bruno, Karen, Lance, "
+			"Brock, Misty, Lt.Surge, Erika, Janine, Sabrina, Blaine, Blue");
+		EQ(kanto, "Brock, Misty, Lt.Surge, Erika, Janine, Sabrina, Blaine, Blue, Will, Koga, Bruno, Karen, Lance, "
+			"Falkner, Bugsy, Whitney, Morty, Jasmine, Chuck, Pryce, Clair");
+		EQ(late, "");
+		const nds::GuideData g = romGuide(r, d);
+		if (g.milestones.size() == 21)
+			CHECK(g.milestones[0].levelCap == 9 && g.milestones[20].levelCap == 75 && g.milestones[12].levelCap == 50);
+		fprintf(stderr, "gbpk-roms: %s: the guide from the ROM's trainers by region, %zu milestones, levels %d to %d: %s\n",
+			current.c_str(), g.milestones.size(), g.milestones.empty() ? 0 : g.milestones.front().levelCap,
+			g.milestones.empty() ? 0 : g.milestones.back().levelCap, johto.c_str());
+		return;
+	}
 	const std::string path = dataDir() + "/" + d.key + ".json";
 	if (FILE* f = fopen(path.c_str(), "r")) fclose(f);
 	else return;

@@ -25,7 +25,8 @@
 # - PureRed's pages on its captures (Red's title, v2.7.6's addresses, the release its README names): Gen I's rules, the
 #   party of six and a wild battle, its guide file loaded (13 milestones: Red's, by PureRGB's trainer ids);
 # - Crystal Clear's pages on its captures (Crystal's title, its own map ids, the release its README names: v2.6.0's
-#   and v2.5.11's): Gen II's rules, the party of two and a wild battle, a trainer's battle (Mom's six); no guide yet.
+#   and v2.5.11's): Gen II's rules, the party of two and a wild battle, a trainer's battle (Mom's six); its guide made
+#   from the ROM's trainers (the stand-in has no leaders: no milestones).
 # Needs ui/banana-ui (make ui) and ImageMagick (the shots not blank). Run by kiwami/tests/ci.sh when banana-ui is
 # built, or by hand:
 #   kiwami/tests/gbpk-ui.sh       (the shots and logs in $OUT, /tmp/kiwami-gbpk-ui by default)
@@ -251,7 +252,7 @@ wait 300; gbfeed $CAP/purered_battle; sleep 300; gshot battle; wait 300; gbfeed 
 
     # Crystal Clear's pages: Crystal's title, its captures read at its own map ids (the party of two), a wild battle on
     # the Battle page and its end the Party page, then v2.5.11's capture and its battle, and Mom's battle, her six;
-    # Gen II's rules; no guide file (the next step makes its guide from the ROM, which the stand-in hasn't)
+    # Gen II's rules; its guide made from the ROM's trainers, none of the stand-in's a leader (no guide file looked for)
     run $size clear "home 0; gbpanel 1 $CAP/crystal_clear; gbhost; gbfeed $CAP/crystal_clear; sleep 300; gshot party; \
 wait 300; gbfeed $CAP/crystal_clear_battle; sleep 300; gshot battle; wait 300; gbfeed $CAP/crystal_clear; sleep 100; \
 gbpanel 1 $CAP/crystal_clear_v2_5_11; gbhost; gbfeed $CAP/crystal_clear_v2_5_11; sleep 300; \
@@ -259,7 +260,8 @@ gbfeed $CAP/crystal_clear_v2_5_11_battle; sleep 300; gbfeed $CAP/crystal_clear_t
     logged "gbpanel .*/crystal_clear: companion Crystal Clear$"
     logged "gbpanel .*/crystal_clear_v2_5_11: companion Crystal Clear$"
     logged "gb companion: rules on \(Generation II\)"
-    logged "gb companion: no guide: "
+    logged "gb companion: guide: 0 milestones, 0 hidden items$"
+    ! grep -q 'gb companion: no guide' "$log" || { echo "FAIL $size clear: $(grep 'no guide' "$log")"; fail=1; }
     logged "gbhost: ready Crystal Clear view pages:Party$"
     logged "gbfeed .*/crystal_clear: asked [1-9][0-9]*, party 2, battle 0, view pages:Party$"
     logged "gbfeed .*/crystal_clear_battle: asked [1-9][0-9]*, party 2, battle 1, view pages:Battle$"

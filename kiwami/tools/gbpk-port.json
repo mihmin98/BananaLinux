@@ -24,6 +24,111 @@
         177
       ],
       "const": {
+        "badgeBoulder": {
+          "how": "the base's",
+          "symbol": "BOULDERBADGE",
+          "value": 0
+        },
+        "badgeCascade": {
+          "how": "the base's",
+          "symbol": "CASCADEBADGE",
+          "value": 1
+        },
+        "badgeEarth": {
+          "how": "the base's",
+          "symbol": "EARTHBADGE",
+          "value": 7
+        },
+        "badgeFog": {
+          "how": "the base's",
+          "symbol": "FOGBADGE",
+          "value": 3
+        },
+        "badgeGlacier": {
+          "how": "the base's",
+          "symbol": "GLACIERBADGE",
+          "value": 6
+        },
+        "badgeHive": {
+          "how": "the base's",
+          "symbol": "HIVEBADGE",
+          "value": 1
+        },
+        "badgeMarsh": {
+          "how": "the base's",
+          "symbol": "MARSHBADGE",
+          "value": 5
+        },
+        "badgeMineral": {
+          "how": "the base's",
+          "symbol": "MINERALBADGE",
+          "value": 4
+        },
+        "badgePlain": {
+          "how": "the base's",
+          "symbol": "PLAINBADGE",
+          "value": 2
+        },
+        "badgeRainbow": {
+          "how": "the base's",
+          "symbol": "RAINBOWBADGE",
+          "value": 3
+        },
+        "badgeRising": {
+          "how": "the base's",
+          "symbol": "RISINGBADGE",
+          "value": 7
+        },
+        "badgeSoul": {
+          "how": "the base's",
+          "symbol": "SOULBADGE",
+          "value": 4
+        },
+        "badgeStorm": {
+          "how": "the base's",
+          "symbol": "STORMBADGE",
+          "value": 5
+        },
+        "badgeThunder": {
+          "how": "the base's",
+          "symbol": "THUNDERBADGE",
+          "value": 2
+        },
+        "badgeVolcano": {
+          "how": "the base's",
+          "symbol": "VOLCANOBADGE",
+          "value": 6
+        },
+        "badgeZephyr": {
+          "how": "the base's",
+          "symbol": "ZEPHYRBADGE",
+          "value": 0
+        },
+        "champion": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "CHAMPION",
+          "value": 15
+        },
+        "eliteBruno": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "BRUNO",
+          "value": 12
+        },
+        "eliteKaren": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "KAREN",
+          "value": 13
+        },
+        "eliteKoga": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "KOGA",
+          "value": 14
+        },
+        "eliteWill": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "WILL",
+          "value": 10
+        },
         "fastShipLandmark": {
           "how": "code",
           "symbol": "LANDMARK_FAST_SHIP",
@@ -45,6 +150,86 @@
         "landmarkRegionsFirst": {
           "how": "code",
           "value": 96
+        },
+        "leaderBlaine": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "BLAINE",
+          "value": 43
+        },
+        "leaderBlue": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "BLUE",
+          "value": 59
+        },
+        "leaderBrock": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "BROCK",
+          "value": 16
+        },
+        "leaderBugsy": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "BUGSY",
+          "value": 3
+        },
+        "leaderChuck": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "CHUCK",
+          "value": 7
+        },
+        "leaderClair": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "CLAIR",
+          "value": 8
+        },
+        "leaderErika": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "ERIKA",
+          "value": 20
+        },
+        "leaderFalkner": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "FALKNER",
+          "value": 1
+        },
+        "leaderJanine": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "JANINE",
+          "value": 25
+        },
+        "leaderJasmine": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "JASMINE",
+          "value": 6
+        },
+        "leaderLtSurge": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "LT_SURGE",
+          "value": 18
+        },
+        "leaderMisty": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "MISTY",
+          "value": 17
+        },
+        "leaderMorty": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "MORTY",
+          "value": 4
+        },
+        "leaderPryce": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "PRYCE",
+          "value": 5
+        },
+        "leaderSabrina": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "SABRINA",
+          "value": 33
+        },
+        "leaderWhitney": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "WHITNEY",
+          "value": 2
         },
         "numEvents": {
           "how": "code",
@@ -755,6 +940,12 @@
           "bank": 21,
           "how": "code, the base's too",
           "symbol": "PokedexDataPointerTable"
+        },
+        "engineFlags": {
+          "addr": "0x44B4",
+          "bank": 32,
+          "how": "data 486",
+          "symbol": "EngineFlags"
         },
         "fishGroups": {
           "addr": "0x7D25",

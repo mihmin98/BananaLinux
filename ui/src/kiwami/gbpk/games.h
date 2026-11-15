@@ -71,6 +71,7 @@ namespace banana::kiwami::gbpk
 		std::bitset<256> special, splitStats;
 		bool pureText = false;				// its text in PureRGB's character set (the file's "charset": "pure")
 		bool romGuide = false;				// its guide made from the ROM's trainers (gsguide.h), none in a file
+		bool guideRegions = false;			// in its regions' order (the file's "guide": "rom-regions": Crystal Clear's)
 		bool romLevels = false;				// its guide file's bosses at the levels of the ROM's teams (the file's
 											// "guide_levels": "rom": a ROM hack's guide converted from a retail game's)
 		int release = -1;					// the confirmed ROM's, in releases
@@ -85,7 +86,7 @@ namespace banana::kiwami::gbpk
 
 	// <dataDir>/<key>.ram.json into out; false with the reason in why (a missing file, another schema or kind, a
 	// game key it doesn't know, an address outside WRAM and HRAM, a flag bank or a derived bit out of place, a
-	// dex_size it can't use, no items or types, a type, a character set or guide levels it doesn't know)
+	// dex_size it can't use, no items or types, a type, a character set, a guide or guide levels it doesn't know)
 	bool loadData(const std::string& key, GameData& out, std::string* why);
 	// d's release i as the one the ROM is: d.release, and the release's own addresses over the game's
 	void pickRelease(GameData& d, int i);

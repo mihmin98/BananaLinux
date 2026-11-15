@@ -248,7 +248,10 @@ namespace banana::kiwami::gbpk
 			out.types[(size_t)t] = typeByName(name.str());
 			if (out.types[(size_t)t] == nds::NO_TYPE) return no("has a type it doesn't know (" + name.str() + ")");
 		}
-		out.romGuide = v["guide"].str() == "rom";
+		const std::string gd = v["guide"].str();
+		if (gd != "" && gd != "rom" && gd != "rom-regions") return no("has a guide it doesn't know (" + gd + ")");
+		out.romGuide = gd != "";
+		out.guideRegions = gd == "rom-regions";
 		const std::string gl = v["guide_levels"].str();
 		if (gl != "" && gl != "rom") return no("has guide levels it doesn't know (" + gl + ")");
 		out.romLevels = gl == "rom";

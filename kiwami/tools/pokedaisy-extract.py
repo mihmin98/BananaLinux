@@ -223,8 +223,10 @@ GEN1_BOSS_PARTIES = {'BROCK': ('leaderBrock', [1]), 'MISTY': ('leaderMisty', [1]
                      'BLAINE': ('leaderBlaine', [1]), 'GIOVANNI': ('leaderGiovanni', [3]),
                      'LORELEI': ('class.LORELEI', [1]), 'BRUNO': ('class.BRUNO', [1]), 'AGATHA': ('class.AGATHA', [1]),
                      'LANCE': ('class.LANCE', [1]), 'CHAMPION': ('class.RIVAL3', [1, 2, 3])}
-# the games whose guide the host builds from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp): PokeDaisy has none
-ROM_GUIDES = ('gold', 'silver')
+# the games whose guide the host builds from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp), PokeDaisy having
+# none, and its order: "rom" the story's (Gold's and Silver's: Johto, the Elite Four, the Champion, Kanto), "rom-regions"
+# Crystal Clear's (the region the save started in, the Elite Four, the Champion, the other region)
+ROM_GUIDES = {'gold': 'rom', 'silver': 'rom', 'crystal-clear': 'rom-regions'}
 # GuideGen1Gen.kt's RAM constants (<prefix>_<name>, Gen I's D000-DFFF the data files' bank 1), by the data file's key,
 # and its sizes; what is left out
 GEN1_GUIDE_RAM = {'EVENT_FLAGS': 'eventFlags', 'MISSABLE_FLAGS': 'toggleFlags', 'BADGES': 'badges'}
@@ -1006,6 +1008,8 @@ def ported(key, title, pd_title, port, gen2_configs, dex_src, art_src, titles):
         'items': sorted(v for v in g['items'].values() if v[1]), 'balls': g['balls'], 'types': g['types'],
         'special': g['special'], 'dex_size': HACK_DEX_SIZE[key],
     }
+    if key in ROM_GUIDES:
+        doc['guide'] = ROM_GUIDES[key]
     return doc, unread
 
 
@@ -1283,7 +1287,7 @@ def build(checkout):
         if g.get('split_stats'):
             doc['split_stats'] = sorted(g['split_stats'])
         if key in ROM_GUIDES:
-            doc['guide'] = 'rom'
+            doc['guide'] = ROM_GUIDES[key]
         if key in GEN1_HACK_GUIDES:
             doc['guide_levels'] = 'rom'
         if key in HACK_DEX_SIZE:

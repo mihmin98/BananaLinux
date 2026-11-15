@@ -54,6 +54,9 @@
 #   <game> port.same const.<key> rom.<table>   the base's constant, the table (port.data) being the base's bytes
 #   <game> port.fixed const.<key> <value> <pattern>   a layout of its own its code holds in its shape (not as a byte):
 #                                           <value>, if the pattern is found once in the build
+#   <game> port.trainer const.<key> rom.<groups> <base's groups>   a trainer class: the build's class (in <groups>, a
+#                                           bank and a pointer a class) whose first trainer has the name the base's
+#                                           class (its constant, in <base's groups>, a pointer a class) has, once
 #   <game> items|types from <base game>     the base game's items, by their names in the ROMs, and its types
 # A line with no port.* method is found by the votes of the base's code that uses the symbol.
 
@@ -315,6 +318,49 @@ crystal-clear port.fixed const.trainerTeams 2 ea .. .. cb 4f 28 28 cd .. .. 38 0
 crystal-clear port.fixed const.trainerItem 4 fa .. .. cb 57 28 15 e5 fa .. .. 3d 21 .. .. 01 30 00
 crystal-clear port.fixed const.trainerNickname 8 fa .. .. cb 5f 28 55 d5 11 .. .. cd .. .. fe 50
 crystal-clear port.fixed const.trainerMoves 16 fa .. .. cb 67 28 6b e5 fa .. .. 3d 21 .. .. 01 30 00
+# (its guide's bosses, gsguide.cpp, Gold's and Silver's lines: its classes are renumbered, Crystal's RIVAL1 gone, so
+# each is the class whose first trainer has the name Crystal's class's first trainer has, compared in the ROMs; its
+# post-game Elite 4 and Champion classes have names of their own. Its badges are Crystal's bits, as it keeps Crystal's
+# EngineFlags whole, the table setflag ENGINE_<badge> goes through to wJohtoBadges and wKantoBadges)
+crystal-clear rom.engineFlags EngineFlags
+crystal-clear port.data rom.engineFlags 486
+crystal-clear port.trainer const.leaderFalkner rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderBugsy rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderWhitney rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderMorty rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderJasmine rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderChuck rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderPryce rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderClair rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderBrock rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderMisty rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderLtSurge rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderErika rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderJanine rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderSabrina rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderBlaine rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderBlue rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.eliteWill rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.eliteBruno rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.eliteKaren rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.eliteKoga rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.champion rom.trainerGroupsFar TrainerGroups
+crystal-clear port.same const.badgeZephyr rom.engineFlags
+crystal-clear port.same const.badgeHive rom.engineFlags
+crystal-clear port.same const.badgePlain rom.engineFlags
+crystal-clear port.same const.badgeFog rom.engineFlags
+crystal-clear port.same const.badgeMineral rom.engineFlags
+crystal-clear port.same const.badgeStorm rom.engineFlags
+crystal-clear port.same const.badgeGlacier rom.engineFlags
+crystal-clear port.same const.badgeRising rom.engineFlags
+crystal-clear port.same const.badgeBoulder rom.engineFlags
+crystal-clear port.same const.badgeCascade rom.engineFlags
+crystal-clear port.same const.badgeThunder rom.engineFlags
+crystal-clear port.same const.badgeRainbow rom.engineFlags
+crystal-clear port.same const.badgeSoul rom.engineFlags
+crystal-clear port.same const.badgeMarsh rom.engineFlags
+crystal-clear port.same const.badgeVolcano rom.engineFlags
+crystal-clear port.same const.badgeEarth rom.engineFlags
 
 # Gen II's front pictures and their palettes (ui/src/kiwami/gbpk/pics.cpp), the Pokégear's Johto and Kanto maps
 # (maps.cpp). PokeDaisy's Gen2Dex.kt and Gen2Art.kt give them too: pret's value must agree with it. Crystal fixes a
@@ -332,41 +378,48 @@ crystal,crystal-legacy,crystal-clear,gold,silver rom.townMapPalMap TownMapPals.P
 crystal,crystal-legacy,crystal-clear rom.pokegearPals MalePokegearPals
 gold,silver rom.pokegearPals PokegearPals
 
-# Gold and Silver's guide, built from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp): each gym leader's trainer
-# class, and the badge each one's gym gives (its bit in wJohtoBadges or wKantoBadges). Which leader gives which badge
-# is gsguide.cpp's table, from each gym's script (maps/*Gym.asm, Clair's maps/DragonsDenB1F.asm: setflag ENGINE_...)
-gold,silver const.leaderFalkner constants/trainer_constants.asm FALKNER
-gold,silver const.leaderBugsy constants/trainer_constants.asm BUGSY
-gold,silver const.leaderWhitney constants/trainer_constants.asm WHITNEY
-gold,silver const.leaderMorty constants/trainer_constants.asm MORTY
-gold,silver const.leaderJasmine constants/trainer_constants.asm JASMINE
-gold,silver const.leaderChuck constants/trainer_constants.asm CHUCK
-gold,silver const.leaderPryce constants/trainer_constants.asm PRYCE
-gold,silver const.leaderClair constants/trainer_constants.asm CLAIR
-gold,silver const.leaderBrock constants/trainer_constants.asm BROCK
-gold,silver const.leaderMisty constants/trainer_constants.asm MISTY
-gold,silver const.leaderLtSurge constants/trainer_constants.asm LT_SURGE
-gold,silver const.leaderErika constants/trainer_constants.asm ERIKA
-gold,silver const.leaderJanine constants/trainer_constants.asm JANINE
-gold,silver const.leaderSabrina constants/trainer_constants.asm SABRINA
-gold,silver const.leaderBlaine constants/trainer_constants.asm BLAINE
-gold,silver const.leaderBlue constants/trainer_constants.asm BLUE
-gold,silver const.badgeZephyr constants/ram_constants.asm ZEPHYRBADGE
-gold,silver const.badgeHive constants/ram_constants.asm HIVEBADGE
-gold,silver const.badgePlain constants/ram_constants.asm PLAINBADGE
-gold,silver const.badgeFog constants/ram_constants.asm FOGBADGE
-gold,silver const.badgeMineral constants/ram_constants.asm MINERALBADGE
-gold,silver const.badgeStorm constants/ram_constants.asm STORMBADGE
-gold,silver const.badgeGlacier constants/ram_constants.asm GLACIERBADGE
-gold,silver const.badgeRising constants/ram_constants.asm RISINGBADGE
-gold,silver const.badgeBoulder constants/ram_constants.asm BOULDERBADGE
-gold,silver const.badgeCascade constants/ram_constants.asm CASCADEBADGE
-gold,silver const.badgeThunder constants/ram_constants.asm THUNDERBADGE
-gold,silver const.badgeRainbow constants/ram_constants.asm RAINBOWBADGE
-gold,silver const.badgeSoul constants/ram_constants.asm SOULBADGE
-gold,silver const.badgeMarsh constants/ram_constants.asm MARSHBADGE
-gold,silver const.badgeVolcano constants/ram_constants.asm VOLCANOBADGE
-gold,silver const.badgeEarth constants/ram_constants.asm EARTHBADGE
+# Gold's, Silver's and Crystal Clear's guides, built from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp): each gym
+# leader's trainer class, the Elite Four's and the Champion's, and the badge each leader's gym gives (its bit in
+# wJohtoBadges or wKantoBadges). Which leader gives which badge is gsguide.cpp's table, from each gym's script
+# (maps/*Gym.asm, Clair's maps/DragonsDenB1F.asm: setflag ENGINE_...). Crystal's are Crystal Clear's base's (its port
+# lines are below Gen II's ROM tables): Crystal has a guide file of its own
+crystal,crystal-clear,gold,silver const.leaderFalkner constants/trainer_constants.asm FALKNER
+crystal,crystal-clear,gold,silver const.leaderBugsy constants/trainer_constants.asm BUGSY
+crystal,crystal-clear,gold,silver const.leaderWhitney constants/trainer_constants.asm WHITNEY
+crystal,crystal-clear,gold,silver const.leaderMorty constants/trainer_constants.asm MORTY
+crystal,crystal-clear,gold,silver const.leaderJasmine constants/trainer_constants.asm JASMINE
+crystal,crystal-clear,gold,silver const.leaderChuck constants/trainer_constants.asm CHUCK
+crystal,crystal-clear,gold,silver const.leaderPryce constants/trainer_constants.asm PRYCE
+crystal,crystal-clear,gold,silver const.leaderClair constants/trainer_constants.asm CLAIR
+crystal,crystal-clear,gold,silver const.leaderBrock constants/trainer_constants.asm BROCK
+crystal,crystal-clear,gold,silver const.leaderMisty constants/trainer_constants.asm MISTY
+crystal,crystal-clear,gold,silver const.leaderLtSurge constants/trainer_constants.asm LT_SURGE
+crystal,crystal-clear,gold,silver const.leaderErika constants/trainer_constants.asm ERIKA
+crystal,crystal-clear,gold,silver const.leaderJanine constants/trainer_constants.asm JANINE
+crystal,crystal-clear,gold,silver const.leaderSabrina constants/trainer_constants.asm SABRINA
+crystal,crystal-clear,gold,silver const.leaderBlaine constants/trainer_constants.asm BLAINE
+crystal,crystal-clear,gold,silver const.leaderBlue constants/trainer_constants.asm BLUE
+crystal,crystal-clear,gold,silver const.badgeZephyr constants/ram_constants.asm ZEPHYRBADGE
+crystal,crystal-clear,gold,silver const.badgeHive constants/ram_constants.asm HIVEBADGE
+crystal,crystal-clear,gold,silver const.badgePlain constants/ram_constants.asm PLAINBADGE
+crystal,crystal-clear,gold,silver const.badgeFog constants/ram_constants.asm FOGBADGE
+crystal,crystal-clear,gold,silver const.badgeMineral constants/ram_constants.asm MINERALBADGE
+crystal,crystal-clear,gold,silver const.badgeStorm constants/ram_constants.asm STORMBADGE
+crystal,crystal-clear,gold,silver const.badgeGlacier constants/ram_constants.asm GLACIERBADGE
+crystal,crystal-clear,gold,silver const.badgeRising constants/ram_constants.asm RISINGBADGE
+crystal,crystal-clear,gold,silver const.badgeBoulder constants/ram_constants.asm BOULDERBADGE
+crystal,crystal-clear,gold,silver const.badgeCascade constants/ram_constants.asm CASCADEBADGE
+crystal,crystal-clear,gold,silver const.badgeThunder constants/ram_constants.asm THUNDERBADGE
+crystal,crystal-clear,gold,silver const.badgeRainbow constants/ram_constants.asm RAINBOWBADGE
+crystal,crystal-clear,gold,silver const.badgeSoul constants/ram_constants.asm SOULBADGE
+crystal,crystal-clear,gold,silver const.badgeMarsh constants/ram_constants.asm MARSHBADGE
+crystal,crystal-clear,gold,silver const.badgeVolcano constants/ram_constants.asm VOLCANOBADGE
+crystal,crystal-clear,gold,silver const.badgeEarth constants/ram_constants.asm EARTHBADGE
+crystal,crystal-clear,gold,silver const.eliteWill constants/trainer_constants.asm WILL
+crystal,crystal-clear,gold,silver const.eliteBruno constants/trainer_constants.asm BRUNO
+crystal,crystal-clear,gold,silver const.eliteKaren constants/trainer_constants.asm KAREN
+crystal,crystal-clear,gold,silver const.eliteKoga constants/trainer_constants.asm KOGA
+crystal,crystal-clear,gold,silver const.champion constants/trainer_constants.asm CHAMPION
 
 # Gen I's WRAM that PokeDaisy reads too (Gen1Reader.kt's Gen1Config): pret's value must agree with it. The Game Boy
 # has no WRAM banks: D000-DFFF is the data files' bank 1, as the Game Boy Color games'

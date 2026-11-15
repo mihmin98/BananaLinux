@@ -94,7 +94,10 @@ Three sources, each read by its own script into files that are committed, so a b
     first name: Crystal's 96 by the same rule);
   - **`port.fixed`**: a layout of the hack's own that its code holds in its shape rather than in a byte (a fishing
     group's six `add hl,de`, a party type's `bit 4,a`): the line gives the value, kept only if the pattern of that code
-    is found once in each build.
+    is found once in each build;
+  - **`port.trainer`**: a trainer class, the build's whose name (`TrainerClassNames`) and first trainer's name are those
+    of Crystal's class, compared in the two ROMs and found in one class of the build (its gym leaders, Elite Four and
+    Champion for its guide).
 
   Its items are Crystal's, found by their names in each ROM's `ItemNames`. The builds of a version (its Standard
   Colors and Color Filter, each with and without SGB Mode) must agree on every value; where the two versions differ
@@ -696,7 +699,13 @@ descriptions' and the evolutions' pointers, each release's own. Its ROM is read 
   Session again (`gb companion: the trainers' parties for N badges`);
 - `monPalettes`: its own palettes, which a new game shows (an option's bit, D9C4 bit 2, picks Crystal's colours
   instead; PokeDaisy took those). The Color Filter builds' are all filtered: the reader checks the first entry's two
-  colours are the same, not Crystal's own.
+  colours are the same, not Crystal's own;
+- `leader<Name>`, `elite<Name>`, `champion` (its guide's classes, *The guides*): its trainer classes are renumbered
+  (Crystal's first rival's class is gone, so Will's is 10 and Brock's 16, Crystal's 11 and 17), and found by their
+  names and their first trainers' (`port.trainer`). It has classes past Crystal's with the same trainers' names
+  (post-game Elite Four and Champion classes of names of their own, a Champion class and an Elite 4 class of other
+  trainers), which that leaves out. Its badges' bits are Crystal's (`port.same`): it keeps Crystal's `EngineFlags`
+  whole (`engineFlags`, found by its bytes), the table `setflag ENGINE_<badge>` goes through.
 
 Its guide is built from its ROM: *The guides*.
 
@@ -769,7 +778,8 @@ ROM hacks': `crystal-legacy`, `yellow-legacy`, `purered`, `pureblue`, `puregreen
     type in or out of it, or to `split_stats`, whose category goes by the attacker's base Attack and Special. A move's
     category is its type's (`rom.h` `category`), and `rules.h`'s damage takes Attack or Special by it.
   - The file refuses to load without `items` and `types`, or with a type name it doesn't know.
-- `guide` is `"rom"` for a game whose guide the host builds from the ROM's trainers (`gsguide.cpp`: Gold and Silver);
+- `guide` is `"rom"` for a game whose guide the host builds from the ROM's trainers (`gsguide.cpp`: Gold and Silver),
+  `"rom-regions"` for one whose guide is built so in its regions' order (Crystal Clear: *The guides*);
   the others' are their `<game>.json`. `guide_levels` is `"rom"` for a game whose guide file's bosses take the levels
   of their trainers' teams in the ROM (PureRGB's, *The guides*). `dex_size`, when given, is the Pokédex's size (else
   151 or 251). `charset`, when given, is the text's character set (`pure`, PureRGB's; else the generation's). A
@@ -897,10 +907,11 @@ PureRGB's. They have Red's 13 bosses in its order, with PureRGB's own values whe
   `romLevels`), so Brock's is 14, Giovanni's 64, the Champion's 72 (Red's 14, 50 and 65).
 - **No trades**: PureRGB's in-game trades are its own (`data/events/trades.asm`), so Red's notes aren't taken.
 
-**Gold's and Silver's** come from the ROM, as PokeDaisy has no guide for them: `romGuide` (`ui/src/kiwami/gbpk/
-gsguide.cpp`, after upstream's `nds::guideFromRom`, which upstream since removed) makes a milestone of each trainer
-class the ROM names Leader, Elite Four or Champion, with every trainer of the class (`trainer_ids`) and the
-lowest-levelled team's top level as `level_cap`, and its type the one most of that team has.
+**Gold's and Silver's** come from the ROM, as PokeDaisy has no guide for them (the data file says `"guide": "rom"`):
+`romGuide` (`ui/src/kiwami/gbpk/gsguide.cpp`, after upstream's `nds::guideFromRom`, which upstream since removed) makes
+a milestone of each trainer class the ROM names Leader, and of the Elite Four's and the Champion's classes (the data
+file's `eliteWill` .. `eliteKoga` and `champion`, from pret's constants), with every trainer of the class
+(`trainer_ids`) and the lowest-levelled team's top level as `level_cap`, and its type the one most of that team has.
 
 - **Order**: the story's stages, by level in each: Johto's leaders, the Elite Four, the Champion, then Kanto's
   leaders. Level alone would be wrong: Janine's team (top Lv 39) is below Clair's (40) and the Elite Four's, and
@@ -921,6 +932,23 @@ lowest-levelled team's top level as `level_cap`, and its type the one most of th
 - No places, notes or `opens`: the ROM's trainers say nothing of where each is fought. The hidden items are the
   ROM's, as for Crystal.
 
+**Crystal Clear's** is made the same way (`"guide": "rom-regions"`), with its own classes (ported, *The ROM hacks*):
+its post-game Champion and Elite 4 classes aren't on the road. It is open-world (the player starts in Johto or in
+Kanto), and every leader's party goes by the badge count (a level for each, 9 with none to 75 with fifteen), so:
+
+- **Order**: the region the save started in, the Elite Four and Lance (their teams fixed, 42 to 50, about eight
+  badges' level), then the other region. Kanto is first when the save has more of Kanto's badges than of Johto's
+  (the order the badges were won in isn't kept), Johto otherwise, with no badge too. In each region the leaders go
+  in their badges' order (Falkner, Bugsy, Whitney, Morty, Jasmine, Chuck, Pryce, Clair; Brock to Blue), as their
+  levels don't order them; the Elite Four by level.
+- **Levels as they'll be met**: each gym not yet beaten shows the party it will have, the save's badge count and one
+  more for each gym not yet beaten before it on the road (`rom.h` `badgeTeam`, 15 at most); a beaten one the count's.
+  So from a new game the road reads Falkner at 9 to Blue at 75. The host makes the guide again for the save's badges
+  when their count changes, with the parties (*The ROM hacks*), and the Session starts again on it.
+- **A gym's id is its badge's** (`gym-9-brock`), whatever the order, so a gym keeps its id when the save's region
+  changes the order; its name numbers it on the road ("Gym 1: Brock" in a Kanto start). A gym is done by its badge,
+  the Elite Four and Lance by a later milestone, as Gold's and Silver's.
+
 The script refuses what it can't read: a boss that isn't `crBoss(title, where, flag, key[, crLeague(flag)])` with
 an optional `{ p -> p.flag(A) && p.flag(B) }` (Crystal Legacy's `clBoss` and `clLeague` the same), or
 `clScaledBoss(title, where, flag, key)` for a leader whose helper picks `<key>_<n>` teams by the 16 badges' count, a
@@ -940,7 +968,7 @@ All but the ROM tests run in `kiwami/tests/ci.sh`, without PokeDaisy, pret or th
   ROMs, plain, in a `.zip` and a solid `.7z`); the data files and `roms.sha1`; the character sets; the memory reader
   replayed over PokeDaisy's 49 captures (*The test captures*); the battle rules through upstream's entry points; the
   ROM readers, the picture decompressions and the maps on made-up ROMs and streams; the guides through upstream's
-  loader and `nextMilestone`, and Gold's and Silver's built from a made-up trainer table; the fork's own types (their
+  loader and `nextMilestone`, and Gold's, Silver's and Crystal Clear's built from a made-up trainer table; the fork's own types (their
   names, colours and chart cells, and upstream's advice naming them). Once by hand at a step that adds a type or
   touches what indexes by one, it is built with `-fsanitize=address,undefined` (the `g++` line in `ci.sh` with those
   flags, `-g -O1`, and without `-Werror`, as GCC's `-Wformat-truncation` at `-O1` warns on two `snprintf`s of
@@ -1037,7 +1065,9 @@ place but the special landmark's rooms on a map; every hidden item on a named ma
 50; the game's guide file (Crystal's) loaded with every place found by name and every boss's team the ROM's, at
 its level cap; and Gold's and Silver's guide from the ROM's trainers, its 21 milestones in the order above, each gym
 done by a badge (Falkner's `badge:1`, Jasmine's 5, Chuck's 6, Pryce's 7, Clair's 8, Brock's 9, Blue's 16) and Will
-and Lance by `later`. For Red, Blue and Yellow (Fast Red and Fast Blue as Red and Blue, and Yellow Legacy with its own
+and Lance by `later`. Crystal Clear's (each of its eight builds): its 21 milestones in Johto's order with no badge and
+in Kanto's with Brock's, every gym done by its badge, the levels of the gyms not yet beaten rising along the road
+(Falkner 9 to Blue 75), Lance at 50. For Red, Blue and Yellow (Fast Red and Fast Blue as Red and Blue, and Yellow Legacy with its own
 values below): all 151 species named with a
 learnset and a Pokédex text, all 165 moves; Bulbasaur's base stats, types, level 1 moves, evolution, Pokédex entry
 and height and weight; Mew; Clefairy's Moon Stone and Kadabra's trade; Quick Attack's and Counter's priorities;
@@ -1112,7 +1142,9 @@ In the repository, not the image: `ui/src/kiwami/gbpk/` 318 KB, `kiwami/tests/gb
     are judged by their species' rate.
 - **English labels**: the fork's new labels (DV, Stat exp., Special, the rows) show in English in every language.
 - **Gen I's Team score** counts 17 types (*The battle rules*).
-- **Gold's and Silver's guide** has no places or flags: the Elite Four and the Champion are done by a later milestone.
+- **Gold's, Silver's and Crystal Clear's guides** have no places or flags: the Elite Four and the Champion are done by a
+  later milestone. Crystal Clear's takes the region with more of the save's badges as the one it started in, and its
+  post-game bosses aren't on it.
 - **Hidden items are always listed**, found or not, as upstream's companions list theirs.
 - **Swarms** aren't listed (*Reading the ROM*); critical hits, Reflect, Light Screen and weather aren't counted.
 

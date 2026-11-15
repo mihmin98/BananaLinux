@@ -1033,6 +1033,10 @@ Common to the steps (as #28's):
   - `kiwami/tools/pokedaisy-extract.py`, `crystal-clear.ram.json`, `SOURCES` (changed: `"guide": "rom"`)
   - `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp` (changed)
   - `kiwami/GB-POKEMON.md` (changed: *The guides*)
+  - (*Deviations*, 2026-11-15) `kiwami/tools/gbpk-port.py`, `gbpk-symbols.txt`, `gbpk-port.json`, `gbpk-extra.json`
+    (changed: `port.trainer`, the guide's classes and badges), `crystal.ram.json`, `gold.ram.json`, `silver.ram.json`
+    (regenerated: the guide's constants), `ui/src/kiwami/gbpk/games.h`, `games.cpp` (changed: `"rom-regions"`),
+    `host.h`, `host.cpp` (changed: the guide made again for the save's badges), `kiwami/tests/gbpk-ui.sh` (changed)
 - **Change**:
   - **`gsguide.cpp`**: `romGuide` takes the stages from the data file. Gold and Silver keep today's (Johto's leaders,
     the Elite Four, the Champion, Kanto's leaders). Crystal Clear's are its regions, Johto and Kanto: each region's
@@ -1356,6 +1360,38 @@ Where the implementation turned out different from this plan, why, and what chan
   - **Step 14** builds the guide "each region's leaders by level": with the parties by badges, every leader's levels
     follow the save's badge count, so the order by level is to be settled there.
 
+- **2026-11-15, step 14**: Crystal's constants don't give Crystal Clear's classes: it removed Crystal's first rival's
+  class (9), so from Will on each class is one lower (Will 10, Brock 16, Blue 59; Crystal's 11, 17, 64), and the
+  plan's check, the class name at Crystal's index, passes on the wrong leader (class 17 is Misty's, a Leader too). It
+  also has a post-game Champion class (71, its trainers at 70, 90 and 100) and Elite 4 class (72-75), and post-game
+  classes of their own names (100-105) whose first trainers are Will, Bruno, Karen, Koga and Lance again. As the user
+  chose (2026-11-15):
+  - **The classes are ported by name**: a new `gbpk-port.py` method, `port.trainer const.<key> rom.<groups> <base's
+    groups>`, gives the build's class whose name (`TrainerClassNames`) and first trainer's name are Crystal's class's,
+    compared in the ROMs, found in one class (`--self-test` checks it, and a class two of the build's are fails). The
+    sixteen leaders, `eliteWill` .. `eliteKoga` and `champion` are ported so. Its badges' bits are Crystal's by
+    `port.same` over `rom.engineFlags` (Crystal's `EngineFlags`, 486 bytes, found whole in every build). The guide's
+    `const.leader*`/`badge*` lines and the new `eliteWill` .. `champion` lines name `crystal` (the port's base) and
+    `crystal-clear` besides Gold and Silver, so `gbpk-extra.json` and the four data files are regenerated
+    (`crystal.ram.json` gains the constants unused).
+  - **The Elite Four and the Champion go by the data file's classes** in every ROM guide, not by the class names, so
+    Crystal Clear's post-game ones are left out; Gold's and Silver's guides come out the same (the ROM tests).
+  - **The order**: the data file says `"guide": "rom-regions"` (not `"rom"`: `games.h` `guideRegions`, and an unknown
+    value refused). The first region is Kanto's when the save has more of Kanto's badges than of Johto's (the order
+    they were won in isn't kept), and its leaders go by their badges' order, as every leader's party is at about the
+    same level for a badge count (9 to 75), so level doesn't order them; the Elite Four (42-47) and Lance (50) are
+    fixed, about eight badges' level, after the first region.
+  - **The levels rise from the save**: each gym not yet beaten shows its party for the save's badge count and one more
+    for each gym not yet beaten before it; a beaten one the count's. `romGuide` takes the save's badges, and the host
+    makes the guide again with the parties when the badge count changes (`host.cpp` `badgeTeams`), before the
+    Session starts again on it.
+  - **A gym's id is its badge's** in this order (`gym-9-brock`), so it doesn't change when the save's region reorders
+    the road; Gold's and Silver's keep theirs.
+  - The ROM test's "each leader's level ordered within its region" is over the gyms not yet beaten: a beaten gym shows
+    the count's party, as the next one does, and leaders differ by a level or two at a count (Brock 17, Misty 16).
+    `gbpk-ui.sh`'s Crystal Clear run now asserts its guide made from the ROM (0 milestones on the stand-in, which has
+    no leaders) instead of "no guide".
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -1375,6 +1411,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 11. PureRGB's guides | done | GB Pokémon hacks: PureRGB's guides, Red's and Blue's with its flags and its levels |
 | 12. Crystal Clear's addresses, ported | done | GB Pokémon hacks: Crystal Clear's addresses, mapped from pokecrystal's by the code that uses them |
 | 13. Crystal Clear | done | GB Pokémon hacks: Crystal Clear, its packed text, its memory and its ROM |
-| 14. Crystal Clear's guide | todo | |
+| 14. Crystal Clear's guide | done | GB Pokémon hacks: Crystal Clear's guide, built from its ROM by region |
 | 15. The documentation and the weight | todo | |
 | 16. Final check | todo | |

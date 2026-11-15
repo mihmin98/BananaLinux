@@ -15,18 +15,18 @@ namespace banana::kiwami::gbpk
 	namespace
 	{
 		// the game's guide: its file in the data folder (<key>.json, the places' maps found by name in the ROM), or for
-		// a game whose data file says "guide": "rom" (Gold and Silver, which have none) the one its ROM's trainers make
-		// (gsguide.h), and its bosses at the ROM's levels when it says "guide_levels": "rom" (PureRGB's); with the
-		// ROM's hidden items as
+		// a game whose data file says "guide": "rom" or "rom-regions" (Gold, Silver and Crystal Clear, which have none)
+		// the one its ROM's trainers make for the save's badges (gsguide.h), and its bosses at the ROM's levels when it
+		// says "guide_levels": "rom" (PureRGB's); with the ROM's hidden items as
 		// the Here page's secrets, each listed whether found or not, as upstream's companions list theirs. A game
 		// without a file (or with one it refuses) has the hidden items alone.
-		std::shared_ptr<const nds::GuideData> guideFor(const GameData& d, const nds::RomData& rom)
+		std::shared_ptr<const nds::GuideData> guideFor(const GameData& d, const nds::RomData& rom, uint16_t badges = 0)
 		{
 			auto g = std::make_shared<nds::GuideData>();
 			const nds::GuideResolver res = nds::guideResolver(rom);
 			std::string why;
 			if (d.romGuide)
-				*g = romGuide(rom, d);
+				*g = romGuide(rom, d, badges);
 			else if (!nds::loadGuideFile(dataDir() + "/" + d.key + ".json", *g, d.game.id, &why, &res))
 			{
 				fprintf(stderr, "banana-ui: gb companion: no guide: %s\n", why.c_str());
@@ -241,16 +241,18 @@ namespace banana::kiwami::gbpk
 
 	// Crystal Clear's trainers whose party goes by the badge count: a change of the party the save's badges give starts
 	// the Session again on a copy of the ROM's data with each one's (its Battle page's foe and the guide's next fight
-	// take a trainer's team from it), logged. (A game has these or PureRGB's switches, never both: the copy is of the
-	// data as read)
+	// take a trainer's team from it), logged, and with a guide made from the ROM for these badges (its region first,
+	// its leaders' levels as they'll be met: gsguide.h). (A game has these or PureRGB's switches, never both: the copy
+	// is of the data as read)
 	void Host::badgeTeams(uint16_t badges)
 	{
 		const int t = badgeTeam(badges);
 		if (t == lastTeam) return;
 		lastTeam = t;
 		base.rom = withBadgeTeams(asRead, t);
-		startSession();
 		fprintf(stderr, "banana-ui: gb companion: the trainers' parties for %d badges\n", t);
+		if (data.romGuide) base.guide = guideFor(data, *asRead, badges);
+		startSession();
 	}
 
 	bool Host::takeData(nds::PageData& d)

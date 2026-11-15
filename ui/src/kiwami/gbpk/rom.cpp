@@ -53,7 +53,7 @@ namespace banana::kiwami::gbpk
 	std::string RomView::text(size_t o, size_t max) const
 	{
 		if (o == NONE || o >= b.size()) return "";
-		return decode(gen, b.data() + o, std::min(max, b.size() - o));
+		return decode(charset, b.data() + o, std::min(max, b.size() - o));
 	}
 
 	size_t RomView::skip(size_t o, size_t max) const
@@ -125,11 +125,14 @@ namespace banana::kiwami::gbpk
 		}
 	}
 
-	// (no picture by gender or form in these games: one a species)
-	std::shared_ptr<const nds::Sprite> GbRomData::sprite(uint16_t species, bool, uint8_t) const
+	// (no picture by gender in these games; by form only PureRGB's, each its own species past the Pokédex)
+	std::shared_ptr<const nds::Sprite> GbRomData::sprite(uint16_t species, bool, uint8_t form) const
 	{
 		if (!rom) return nullptr;
-		if (gen == 1) return gen1FrontPic(RomView{ *rom, 1 }, pics1, species);
+		// (a form's index as upstream's nds::speciesIndex gives it, which the tests' binary doesn't link)
+		const nds::Species* base = species < this->species.size() ? &this->species[species] : nullptr;
+		const uint16_t i = form && base && base->formsAt && form < base->formCount ? (uint16_t)(base->formsAt + form - 1) : species;
+		if (gen == 1) return gen1FrontPic(RomView{ *rom, Charset::GEN1 }, pics1, i);
 		return gen2FrontPic(RomView{ *rom }, pics, species);
 	}
 
@@ -142,7 +145,7 @@ namespace banana::kiwami::gbpk
 		out->rom = rom;
 		out->game = d.game;
 		out->gen = d.gen;
-		RomView r{ *rom, d.gen };
+		RomView r{ *rom, d.charset() };
 		std::string w;
 		if (d.gen != 1 && d.gen != 2) return no(d.game.title + ": not a Game Boy game's data file");
 		if (!(d.gen == 1 ? readGen1(r, d, *out, &w) : readGen2(r, d, *out, &w))) return no(d.game.title + "'s ROM: " + w);

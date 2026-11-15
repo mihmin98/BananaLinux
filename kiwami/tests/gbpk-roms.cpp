@@ -108,7 +108,9 @@ static void checkPics(const nds::RomData& r, const std::vector<uint8_t>& rom, co
 			}
 	}
 	const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
-	CHECK(drawn == count && sized == count && count == (g.gen == 1 ? 151 : 251));
+	// (the Pokédex's, and PureRGB's forms after them, each of its own internal index: GbRomData::form)
+	const int forms = (int)std::count_if(g.form.begin(), g.form.end(), [](uint8_t f) { return f != 0; });
+	CHECK(drawn == count && sized == count && count == (g.gen == 1 ? 151 : 251) + forms);
 	if (g.gen == 1)
 	{
 		auto bulbasaur = r.sprite(1), mewtwo = r.sprite(150);
@@ -292,11 +294,15 @@ static void checkGen2(const nds::RomData& r, const std::string& key, const std::
 // data/trainers/parties.asm and special_moves.asm, engine/items/item_effects.asm)
 static void checkGen1(const nds::RomData& r, const GameData& d)
 {
-	// (Yellow Legacy is Yellow's engine with its own changes, each checked by its own values: its source at V1.0.10)
+	// (Yellow Legacy is Yellow's engine with its own changes, each checked by its own values: its source at V1.0.10;
+	// PureRed, PureBlue and PureGreen are Red's, theirs at v2.7.7, the same in v2.7.6 for every value here)
 	const bool yellow = baseGame(d.game.id) == YELLOW, legacy = d.game.id == YELLOW_LEGACY;
-	CHECK(r.species.size() == 152 && r.moves.size() == 166);
+	const bool pure = d.game.id == PURERED || d.game.id == PUREBLUE || d.game.id == PUREGREEN;
+	// (PureRGB's twelve forms after the 151: Armored Mewtwo, Powered Haunter, Hardened Onix, Floating Magneton and
+	// Weezing, the five spirits, Winter Dragonair, Volcanic Magmar; its constants/pokemon_constants.asm)
+	CHECK(r.species.size() == (pure ? 164u : 152u) && r.moves.size() == 166);
 	int named = 0;
-	for (size_t s = 1; s < r.species.size(); s++) named += !r.species[s].name.empty() && !r.species[s].learnset.empty() && !r.species[s].dexText.empty();
+	for (size_t s = 1; s <= 151 && s < r.species.size(); s++) named += !r.species[s].name.empty() && !r.species[s].learnset.empty() && !r.species[s].dexText.empty();
 	CHECK(named == 151);
 	named = 0;
 	for (size_t m = 1; m < r.moves.size(); m++) named += !r.moves[m].name.empty();
@@ -312,37 +318,47 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 	EQ(b.category, "Seed");
 	CHECK(b.height == 7 && b.weight == 68);	// 2'04" and 15.0 lb: 0.7 m, 6.8 kg
 	CHECK(b.dexText.size() > 40 && b.dexText.back() == '.' && b.dexText.find("  ") == std::string::npos);
-	CHECK(!b.tms.empty() && b.tms.back() == 93);	// (Cut: HM01)
+	CHECK(!b.tms.empty() && b.tms.back() == (pure ? 97 : 93));	// (Cut: HM01; PureRGB's Flash, HM05)
 	EQ(r.species[151].name, "Mew");
-	CHECK(r.species[151].base[0] == 100 && r.species[151].base[4] == 100 && r.species[151].tms.size() == 55);
+	CHECK(r.species[151].base[0] == 100 && r.species[151].base[4] == 100 && (pure || r.species[151].tms.size() == 55));
 	EQ(r.species[29].name, "Nidoran♀");
 	// Clefairy by a Moon Stone, Kadabra by trade (Yellow Legacy's at level 42, data/pokemon/evos_moves.asm); Yellow
 	// Legacy's Metapod at 10, its stray "db 7, HARDEN" passed over as the game does, Harden at 7
 	CHECK(r.species[35].evolutions.size() == 1 && r.species[35].evolutions[0].into == 36);
 	EQ(r.species[35].evolutions.empty() ? "" : r.species[35].evolutions[0].how, "Use Moon Stone");
-	CHECK(r.species[64].evolutions.size() == 1 && r.species[64].evolutions[0].into == 65 && (legacy ?
-		r.species[64].evolutions[0].method == nds::evo::LEVEL && r.species[64].evolutions[0].param == 42 : r.species[64].evolutions[0].method == nds::evo::TRADE));
+	// (PureRGB's Kadabra by trade or at 37)
+	if (pure)
+		CHECK(r.species[64].evolutions.size() == 2 && r.species[64].evolutions[0].method == nds::evo::TRADE &&
+			r.species[64].evolutions[1].method == nds::evo::LEVEL && r.species[64].evolutions[1].param == 37 && r.species[64].evolutions[1].into == 65);
+	else
+		CHECK(r.species[64].evolutions.size() == 1 && r.species[64].evolutions[0].into == 65 && (legacy ?
+			r.species[64].evolutions[0].method == nds::evo::LEVEL && r.species[64].evolutions[0].param == 42 : r.species[64].evolutions[0].method == nds::evo::TRADE));
 	const nds::Species& metapod = r.species[11];
 	CHECK(metapod.evolutions.size() == 1 && metapod.evolutions[0].param == 10 && metapod.evolutions[0].into == 12);
 	if (legacy) CHECK(metapod.learnset.size() >= 2 && metapod.learnset.back().level == 7 && metapod.learnset.back().move == 106);
 	// the moves: Pound, Quick Attack's and Counter's priorities, a special one, TM01 and HM01
 	EQ(r.moves[1].name, "Pound");
 	CHECK(r.moves[1].power == 40 && r.moves[1].accuracy == 100 && r.moves[1].pp == 35 && r.moves[1].cat == nds::MoveCategory::PHYSICAL);
-	CHECK((int8_t)r.moves[98].priority == 1 && (int8_t)r.moves[68].priority == -1 && r.moves[33].priority == 0);
+	// (PureRGB's PriorityMoves, Comet Punch among them, and no move last: data/battle/priority_moves.asm)
+	if (pure) CHECK((int8_t)r.moves[98].priority == 1 && (int8_t)r.moves[4].priority == 1 && r.moves[68].priority == 0 && r.moves[33].priority == 0);
+	else CHECK((int8_t)r.moves[98].priority == 1 && (int8_t)r.moves[68].priority == -1 && r.moves[33].priority == 0);
 	EQ(r.moves[98].name, "Quick Attack");
 	CHECK(r.moves[53].type == nds::FIRE && r.moves[53].cat == nds::MoveCategory::SPECIAL);	// Flamethrower
 	// Lick, Ghost: physical below SPECIAL in the retail games, special in Yellow Legacy (Ghost after its DEF SPECIAL), its
-	// power 40 there (data/moves/moves.asm), 20 in the retail games
-	CHECK(r.moves[122].type == nds::GHOST && r.moves[122].power == (legacy ? 40 : 20) &&
+	// power 40 there (data/moves/moves.asm), 20 in the retail games, 35 in PureRGB's (physical by its type here; its
+	// Ghost goes by the attacker's stats, rules.h)
+	CHECK(r.moves[122].type == nds::GHOST && r.moves[122].power == (legacy ? 40 : pure ? 35 : 20) &&
 		r.moves[122].cat == (legacy ? nds::MoveCategory::SPECIAL : nds::MoveCategory::PHYSICAL));
-	CHECK(r.tmMoves[0] == 5 && r.tmMoves[92] == 15);	// TM01 Mega Punch, HM01 Cut
+	CHECK(r.tmMoves[0] == (pure ? 8 : 5) && r.tmMoves[92] == 15);	// TM01 Mega Punch (PureRGB's Ice Punch), HM01 Cut
 	// items
 	EQ(r.items[1].name, "Master Ball");
 	CHECK(r.items[1].pocket == nds::POCKET_BALLS && r.items[2].price == 1200);
 	EQ(r.items[81].name, "Moon Stone");
 	EQ(r.items[328].name, "TM01");
 	EQ(r.items[424].name, "HM05");
-	CHECK(r.items[GEN1_ONLY + 0x28].name == "Rare Candy" && r.items[GEN1_ONLY + 0x28].price == 4800);
+	CHECK(r.items[GEN1_ONLY + 0x28].name == "Rare Candy" && r.items[GEN1_ONLY + 0x28].price == (pure ? 4000 : 4800));
+	// (PureRGB's Hyper Ball where Red's Town Map was, a ball no Gen IV id has: data/items/names.asm)
+	if (pure) CHECK(r.items[GEN1_ONLY + 5].name == "Hyper Ball" && r.items[GEN1_ONLY + 5].pocket == nds::POCKET_BALLS);
 	// Route 1's grass; fishing at Pallet Town: the Old Rod's Magikarp, the Good Rod's Goldeen and Poliwag, the Super
 	// Rod's; none on Route 1. Yellow Legacy's Old Rod is its OldRodMons, Goldeen and Poliwag at 5, its Good Rod's
 	// Horsea and Krabby at 20 (data/wild/old_rod.asm, good_rod.asm)
@@ -361,6 +377,17 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 	if (legacy)
 		CHECK(has(pallet, nds::EncounterKind::OLD_ROD, 118, 5) && has(pallet, nds::EncounterKind::OLD_ROD, 60, 5) &&
 			has(pallet, nds::EncounterKind::GOOD_ROD, 116, 20) && has(pallet, nds::EncounterKind::GOOD_ROD, 98, 20));
+	else if (pure)
+	{
+		// (PureRGB's Old Rod: Magikarp or Goldeen at 10; its Good Rod at 16, Pallet Town on its ocean list (Horsea,
+		// Magikarp, Shellder, Tentacool), Cerulean City not (Goldeen, Poliwag, Magikarp, and Poliwag at 18))
+		const nds::Location* cerulean = r.zones.count(3) ? &r.zones.at(3) : nullptr;
+		CHECK(has(pallet, nds::EncounterKind::OLD_ROD, 129, 10) && has(pallet, nds::EncounterKind::OLD_ROD, 118, 10) &&
+			has(pallet, nds::EncounterKind::GOOD_ROD, 116, 16) && has(pallet, nds::EncounterKind::GOOD_ROD, 90, 16) &&
+			has(pallet, nds::EncounterKind::GOOD_ROD, 72, 16) && !has(pallet, nds::EncounterKind::GOOD_ROD, 118, 0));
+		CHECK(has(cerulean, nds::EncounterKind::GOOD_ROD, 118, 16) && has(cerulean, nds::EncounterKind::GOOD_ROD, 60, 18) &&
+			!has(cerulean, nds::EncounterKind::GOOD_ROD, 116, 0));
+	}
 	else
 		CHECK(has(pallet, nds::EncounterKind::OLD_ROD, 129, 5) && has(pallet, nds::EncounterKind::GOOD_ROD, 118, 10) &&
 			has(pallet, nds::EncounterKind::GOOD_ROD, 60, 10));
@@ -384,7 +411,43 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 		CHECK(brock && brock->team.size() == 2 && brock->team[1].moves[0] == 132 && brock->team[1].moves[2] == 117 && brock->team[1].moves[3] == 20);
 	else
 		CHECK(brock && brock->team.size() == 2 && brock->team[1].moves[yellow ? 3 : 2] == 117 && (!yellow || brock->team[1].moves[2] == 20));
-	CHECK(lorelei && lorelei->team.size() == 5 && lorelei->team[4].species == 131 && lorelei->team[4].moves[2] == (legacy ? 57 : 59));
+	if (pure)
+	{
+		// (PureRGB's Lorelei has six; its TeamMoves give Agatha's sixth, Gengar, Thunderbolt second; its Lance's party
+		// takes MoveSetMappings' moveset, his Gyarados Hyper Beam, Hydro Pump, Flamethrower and Dragon Rage, his first
+		// Dragonite at 68 with the alternate palette's bit; data/trainers/parties.asm, custom_movesets.asm)
+		const nds::Trainer* agatha = nullptr;
+		const nds::Trainer* lance = nullptr;
+		for (const auto& [id, t] : r.trainers)
+		{
+			if (t.name == "Agatha" && !agatha) agatha = &t;
+			if (t.name == "Lance" && !lance) lance = &t;
+		}
+		CHECK(lorelei && lorelei->team.size() == 6 && lorelei->team[5].species == 131);
+		CHECK(agatha && agatha->team.size() == 6 && agatha->team[5].species == 94 && agatha->team[5].moves[1] == 85);
+		CHECK(lance && lance->team.size() == 6 && lance->team[0].species == 130 && lance->team[0].moves[0] == 63 &&
+			lance->team[0].moves[1] == 56 && lance->team[0].moves[2] == 53 && lance->team[0].moves[3] == 82 &&
+			lance->team[3].species == 149 && lance->team[3].level == 68);
+		// its forms: after the 151, named as their base, with their own types (Floating Weezing Poison and Floating,
+		// Hardened Onix Crystal and Ground: data/pokemon/base_stats/floating_weezing.asm, hardened_onix.asm), and the
+		// internal index each is
+		const nds::Species& weezing = r.species[110];
+		const nds::Species& onix = r.species[95];
+		CHECK(weezing.formsAt > 151 && weezing.formCount == 2 && onix.formsAt > 151 && onix.formCount == 2);
+		if (weezing.formsAt > 151 && weezing.formsAt < r.species.size() && onix.formsAt > 151 && onix.formsAt < r.species.size())
+		{
+			const nds::Species& fw = r.species[weezing.formsAt];
+			const nds::Species& ho = r.species[onix.formsAt];
+			EQ(fw.name, "Weezing");
+			CHECK(fw.types[0] == nds::POISON && fw.types[1] == FLOATING && ho.types[0] == CRYSTAL_TYPE && ho.types[1] == nds::GROUND);
+		}
+		const GbRomData& g = static_cast<const GbRomData&>(r);
+		int forms = 0;
+		for (size_t i = 0; i < g.form.size(); i++) forms += g.form[i] != 0 && g.national[i] >= 1;
+		CHECK(forms == 12);
+	}
+	else
+		CHECK(lorelei && lorelei->team.size() == 5 && lorelei->team[4].species == 131 && lorelei->team[4].moves[2] == (legacy ? 57 : 59));
 	// every place with wild Pokémon is named
 	std::set<nds::EncounterKind> kinds;
 	int places = 0, unnamed = 0;
@@ -415,12 +478,19 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 static void checkChart(const nds::RomData& r, const GameData& d)
 {
 	const TypeChart& c = static_cast<const GbRomData&>(r).chart;
-	// (a ROM hack's own chart: read, which checks Water on Fire, and its entries counted)
+	// (a ROM hack's own chart: read, which checks Water on Fire, and its entries counted; PureRGB's with its own types:
+	// Water on Crystal 0.5x, Ground on Floating 0x, Bonemerang on Flying no entry (neutral), data/types/type_matchups.asm)
 	if (baseGame(d.game.id) != d.game.id)
 	{
 		int listed = 0;
 		for (int8_t q : c) listed += q >= 0;
 		CHECK(listed > 80);
+		if (d.game.id == PURERED || d.game.id == PUREBLUE || d.game.id == PUREGREEN)
+		{
+			auto cell = [&](nds::Type a, nds::Type t) { return c[(size_t)(chartIndex(a) * CHART_TYPES + chartIndex(t))]; };
+			CHECK(cell(nds::WATER, CRYSTAL_TYPE) == 2 && cell(nds::GROUND, FLOATING) == 0 && cell(BONEMERANG, nds::FLYING) == -1 &&
+				cell(BONEMERANG, nds::FIRE) == 8 && cell(TRI, nds::FLYING) == 8 && cell(nds::WATER, MAGMA) == 0);
+		}
 		fprintf(stderr, "gbpk-roms: %s: the type chart's %d entries\n", current.c_str(), listed);
 		return;
 	}

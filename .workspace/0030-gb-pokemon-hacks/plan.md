@@ -125,8 +125,9 @@ Found while reading the code and the hacks' sources (2026-11-13), each agreed wi
   its Pikachu's friendship shows as Yellow's does.
 - **A6**: given a running PureRed, PureBlue or PureGreen, then `Live` holds what the eight PureRGB fixtures' READMEs say
   (PureGreen and v2.7.7 by their symbols and on the device). Its bag holds 30 and the Hyper Ball is a ball. A form is
-  numbered and named as its base species in the Dex, and has its own types and stats on the Battle, Party and Team
-  pages.
+  numbered and named as its base species in the Dex, and has its own stats on every page and its own types on the
+  Battle page; the Party and Team pages and the team advice show its base species' types, as upstream shows its own
+  forms' (*Deviations*, 2026-11-15).
 - **A7**: given a running Crystal Clear (either version), then `Live` holds what its six fixtures' READMEs say. Its map
   ids and caught flags are read where it moved them.
 - **A8**: given the player's ROM of a hack, then its species, base stats, types, moves, learnsets, evolutions, TM/HM
@@ -780,10 +781,11 @@ Common to the steps (as #28's):
   - `kiwami/tools/pret-extract.py`, `gbpk-symbols.txt`, `gbpk-extra.json`, `pokedaisy-extract.py` (changed)
   - `kiwami/rootfs/usr/share/banana/companions/gb-pokemon/{purered,pureblue,puregreen}.ram.json` (new), `SOURCES`
     (changed)
-  - `ui/src/kiwami/gbpk/games.h`, `games.cpp`, `game.cpp`, `rom.h`, `rom1.cpp`, `pics.cpp`, `text.h`, `text.cpp`,
-    `reader.cpp`, `guide-games.inc` (changed)
+  - `ui/src/kiwami/gbpk/games.h`, `games.cpp`, `game.cpp`, `rom.h`, `rom.cpp`, `rom1.cpp`, `text.h`, `text.cpp`,
+    `reader.cpp`, `guide-games.inc` (changed; `rom.cpp` for the character set and a form's picture, `pics.cpp`
+    unchanged: *Deviations*, 2026-11-15)
   - `kiwami/tests/gbpk/fixtures/purered{,_battle,_battle_faint,_battle_menu,_battle_party,_battle_switch_menu}/`,
-    `pureblue{,_battle}/` (new)
+    `pureblue{,_battle}/` (new), `kiwami/tests/gbpk/NOTICE` (changed: the captures named)
   - `kiwami/tests/gbpk/roms.sha1`, `kiwami/tests/gbpk-units.cpp`, `kiwami/tests/gbpk-roms.cpp`,
     `kiwami/tests/gbpk-ui.sh` (changed)
   - `kiwami/DEPENDENCIES.md` (changed: PureRGB's row, rgbds 1.0.3's)
@@ -1195,6 +1197,39 @@ Where the implementation turned out different from this plan, why, and what chan
   chart and advice, and every existing capture. `rules.h` ties its chart's index to `gbpk.h`'s types
   (`FORK_TYPES = TYPELESS`, a `static_assert` on the 24 cells) rather than changing it. `docs/FORK.md`'s sentence on
   `model.cpp`'s chart hook said Gen I's chart; it now says the game's own, as step 3 made it.
+- **2026-11-15, step 9**: PureRGB lays out more of its ROM its own way than the plan foresaw; the user chose to read it
+  all (the reader refuses a ROM whose tables it can't read, so most of it had to be). `rom1.cpp` reads each by its
+  data-file key, a retail game reading as before:
+  - its forms' base data is a table of its own, `NonDexMonsBaseStats` in `NonDexPokemonSpecies`' order
+    (`rom.nonDexBaseData`, `rom.nonDexSpecies`), not `BaseStats`, and its real MissingNo. is in that list with no
+    number: it fights in its Champion's Arena (the gym guide's sixth) and is left out of a trainer's team;
+  - its `NUM_POKEMON` counts MissingNo., so `numPokemon` is its `DEX_MEW`;
+  - move and item names are pointer tables (`rom.moveNameTable`, `rom.itemNameTable`);
+  - its parties have two kinds more, `$FE` and `$FD` (a moveset from `MoveSetMappings`, `rom.trainerMoveSets`), its
+    `LoneMoves` are 3 bytes and its `TeamMoves` go to the sixth member's second move (`rom.loneMoveSlots`,
+    `rom.teamMoveSixth`);
+  - priority is a list, `PriorityMoves` (`rom.priorityMoves`), and no move is -1, so the `const.quickAttack` and
+    `const.counter` lines leave it out;
+  - its Old Rod is two in its code (read by its bytes, as retail's), its Good Rod a list of four and another on its
+    ocean maps (`rom.goodRodList`, `rom.goodRodOcean`, `rom.oceanMaps`);
+  - its indoor town map entries are 5 bytes (`rom.internalMapEntriesWild`);
+  - its hidden items of two, three and five call functions of their own (`rom.hiddenItems2`, `3`, `5`).
+
+  `gbpk-units` checks each on the made-up Gen I ROM; `gbpk-roms.cpp` checks PureRGB's own values from its source. The
+  user also chose upstream's way for the forms' types: upstream takes a Pokémon's types from its species on the Party
+  page and in its logic (a form only picks the picture), so a form shows its own types on the Battle page (the
+  battle's copy in RAM) and its own stats everywhere, and its base's types on the Party and Team pages and in the
+  advice; no hook is added, and A6 says so. The scripts: one game's `build` lines may name several checkouts (a
+  version each); its constants must agree in all of them, and where its builds disagree on an address each release
+  has its own in the data file (`games.cpp` `pickRelease` lays it over the game's; `loadData` refuses a release whose
+  own addresses aren't every release's or are also the game's). The headless stand-in picks a capture's release by
+  its README's SHA-1 (`captureRelease`). A `const` line may name several files joined by `+` (PureRGB's base data's
+  constants need its battle and item constants'); the constants evaluator reads a decimal with a leading 0 and passes
+  over a string's `EQUS` (its `macros/scripts/text.asm`, for `TX_FAR_END`). The Hyper Ball, a ball Gen IV hasn't, is
+  `item HYPER_BALL 0 ball`. PokeDaisy reads no PureGreen and no v2.7.7: `pokedaisy-extract.py` checks GameTitles.kt's
+  SHA-1s against v2.7.6's (`PD_RELEASES`) and its configs against that release's addresses. The character set is a
+  data-file flag (`GameData::pureText`, `charset()`), which `RomView` and the reader take; `rom.cpp` changes for it and
+  for a form's picture (`GbRomData::sprite`), and `pics.cpp` doesn't. `kiwami/tests/gbpk/NOTICE` names the captures.
 
 ## Progress
 
@@ -1210,7 +1245,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 6. Yellow Legacy | done | GB Pokémon hacks: Yellow Legacy, from its build's symbols, its memory and its ROM |
 | 7. Yellow Legacy's guide | done | GB Pokémon hacks: Yellow Legacy's guide, from PokeDaisy's |
 | 8. Types of the fork's own on the pages | done | GB Pokémon hacks: types of the fork's own on the pages, for PureRGB's six |
-| 9. PureRed, PureBlue and PureGreen | todo | |
+| 9. PureRed, PureBlue and PureGreen | done | GB Pokémon hacks: PureRed, PureBlue and PureGreen, from their builds' symbols, their memory and their ROMs |
 | 10. PureRGB's switches, signatures and Hyper Ball | todo | |
 | 11. PureRGB's guides | todo | |
 | 12. Crystal Clear's addresses, ported | todo | |

@@ -1,6 +1,7 @@
 // banana-ui (kiwami): the Game Boy Pokémon games' English character set (text.h). Generation II's, as pret's
-// pokecrystal and pokegold define it (constants/charmap.asm: the games' own table), and where Generation I's differs,
-// as pokered and pokeyellow define it.
+// pokecrystal and pokegold define it (constants/charmap.asm: the games' own table), where Generation I's differs, as
+// pokered and pokeyellow define it, and where PureRGB's differs from that, as its constants/charmap.asm (v2.7.7)
+// defines it (PokeDaisy's Gen1Charset.PURE has the same).
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
@@ -57,15 +58,43 @@ namespace banana::kiwami::gbpk
 			if (b == 0x49) return " ";
 			return nullptr;
 		}
+		// PureRGB's own over Gen I's: one-byte words at 33-47 and 4D (home/text.asm expands them: "<opponent>" and
+		// "<user>" are the words), a page break that waits on more buttons (<BAGE>, 48) as a space, its ellipsis of three
+		// dots, PC, TM, TRAINER and ROCKET at 5B-5E, the middle dot, curly quotes where the brackets were, an arrow, a
+		// plus and a percent sign; nullptr where it's Gen I's
+		const char* pure(uint8_t b)
+		{
+			static const char* const WORDS[21] = { "like", "an", "You", "er", "with", "at", "ight", "have", " a ", "here",
+				"to ", " to", "or", "ing", "the", "you", "opponent", "user", "POKéMON", "TRAINER TIPS", "TEAM " };
+			if (b >= 0x33 && b <= 0x47) return WORDS[b - 0x33];
+			switch (b)
+			{
+			case 0x48: return " ";
+			case 0x4D: return "is";
+			case 0x56: return "...";
+			case 0x5B: return "PC";
+			case 0x5C: return "TM";
+			case 0x5D: return "TRAINER";
+			case 0x5E: return "ROCKET";
+			case 0x74: return "·";
+			case 0x9E: return "“";
+			case 0x9F: return "”";
+			case 0xE9: return "→";
+			case 0xEA: return "+";
+			case 0xEB: return "%";
+			default: return nullptr;
+			}
+		}
 	}
 
-	std::string decode(int gen, const uint8_t* p, size_t max)
+	std::string decode(Charset cs, const uint8_t* p, size_t max)
 	{
 		std::string out;
 		for (size_t i = 0; p && i < max && p[i] != 0x50; i++)
 		{
-			const char* g1 = gen == 1 ? gen1(p[i]) : nullptr;
-			out += g1 ? g1 : p[i] >= 0x80 ? HIGH[p[i] - 0x80] : low(p[i]);
+			const char* own = cs == Charset::PURE ? pure(p[i]) : nullptr;
+			const char* g1 = !own && cs != Charset::GEN2 ? gen1(p[i]) : nullptr;
+			out += own ? own : g1 ? g1 : p[i] >= 0x80 ? HIGH[p[i] - 0x80] : low(p[i]);
 		}
 		return out;
 	}

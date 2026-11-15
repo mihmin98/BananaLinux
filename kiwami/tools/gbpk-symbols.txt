@@ -21,11 +21,13 @@
 #                                           are the release's, and it isn't one of PokeDaisy's set
 #   <games> ram.<key> <symbol>              a WRAM or HRAM address (bank 0 is C000-CFFF and HRAM, 1 the D000 bank)
 #   <games> rom.<key> <symbol>              a ROM address (its bank and address in the bank's window)
-#   <games> const.<key> <file> <name>       a constant from the repo's <file> (rgbds' const macros evaluated)
+#   <games> const.<key> <file> <name>       a constant from the repo's <file> (rgbds' const macros evaluated); several
+#                                           files joined by + are read in that order, as the game includes them
 #   item <NAME> <gen4> [ball]               an item upstream's logic knows by its Gen IV id (ui/src/nds/logic.cpp's
 #                                           Item enum, its TMs from 328 and HMs from 420, the rods, the stones and
 #                                           held items; upstream's ui/src/gba/gen3items.inc gives each), by its
-#                                           constant's name in any game; ball: one of the balls
+#                                           constant's name in any game; ball: one of the balls (0 for a ball Gen IV
+#                                           hasn't: 1000 + the game's own id, in the balls' pocket)
 #   <games> items <file>                    the game's item constants: each item line's name the const macro gives
 #                                           there is [its id, its Gen IV id] in the data file's items (a name it hasn't
 #                                           is passed over: a DEF of another item's id, as pokecrystal's SAFARI_BALL, is
@@ -59,6 +61,14 @@ blue hack 5030c1114554207191f2e6ffb1f2920cf3d7c668 Fast Blue (v1.0)
 crystal-legacy build Pokemon_Crystal_Legacy pokecrystal 74a6727e4406c35bc2d4f81347a5c5fdb8970663 v1.3.1
 # (Yellow Legacy, cRz-Shadows/Pokemon_Yellow_Legacy at V1.0.10, rgbds 0.6.1: PokeDaisy's GameTitles.kt has its SHA-1)
 yellow-legacy build Pokemon_Yellow_Legacy pokeyellow 2ac87de42afc70ef6016805acb3b206644417f97 v1.0.10
+# (PureRed, PureBlue and PureGreen, Vortyne/pureRGB at v2.7.6 and v2.7.7, a checkout a version, rgbds 1.0.3: PokeDaisy's
+# GameTitles.kt has PureRed's and PureBlue's v2.7.6; the other four SHA-1s are the release patches' on the retail ROMs)
+purered build pureRGB-2.7.6 pokered 2e94d09c1e16a57eb079404c030f26fdeeac949d v2.7.6
+purered build pureRGB-2.7.7 pokered 60d445d5a38364cc77e8fd1c043157e50e7df209 v2.7.7
+pureblue build pureRGB-2.7.6 pokeblue d419fe244fa17196f7df46ddab47c840e7573652 v2.7.6
+pureblue build pureRGB-2.7.7 pokeblue b96ee563112c2b17ce1828e48446e1d71d61e8b5 v2.7.7
+puregreen build pureRGB-2.7.6 pokegreen fe4c63a67c8b28770916cc7b1788f9eeb04ccf02 v2.7.6
+puregreen build pureRGB-2.7.7 pokegreen 258ec7fef3d966cfb2a7e16c15fe1a329cf392ce v2.7.7
 
 # Gen II's WRAM that PokeDaisy reads too (Gen2Reader.kt's Gen2Config): pret's value must agree with it
 crystal,crystal-legacy,gold,silver ram.partyCount wPartyCount
@@ -232,39 +242,39 @@ gold,silver const.badgeEarth constants/ram_constants.asm EARTHBADGE
 
 # Gen I's WRAM that PokeDaisy reads too (Gen1Reader.kt's Gen1Config): pret's value must agree with it. The Game Boy
 # has no WRAM banks: D000-DFFF is the data files' bank 1, as the Game Boy Color games'
-red,blue,yellow,yellow-legacy ram.partyCount wPartyCount
-red,blue,yellow,yellow-legacy ram.partyMons wPartyMons
-red,blue,yellow,yellow-legacy ram.bagCount wNumBagItems
-red,blue,yellow,yellow-legacy ram.money wPlayerMoney
-red,blue,yellow,yellow-legacy ram.badges wObtainedBadges
-red,blue,yellow,yellow-legacy ram.curMap wCurMap
-red,blue,yellow,yellow-legacy ram.yCoord wYCoord
-red,blue,yellow,yellow-legacy ram.xCoord wXCoord
-red,blue,yellow,yellow-legacy ram.isInBattle wIsInBattle
-red,blue,yellow,yellow-legacy ram.battleMon wBattleMon
-red,blue,yellow,yellow-legacy ram.enemyMon wEnemyMon
-red,blue,yellow,yellow-legacy ram.enemyMonPartyPos wEnemyMonPartyPos
-red,blue,yellow,yellow-legacy ram.enemyPartyCount wEnemyPartyCount
-red,blue,yellow,yellow-legacy ram.enemyMons wEnemyMons
-red,blue,yellow,yellow-legacy ram.topMenuItemY wTopMenuItemY
-red,blue,yellow,yellow-legacy ram.moveMenuType wMoveMenuType
-red,blue,yellow,yellow-legacy ram.tileMap wTileMap
-red,blue,yellow,yellow-legacy ram.playTime wPlayTimeHours
-red,blue,yellow,yellow-legacy ram.partyMenuType wPartyMenuTypeOrMessageID
-red,blue,yellow,yellow-legacy ram.playerMonNumber wPlayerMonNumber
-red,blue,yellow,yellow-legacy const.bagSlots constants/menu_constants.asm BAG_ITEM_CAPACITY
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.partyCount wPartyCount
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.partyMons wPartyMons
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.bagCount wNumBagItems
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.money wPlayerMoney
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.badges wObtainedBadges
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.curMap wCurMap
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.yCoord wYCoord
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.xCoord wXCoord
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.isInBattle wIsInBattle
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.battleMon wBattleMon
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.enemyMon wEnemyMon
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.enemyMonPartyPos wEnemyMonPartyPos
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.enemyPartyCount wEnemyPartyCount
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.enemyMons wEnemyMons
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.topMenuItemY wTopMenuItemY
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.moveMenuType wMoveMenuType
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.tileMap wTileMap
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.playTime wPlayTimeHours
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.partyMenuType wPartyMenuTypeOrMessageID
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.playerMonNumber wPlayerMonNumber
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.bagSlots constants/menu_constants.asm BAG_ITEM_CAPACITY
 
 # Gen I's WRAM that PokeDaisy doesn't read
-red,blue,yellow,yellow-legacy ram.partyMonOTs wPartyMonOT
-red,blue,yellow,yellow-legacy ram.partyMonNicknames wPartyMonNicks
-red,blue,yellow,yellow-legacy ram.playerName wPlayerName
-red,blue,yellow,yellow-legacy ram.playerID wPlayerID
-red,blue,yellow,yellow-legacy ram.dexCaught wPokedexOwned
-red,blue,yellow,yellow-legacy ram.dexSeen wPokedexSeen
-red,blue,yellow,yellow-legacy ram.playerStatMods wPlayerMonStatMods
-red,blue,yellow,yellow-legacy ram.enemyStatMods wEnemyMonStatMods
-red,blue,yellow,yellow-legacy ram.trainerClass wTrainerClass
-red,blue,yellow,yellow-legacy ram.trainerNo wTrainerNo
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.partyMonOTs wPartyMonOT
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.partyMonNicknames wPartyMonNicks
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.playerName wPlayerName
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.playerID wPlayerID
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.dexCaught wPokedexOwned
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.dexSeen wPokedexSeen
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.playerStatMods wPlayerMonStatMods
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.enemyStatMods wEnemyMonStatMods
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.trainerClass wTrainerClass
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.trainerNo wTrainerNo
 # (Yellow's Pikachu: its happiness, and the species the game checks a party member's against, with its OT's id and name,
 # to tell the starter, engine/pikachu/pikachu_status.asm IsThisPartyMonStarterPikachu)
 yellow,yellow-legacy ram.pikachuHappiness wPikachuHappiness
@@ -275,40 +285,69 @@ yellow-legacy const.starterPikachu constants/pokemon_constants.asm STARTER_PIKAC
 # Gen I's ROM tables (ui/src/kiwami/gbpk/rom1.cpp reads them; their layouts are named there), under Gen II's keys where
 # a table plays the same part. PokeDaisy's Gen1Dex.kt gives some of them too (GEN1_DEX_RED, GEN1_DEX_YELLOW): pret's
 # value must agree with it. Red and Blue keep Mew's base data apart, in bank 1
-red,blue,yellow,yellow-legacy rom.baseData BaseStats
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.baseData BaseStats
 red,blue rom.mewBaseData MewBaseStats
-red,blue,yellow,yellow-legacy rom.dexOrder PokedexOrder
-red,blue,yellow,yellow-legacy rom.pokemonNames MonsterNames
+# (PureRGB's forms, internal species that carry a base species' Pokédex number, have their base data in a table of
+# their own, in NonDexPokemonSpecies' order: engine/pokemon/get_mon_header.asm GetMonHeader2; Mew is in BaseStats)
+purered,pureblue,puregreen rom.nonDexBaseData NonDexMonsBaseStats
+purered,pureblue,puregreen rom.nonDexSpecies NonDexPokemonSpecies
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.dexOrder PokedexOrder
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.pokemonNames MonsterNames
 red,blue,yellow,yellow-legacy rom.dexEntryPointers PokedexEntryPointers
-red,blue,yellow,yellow-legacy rom.evosAttacksPointers EvosMovesPointerTable
-red,blue,yellow,yellow-legacy rom.moves Moves
+# (PureRGB's Pokédex pages are fixed records by Pokédex number, the category apart: an index a number into its list of
+# strings, data/pokemon/dex_entries.asm and dex_pokemon_categories.asm)
+purered,pureblue,puregreen rom.dexEntryData DexEntryData
+purered,pureblue,puregreen rom.dexCategoryMap PokemonCategoryMapping
+purered,pureblue,puregreen rom.dexCategories DexCategoryStrings
+# (the page's text_far: PureRGB renumbered the text commands, its dex_entry macro's text_far_end)
+purered,pureblue,puregreen const.textFar macros/scripts/text.asm TX_FAR_END
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.evosAttacksPointers EvosMovesPointerTable
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.moves Moves
 red,blue,yellow,yellow-legacy rom.moveNames MoveNames
 red,blue,yellow,yellow-legacy rom.itemNames ItemNames
-red,blue,yellow,yellow-legacy rom.itemPrices ItemPrices
-red,blue,yellow,yellow-legacy rom.tmHmMoves TechnicalMachines
+# (PureRGB's names are a pointer each, in the table's bank: data/moves/names.asm, data/items/names.asm)
+purered,pureblue,puregreen rom.moveNameTable MoveNameJumpTable
+purered,pureblue,puregreen rom.itemNameTable ItemNameJumpTable
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.itemPrices ItemPrices
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.tmHmMoves TechnicalMachines
 # (the places' names, as the town map gives them: a map's own entry outdoors, its group's indoors)
-red,blue,yellow,yellow-legacy rom.externalMapEntries ExternalMapEntries
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.externalMapEntries ExternalMapEntries
 red,blue,yellow,yellow-legacy rom.internalMapEntries InternalMapEntries
-red,blue,yellow,yellow-legacy rom.wildData WildDataPointers
-red,blue,yellow,yellow-legacy rom.wildSlots WildMonEncounterSlotChances
+# (PureRGB's indoor entries have a fifth byte, the map whose wild Pokémon the town map shows there:
+# data/maps/town_map_entries.asm internal_map)
+purered,pureblue,puregreen rom.internalMapEntriesWild InternalMapEntries
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.wildData WildDataPointers
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.wildSlots WildMonEncounterSlotChances
 # (the Old Rod's one Pokémon is in its code, lb bc, 5, MAGIKARP; the Super Rod's tables are Red's and Blue's groups,
 # Yellow's four slots a map)
-red,blue,yellow rom.oldRod ItemUseOldRod
+red,blue,yellow,purered,pureblue,puregreen rom.oldRod ItemUseOldRod
 # (Yellow Legacy's Old Rod is a table, two of level and species as GoodRodMons: engine/items/item_effects.asm ld hl, OldRodMons)
 yellow-legacy rom.oldRodMons OldRodMons
 red,blue,yellow,yellow-legacy rom.goodRodMons GoodRodMons
-red,blue rom.superRod SuperRodData
+# (PureRGB's Old Rod is Magikarp or Goldeen in its code, read as retail's is; its Good Rod has four of level and species
+# to -1, and four others on its ocean maps: engine/items/item_effects.asm ItemUseGoodRod, data/wild/good_rod.asm,
+# data/maps/ocean_maps.asm IsMapOceanMap)
+purered,pureblue,puregreen rom.goodRodList GoodRodMons
+purered,pureblue,puregreen rom.goodRodOcean GoodRodMonsOcean
+purered,pureblue,puregreen rom.oceanMaps OceanMaps
+red,blue,purered,pureblue,puregreen rom.superRod SuperRodData
 yellow,yellow-legacy rom.superRodSlots SuperRodFishingSlots
 # (the last class's trainers end where the trainers' AI begins)
-red,blue,yellow,yellow-legacy rom.trainerGroups TrainerDataPointers
-red,blue,yellow,yellow-legacy rom.trainerGroupsEnd TrainerAI
-red,blue,yellow,yellow-legacy rom.trainerClassNames TrainerNames
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.trainerGroups TrainerDataPointers
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.trainerGroupsEnd TrainerAI
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.trainerClassNames TrainerNames
 # (the moves some bosses are given over their level's: Red's and Blue's gym leaders' and Elite Four's, Yellow's table)
 red,blue rom.loneMoves LoneMoves
 red,blue rom.teamMoves TeamMoves
+# (PureRGB's LoneMoves name the member, the move's place and the move, and its TeamMoves go to the sixth member's second
+# move; a party of its own kind $FD takes a moveset for each member from MoveSetMappings: engine/battle/read_trainer_party.asm
+# ReadTrainer, data/trainers/custom_movesets.asm LoadTrainerMoveSet)
+purered,pureblue,puregreen rom.loneMoveSlots LoneMoves
+purered,pureblue,puregreen rom.teamMoveSixth TeamMoves
+purered,pureblue,puregreen rom.trainerMoveSets MoveSetMappings
 yellow,yellow-legacy rom.specialTrainerMoves SpecialTrainerMoves
 # (the type chart, data/types/type_matchups.asm: attacker, defender and multiplier triples up to -1)
-red,blue rom.typeChart TypeEffects
+red,blue,purered,pureblue,puregreen rom.typeChart TypeEffects
 yellow,yellow-legacy rom.typeChart TypeEffects
 
 # The items upstream's logic and pages know by their Gen IV id (rom.cpp gen1Item and gen2Item); any other is 1000 +
@@ -358,9 +397,11 @@ item LOVE_BALL 496 ball
 item FRIEND_BALL 497 ball
 item MOON_BALL 498 ball
 item PARK_BALL 499 ball
+# (PureRGB's Hyper Ball, where Red's Town Map was: no Gen IV ball, so the fork's catch rules know it by its own id)
+item HYPER_BALL 0 ball
 crystal,crystal-legacy,gold,silver items constants/item_constants.asm
-red,blue,yellow,yellow-legacy items constants/item_constants.asm
-red,blue,yellow,yellow-legacy keyitems data/items/key_items.asm
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen items constants/item_constants.asm
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen keyitems data/items/key_items.asm
 
 # The types (the move's type id is its category too: Physical below SPECIAL, Special from it, pret's
 # engine/battle/effect_commands.asm)
@@ -369,30 +410,38 @@ crystal,crystal-legacy,gold,silver types constants/type_constants.asm
 # physical: engine/battle/effect_commands.asm PlayerAttackDamage and EnemyAttackDamage, cp GHOST / cp DARK first)
 crystal-legacy split GHOST special
 crystal-legacy split DARK physical
-red,blue,yellow,yellow-legacy types constants/type_constants.asm
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen types constants/type_constants.asm
+# (PureRGB's Ghost is special when the attacker's base Special is above its Attack: engine/battle/core.asm
+# GetDamageVarsForPlayerAttack and GetDamageVarsForEnemyAttack, PureRGB's comment in constants/type_constants.asm)
+purered,pureblue,puregreen split GHOST stats
 
 # Gen I's counts, its first TM and HM items, and the moves its priorities name
 red,blue,yellow,yellow-legacy const.numPokemon constants/pokedex_constants.asm NUM_POKEMON
-red,blue,yellow,yellow-legacy const.numPokemonIndexes constants/pokemon_constants.asm NUM_POKEMON_INDEXES
-red,blue,yellow,yellow-legacy const.numMoves constants/move_constants.asm NUM_ATTACKS
-red,blue,yellow,yellow-legacy const.numItems constants/item_constants.asm NUM_ITEMS
-red,blue,yellow,yellow-legacy const.hm01 constants/item_constants.asm HM01
-red,blue,yellow,yellow-legacy const.tm01 constants/item_constants.asm TM01
-red,blue,yellow,yellow-legacy const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINERS
-red,blue,yellow,yellow-legacy const.numMaps constants/map_constants.asm NUM_MAPS
-red,blue,yellow,yellow-legacy const.firstIndoorMap constants/map_constants.asm FIRST_INDOOR_MAP
+# (PureRGB's NUM_POKEMON counts MissingNo., its DEX_MISSINGNO 0: Mew's number is the count)
+purered,pureblue,puregreen const.numPokemon constants/pokedex_constants.asm DEX_MEW
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.numPokemonIndexes constants/pokemon_constants.asm NUM_POKEMON_INDEXES
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.numMoves constants/move_constants.asm NUM_ATTACKS
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.numItems constants/item_constants.asm NUM_ITEMS
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.hm01 constants/item_constants.asm HM01
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.tm01 constants/item_constants.asm TM01
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINERS
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.numMaps constants/map_constants.asm NUM_MAPS
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.firstIndoorMap constants/map_constants.asm FIRST_INDOOR_MAP
 red,blue,yellow,yellow-legacy const.quickAttack constants/move_constants.asm QUICK_ATTACK
 red,blue,yellow,yellow-legacy const.counter constants/move_constants.asm COUNTER
+# (PureRGB's priority is a list, each +1, and no move is -1: data/battle/priority_moves.asm, engine/battle/core.asm
+# CheckPriority)
+purered,pureblue,puregreen rom.priorityMoves PriorityMoves
 # (Red's and Blue's gym leaders by their gym's number, which each gym's script gives the battle for LoneMoves:
 # scripts/PewterGym.asm 1 .. scripts/ViridianGym.asm 8)
-red,blue const.leaderBrock constants/trainer_constants.asm BROCK
-red,blue const.leaderMisty constants/trainer_constants.asm MISTY
-red,blue const.leaderLtSurge constants/trainer_constants.asm LT_SURGE
-red,blue const.leaderErika constants/trainer_constants.asm ERIKA
-red,blue const.leaderKoga constants/trainer_constants.asm KOGA
-red,blue const.leaderSabrina constants/trainer_constants.asm SABRINA
-red,blue const.leaderBlaine constants/trainer_constants.asm BLAINE
-red,blue const.leaderGiovanni constants/trainer_constants.asm GIOVANNI
+red,blue,purered,pureblue,puregreen const.leaderBrock constants/trainer_constants.asm BROCK
+red,blue,purered,pureblue,puregreen const.leaderMisty constants/trainer_constants.asm MISTY
+red,blue,purered,pureblue,puregreen const.leaderLtSurge constants/trainer_constants.asm LT_SURGE
+red,blue,purered,pureblue,puregreen const.leaderErika constants/trainer_constants.asm ERIKA
+red,blue,purered,pureblue,puregreen const.leaderKoga constants/trainer_constants.asm KOGA
+red,blue,purered,pureblue,puregreen const.leaderSabrina constants/trainer_constants.asm SABRINA
+red,blue,purered,pureblue,puregreen const.leaderBlaine constants/trainer_constants.asm BLAINE
+red,blue,purered,pureblue,puregreen const.leaderGiovanni constants/trainer_constants.asm GIOVANNI
 
 # Gen I's front pictures and their palettes (ui/src/kiwami/gbpk/pics.cpp), the town map (maps.cpp). PokeDaisy's
 # Gen1Dex.kt and Gen1Art.kt give some of them too: pret's value must agree with it. A picture's bank is by the species'
@@ -409,38 +458,46 @@ red,blue,yellow,yellow-legacy const.picsTangela constants/pokemon_constants.asm 
 red,blue,yellow,yellow-legacy const.picsMoltres constants/pokemon_constants.asm MOLTRES
 red,blue,yellow,yellow-legacy const.picsBeedrill constants/pokemon_constants.asm BEEDRILL
 red,blue,yellow,yellow-legacy const.picsStarmie constants/pokemon_constants.asm STARMIE
+# (PureRGB's base data is longer, the front picture's bank its own byte: constants/pokemon_data_constants.asm, home/pics.asm
+# UncompressMonSprite)
+purered,pureblue,puregreen const.baseDataSize constants/battle_constants.asm+constants/item_constants.asm+constants/pokemon_data_constants.asm BASE_DATA_SIZE
+purered,pureblue,puregreen const.basePicBank constants/battle_constants.asm+constants/item_constants.asm+constants/pokemon_data_constants.asm BASE_PICBANK
 # (a palette id a species by its national number, then the palettes: on a Super Game Boy Red's and Blue's, on a Game
 # Boy Color Yellow's own, engine/gfx/palettes.asm)
-red,blue,yellow,yellow-legacy rom.monPaletteIds MonsterPalettes
-red,blue rom.palettes SuperPalettes
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.monPaletteIds MonsterPalettes
+red,blue,purered,pureblue,puregreen rom.palettes SuperPalettes
 yellow rom.palettes CGBBasePalettes
 # (Yellow Legacy renamed it, the same table after SuperPalettes: data/sgb/sgb_palettes.asm, engine/gfx/palettes.asm ld de, GBCBasePalettes)
 yellow-legacy rom.palettes GBCBasePalettes
-red,blue,yellow,yellow-legacy const.palTownMap constants/palette_constants.asm PAL_TOWNMAP
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.palTownMap constants/palette_constants.asm PAL_TOWNMAP
 # (the town map: its run-length tile map and tiles, engine/items/town_map.asm LoadTownMap; the places its cursor steps
 # through, TownMapOrder, which name the cells)
-red,blue,yellow,yellow-legacy rom.townMap CompressedMap
-red,blue,yellow,yellow-legacy rom.townMapTiles WorldMapTileGraphics
-red,blue,yellow,yellow-legacy rom.townMapOrder TownMapOrder
-red,blue,yellow,yellow-legacy rom.townMapOrderEnd TownMapOrderEnd
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.townMap CompressedMap
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.townMapTiles WorldMapTileGraphics
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.townMapOrder TownMapOrder
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.townMapOrderEnd TownMapOrderEnd
 
 # Red's, Blue's and Yellow's guides (pokedaisy-extract.py, from PokeDaisy's GuideGen1Gen.kt, which has these too:
 # pret's value must agree with it): the event flags and the toggleable objects' flags, which the milestones' done_when
 # name; the event flags' count; and the toggleable object the Hall of Fame hides (scripts/HallOfFame.asm), the Cerulean
 # Cave guard, by which an Elite Four member stays beaten once the League is won (the lobby clears their rooms' flags)
-red,blue,yellow,yellow-legacy ram.eventFlags wEventFlags
-red,blue,yellow ram.toggleFlags wToggleableObjectFlags
-red,blue,yellow,yellow-legacy const.numEvents constants/event_constants.asm NUM_EVENTS
-red,blue,yellow const.toggleCeruleanCaveGuy constants/toggle_constants.asm TOGGLE_CERULEAN_CAVE_GUY
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.eventFlags wEventFlags
+red,blue,yellow,purered,pureblue,puregreen ram.toggleFlags wToggleableObjectFlags
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.numEvents constants/event_constants.asm NUM_EVENTS
+red,blue,yellow,purered,pureblue,puregreen const.toggleCeruleanCaveGuy constants/toggle_constants.asm TOGGLE_CERULEAN_CAVE_GUY
 # (Yellow Legacy keeps pret's older names for them, the same flags: wMissableObjectFlags, constants/hide_show_constants.asm)
 yellow-legacy ram.toggleFlags wMissableObjectFlags
 yellow-legacy const.toggleCeruleanCaveGuy constants/hide_show_constants.asm HS_CERULEAN_CAVE_GUY
 # (the hidden items, ui/src/kiwami/gbpk/rom1.cpp: the maps with hidden events, each map's events, those that call
 # HiddenItems, and their flags by HiddenItemCoords' order; Red's and Blue's maps point to their events through a table
 # of their own, Yellow's each with its pointer)
-red,blue,yellow rom.hiddenEventMaps HiddenEventMaps
+red,blue,yellow,purered,pureblue,puregreen rom.hiddenEventMaps HiddenEventMaps
 # (Yellow Legacy's, by pret's older name: data/events/hidden_objects.asm, each map with its pointer as Yellow's)
 yellow-legacy rom.hiddenEventMaps HiddenObjectMaps
-red,blue rom.hiddenEventPointers HiddenEventPointers
-red,blue,yellow,yellow-legacy rom.hiddenItems HiddenItems
-red,blue,yellow,yellow-legacy rom.hiddenItemCoords HiddenItemCoords
+red,blue,purered,pureblue,puregreen rom.hiddenEventPointers HiddenEventPointers
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.hiddenItems HiddenItems
+# (PureRGB's hidden items of two, three and five of the item call functions of their own: engine/events/hidden_items.asm)
+purered,pureblue,puregreen rom.hiddenItems2 HiddenItems2
+purered,pureblue,puregreen rom.hiddenItems3 HiddenItems3
+purered,pureblue,puregreen rom.hiddenItems5 HiddenItems5
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.hiddenItemCoords HiddenItemCoords

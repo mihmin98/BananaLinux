@@ -25,6 +25,12 @@ e7bfd2c2245597da5016e682fca8f19665c6cfd0 gb optional red Pokemon - Red Version (
 # The ROM hacks)
 74a6727e4406c35bc2d4f81347a5c5fdb8970663 gb optional crystal-legacy Pokemon Crystal - Legacy (v1.3.1) (TheSmithPlays).gbc
 2ac87de42afc70ef6016805acb3b206644417f97 gb optional yellow-legacy Pokemon Yellow - Pokemon Yellow Legacy (v1.0.10) (TheSmithPlays).gb
+2e94d09c1e16a57eb079404c030f26fdeeac949d gb optional purered Pokemon Red - PureRed (v2.7.6) (Vortyne).gb
+60d445d5a38364cc77e8fd1c043157e50e7df209 gb optional purered Pokemon Red - PureRed (v2.7.7) (Vortyne).gb
+d419fe244fa17196f7df46ddab47c840e7573652 gb optional pureblue Pokemon Blue - PureBlue (v2.7.6) (Vortyne).gb
+b96ee563112c2b17ce1828e48446e1d71d61e8b5 gb optional pureblue Pokemon Blue - PureBlue (v2.7.7) (Vortyne).gb
+fe4c63a67c8b28770916cc7b1788f9eeb04ccf02 gb optional puregreen Pokemon Blue - PureGreen (v2.7.6) (Vortyne).gb
+258ec7fef3d966cfb2a7e16c15fe1a329cf392ce gb optional puregreen Pokemon Blue - PureGreen (v2.7.7) (Vortyne).gb
 
 # Game Boy Advance and DS: the other mainline games PokeDaisy supports (English releases), for a later comparison of
 # upstream's guides with PokeDaisy's tables; nothing reads them yet, and none is required

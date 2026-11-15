@@ -49,12 +49,12 @@ namespace banana::kiwami::gbpk
 	// ---- for rom.cpp, rom1.cpp and rom2.cpp ----
 
 	// the ROM's bytes by bank and address: bank 0 at 0000-3FFF, bank n at its 4000-7FFF window; its text in the
-	// generation's character set
+	// game's character set
 	struct RomView
 	{
 		static constexpr size_t NONE = (size_t)-1;
 		const std::vector<uint8_t>& b;
-		int gen = 2;
+		Charset charset = Charset::GEN2;
 		// the file offset of bank:addr; NONE outside the ROM
 		size_t at(int bank, uint32_t addr) const
 		{
@@ -109,6 +109,9 @@ namespace banana::kiwami::gbpk
 		Gen1Pics pics1;
 		std::vector<HiddenItem> hidden;		// by zone, in the maps' order (the Here page's secrets: host.cpp)
 		std::vector<uint16_t> national;		// Gen I: a species' national number by its internal index (0: none)
+		std::vector<uint8_t> form;			// Gen I: the form an internal index is (PureRGB's forms, internal species of
+											// their own that carry a base species' number: 1 up, in species past the
+											// Pokédex from the base's formsAt), 0 for the species itself
 		TypeChart chart;					// the type chart (rules.h), the host's GameRules once read
 		std::shared_ptr<const nds::Sprite> sprite(uint16_t species, bool female = false, uint8_t form = 0) const override;
 	};

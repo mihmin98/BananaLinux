@@ -6,7 +6,7 @@
 
 [pokedaisy]
 commit pokedaisy 135ac809a597230c1fe3ad6359ae0fe81e233583
-in  fee1968184f07d01478d8ebb91b5d05ce5de5dc315f6574c54642c8a17ff28cb  kiwami/tools/gbpk-extra.json
+in  90653f9a99112c1f345be4542e19bbce1fa43216704cf0a14db8875e552f6f6b  kiwami/tools/gbpk-extra.json
 in  e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052  pokedaisy LICENSE
 in  02efcb677831c264613b4313be1c24e9e042f577636b20469fc3f984734c7085  pokedaisy app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt
 in  63c1c1e7c2fef1af92c3abe2235091fc3d41768fd590d68469594a974c51f286  pokedaisy app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen1Art.kt
@@ -28,6 +28,9 @@ out e3290cf4801664281e64ebd2af87b08d432c5bc082f1cb23f8c2b092f3b1d29c  kiwami/roo
 out 477bd98fc9e34e70ae72bb62bc38b42cf76633e0e7589c6213af7f4dbe9adba1  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.json
 out bed0d06315cf32480e3b7dc31a869f1a2697ab5e69a466efc6b0f759f55f8dd7  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/crystal.ram.json
 out de47c63bfe95770df1a707ab1dbac47f84561ea94544f66e641733f8c4641193  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/gold.ram.json
+out 1441f87edd08b5da7bcc32d0feda813a4ef941c0ba7f157cfc1e172438f28635  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/pureblue.ram.json
+out 9fd603153a2cc9b151cdaa72e83af436fe927b26afdbd4df0cdc299e046a601e  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/puregreen.ram.json
+out 3d7ef67a0457f10b287df508968dc4a13b028b037d4f7e896d2fdd773071261a  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/purered.ram.json
 out 4b07e3bb9740c74cfded1346b1d77b302ff044eede08724830233c8f07c3dd32  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/red.json
 out f1e686d523aad0faf926c47c68187c53a906884b38b8e136db6e5e270d46230c  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/red.ram.json
 out d34f3f961ed85c93212aa4b322351891540114929fcabc16c32451f138ed79b5  kiwami/rootfs/usr/share/banana/companions/gb-pokemon/silver.ram.json
@@ -43,6 +46,8 @@ commit pokecrystal 3c813b0b4d82b39bf62185aceffb76fd6026c70b symbols 3b13ca4fa741
 commit pokegold f2cde36f49b994c143bfd18582182302fdc76492 symbols 4b57c3aa3169d7a077f9044d4bbdd1caabc10cc7
 commit pokered 0dbf95cd12f5b1511c62ce69efe283000f780a8f symbols bd77855a9f6407f47d61d94c5eefff7ac83c05a5
 commit pokeyellow b452f2ab07185075140061c5084ab866d5e4a794 symbols 2dcc4b8f9b3819a898ddaa8e03c70321e7fac446
+commit pureRGB-2.7.6 9c6d40f6dc040624de67ec97137345055ad109a7 tag v2.7.6
+commit pureRGB-2.7.7 b5a155eb9a17450e1181713bda741654cfd2a74b tag v2.7.7
 in  bb2d3a0b1efe8585c7b5e9ac8189f0de0243ce025d25f0b6b4db157043870ce5  Pokemon_Crystal_Legacy constants/event_flags.asm
 in  04948a4788ab6630f7b067573979ed5fcc3f936335ac7340c54564f28bfc3148  Pokemon_Crystal_Legacy constants/item_constants.asm
 in  556d2662a733a8af0b07256b3b4df3060a81372238a9d7ff9dd03ade59ba097c  Pokemon_Crystal_Legacy constants/landmark_constants.asm
@@ -120,6 +125,42 @@ in  66c18f80091b53e0ce869b1fcba94fbeaf0787e6ed47d05039d32a45961d7ed8  pokeyellow
 in  f50153804248ef659ca5eadb3978eabd2489aeda6c747d9a12e98c4d6cb8d955  pokeyellow data/items/key_items.asm
 in  1b95202b710dbd8e5f5b71165be519e25ff0227dec3f22d347e6bdb5a9ae9390  pokeyellow roms.sha1
 in  ec6ef2f4e5fc0b8b503eeaf61ab0d8444020fb2276e6912fe46583b003219f85  pokeyellow symbols:pokeyellow.sym
-in  504e208e040a8a93fde6f5930daa0f7f3e660460b73a22b9792d93b90e8882b8  kiwami/tools/gbpk-symbols.txt
+in  202124b87707f88dd7f42f43c4d0785650eb14b9599003c06fac87cf4026cb1a  pureRGB-2.7.6 constants/battle_constants.asm
+in  d56c21aa57063984cb9244d6f0fd4a0dbc5e010d7d89f99f5097d8c97b00fdc6  pureRGB-2.7.6 constants/event_constants.asm
+in  fa8c6d482886ab141f73b0d3da1e94357c7b9d5552668f4ce782448f7aa9ffdc  pureRGB-2.7.6 constants/item_constants.asm
+in  c940c409535fd1a5d30e4cc4707830526ce6ba45ea11467747c266a35ff6eecb  pureRGB-2.7.6 constants/map_constants.asm
+in  eb1ef5648d58f2570a2027a0a0c36471ca854422820013acc72f1d1f678c0868  pureRGB-2.7.6 constants/menu_constants.asm
+in  d70cf096e7d8a526a31311c80e436a421dff3ad09c58378f93615cf33f663cd9  pureRGB-2.7.6 constants/move_constants.asm
+in  7fa040ccfdbb90a93409572b778ed8c8cb41993556684a54fb4ca29cf1a2630c  pureRGB-2.7.6 constants/palette_constants.asm
+in  513690e7e40045b88105f7c043c909371a192332c80be57127cdb90da445c74a  pureRGB-2.7.6 constants/pokedex_constants.asm
+in  ce7d412bed1aaa6826965bf74bf7b761e5c6e5c2b07d5d86a4d6e33c6f3f4caf  pureRGB-2.7.6 constants/pokemon_constants.asm
+in  34d1f0d7eb614eee4cd3c9ed01d6617d3c85360e7a5cb70284f4377e40131dd9  pureRGB-2.7.6 constants/pokemon_data_constants.asm
+in  0234f81d908e5760fc162103de9cfe50e81c3f847a5764039b4be64823a2bf3d  pureRGB-2.7.6 constants/toggle_constants.asm
+in  56e9a32e3647ddb0068bd612e32fed60e753a8aa43f935d93283f782e6369e78  pureRGB-2.7.6 constants/trainer_constants.asm
+in  e7ad6bb61874fe5a624275ac09cc4e6ec9c73be9034b5ba162e86391150aa0a1  pureRGB-2.7.6 constants/type_constants.asm
+in  69afb4972b450efad9cf19e0066dbf88956f9084b75245742b0c037f163bc7fd  pureRGB-2.7.6 data/items/key_items.asm
+in  1946d43ae015364ae14ceb267ab2779513908cd2c05a6749dc570b83aeefd4d8  pureRGB-2.7.6 macros/scripts/text.asm
+in  2d471a8f7ddc831e0871ed99a27d7781314e8e8c8a3c6fbc3de784c3bd016a14  pureRGB-2.7.6 pokeblue.sym
+in  ef2a89a6ce4aa72ea9d446d1e696e63e38bc2bda6b24f71194752e6855c1d166  pureRGB-2.7.6 pokegreen.sym
+in  483cc3e6c947b6346e26451eb4dcc273bb690319c802ba2e3d13c3d235a56dbc  pureRGB-2.7.6 pokered.sym
+in  d32b5c7ef4623ed0704e5f02ef71d1d854acb82de0d0c8da892b2c1db5efe29d  pureRGB-2.7.7 constants/battle_constants.asm
+in  d56c21aa57063984cb9244d6f0fd4a0dbc5e010d7d89f99f5097d8c97b00fdc6  pureRGB-2.7.7 constants/event_constants.asm
+in  fa8c6d482886ab141f73b0d3da1e94357c7b9d5552668f4ce782448f7aa9ffdc  pureRGB-2.7.7 constants/item_constants.asm
+in  c940c409535fd1a5d30e4cc4707830526ce6ba45ea11467747c266a35ff6eecb  pureRGB-2.7.7 constants/map_constants.asm
+in  eb1ef5648d58f2570a2027a0a0c36471ca854422820013acc72f1d1f678c0868  pureRGB-2.7.7 constants/menu_constants.asm
+in  d70cf096e7d8a526a31311c80e436a421dff3ad09c58378f93615cf33f663cd9  pureRGB-2.7.7 constants/move_constants.asm
+in  7fa040ccfdbb90a93409572b778ed8c8cb41993556684a54fb4ca29cf1a2630c  pureRGB-2.7.7 constants/palette_constants.asm
+in  513690e7e40045b88105f7c043c909371a192332c80be57127cdb90da445c74a  pureRGB-2.7.7 constants/pokedex_constants.asm
+in  ce7d412bed1aaa6826965bf74bf7b761e5c6e5c2b07d5d86a4d6e33c6f3f4caf  pureRGB-2.7.7 constants/pokemon_constants.asm
+in  34d1f0d7eb614eee4cd3c9ed01d6617d3c85360e7a5cb70284f4377e40131dd9  pureRGB-2.7.7 constants/pokemon_data_constants.asm
+in  0234f81d908e5760fc162103de9cfe50e81c3f847a5764039b4be64823a2bf3d  pureRGB-2.7.7 constants/toggle_constants.asm
+in  56e9a32e3647ddb0068bd612e32fed60e753a8aa43f935d93283f782e6369e78  pureRGB-2.7.7 constants/trainer_constants.asm
+in  e7ad6bb61874fe5a624275ac09cc4e6ec9c73be9034b5ba162e86391150aa0a1  pureRGB-2.7.7 constants/type_constants.asm
+in  69afb4972b450efad9cf19e0066dbf88956f9084b75245742b0c037f163bc7fd  pureRGB-2.7.7 data/items/key_items.asm
+in  1946d43ae015364ae14ceb267ab2779513908cd2c05a6749dc570b83aeefd4d8  pureRGB-2.7.7 macros/scripts/text.asm
+in  ddc4c1aba224d5af86356227dd247a53880eeb78c6fed65758fcae00db42e151  pureRGB-2.7.7 pokeblue.sym
+in  0220ca88b049a9879e25bb415d4704f8ce39ebf7b32a7b09fff82da2dc3a6daa  pureRGB-2.7.7 pokegreen.sym
+in  c01d535e6f845509f31888a7686c7b9edca4526c77b9faec99fc77ef1933bce8  pureRGB-2.7.7 pokered.sym
+in  6b7ea3a8f49e990ae2bc88b8fb7fcad76eda87927818586929d6bebd0e95bcc0  kiwami/tools/gbpk-symbols.txt
 in  8347055098f870e8067f2945f057833f1bcb7c6f9e85ee600dc2aa5df421fbe1  kiwami/tests/gbpk/roms.patches
-out fee1968184f07d01478d8ebb91b5d05ce5de5dc315f6574c54642c8a17ff28cb  kiwami/tools/gbpk-extra.json
+out 90653f9a99112c1f345be4542e19bbce1fa43216704cf0a14db8875e552f6f6b  kiwami/tools/gbpk-extra.json

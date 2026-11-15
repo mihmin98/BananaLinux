@@ -64,9 +64,20 @@ GAMES = [
      'Pokémon Crystal Legacy'),
     ('yellow-legacy', 1, 'Yellow Legacy', 'GEN1_YELLOW_LEGACY', 'GEN1_DEX_YELLOW_LEGACY', 'YELLOW_LEGACY',
      'Pokémon Yellow Legacy'),
+    ('purered', 1, 'PureRed', 'GEN1_PURE_RED', 'GEN1_DEX_PURE_RED', 'PURE_RED', 'Pokémon PureRed'),
+    ('pureblue', 1, 'PureBlue', 'GEN1_PURE_BLUE', 'GEN1_DEX_PURE_RED', 'PURE_BLUE', 'Pokémon PureBlue'),
+    # (PokeDaisy reads no PureGreen: pret-extract's values alone)
+    ('puregreen', 1, 'PureGreen', None, None, None, None),
 ]
 # the ROM hacks among them: their data files say their Pokédex's size (the retail games' is their generation's)
-HACK_DEX_SIZE = {'crystal-legacy': 251, 'yellow-legacy': 151}
+HACK_DEX_SIZE = {'crystal-legacy': 251, 'yellow-legacy': 151, 'purered': 151, 'pureblue': 151, 'puregreen': 151}
+# the releases GameTitles.kt lists for a game whose other releases PokeDaisy doesn't read (PureRGB's v2.7.7, which
+# came after; the others' SHA-1s are the release patches' on the user's ROMs, gbpk-symbols.txt's build lines). Its
+# configs are that release's: where the game's releases disagree on an address, PokeDaisy's is checked against it
+PD_RELEASES = {'purered': 'v2.7.6', 'pureblue': 'v2.7.6'}
+# the games whose text is in a character set of their own (the data file's "charset"; PokeDaisy's Gen1Charset, which
+# its configs must name): PureRGB's one-byte words, quotes and signs (its constants/charmap.asm)
+CHARSET = {'purered': 'pure', 'pureblue': 'pure', 'puregreen': 'pure'}
 
 # Gen2Config's fields that are the games' own tables, or PokeDaisy's features outside the companion: left out
 SKIP = {
@@ -115,9 +126,13 @@ DEX_UNUSED = {('GEN2_DEX_GOLD_SILVER', 'dexEntryBanks'), ('GEN2_DEX_GOLD_SILVER'
 # pret's must agree with, the front pictures' banks (checked against pret's: DEX1_PICS), the fields whose default is
 # the English retail games' (checked), and what is left out
 DEX1_ROM = {'baseStats': 'baseData', 'dexEntryPointers': 'dexEntryPointers', 'mewBaseStats': 'mewBaseData',
-            'monsterPalettes': 'monPaletteIds', 'cgbPalettes': 'palettes'}
+            'monsterPalettes': 'monPaletteIds', 'cgbPalettes': 'palettes', 'dexEntryData': 'dexEntryData',
+            'categoryMapping': 'dexCategoryMap', 'categoryStrings': 'dexCategories'}
 DEX1_RAM = {'owned': 'dexCaught', 'seen': 'dexSeen'}
 DEX1_PICS = ('picsBank', 'picsBankBreaks', 'mewPicsBank')
+# (PureRGB's: its base data's size, its picture bank's place in it and its page's text command, against pret's; its
+# character set against CHARSET's)
+DEX1_SIZES = {'baseStatsSize': 'baseDataSize', 'picBankOffset': 'basePicBank', 'textFar': 'textFar'}
 DEX1_DEFAULT = ('metric', 'charset', 'baseStatsSize', 'picBankOffset', 'dexEntryData', 'categoryMapping',
                 'categoryStrings', 'textFar')
 DEX1_SKIP = {'internalToDex': 'a table of the game\'s (its species\' internal order), read from the ROM instead'}
@@ -388,24 +403,31 @@ def gen1_dex(name, fields, configs):
     or a default of the English retail games' that the config changes."""
     rom, ram, pics, unread = {}, {}, {}, []
     for k, text in resolve(name, fields, configs).items():
-        if k in DEX1_SKIP or (k in DEX1_ROM and text == 'null'):
+        # (a table it hasn't: null, or PokeDaisy's 0 to 0, PureRGB's dexEntryPointers)
+        if k in DEX1_SKIP or (k in DEX1_ROM and text in ('null', '0 to 0')):
             continue
         pm = re.fullmatch(r'(0x[0-9A-Fa-f]+|\d+)\s+to\s+(0x[0-9A-Fa-f]+|\d+)', text or '')
         lm = re.fullmatch(r'intArrayOf\(([^)]*)\)', text or '')
         v = evaluate(text or '')
         if k in DEX1_ROM and pm:
             rom[DEX1_ROM[k]] = (int(pm.group(1), 0), int(pm.group(2), 0))
-        elif k in DEX1_RAM and isinstance(v, int) and not isinstance(v, bool):
-            ram[DEX1_RAM[k]] = addr_value(v)
+        elif k in DEX1_RAM and (isinstance(v, tuple) or (isinstance(v, int) and not isinstance(v, bool))):
+            ram[DEX1_RAM[k]] = addr_value(v)      # (a plain address, or wramx(bank, address): PureRGB's)
         elif k in DEX1_PICS and isinstance(v, int) and not isinstance(v, bool):
             pics[k] = v
         elif k in DEX1_PICS and lm and all(isinstance(evaluate(x), int) for x in split_args(lm.group(1))):
             pics[k] = [evaluate(x) for x in split_args(lm.group(1))]
         elif k in DEX1_DEFAULT and text == fields[k][1]:
             continue
+        elif k in DEX1_SIZES and isinstance(v, int) and not isinstance(v, bool):
+            pics[DEX1_SIZES[k]] = v
+        elif k == 'charset' and re.fullmatch(r'Gen1Charset\.\w+', text or ''):
+            pics['charset'] = text.split('.')[1].lower()
         else:
             unread.append('%s.%s = %s' % (name, k, text))
-    unread += ['%s.%s (no value)' % (name, k) for k in DEX1_PICS if k not in pics]
+    # (the pictures' banks by internal index: none where the base data gives each one's, PureRGB's picBankOffset)
+    if 'basePicBank' not in pics:
+        unread += ['%s.%s (no value)' % (name, k) for k in DEX1_PICS if k not in pics]
     return rom, ram, pics, unread
 
 
@@ -834,15 +856,21 @@ def build(checkout):
     extra = json.loads(extra_text)
     files, unread = {}, []
     for key, gen, title, cfg, dex_cfg, art_cfg, pd_title in GAMES:
-        if gen == 1:
+        g = extra['games'].get(key)
+        if g is None:
+            fail('%s has no %s' % (EXTRA, key))
+        if cfg is None:
+            ram, sizes = {}, {}
+        elif gen == 1:
             ram, sizes, u = config_values(cfg, fields1, configs1, GEN1_SKIP)
+            unread += u
             if resolve(cfg, fields1, configs1).get('language') != "'E'":
                 unread.append('%s.language isn\'t English\'s' % cfg)
         else:
             ram, sizes, u = config_values(cfg, fields, configs)
-        unread += u
+            unread += u
         rom, rom_src, pics = {}, {}, {}
-        if gen == 1:
+        if gen == 1 and dex_cfg:
             dex_rom, dex_ram, pics, u = gen1_dex(dex_cfg, dex1_fields, dex1_configs)
             unread += u
             rom.update(dex_rom)
@@ -861,7 +889,8 @@ def build(checkout):
                 sizes[DEX_SIZES[k]] = v
             else:
                 unread.append('%s.%s = %s' % (dex_cfg, k, v))
-        art = read_art(art_src, art_cfg) if gen == 2 else read_art(art1_src, art_cfg, 'Gen1ArtTables', GEN1_ART)
+        art = {} if art_cfg is None else read_art(art_src, art_cfg) if gen == 2 else \
+            read_art(art1_src, art_cfg, 'Gen1ArtTables', GEN1_ART)
         art_rom, art_skip = (ART_ROM, ART_SKIP) if gen == 2 else (ART1_ROM, ART1_SKIP)
         for k, v in art.items():
             if k in art_skip:
@@ -911,26 +940,47 @@ def build(checkout):
                 if c.startswith(prefix + '_') and c[len(prefix) + 1:] not in {**GEN1_GUIDE_RAM, **GEN1_GUIDE_SIZES, **GEN1_GUIDE_SKIP}:
                     unread.append('%s: %s' % (GEN1_GUIDE, c))
             unread += ['%s: %s' % (GEN1_RULES, u) for u in gen1_rules(gen1_rules_src, prefix, GEN1_GUIDES[key][1])]
-        g = extra['games'].get(key)
-        if g is None:
-            fail('%s has no %s' % (EXTRA, key))
-        for k, v in g['ram'].items():
-            pv = (v['bank'], int(v['addr'], 16))
-            if k in ram and ram[k] != pv:
-                fail('%s ram.%s: PokeDaisy says %02X:%04X, pret\'s %s %02X:%04X' %
-                     (key, k, ram[k][0], ram[k][1], v['symbol'], pv[0], pv[1]))
-            src[k] = 'pokedaisy pret (%s)' % v['symbol'] if k in ram else 'pret (%s)' % v['symbol']
-            ram[k] = pv
-        for k, v in g.get('rom', {}).items():
-            pv = (v['bank'], int(v['addr'], 16))
-            if k in rom and rom[k] != pv:
-                fail('%s rom.%s: PokeDaisy says %02X:%04X, pret\'s %s %02X:%04X' %
-                     (key, k, rom[k][0], rom[k][1], v['symbol'], pv[0], pv[1]))
-            rom_src[k] = 'pokedaisy pret (%s)' % v['symbol'] if k in rom else 'pret (%s)' % v['symbol']
-            rom[k] = pv
+        # (pret's values over PokeDaisy's, which must agree; where a ROM hack's releases disagree on an address, each
+        # release has its own, and PokeDaisy's is checked against its release's, PD_RELEASES)
+        own = {kind: {} for kind in ('ram', 'rom')}
+        pd_rel = [r for r in g['releases'] if r['name'] == PD_RELEASES.get(key)]
+        for kind, have, hsrc in (('ram', ram, src), ('rom', rom, rom_src)):
+            for k in set(g.get(kind, {})) | {k for r in g['releases'] for k in r.get(kind, {})}:
+                v = g[kind].get(k) or (pd_rel[0].get(kind, {}).get(k) if pd_rel else None)
+                if v is None:   # (each release its own, PokeDaisy's none of them)
+                    if k in have:
+                        fail('%s %s.%s: PokeDaisy has it, and no release of its is PokeDaisy\'s' % (key, kind, k))
+                else:
+                    pv = (v['bank'], int(v['addr'], 16))
+                    if k in have and have[k] != pv:
+                        fail('%s %s.%s: PokeDaisy says %02X:%04X, pret\'s %s %02X:%04X' %
+                             (key, kind, k, have[k][0], have[k][1], v['symbol'], pv[0], pv[1]))
+                if k in g[kind]:
+                    hsrc[k] = 'pokedaisy pret (%s)' % v['symbol'] if k in have else 'pret (%s)' % v['symbol']
+                    have[k] = pv
+                else:
+                    for r in g['releases']:
+                        if k in r.get(kind, {}):
+                            rv = r[kind][k]
+                            pd = k in have and r is (pd_rel[0] if pd_rel else None)
+                            own[kind].setdefault(r['sha1'], {})[k] = {
+                                'bank': rv['bank'], 'addr': rv['addr'],
+                                'src': ('pokedaisy pret (%s)' if pd else 'pret (%s)') % rv['symbol']}
+                    have.pop(k, None)
+                    hsrc.pop(k, None)
+        # (PureRGB's: its base data's size, its picture bank's place in it, its page's text command and its character
+        # set, against pret's constants and CHARSET)
+        for k in DEX1_SIZES.values():
+            if k in pics:
+                c = g.get('const', {}).get(k)
+                if not c or c['value'] != pics[k]:
+                    fail('%s: PokeDaisy\'s %s is %s, pret\'s %s' % (key, k, pics[k], c and c['value']))
+        if dex_cfg and pics.get('charset', 'en') != CHARSET.get(key, 'en'):
+            fail('%s: PokeDaisy\'s Gen1Charset is %s, not %s' % (key, pics.get('charset', 'en'), CHARSET.get(key, 'en')))
         # (Gen I's front pictures: PokeDaisy's first bank and the internal indexes where the next begins, as
-        # UncompressMonSprite counts them, and Red's and Blue's Mew's bank, against pret's sections and constants)
-        if pics:
+        # UncompressMonSprite counts them, and Red's and Blue's Mew's bank, against pret's sections and constants;
+        # none where the base data gives each picture's bank)
+        if pics and 'basePicBank' not in pics:
             c, r = g.get('const', {}), g.get('rom', {})
             want = {'picsBank': r['pics1']['bank'],
                     'picsBankBreaks': [c['picsTangela']['value'] + 1, c['picsMoltres']['value'] + 1,
@@ -956,12 +1006,20 @@ def build(checkout):
             if sizes.get('eventFlagBytes', n // 8) != n // 8:
                 fail('%s: PokeDaisy has %d bytes of event flags, pret %d' % (key, sizes['eventFlagBytes'], n // 8))
             sizes['eventFlagBytes'] = n // 8
-        # (the ROM hacks read as the game they patch aren't PokeDaisy's: gbpk-symbols.txt's hack lines)
-        pret_sha1 = {r['sha1'] for r in g['releases'] if not r.get('hack')}
-        if titles.get(pd_title, set()) != pret_sha1:
+        # (the ROM hacks read as the game they patch aren't PokeDaisy's: gbpk-symbols.txt's hack lines; nor are the
+        # releases of a game it reads one of, PD_RELEASES)
+        pret_sha1 = {r['sha1'] for r in g['releases'] if not r.get('hack') and
+                     (key not in PD_RELEASES or r['name'] == PD_RELEASES[key])}
+        if pd_title and titles.get(pd_title, set()) != pret_sha1:
             fail('%s: GameTitles.kt\'s "%s" SHA-1s %s aren\'t pret\'s %s' %
                  (key, pd_title, sorted(titles.get(pd_title, ())), sorted(pret_sha1)))
+        if not pd_title and any(pret_sha1 & v for v in titles.values()):
+            fail('%s: GameTitles.kt has a release of it: give its title' % key)
         releases = [{k: r[k] for k in ('sha1', 'name', 'code', 'hack') if k in r} for r in g['releases']]
+        for r in releases:
+            for kind in ('ram', 'rom'):
+                if r['sha1'] in own[kind]:
+                    r[kind] = own[kind][r['sha1']]
         # the flag banks its guide reads (Live::flags: each bank's bits from its first, the derived bits after them)
         flags, derived = [], []
         if key in CRYSTAL_GUIDES:
@@ -991,7 +1049,7 @@ def build(checkout):
         for k in ('items', 'types'):
             if k not in g:
                 fail('%s: %s has no %s for %s' % (EXTRA, key, k, key))
-        doc['items'] = sorted(g['items'].values())
+        doc['items'] = sorted(v for v in g['items'].values() if v[1])    # (a ball Gen IV hasn't: in balls only)
         doc['balls'] = g['balls']
         if gen == 1:
             if 'key_items' not in g:
@@ -1005,6 +1063,8 @@ def build(checkout):
             doc['guide'] = 'rom'
         if key in HACK_DEX_SIZE:
             doc['dex_size'] = HACK_DEX_SIZE[key]
+        if key in CHARSET:
+            doc['charset'] = CHARSET[key]
         files['%s/%s.ram.json' % (FOLDER, key)] = pe.dump(doc).encode('utf-8')
     if unread:
         print('unread:', file=sys.stderr)

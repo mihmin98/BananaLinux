@@ -228,9 +228,15 @@ namespace banana::kiwami::gbpk
 			}
 			else
 			{
+				// (the capture's release by its README, a ROM hack's versions having addresses of their own)
 				GameData d;
 				std::string why;
-				if (loadData(fixtureKey(dir.substr(dir.find_last_of('/') + 1)), d, &why)) g.games = { d };
+				if (loadData(fixtureKey(dir.substr(dir.find_last_of('/') + 1)), d, &why))
+				{
+					std::ifstream rf(dir + "/README.txt");
+					pickRelease(d, captureRelease(d, std::string(std::istreambuf_iterator<char>(rf), std::istreambuf_iterator<char>())));
+					g.games = { d };
+				}
 				else fprintf(stderr, "banana-ui: gbpanel: %s\n", why.c_str());
 			}
 			const bool ok = !g.games.empty();

@@ -85,9 +85,9 @@ namespace banana::kiwami::gbpk
 		}
 
 		// a name as the pages write it: the game's own, or the species' when the Pokémon has none of its own
-		void setNick(nds::Mon& m, const uint8_t* p, const nds::RomData* rom, int gen = 2)
+		void setNick(nds::Mon& m, const uint8_t* p, const nds::RomData* rom, Charset cs = Charset::GEN2)
 		{
-			m.nick = p ? decode(gen, p, NAME) : "";
+			m.nick = p ? decode(cs, p, NAME) : "";
 			if (rom && m.species && m.species < rom->species.size())
 			{
 				const std::string& name = rom->species[m.species].name;
@@ -139,6 +139,12 @@ namespace banana::kiwami::gbpk
 			if (!gb || gb->national.empty()) return internal;
 			return internal < gb->national.size() ? gb->national[internal] : 0;
 		}
+		// the form an internal index is (PureRGB's forms: GbRomData::form), 0 for a species itself or without the ROM
+		uint8_t formOf(uint8_t internal, const nds::RomData* rom)
+		{
+			const auto* gb = dynamic_cast<const GbRomData*>(rom);
+			return gb && internal < gb->form.size() ? gb->form[internal] : 0;
+		}
 
 		// the DVs as Gen II's into the IVs' places (setDVs), with no gender and never shiny: the pid and otSecret only
 		// tell one Pokémon from another
@@ -158,6 +164,7 @@ namespace banana::kiwami::gbpk
 		{
 			nds::Mon m;
 			m.species = national(p[0], rom);
+			m.form = formOf(p[0], rom);		// (a form's picture; its types are the battle copy's in a battle)
 			m.hp = be16(p + 1);
 			m.status = p[4];			// (Gen III's bits: sleep turns 0-2, PSN, BRN, FRZ, PAR)
 			for (int k = 0; k < 4; k++)
@@ -189,8 +196,9 @@ namespace banana::kiwami::gbpk
 			else
 			{
 				m.species = species;
+				m.form = formOf(p[0], rom);
 				setDVs1(m, p[12], p[13]);
-				setNick(m, nullptr, rom, 1);
+				setNick(m, nullptr, rom, d.charset());
 			}
 			m.hp = be16(p + 1);
 			m.status = p[4];
@@ -400,12 +408,12 @@ namespace banana::kiwami::gbpk
 			if (!p[0] || (!egg && cnt[1 + i] != p[0]) || p[31] < 1 || p[31] > 100) return l;
 			nds::Mon m = boxMon(d_, p, true, caughtData, egg, rom);
 			setNick(m, nicks ? nicks + i * NAME : nullptr, rom);
-			if (ots) m.otName = decode(2, ots + i * NAME, NAME);
+			if (ots) m.otName = decode(Charset::GEN2, ots + i * NAME, NAME);
 			l->party.push_back(m);
 		}
 		l->valid = true;
 
-		if (const uint8_t* p = at("playerName", 0, NAME)) l->trainerName = decode(2, p, NAME);
+		if (const uint8_t* p = at("playerName", 0, NAME)) l->trainerName = decode(Charset::GEN2, p, NAME);
 		if (const uint8_t* p = at("playerID", 0, 2)) l->tid = be16(p);
 		l->trainerKnown = at("playerID", 0, 2) != nullptr;
 		const uint8_t *g = at("mapGroup", 0, 1), *num = at("mapNumber", 0, 1), *x = at("xCoord", 0, 1), *y = at("yCoord", 0, 1);
@@ -527,8 +535,8 @@ namespace banana::kiwami::gbpk
 			if (!p[0] || cnt[1 + i] != p[0] || p[33] < 1 || p[33] > 100) return l;
 			nds::Mon m = partyMon1(p, rom);
 			if (!m.species) return l;	// (an index the ROM's table has no species for)
-			setNick(m, nicks ? nicks + i * NAME : nullptr, rom, 1);
-			if (ots) m.otName = decode(1, ots + i * NAME, NAME);
+			setNick(m, nicks ? nicks + i * NAME : nullptr, rom, d_.charset());
+			if (ots) m.otName = decode(d_.charset(), ots + i * NAME, NAME);
 			if (happy && p[0] == starter && id && be16(p + 12) == be16(id) && ots && name &&
 				std::equal(name, name + 5, ots + i * NAME))
 				m.friendship = *happy;
@@ -537,7 +545,7 @@ namespace banana::kiwami::gbpk
 		l->party = std::move(party);
 		l->valid = true;
 
-		if (name) l->trainerName = decode(1, name, NAME);
+		if (name) l->trainerName = decode(d_.charset(), name, NAME);
 		if (id) l->tid = be16(id);
 		l->trainerKnown = id != nullptr;
 		if (const uint8_t* p = at("curMap", 0, 1)) l->zone = *p;
@@ -592,7 +600,7 @@ namespace banana::kiwami::gbpk
 						if (!p[0] || p[33] < 1 || p[33] > 100) break;
 						nds::Mon m = partyMon1(p, rom);
 						if (!m.species) break;
-						setNick(m, nullptr, rom, 1);
+						setNick(m, nullptr, rom, d_.charset());
 						b.foeParty.push_back(m);
 					}
 				const uint8_t* co = at("enemyMonPartyPos", 0, 1);

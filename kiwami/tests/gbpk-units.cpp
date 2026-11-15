@@ -72,13 +72,17 @@ static void testDetect()
 	h = header("POKEMON_SLV", "AAXE");
 	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
 	CHECK(keys == K{ "silver" });
-	// Red's, Blue's and Yellow's titles: no code, the rest of the sixteen bytes 0
+	// Red's, Blue's and Yellow's titles: no code, the rest of the sixteen bytes 0 (PureRed and PureBlue keep Red's and
+	// Blue's; PureGreen's is its own, no retail game having it)
 	h = header("POKEMON RED");
 	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
-	CHECK(keys == K{ "red" });
+	CHECK((keys == K{ "red", "purered" }));
 	h = header("POKEMON BLUE");
 	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
-	CHECK(keys == K{ "blue" });
+	CHECK((keys == K{ "blue", "pureblue" }));
+	h = header("POKEMON GREEN");
+	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
+	CHECK(keys == K{ "puregreen" });
 	// (Yellow Legacy keeps Yellow's title)
 	h = header("POKEMON YELLOW");
 	CHECK(detect(h.data(), h.size(), keys) == Match::KNOWN);
@@ -227,9 +231,10 @@ static void testConfirm()
 	CHECK(confirm({}, d) == Match::UNSUPPORTED);
 }
 
-// a made-up data file in dir: Crystal's with another key and title, one release (sha1), and dex_size when given
+// a made-up data file in dir: Crystal's with another key and title, one release (sha1), and dex_size when given; or
+// the releases given, as the file's JSON
 static void madeUpData(const std::string& dir, const std::string& key, const std::string& title, const std::string& sha1,
-	int dexSize = 0)
+	int dexSize = 0, const std::string& releases = "")
 {
 	std::ifstream in(dataPath + "/crystal.ram.json");
 	std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
@@ -243,7 +248,8 @@ static void madeUpData(const std::string& dir, const std::string& key, const std
 	const size_t a = text.find("\"releases\": ["), b = text.find("\n  ],", a);
 	CHECK(a != std::string::npos && b != std::string::npos);
 	if (a != std::string::npos && b != std::string::npos)
-		text.replace(a, b + 4 - a, "\"releases\": [ { \"code\": \"BYTE\", \"name\": \"Made-up\", \"sha1\": \"" + sha1 + "\" } ]");
+		text.replace(a, b + 4 - a, !releases.empty() ? "\"releases\": " + releases :
+			"\"releases\": [ { \"code\": \"BYTE\", \"name\": \"Made-up\", \"sha1\": \"" + sha1 + "\" } ]");
 	if (dexSize) swap("{", "{ \"dex_size\": " + std::to_string(dexSize) + ",");
 	std::ofstream(dir + "/" + key + ".ram.json") << text;
 }
@@ -295,6 +301,37 @@ static void testSharedTitle()
 	madeUpData(dir, "crystal", "Made-up Crystal", sha1(rom1), 5000);
 	CHECK(!loadData("crystal", d, &why) && why.find("dex_size") != std::string::npos);
 
+	// a release's own addresses (a ROM hack's versions, each rebuilt, disagree on them): laid over the game's when the
+	// ROM is that release, each release's in its turn; a release without the others' own addresses, or one the game
+	// has too, refuses the file
+	auto rel = [&](const std::string& h, const char* name, int party, int base) {
+		char b[512];
+		snprintf(b, sizeof b, "{ \"code\": \"BYTE\", \"name\": \"%s\", \"sha1\": \"%s\", \"ram\": { \"own\": "
+			"{ \"bank\": 1, \"addr\": \"0x%04X\" } }, \"rom\": { \"x\": { \"bank\": 2, \"addr\": \"0x%04X\" } } }", name, h.c_str(), party, base);
+		return std::string(b);
+	};
+	madeUpData(dir, "crystal-clear", "Made-up Clear", "", 251, "[ " + rel(sha1(rom1), "v1", 0xD100, 0x4100) + ", " + rel(sha1(rom2), "v2", 0xD200, 0x4200) + " ]");
+	ds = loadGames({ "crystal-clear" }, &why);
+	CHECK(ds.size() == 1 && ds[0].releases.size() == 2 && !ds[0].ram.count("own") && ds[0].releases[1].ram.count("own"));
+	if (ds.size() == 1)
+	{
+		CHECK(confirmAny(rom2, ds) == 0 && ds[0].release == 1 && ds[0].at("own").addr == 0xD200 && ds[0].rom.at("x").addr == 0x4200);
+		CHECK(confirmAny(rom1, ds) == 0 && ds[0].release == 0 && ds[0].at("own").addr == 0xD100 && ds[0].rom.at("x").addr == 0x4100);
+		// (a capture's release by its README's SHA-1, as the tests' stand-in picks it; else the first)
+		const std::string h2 = sha1(rom2);
+		CHECK(captureRelease(ds[0], "rom: a hack (~/x.gb, sha1 " + h2.substr(0, 8) + "..., its build)") == 1);
+		CHECK(captureRelease(ds[0], "rom / save: as the made-up fixture.") == 0 && captureRelease(ds[0], "sha1 12ab") == 0);
+		const uint16_t mons = ds[0].at("partyMons").addr;
+		pickRelease(ds[0], 1);
+		CHECK(ds[0].release == 1 && ds[0].at("own").addr == 0xD200 && mons && ds[0].at("partyMons").addr == mons);
+	}
+	madeUpData(dir, "crystal-clear", "Made-up Clear", "", 251, "[ " + rel(sha1(rom1), "v1", 0xD100, 0x4100) + ", { \"name\": \"v2\", \"sha1\": \"" + sha1(rom2) + "\" } ]");
+	CHECK(!loadData("crystal-clear", d, &why) && why.find("own addresses") != std::string::npos);
+	std::string own = rel(sha1(rom1), "v1", 0xD100, 0x4100);
+	own.replace(own.find("\"own\""), 5, "\"partyMons\"");
+	madeUpData(dir, "crystal-clear", "Made-up Clear", "", 251, "[ " + own + " ]");
+	CHECK(!loadData("crystal-clear", d, &why) && why.find("own addresses") != std::string::npos);
+
 	unlink((std::string(dir) + "/crystal.ram.json").c_str());
 	unlink((std::string(dir) + "/crystal-clear.ram.json").c_str());
 	rmdir(dir);
@@ -329,21 +366,21 @@ static void testText()
 {
 	// CHRIS, ended by 0x50, with what follows left alone
 	const uint8_t chris[] = { 0x82, 0x87, 0x91, 0x88, 0x92, 0x50, 0x80, 0x80 };
-	EQ(decode(2, chris, sizeof chris), "CHRIS");
-	EQ(decode(2, chris, 3), "CHR");
+	EQ(decode(Charset::GEN2, chris, sizeof chris), "CHRIS");
+	EQ(decode(Charset::GEN2, chris, 3), "CHR");
 	// the PK and MN ligatures, the contractions and the signs
 	const uint8_t lig[] = { 0xE1, 0xE2, 0x7F, 0x8C, 0x91, 0xE8, 0x7F, 0x8C, 0x88, 0x8C, 0x84, 0x50 };
-	EQ(decode(2, lig, sizeof lig), "PKMN MR. MIME");
+	EQ(decode(Charset::GEN2, lig, sizeof lig), "PKMN MR. MIME");
 	const uint8_t sign[] = { 0x8D, 0x88, 0x83, 0x8E, 0x91, 0x80, 0x8D, 0xF5, 0x7F, 0x85, 0x80, 0x91, 0x85, 0x84, 0x93, 0x82, 0x87, 0xD6, 0xE7, 0x50 };
-	EQ(decode(2, sign, sizeof sign), "NIDORAN♀ FARFETCH'v!");
+	EQ(decode(Charset::GEN2, sign, sizeof sign), "NIDORAN♀ FARFETCH'v!");
 	const uint8_t misc[] = { 0x54, 0x7F, 0x81, 0x80, 0x8B, 0x8B, 0x7F, 0xF6, 0xFF, 0xE3, 0xEF, 0x05, 0x50 };
-	EQ(decode(2, misc, sizeof misc), "POKé BALL 09-♂");	// (0x05, a Japanese kana, left out)
-	EQ(decode(2, nullptr, 4), "");
+	EQ(decode(Charset::GEN2, misc, sizeof misc), "POKé BALL 09-♂");	// (0x05, a Japanese kana, left out)
+	EQ(decode(Charset::GEN2, nullptr, 4), "");
 	// Gen I's own: é and the contractions at BA-BF, 'r and 'm at E4-E5, the single quotes; Gen II's umlauts and its 'd
 	// at D0 are nothing there
 	const uint8_t g1[] = { 0x70, 0x8F, 0x8E, 0x8A, 0xBA, 0x8C, 0x8E, 0x8D, 0x71, 0x7F, 0xE4, 0xE5, 0xBD, 0xBB, 0xC0, 0xD0, 0x50 };
-	EQ(decode(1, g1, sizeof g1), "‘POKéMON’ 'r'm's'd");
-	EQ(decode(2, g1, sizeof g1), "POKMON Ä'd");
+	EQ(decode(Charset::GEN1, g1, sizeof g1), "‘POKéMON’ 'r'm's'd");
+	EQ(decode(Charset::GEN2, g1, sizeof g1), "POKMON Ä'd");
 
 	EQ(nameCase("CHIKORITA"), "Chikorita");
 	EQ(nameCase("DOUBLE-EDGE"), "Double-Edge");
@@ -361,9 +398,15 @@ static void testText()
 	EQ(nameCase("S.S.TICKET"), "S.S.Ticket");
 	// a place's breakable spaces (<BSP> 0x1F) and a description's line breaks (<NEXT> 0x4E) are spaces
 	const uint8_t bsp[] = { 0x8D, 0x84, 0x96, 0x1F, 0x81, 0x80, 0x91, 0x8A, 0x1F, 0x93, 0x8E, 0x96, 0x8D, 0x50 };
-	EQ(nameCase(decode(2, bsp, sizeof bsp)), "New Bark Town");
+	EQ(nameCase(decode(Charset::GEN2, bsp, sizeof bsp)), "New Bark Town");
 	const uint8_t next[] = { 0x80, 0x7F, 0x87, 0x88, 0x93, 0x4E, 0x8C, 0x8E, 0x95, 0x84, 0x50 };
-	EQ(decode(2, next, sizeof next), "A HIT MOVE");
+	EQ(decode(Charset::GEN2, next, sizeof next), "A HIT MOVE");
+	// PureRGB's (its constants/charmap.asm): its one-byte words, its <BAGE> page break, "is", its three dots, PC and
+	// TRAINER, curly quotes where the brackets were, its arrow, plus and percent; Gen I's are nothing there or brackets,
+	// and its contractions stay
+	const uint8_t pure[] = { 0x80, 0x41, 0x7F, 0x45, 0xE7, 0x48, 0x9E, 0x8B, 0x9F, 0x4D, 0x56, 0x5B, 0x7F, 0x5D, 0xE9, 0xEA, 0xEB, 0x33, 0xBB, 0x50 };
+	EQ(decode(Charset::PURE, pure, sizeof pure), "Athe POKéMON! “L”is...PC TRAINER→+%like'd");
+	EQ(decode(Charset::GEN1, pure, sizeof pure), "A ![L]…… 'd");
 }
 
 // the list of ROMs the ROM tests expect (kiwami/tests/gbpk/roms.sha1, checked in the player's folders by gbpk-roms.sh)
@@ -402,7 +445,7 @@ static void testRomList()
 		required += x.need == "required";
 		CHECK(x.name.size() > 4 && (x.name.compare(x.name.size() - 3, 3, ".gb") == 0 || x.name.compare(x.name.size() - 4, 4, ".gbc") == 0));
 	}
-	CHECK(lines.size() == 30 && gb == 12 && required == 6);
+	CHECK(lines.size() == 36 && gb == 18 && required == 6);
 	// the ROM hacks read as the retail game they patch (roms.patches): each a Game Boy line, its retail ROM a required
 	// one of the same game, its ranges in order and apart, inside the bank-0 code and the header (gbpk-roms.sh compares
 	// the files themselves)
@@ -1667,6 +1710,127 @@ static void testYellowLegacy()
 	}
 }
 
+// PureRed's and PureBlue's captures (PokeDaisy's: the red capture's retail save, converted by the game's own updater,
+// their READMEs, v2.7.6): Nelson, his six Lv100s, eight badges, ¥999999, 10 owned and 106 seen, 16 items in its bag of
+// 30 slots (the updater took the Coin Case), in Vermilion City's Pokémon Center ($59) at (3, 5), read at PureRGB's
+// addresses in WRAM bank 1; a wild CHARMANDER Lv12 against Joseph in the battle captures. Its data files: PureRed's,
+// PureBlue's and PureGreen's, two releases each with addresses of their own, its types, Hyper Ball and text
+static std::shared_ptr<nds::Live> checkPure(const char* capture, const char* key, Dump* changed = nullptr,
+	std::shared_ptr<GbRomData> rom = nullptr)
+{
+	Dump d;
+	if (!d.load(capture)) { failed++; return std::make_shared<nds::Live>(); }
+	if (changed) d = *changed;
+	// (the capture's release by its README, as the panel's stand-in picks it: v2.7.6, PureRGB's v2.7.7 having its own
+	// addresses)
+	GameData g = game(key);
+	std::ifstream rf(testDir + "/fixtures/" + capture + "/README.txt");
+	pickRelease(g, captureRelease(g, std::string(std::istreambuf_iterator<char>(rf), std::istreambuf_iterator<char>())));
+	CHECK(g.release == 0 && g.releases[0].name == "v2.7.6");
+	Reader r;
+	r.open(g);
+	double now = 0;
+	if (!rom) rom = gen1Rom();
+	auto l = replay(r, d, now, rom.get());
+	CHECK(l->valid && l->trainerKnown);
+	EQ(l->trainerName, "Nelson");
+	const uint16_t species[6] = { 25, 28, 143, 131, 18, 20 };
+	const char* const nicks[6] = { "Joseph", "Liam", "Fred", "Henry", "Seth", "Richard" };
+	CHECK(l->party.size() == 6);
+	for (size_t i = 1; i < l->party.size() && i < 6; i++)
+	{
+		const nds::Mon& m = l->party[i];
+		CHECK(m.species == species[i] && m.level == 100 && m.form == 0 && !m.female && !m.egg);
+		EQ(m.nick, nicks[i]);
+		EQ(m.otName, "Nelson");
+	}
+	if (!l->party.empty())
+	{
+		// (Joseph's moves: Thunderbolt, Thunder, PureRGB's Filthy Slam where Slam was, Light Screen)
+		const nds::Mon& p = l->party[0];
+		CHECK(p.level == 100 && p.maxHp == 182 && p.moves[0] == THUNDERBOLT && p.moves[1] == THUNDER && p.moves[2] == SLAM &&
+			p.moves[3] == LIGHT_SCREEN && p.friendship == 0);
+		EQ(p.nick, "Joseph");
+	}
+	CHECK(l->zone == 0x59 && l->mapX == 3 && l->mapY == 5);
+	CHECK(l->money == 999999 && l->badges == 0xFF);
+	CHECK(l->dexCaught.size() == 19 && bits(l->dexCaught) == 10 && bits(l->dexSeen) == 106);
+	size_t items = 0;
+	for (const auto& [pocket, list] : l->bag) items += list.size();
+	CHECK(items == 16 && l->flags.empty() && r.error().empty());
+	return l;
+}
+
+static void testPureRGB()
+{
+	for (auto [key, id, title, header] : { std::tuple{ "purered", PURERED, "PureRed", "POKEMON RED" },
+		{ "pureblue", PUREBLUE, "PureBlue", "POKEMON BLUE" }, { "puregreen", PUREGREEN, "PureGreen", "POKEMON GREEN" } })
+	{
+		const GameData g = game(key);
+		CHECK(g.game.id == id && g.gen == 1 && g.game.gen == GEN_I && g.game.dexSize == 151 && g.headerTitle == header);
+		EQ(g.game.title, title);
+		// (v2.7.6 and v2.7.7, each rebuilt: their palettes, wild slots, town map and the like where each build put them,
+		// their memory the same)
+		CHECK(g.releases.size() == 2 && g.releases[0].name == "v2.7.6" && g.releases[1].name == "v2.7.7" && g.releases[0].code.empty());
+		CHECK(!g.rom.count("palettes") && g.releases[0].rom.count("palettes") && g.releases[1].rom.count("palettes") &&
+			g.releases[0].rom.at("palettes").addr != g.releases[1].rom.at("palettes").addr && g.releases[0].ram.empty());
+		CHECK(g.size("bagSlots") == 30 && g.size("baseDataSize") == 35 && g.size("basePicBank") == 27 && g.size("textFar") == 0x15);
+		CHECK(g.pureText && g.charset() == Charset::PURE && game("red").charset() == Charset::GEN1 && !g.romGuide);
+		CHECK(g.rom.count("dexEntryData") && !g.rom.count("dexEntryPointers") && g.rom.count("moveNameTable") && !g.rom.count("moveNames"));
+		// its six types of the fork's own by its ids, Tri, Floating and Magma special, Ghost by the attacker's stats
+		CHECK(g.types[6] == TYPELESS && g.types[9] == CRYSTAL_TYPE && g.types[10] == BONEMERANG && g.types[17] == TRI &&
+			g.types[18] == FLOATING && g.types[19] == MAGMA && g.types[0x14] == nds::FIRE);
+		CHECK(g.special[17] && g.special[18] && g.special[19] && !g.special[9] && !g.special[8] && g.splitStats[8] && g.splitStats.count() == 1);
+		// its Hyper Ball where Red's Town Map was: a ball, no Gen IV id (1000 + its own), in the balls' pocket
+		CHECK(g.balls.count(5) && gen1Item(g, 5) == GEN1_ONLY + 5 && gen1Pocket(g, 5) == nds::POCKET_BALLS);
+		CHECK(gen1Item(g, 4) == 4 && gen1Item(g, 8) == 5 && gen1Pocket(g, 8) == nds::POCKET_BALLS);	// (the Poké Ball, the Safari Ball)
+	}
+	for (const char* c : { "purered", "pureblue" })
+	{
+		auto l = checkPure(c, c);
+		CHECK(l->battle.kind == nds::BattleKind::NONE);
+	}
+	// a wild CHARMANDER Lv12 against Joseph (PIKACHU Lv100, 182/182) out of the first slot: 31 HP in PureRed's, 32 in
+	// PureBlue's
+	for (auto [cap, key, hp] : { std::tuple{ "purered_battle", "purered", 31 }, { "pureblue_battle", "pureblue", 32 } })
+	{
+		auto l = checkPure(cap, key);
+		const nds::Battle& b = l->battle;
+		CHECK(b.kind == nds::BattleKind::WILD && b.trainerId == 0 && b.foeParty.empty());
+		CHECK(b.ours[0].present && b.ours[0].mon.species == 25 && b.ours[0].mon.hp == 182 && b.ours[0].types[0] == nds::ELECTRIC);
+		EQ(b.ours[0].mon.nick, "Joseph");
+		CHECK(b.foes[0].present && b.foes[0].mon.species == 4 && b.foes[0].mon.level == 12 && b.foes[0].mon.hp == hp &&
+			b.foes[0].types[0] == nds::FIRE);
+	}
+	// the battle's menus: the same battlers; Joseph fainted, at 0 HP, out of the battle
+	for (const char* c : { "purered_battle_menu", "purered_battle_party", "purered_battle_switch_menu" })
+	{
+		auto l = checkPure(c, "purered");
+		CHECK(l->battle.kind == nds::BattleKind::WILD && l->battle.ours[0].mon.species == 25 && l->battle.foes[0].mon.species == 4);
+	}
+	{
+		auto l = checkPure("purered_battle_faint", "purered");
+		CHECK(l->battle.kind == nds::BattleKind::WILD && !l->party.empty() && l->party[0].hp == 0 && !l->battle.ours[0].present);
+	}
+	// a form: Joseph made a FLOATING WEEZING ($92, PureRGB's internal index), Weezing's number with its form, 1 (the
+	// ROM's GbRomData::form), in the party list and the struct; without the ROM's tables, the index as it is
+	{
+		Dump d;
+		if (d.load("purered"))
+		{
+			d.d(0xD16C) = 0x92;
+			d.d(0xD173) = 0x92;
+			auto rom = gen1Rom();
+			rom->national[0x92] = 110;
+			rom->national[0x8F] = 110;
+			rom->form.assign(256, 0);
+			rom->form[0x92] = 1;
+			auto l = checkPure("purered", "purered", &d, rom);
+			CHECK(!l->party.empty() && l->party[0].species == 110 && l->party[0].form == 1);
+		}
+	}
+}
+
 static void testGen1Captures()
 {
 	// on the field
@@ -2249,6 +2413,149 @@ static void testGen1LegacyLayouts()
 	CHECK(!readRom(rom, y, &why) && why.find("rom.oldRod nor rom.oldRodMons") != std::string::npos);
 }
 
+// PureRGB's ROM layouts on the made-up Gen I ROM, its tables in bank 2 after Bulbasaur's picture (rom1.cpp names each):
+// base data of 35 bytes with each front picture's bank in it, Mew among them; a form (internal 2, Bulbasaur's number)
+// with its base data apart, NonDexMonsBaseStats in NonDexPokemonSpecies' order, after the 3 species from Bulbasaur's
+// formsAt, and MissingNo. (internal 4, no number) in that list too; Pokédex pages by number with their categories
+// apart and its text_far_end; move and item names by pointers; its priority list; trainers of its two kinds more,
+// $FD's moveset and $FE's levels with bit 7, its MissingNo. left out of a team; its Old Rod's two, its Good Rod's lists
+// (the ocean's on map 2); its indoor town map entries of five bytes; and its hidden items of two
+// (a word at a file offset: a pointer in bank 1, whose window is the file's 4000-7FFF)
+static size_t r16(const std::vector<uint8_t>& b, size_t o) { return (size_t)(b[o] | b[o + 1] << 8); }
+
+static void testPureLayouts()
+{
+	GameData d;
+	auto made = madeUpGen1(d);
+	auto rom = std::make_shared<std::vector<uint8_t>>(*made);
+	std::vector<uint8_t>& b = *rom;
+	using R = MadeUpRom;
+	const int IDX = 0x54;
+	// (bank 2's free space from file 8100, its 4100; bank 1's from file 7E00, before the hidden items' function)
+	size_t at2 = 0x8100, at1 = 0x7E00;
+	auto put2 = [&](const std::vector<int>& v) { const uint16_t a = (uint16_t)(0x4000 + at2 - 0x8000); for (int x : v) b[at2++] = (uint8_t)x; return a; };
+	auto put1 = [&](const std::vector<int>& v) { const uint16_t a = (uint16_t)at1; for (int x : v) b[at1++] = (uint8_t)x; return a; };
+	GameData p = d;
+	auto key2 = [&](const char* k, uint16_t a) { p.rom[k] = Addr{ 2, a }; };
+	p.pureText = true;
+	p.types[9] = CRYSTAL_TYPE;
+	for (const char* k : { "mewBaseData", "mewPicFront", "pics1", "pics2", "pics3", "pics4", "pics5", "dexEntryPointers", "moveNames",
+		"itemNames", "goodRodMons", "internalMapEntries", "specialTrainerMoves" })
+		p.rom.erase(k);
+	for (const char* k : { "picsTangela", "picsMoltres", "picsBeedrill", "picsStarmie", "quickAttack", "counter" }) p.sizes.erase(k);
+	p.sizes["baseDataSize"] = 35;
+	p.sizes["basePicBank"] = 27;
+	p.sizes["textFar"] = 0x15;
+	// base data: the retail records' 27 bytes, the front picture's bank (Bulbasaur's 2, species 2 none, Mew's 3), 7 more
+	auto rec = [](std::vector<int> v, int bank) { v.resize(27); v.push_back(bank); v.resize(35, 0); return v; };
+	const std::vector<int> b1 = rec({ 1, 45, 49, 49, 45, 65, 22, 3, 45, 64, 0x55, 0x00, 0x40, 0, 0, 1, 0, 0, 0, 3, 0x01, 0, 0, 0, 0, 0, 0x04 }, 2);
+	const std::vector<int> b2 = rec({ 2, 60, 62, 63, 60, 80, 22, 22, 45, 141, 0x66, 0, 0, 0, 0, 1, 2, 0, 0, 3 }, 1);
+	const std::vector<int> b3 = rec({ 3, 100, 100, 100, 100, 100, 24, 24, 45, 64, 0x55, 0x00, 0x40, 0, 0, 1, 0, 0, 0, 3, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F }, 3);
+	key2("baseData", put2(R::cat(R::cat(b1, b2), b3)));
+	// the form, Bulbasaur's number: Grass and Crystal (9), HP 70, Bulbasaur's picture; MissingNo.'s record, number 0
+	const std::vector<int> form = rec({ 1, 70, 49, 90, 45, 65, 22, 9, 45, 64, 0x55, 0x00, 0x40, 0, 0, 1, 0, 0, 0, 3 }, 2);
+	key2("nonDexBaseData", put2(R::cat(form, rec({ 0 }, 1))));
+	key2("nonDexSpecies", put2({ 2, 4, 0xFF }));
+	b[d.rom.at("dexOrder").addr + 1] = 1;		// (internal 2: Bulbasaur's number)
+	// the Pokédex pages by number: feet, inches, pounds * 10, text_far_end to the retail page's text; categories by
+	// index (Bulbasaur's the second string)
+	const size_t x1 = r16(b, d.rom.at("dexEntryPointers").addr + 2 * (IDX - 1));
+	key2("dexEntryData", put2({ 2, 4, 150, 0, 0x15, b[x1 + 10], b[x1 + 11], b[x1 + 12], 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }));
+	key2("dexCategoryMap", put2({ 1, 0, 0 }));
+	key2("dexCategories", put2(R::cat(R::str("MOUSE"), R::str("SEED"))));
+	// the names by pointers in their table's bank
+	std::vector<int> mp, ip;
+	for (const char* n : { "POUND", "QUICK ATTACK", "EMBER" }) mp.push_back(put2(R::str(n)));
+	key2("moveNameTable", put2(R::words(mp)));
+	for (const char* n : { "MASTER BALL", "ULTRA BALL", "GREAT BALL", "POKE BALL", "HYPER BALL", "BICYCLE", "SURFBOARD", "SAFARI BALL",
+		"POKEDEX", "MOON STONE" })
+		ip.push_back(put2(R::str(n)));
+	key2("itemNameTable", put2(R::words(ip)));
+	// priority: Ember's (move 3) by the list; Quick Attack's none without the retail sizes
+	key2("priorityMoves", put2({ 3, 0xFF }));
+	// trainers in bank 1's free space, their end after them: class 1 an $FD party (moveset 1: MissingNo. Lv30, left
+	// out, then Bulbasaur Lv8 with bit 7, the set's second four moves) and an $FE one (species 3 Lv12, bit 7); class 3
+	// species 2 Lv20 (class 2 none)
+	const uint16_t set = put2({ 1, 1, 1, 1, 3, 2, 1, 0 });
+	key2("trainerMoveSets", put2(R::words({ set })));
+	const uint16_t c1 = put1({ 0xFD, 1, 30, 4, 0x88, IDX, 0, 0xFE, 0x8C, 3, 0 }), c3 = put1({ 0xFF, 20, 1, 0 });
+	p.rom["trainerGroupsEnd"] = Addr{ 1, (uint16_t)at1 };
+	p.rom["trainerGroups"] = Addr{ 1, put1(R::words({ c1, c3, c3 })) };
+	// the Old Rod's code (call FishingInit, jp c, call Random, and 1, jr z: lb bc, 10, Bulbasaur, jr, lb bc, 10, species
+	// 3); the Good Rod's lists to -1 (map 2 on the ocean list)
+	key2("oldRod", put2({ 0xCD, 0, 0, 0xDA, 0, 0, 0xCD, 0, 0, 0xE6, 0x01, 0x28, 0x05, 0x01, IDX, 10, 0x18, 0x03, 0x01, 3, 10 }));
+	key2("goodRodList", put2({ 10, 1, 10, 3, 12, IDX, 0xFF, 0xFF }));
+	key2("goodRodOcean", put2({ 15, 3, 0xFF, 0xFF }));
+	key2("oceanMaps", put2({ 2, 0xFF }));
+	// the indoor town map entries with their fifth byte (Viridian Forest's group, as the retail entry; in bank 1, with
+	// the name its pointer is to)
+	const size_t in = d.rom.at("internalMapEntries").addr;
+	p.rom["internalMapEntriesWild"] = Addr{ 1, put1({ b[in], b[in + 1], b[in + 2], b[in + 3], 1, 0xFF }) };
+	// the hidden Master Ball (map 2's) given by the function for two of an item, at 01:7F08
+	const size_t h2 = r16(b, d.rom.at("hiddenEventPointers").addr + 2);
+	b[h2 + 4] = 0x08;
+	p.rom["hiddenItems2"] = Addr{ 1, 0x7F08 };
+	CHECK(at1 < 0x7F00 && at2 < 0xC000);
+
+	std::string why;
+	auto r = readRom(rom, p, &why);
+	CHECK(r);
+	EQ(why, "");
+	if (!r) return;
+	const GbRomData& g = static_cast<const GbRomData&>(*r);
+	// the species and the form after them, Bulbasaur's: named as it, its own base data and types, its Pokédex page
+	// Bulbasaur's; internal 2 is Bulbasaur's number with form 1, MissingNo. (4) no species
+	CHECK(r->species.size() == 5 && g.national[2] == 1 && g.form[2] == 1 && g.national[4] == 0 && g.form[4] == 0 && g.form[IDX] == 0);
+	if (r->species.size() != 5) return;
+	const nds::Species& bu = r->species[1];
+	const nds::Species& f = r->species[4];
+	CHECK(bu.formsAt == 4 && bu.formCount == 2 && r->species[2].formsAt == 0 && r->species[2].formCount == 1);
+	EQ(f.name, "Bulbasaur");
+	CHECK(f.base[0] == 70 && f.base[2] == 90 && f.types[0] == nds::GRASS && f.types[1] == CRYSTAL_TYPE && bu.types[1] == nds::POISON);
+	CHECK((bu.base[0] == 45 && bu.base[4] == 65) && r->species[3].base[0] == 100 && r->species[3].types[0] == nds::PSYCHIC);
+	EQ(bu.category, "Seed");
+	CHECK(bu.height == 7 && bu.weight == 68 && f.height == 7 && f.dexText == bu.dexText);
+	EQ(bu.dexText, "A STRANGE SEED PAGE TWO.");
+	// the pictures: Bulbasaur's in the bank its base data names, the form's (its own record's), Mew's in its bank
+	auto sb = r->sprite(1), sf = r->sprite(1, false, 1), sm = r->sprite(3);
+	CHECK(sb && sb->w == 40 && sf && sf->w == 40 && sm && r->sprite(4) && !r->sprite(2));
+	// names by pointers, priority by the list
+	EQ(r->moves[2].name, "Quick Attack");
+	EQ(r->moves[3].name, "Ember");
+	CHECK((int8_t)r->moves[3].priority == 1 && r->moves[2].priority == 0 && r->moves[1].priority == 0);
+	EQ(r->items[GEN1_ONLY + 5].name, "Hyper Ball");
+	EQ(r->items[81].name, "Moon Stone");
+	// trainers: the moveset's moves, the levels' bit 7 dropped, MissingNo. left out
+	CHECK(r->trainers.count(0x0101) && r->trainers.count(0x0102) && r->trainers.count(0x0301));
+	if (r->trainers.count(0x0101) && r->trainers.count(0x0102))
+	{
+		const nds::Trainer& t1 = r->trainers.at(0x0101);
+		CHECK(t1.team.size() == 1 && t1.team[0].species == 1 && t1.team[0].level == 8 && t1.team[0].moves[0] == 3 &&
+			t1.team[0].moves[1] == 2 && t1.team[0].moves[2] == 1 && t1.team[0].moves[3] == 0);
+		const nds::Trainer& t2 = r->trainers.at(0x0102);
+		CHECK(t2.team.size() == 1 && t2.team[0].species == 3 && t2.team[0].level == 12);
+	}
+	// fishing: the Old Rod's two at half the bites each; the Good Rod's lake list at a third each on map 0 (the Super
+	// Rod's), the ocean's on map 2
+	auto count = [&](uint16_t z, nds::EncounterKind k, int pct) { int n = 0; for (const auto& e : r->zones.at(z).encounters) n += e.kind == k && e.percent == pct; return n; };
+	CHECK(count(2, nds::EncounterKind::OLD_ROD, 50) == 2 && count(0, nds::EncounterKind::OLD_ROD, 50) == 2);
+	CHECK(count(0, nds::EncounterKind::GOOD_ROD, 33) == 3 && count(2, nds::EncounterKind::GOOD_ROD, 100) == 1 && count(2, nds::EncounterKind::GOOD_ROD, 33) == 0);
+	// the places named as the retail entries name them; the three hidden items, the Master Ball by the function for two
+	EQ(r->zones.at(2).name, "Viridian Forest");
+	CHECK(g.hidden.size() == 3);
+	GameData q = p;
+	q.rom.erase("hiddenItems2");
+	auto r2 = readRom(rom, q, &why);
+	CHECK(r2 && static_cast<const GbRomData&>(*r2).hidden.size() == 2);
+	// a form's base data without its list refuses the read, and so do PureRGB's TeamMoves without its LoneMoves
+	q = p;
+	q.rom.erase("nonDexSpecies");
+	CHECK(!readRom(rom, q, &why) && why.find("nonDexSpecies") != std::string::npos);
+	q = p;
+	q.rom["teamMoveSixth"] = Addr{ 2, 0x4100 };
+	CHECK(!readRom(rom, q, &why) && why.find("loneMoveSlots") != std::string::npos);
+}
+
 // Crystal Legacy's captures (PokeDaisy's: the crystal capture's save, its README): the same trainer, party, bag and
 // place as Crystal's, its bag of 84 slots (Crystal's 20); a wild HOOTHOOT (Lv3) against CHIKORITA in its battle
 // captures, the move list, the battle menu and the battle's party menu on screen. Its data file: TM01 is item 0xC1
@@ -2719,7 +3026,7 @@ static void testForkTypes()
 	const std::vector<uint8_t> b = { 0x15, 0x14, 20, 0x15, 0x09, 5, 0x04, 0x12, 0, 0x04, 0x02, 0, 0x11, 0x08, 0, 0x13, 0x15, 5, 0xFF };
 	TypeChart c;
 	std::string why;
-	CHECK(readTypeChart(RomView{ b, 1 }, d, 0, "TypeEffects", c, &why));
+	CHECK(readTypeChart(RomView{ b, Charset::GEN1 }, d, 0, "TypeEffects", c, &why));
 	EQ(why, "");
 	GameRules g;
 	g.chart = c;
@@ -2973,8 +3280,10 @@ int main(int argc, char** argv)
 	testCaptures();
 	testGen1Captures();
 	testYellowLegacy();
+	testPureRGB();
 	testGen1RomTables();
 	testGen1LegacyLayouts();
+	testPureLayouts();
 	testDerivedFlags();
 	testGuide();
 	testCrystalLegacyGuide();

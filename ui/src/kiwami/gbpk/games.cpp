@@ -10,6 +10,7 @@
 #include "../../nds/nitro.h"
 #include "../../zip.h"
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -164,8 +165,12 @@ namespace banana::kiwami::gbpk
 		if (out.headerTitle.empty() || out.headerTitle.size() > 16) return no("has no header title");
 		for (const auto& r : v["releases"].arr)
 		{
-			Release rel{ r["sha1"].str(), r["name"].str(), r["code"].str() };
+			Release rel{ r["sha1"].str(), r["name"].str(), r["code"].str(), {}, {} };
 			if (rel.sha1.size() != 40) return no("has a release without its SHA-1");
+			// (a release's own addresses: a ROM hack's versions that disagree)
+			std::string w;
+			if (!readAddrs(r["ram"], rel.ram, true, &w) || !readAddrs(r["rom"], rel.rom, false, &w))
+				return no(w + " (release " + rel.name + ")");
 			out.releases.push_back(rel);
 		}
 		if (out.releases.empty()) return no("has no releases");
@@ -173,6 +178,18 @@ namespace banana::kiwami::gbpk
 		{
 			if (why) *why = path + ": " + *why;
 			return false;
+		}
+		// (a release's own address is one its versions disagree on: every release has it, and the game doesn't, so
+		// whichever is picked sets it)
+		for (const Release& r : out.releases)
+		{
+			auto same = [](const std::map<std::string, Addr>& a, const std::map<std::string, Addr>& b) {
+				return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](const auto& x, const auto& y) { return x.first == y.first; });
+			};
+			bool good = same(r.ram, out.releases[0].ram) && same(r.rom, out.releases[0].rom);
+			for (const auto& [k, a] : r.ram) good = good && !out.ram.count(k);
+			for (const auto& [k, a] : r.rom) good = good && !out.rom.count(k);
+			if (!good) return no("has a release whose own addresses aren't every release's and none of the game's (" + r.name + ")");
 		}
 		for (const auto& [k, n] : v["sizes"].obj) out.sizes[k] = (int)n.n;
 		// the guide's flags: each bank at a ram key, whole bytes from a byte's first bit, none over another; the
@@ -232,6 +249,9 @@ namespace banana::kiwami::gbpk
 			if (out.types[(size_t)t] == nds::NO_TYPE) return no("has a type it doesn't know (" + name.str() + ")");
 		}
 		out.romGuide = v["guide"].str() == "rom";
+		const std::string cs = v["charset"].str();
+		if (cs != "" && cs != "pure") return no("has a character set it doesn't know (" + cs + ")");
+		out.pureText = cs == "pure";
 		if (!v["dex_size"].isNull())
 		{
 			const json::Value& n = v["dex_size"];
@@ -239,6 +259,28 @@ namespace banana::kiwami::gbpk
 			out.game.dexSize = (int)n.n;
 		}
 		return true;
+	}
+
+	void pickRelease(GameData& d, int i)
+	{
+		d.release = i;
+		if (i < 0 || i >= (int)d.releases.size()) return;
+		for (const auto& [k, a] : d.releases[(size_t)i].ram) d.ram[k] = a;
+		for (const auto& [k, a] : d.releases[(size_t)i].rom) d.rom[k] = a;
+	}
+
+	int captureRelease(const GameData& d, const std::string& readme)
+	{
+		for (size_t at = readme.find("sha1 "); at != std::string::npos; at = readme.find("sha1 ", at + 1))
+		{
+			size_t n = 0;
+			while (at + 5 + n < readme.size() && isxdigit((unsigned char)readme[at + 5 + n])) n++;
+			if (n < 8) continue;
+			const std::string h = lower(readme.substr(at + 5, n));
+			for (size_t i = 0; i < d.releases.size(); i++)
+				if (d.releases[i].sha1.compare(0, h.size(), h) == 0) return (int)i;
+		}
+		return d.releases.empty() ? -1 : 0;
 	}
 
 	nds::Type typeByName(const std::string& name)
@@ -303,7 +345,7 @@ namespace banana::kiwami::gbpk
 			for (size_t i = 0; i < d.releases.size(); i++)
 				if (!rom.empty() && d.releases[i].sha1 == hash)
 				{
-					d.release = (int)i;
+					pickRelease(d, (int)i);
 					// (the file's own code: the release's, since its SHA-1 is)
 					if (rom.size() >= 0x143 && !d.releases[i].code.empty()) d.game.code.assign((const char*)rom.data() + 0x13F, 4);
 					return Match::KNOWN;

@@ -65,8 +65,9 @@ def read_list(text):
             fail('%s:%d: too short: %s' % (LIST, n, line))
         if parts[0] == 'item':
             f = line.split()
-            if len(f) not in (3, 4) or not f[2].isdigit() or not 1 <= int(f[2]) <= 65535 or f[3:] not in ([], ['ball']):
-                fail('%s:%d: an item is item <NAME> <Gen IV id> [ball]' % (LIST, n))
+            if len(f) not in (3, 4) or not f[2].isdigit() or not int(f[2]) <= 65535 or f[3:] not in ([], ['ball']) or \
+                    (int(f[2]) == 0 and f[3:] != ['ball']):
+                fail('%s:%d: an item is item <NAME> <Gen IV id> [ball] (0: a ball Gen IV hasn\'t)' % (LIST, n))
             out.append((n, None, 'item', f[1], [int(f[2]), f[3:] == ['ball']]))
             continue
         games = parts[0].split(',')
@@ -127,7 +128,8 @@ class Consts:
     the older ROM hacks build with, NAME EQU value and NAME = value, SET as =, without DEF), a name with a number
     in it ({02d:NAME}), the const macros of macros/const.asm (const_def, const, const_skip, const_next, shift_const), a structure's offsets
     (rsreset, rsset, NAME rb/rw/rl [count], _RS)
-    and the file's own MACROs (MACRO name, or name: MACRO before rgbds 0.6). An ASSERT, which defines nothing, is passed over. Anything else stops the run, so a
+    and the file's own MACROs (MACRO name, or name: MACRO before rgbds 0.6). An ASSERT, which defines nothing, is passed over,
+    and a string's EQUS is set aside as below. Anything else stops the run, so a
     value is never computed from a line that wasn't understood. A DEF whose expression names a symbol the file
     doesn't define (one from hardware.inc, which it doesn't read, or a move's id in an item's alias) is set aside:
     asking for that name stops the run with the reason, any other line using it too. So is a DEF whose name is made
@@ -160,7 +162,7 @@ class Consts:
             elif bn:
                 out.append(str(int(bn[1:], 2)))
             elif dec:
-                out.append(dec)
+                out.append(str(int(dec)))     # (05 is 5 to rgbds; Python refuses the leading 0)
             elif ident:
                 if ident not in self.v:
                     raise Consts.Undefined('%s: %s isn\'t defined' % (where, self.unknown.get(ident, ident)))
@@ -196,6 +198,12 @@ class Consts:
                 self.macros[m.group(1)] = '\n'.join(body)
                 continue
             if re.match(r'ASSERT\b', line):
+                continue
+            # (a string equate defines no number: set aside, as a DEF it can't evaluate)
+            m = re.match(r'(?:(?:RE)?DEF\s+)?(\w+)\s+EQUS\b', line)
+            if m:
+                self.v.pop(m.group(1), None)
+                self.unknown[m.group(1)] = '%s (a string)' % m.group(1)
                 continue
             # (a symbol's name made with a number: {02d:HM_VALUE} is HM_VALUE's, two digits)
             try:
@@ -364,7 +372,9 @@ def read_patches():
 
 def build(pret, lines):
     games = {}
-    # the releases first: they say which repository and symbol files a game's values come from
+    # the releases first: they say which repository and symbol files a game's values come from. A ROM hack's builds
+    # may be in several folders (one checkout a version, each at its tag): its constants must agree in all of them,
+    # and an address its versions disagree on is each release's own (below)
     for n, gs, kind, key, a in lines:
         if kind not in ('release', 'build'):
             continue
@@ -372,8 +382,12 @@ def build(pret, lines):
             fail('%s:%d: a release names one game' % (LIST, n))
         repo, bld, name = a[0], a[1], a[-1]
         g = games.setdefault(gs[0], {'repo': repo, 'releases': [], 'ram': {}, 'rom': {}, 'const': {}})
-        if g['repo'] != repo:
+        if g.setdefault('kind', kind) != kind:
+            fail('%s:%d: %s has release and build lines' % (LIST, n, gs[0]))
+        if g['repo'] != repo and kind != 'build':
             fail('%s:%d: %s\'s releases are in two repositories' % (LIST, n, gs[0]))
+        if repo not in g.setdefault('folders', []):
+            g['folders'].append(repo)
         if kind == 'build':
             # a ROM hack built by the user at its release's tag: the build must be the release (its SHA-1 the line's;
             # the hack's own roms.sha1 is pret's, left over), its header read from its bytes
@@ -425,12 +439,16 @@ def build(pret, lines):
         g['releases'].append({'hack': True, 'name': a[1], 'sha1': a[0]})
     consts = {}
 
-    def constants(g, f):
-        ck = (g['repo'], f)
+    def constants(g, f, repo=None):
+        # (f may be several files joined by +, read in that order as the game INCLUDEs them: a file that names
+        # another's constants, as PureRGB's pokemon_data_constants.asm does battle_constants.asm's NUM_STATS)
+        ck = (repo or g['repo'], f)
         if ck not in consts:
             c = Consts('%s/%s' % ck)
             try:
-                c.run(pret.read(g['repo'], f))
+                for part in f.split('+'):
+                    c.name = '%s/%s' % (ck[0], part)
+                    c.run(pret.read(ck[0], part))
             except Consts.Undefined as e:
                 fail(str(e))
             consts[ck] = c
@@ -447,35 +465,46 @@ def build(pret, lines):
                 fail('%s:%d: %s %s.%s given twice' % (LIST, n, game, kind, key))
             if kind == 'const':
                 f, name = a
-                ck = (g['repo'], f)
-                constants(g, f)
-                if name in consts[ck].unknown:
-                    fail('%s:%d: %s/%s: %s' % (LIST, n, g['repo'], f, consts[ck].unknown[name]))
-                if name not in consts[ck].v:
-                    fail('%s:%d: %s isn\'t in %s/%s' % (LIST, n, name, g['repo'], f))
-                g['const'][key] = {'value': consts[ck].v[name], 'symbol': name, 'file': f}
+                values = set()
+                for repo in g['folders']:
+                    c = constants(g, f, repo)
+                    if name in c.unknown:
+                        fail('%s:%d: %s/%s: %s' % (LIST, n, repo, f, c.unknown[name]))
+                    if name not in c.v:
+                        fail('%s:%d: %s isn\'t in %s/%s' % (LIST, n, name, repo, f))
+                    values.add(c.v[name])
+                if len(values) != 1:
+                    fail('%s:%d: %s\'s versions disagree on %s: %s' % (LIST, n, game, name, ', '.join(map(str, sorted(values)))))
+                g['const'][key] = {'value': values.pop(), 'symbol': name, 'file': f}
                 continue
-            found = set()
+            found = {}
             for rel, syms in zip([r for r in g['releases'] if not r.get('hack')], g['syms']):
                 if a[0] not in syms:
                     fail('%s:%d: %s isn\'t in %s.sym' % (LIST, n, a[0], rel['build']))
-                found.add(syms[a[0]])
-            if len(found) != 1:
+                found.setdefault(syms[a[0]], []).append(rel)
+            # (a ROM hack's versions, each rebuilt, may each have the table elsewhere: each release's own value then;
+            # pret's releases must agree)
+            if len(found) != 1 and g['kind'] != 'build':
                 fail('%s:%d: %s\'s releases disagree on %s: %s' % (LIST, n, game, a[0],
                      ', '.join('%02X:%04X' % b for b in sorted(found))))
-            bank, addr = found.pop()
-            if kind == 'ram':
-                if not (0xC000 <= addr <= 0xDFFF or 0xFF80 <= addr <= 0xFFFE):
-                    fail('%s:%d: %s at %04X isn\'t in WRAM or HRAM' % (LIST, n, a[0], addr))
-                # (Gen I's symbols give D000-DFFF bank 0, the Game Boy having no other: the bank the cores map there)
-                bank = max(bank, 1) if 0xD000 <= addr <= 0xDFFF else 0
-            elif addr >= 0x8000:
-                fail('%s:%d: %s at %04X isn\'t in the ROM' % (LIST, n, a[0], addr))
-            g[kind][key] = {'bank': bank, 'addr': hexaddr(addr), 'symbol': a[0]}
+            for (bank, addr), rels in found.items():
+                if kind == 'ram':
+                    if not (0xC000 <= addr <= 0xDFFF or 0xFF80 <= addr <= 0xFFFE):
+                        fail('%s:%d: %s at %04X isn\'t in WRAM or HRAM' % (LIST, n, a[0], addr))
+                    # (Gen I's symbols give D000-DFFF bank 0, the Game Boy having no other: the bank the cores map there)
+                    bank = max(bank, 1) if 0xD000 <= addr <= 0xDFFF else 0
+                elif addr >= 0x8000:
+                    fail('%s:%d: %s at %04X isn\'t in the ROM' % (LIST, n, a[0], addr))
+                v = {'bank': bank, 'addr': hexaddr(addr), 'symbol': a[0]}
+                if len(found) == 1:
+                    g[kind][key] = v
+                else:
+                    for rel in rels:
+                        rel.setdefault(kind, {})[key] = v
     tables(pret, lines, games, constants)
+    used = sorted({r for g in games.values() for r in g['folders']})
     for g in games.values():
-        del g['syms']
-    used = sorted({g['repo'] for g in games.values()})
+        del g['syms'], g['folders'], g['kind']
     return {'schema': 1, 'kind': 'gb-pokemon-pret', 'games': games,
             'repos': {r: pret.repos[r] for r in used}}
 
@@ -498,49 +527,14 @@ def tables(pret, lines, games, constants):
                 files = g.setdefault('files', {})
                 if kind != 'split' and kind in files:
                     fail('%s:%d: %s\'s %s given twice' % (LIST, n, game, kind))
-                if kind == 'items':
-                    # (by the const macro's names only: pokecrystal's SAFARI_BALL is a DEF of MOON_STONE's id)
-                    c = constants(g, a[0])
-                    g['items'], g['balls'], taken = {}, [], {}
-                    for ln, name, (gen4, ball) in items:
-                        if name not in c.consts:
-                            continue
-                        i = c.consts[name]
-                        if not 1 <= i <= 255 or i in taken:
-                            fail('%s:%d: %s\'s %s is id %d (%s)' % (LIST, ln, game, name, i, taken.get(i, 'not an item\'s')))
-                        taken[i] = name
-                        g['items'][name] = [i, gen4]
-                        if ball:
-                            g['balls'].append(i)
-                        found.add(name)
-                    g['balls'].sort()
-                elif kind == 'types':
-                    c = constants(g, a[0])
-                    if 'SPECIAL' not in c.v:
-                        fail('%s:%d: %s/%s has no SPECIAL' % (LIST, n, g['repo'], a[0]))
-                    g['types'], g['special'] = {}, []
-                    for name, i in c.consts.items():
-                        if name in NOT_TYPES:
-                            continue
-                        if name not in TYPE_NAMES:
-                            fail('%s:%d: %s/%s: %s isn\'t a type the fork knows' % (LIST, n, g['repo'], a[0], name))
-                        g['types'][str(i)] = TYPE_NAMES[name]
-                        if i >= c.v['SPECIAL']:
-                            g['special'].append(i)
-                elif kind == 'keyitems':
-                    if 'items' not in files:
-                        fail('%s:%d: %s\'s key items before its items line' % (LIST, n, game))
-                    names = {i: k for k, i in constants(g, files['items']).consts.items()}
-                    text = pret.read(g['repo'], a[0])
-                    flags = re.findall(r'^\s*dbit\s+(TRUE|FALSE)\s*;\s*(\w+)', text, re.M)
-                    if not flags:
-                        fail('%s:%d: no dbit lines in %s/%s' % (LIST, n, g['repo'], a[0]))
-                    g['key_items'] = []
-                    for i, (on, name) in enumerate(flags, 1):
-                        if names.get(i) != name:
-                            fail('%s:%d: %s/%s: item %d is %s, not %s' % (LIST, n, g['repo'], a[0], i, names.get(i), name))
-                        if on == 'TRUE':
-                            g['key_items'].append(i)
+                if kind in ('items', 'types', 'keyitems'):
+                    # (a ROM hack's versions in several folders: each folder's table, which must be the same)
+                    got = [table(pret, g, game, kind, n, a[0], files, items, constants, repo) for repo in g['folders']]
+                    if any(x != got[0] for x in got):
+                        fail('%s:%d: %s\'s versions disagree on its %s (%s)' % (LIST, n, game, kind, ', '.join(g['folders'])))
+                    g.update(got[0])
+                    if kind == 'items':
+                        found.update(got[0]['items'])
                 else:   # split
                     if 'types' not in files:
                         fail('%s:%d: %s\'s split before its types line' % (LIST, n, game))
@@ -559,6 +553,54 @@ def tables(pret, lines, games, constants):
     for ln, name, a in items:
         if name not in found:
             fail('%s:%d: item %s is in no game\'s item constants' % (LIST, ln, name))
+
+
+def table(pret, g, game, kind, n, f, files, items, constants, repo):
+    """An items, types or keyitems line's table for a game, from the constants in one of its folders."""
+    out = {}
+    if kind == 'items':
+        # (by the const macro's names only: pokecrystal's SAFARI_BALL is a DEF of MOON_STONE's id)
+        c = constants(g, f, repo)
+        out['items'], out['balls'], taken = {}, [], {}
+        for ln, name, (gen4, ball) in items:
+            if name not in c.consts:
+                continue
+            i = c.consts[name]
+            if not 1 <= i <= 255 or i in taken:
+                fail('%s:%d: %s\'s %s is id %d (%s)' % (LIST, ln, game, name, i, taken.get(i, 'not an item\'s')))
+            taken[i] = name
+            out['items'][name] = [i, gen4]
+            if ball:
+                out['balls'].append(i)
+        out['balls'].sort()
+    elif kind == 'types':
+        c = constants(g, f, repo)
+        if 'SPECIAL' not in c.v:
+            fail('%s:%d: %s/%s has no SPECIAL' % (LIST, n, repo, f))
+        out['types'], out['special'] = {}, []
+        for name, i in c.consts.items():
+            if name in NOT_TYPES:
+                continue
+            if name not in TYPE_NAMES:
+                fail('%s:%d: %s/%s: %s isn\'t a type the fork knows' % (LIST, n, repo, f, name))
+            out['types'][str(i)] = TYPE_NAMES[name]
+            if i >= c.v['SPECIAL']:
+                out['special'].append(i)
+    else:   # keyitems
+        if 'items' not in files:
+            fail('%s:%d: %s\'s key items before its items line' % (LIST, n, game))
+        names = {i: k for k, i in constants(g, files['items'], repo).consts.items()}
+        text = pret.read(repo, f)
+        flags = re.findall(r'^\s*dbit\s+(TRUE|FALSE)\s*;\s*(\w+)', text, re.M)
+        if not flags:
+            fail('%s:%d: no dbit lines in %s/%s' % (LIST, n, repo, f))
+        out['key_items'] = []
+        for i, (on, name) in enumerate(flags, 1):
+            if names.get(i) != name:
+                fail('%s:%d: %s/%s: item %d is %s, not %s' % (LIST, n, repo, f, i, names.get(i), name))
+            if on == 'TRUE':
+                out['key_items'].append(i)
+    return out
 
 
 # --- SOURCES ---
@@ -665,7 +707,10 @@ def main(argv):
                                             (ids[0] in g.get('special', [])) == (a[1] == 'special'))
                 else:
                     v = g.get(kind, {}).get(key)
-                    ok = v is not None and v.get('symbol') == a[-1]
+                    # (or each release's own, where a ROM hack's versions disagree)
+                    own = [r.get(kind, {}).get(key) for r in g['releases'] if not r.get('hack')]
+                    ok = (v is not None and v.get('symbol') == a[-1]) or (
+                        v is None and all(x is not None and x.get('symbol') == a[-1] for x in own))
                 if not ok:
                     fail('%s:%d: no answer in %s' % (LIST, ln, OUT))
                 values += 1

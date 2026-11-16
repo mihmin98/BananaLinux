@@ -1,10 +1,13 @@
 // banana-ui (kiwami): the Game Boy Pokémon games' English character set (text.h). Generation II's, as pret's
-// pokecrystal and pokegold define it (constants/charmap.asm: the games' own table), and where Generation I's differs,
-// as pokered and pokeyellow define it.
+// pokecrystal and pokegold define it (constants/charmap.asm: the games' own table), where Generation I's differs, as
+// pokered and pokeyellow define it, and where PureRGB's differs from that, as its constants/charmap.asm (v2.7.7)
+// defines it (PokeDaisy's Gen1Charset.PURE has the same).
 // Copyright (C) 2026 Lidor Itzhari (PokeDaisy) and the kiwami fork's contributors. GNU GPL version 3 with PokeDaisy's
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "text.h"
+#include <algorithm>
+#include <cstdio>
 
 namespace banana::kiwami::gbpk
 {
@@ -57,16 +60,96 @@ namespace banana::kiwami::gbpk
 			if (b == 0x49) return " ";
 			return nullptr;
 		}
+		// PureRGB's own over Gen I's: one-byte words at 33-47 and 4D (home/text.asm expands them: "<opponent>" and
+		// "<user>" are the words), a page break that waits on more buttons (<BAGE>, 48) as a space, its ellipsis of three
+		// dots, PC, TM, TRAINER and ROCKET at 5B-5E, the middle dot, curly quotes where the brackets were, an arrow, a
+		// plus and a percent sign; nullptr where it's Gen I's
+		const char* pure(uint8_t b)
+		{
+			static const char* const WORDS[21] = { "like", "an", "You", "er", "with", "at", "ight", "have", " a ", "here",
+				"to ", " to", "or", "ing", "the", "you", "opponent", "user", "POKéMON", "TRAINER TIPS", "TEAM " };
+			if (b >= 0x33 && b <= 0x47) return WORDS[b - 0x33];
+			switch (b)
+			{
+			case 0x48: return " ";
+			case 0x4D: return "is";
+			case 0x56: return "...";
+			case 0x5B: return "PC";
+			case 0x5C: return "TM";
+			case 0x5D: return "TRAINER";
+			case 0x5E: return "ROCKET";
+			case 0x74: return "·";
+			case 0x9E: return "“";
+			case 0x9F: return "”";
+			case 0xE9: return "→";
+			case 0xEA: return "+";
+			case 0xEB: return "%";
+			default: return nullptr;
+			}
+		}
 	}
 
-	std::string decode(int gen, const uint8_t* p, size_t max)
+	std::string decode(Charset cs, const uint8_t* p, size_t max)
 	{
 		std::string out;
 		for (size_t i = 0; p && i < max && p[i] != 0x50; i++)
 		{
-			const char* g1 = gen == 1 ? gen1(p[i]) : nullptr;
-			out += g1 ? g1 : p[i] >= 0x80 ? HIGH[p[i] - 0x80] : low(p[i]);
+			const char* own = cs == Charset::PURE ? pure(p[i]) : nullptr;
+			const char* g1 = !own && cs != Charset::GEN2 ? gen1(p[i]) : nullptr;
+			out += own ? own : g1 ? g1 : p[i] >= 0x80 ? HIGH[p[i] - 0x80] : low(p[i]);
 		}
+		return out;
+	}
+
+	namespace
+	{
+		const int DICT_END = 0x60;			// (PlaceNextChar's cp $60: from it the bytes are characters)
+		const int DICT_DEPTH = 4, WORD_MAX = 64;
+		const uint8_t BSP = 0x1F, TERMINATOR = 0x50;
+		enum { DICT_WORD = 0, DICT_ROUTINE = 1 };
+		// the routines a byte of Crystal's control characters stands for that decode as the character set has them:
+		// the line and page breaks and the word break (pokecrystal's constants/charmap.asm)
+		bool knownRoutine(uint8_t b) { return b == 0x22 || b == 0x25 || b == 0x4E || b == 0x4F || b == 0x51 || b == 0x55; }
+
+		// p's bytes up to max or the terminator, the dictionary's words expanded (depth: how deep in words); false
+		// when an unknown routine stopped it
+		bool packed(Charset cs, const uint8_t* p, size_t max, const TextDict& dict, int depth, std::string& out)
+		{
+			for (size_t i = 0; p && i < max && p[i] != TERMINATOR; i++)
+			{
+				const uint8_t c = p[i];
+				const size_t e = c >= dict.first ? dict.table + 3 * (size_t)(c - dict.first) : dict.size;
+				if (c >= DICT_END || c == BSP || e + 3 > dict.size)
+				{
+					out += decode(cs, &p[i], 1);
+					continue;
+				}
+				const uint8_t kind = dict.rom[e];
+				const uint16_t to = (uint16_t)(dict.rom[e + 1] | dict.rom[e + 2] << 8);
+				if (kind == DICT_WORD && to < 0x4000 && to < dict.size && depth < DICT_DEPTH)
+				{
+					if (!packed(cs, dict.rom + to, std::min<size_t>(WORD_MAX, dict.size - to), dict, depth + 1, out)) return false;
+				}
+				else if ((kind == DICT_WORD && to >= 0x4000) || (kind == DICT_ROUTINE && knownRoutine(c)))
+					out += decode(cs, &p[i], 1);
+				else
+				{
+					static bool logged = false;
+					if (!logged)
+						fprintf(stderr, "banana-ui: gb companion: text: unknown routine for 0x%02X, the text stops there\n", c);
+					logged = true;
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+
+	std::string decode(Charset cs, const uint8_t* p, size_t max, const TextDict& dict)
+	{
+		std::string out;
+		if (!dict.rom || dict.first < 1 || dict.first >= DICT_END) return decode(cs, p, max);
+		packed(cs, p, max, dict, 0, out);
 		return out;
 	}
 

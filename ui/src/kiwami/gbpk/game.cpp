@@ -6,10 +6,12 @@
 #include "panel.h"
 #include "../../settings.h"
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <fcntl.h>
 #include <fstream>
 #include <iterator>
+#include <map>
 #include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -36,6 +38,25 @@ namespace banana::kiwami::gbpk
 			}
 			return "";
 		}
+
+		// the games the ROM's header names, their data files loaded (one that doesn't load: logged, left out)
+		std::vector<GameData> candidates(const std::string& rom)
+		{
+			const std::vector<uint8_t> header = readRomFile(rom, 0x150);
+			std::vector<std::string> keys;
+			std::string why;
+			if (detect(header.data(), header.size(), keys) != Match::KNOWN) return {};
+			std::vector<GameData> ds = loadGames(keys, &why);
+			if (!why.empty()) fprintf(stderr, "banana-ui: gb companion: no data file: %s\n", why.c_str());
+			return ds;
+		}
+		// "Crystal", or "Crystal (or Crystal Legacy, Crystal Clear)" till the SHA-1 picks one
+		std::string titles(const std::vector<GameData>& ds)
+		{
+			std::string t = ds.empty() ? "" : ds[0].game.title;
+			for (size_t i = 1; i < ds.size(); i++) t += (i == 1 ? " (or " : ", ") + ds[i].game.title;
+			return ds.size() > 1 ? t + ")" : t;
+		}
 	}
 
 	void Game::open(bool panel, const std::string& system, const std::string& rom, const std::string& settingsConf, bool taken,
@@ -44,11 +65,8 @@ namespace banana::kiwami::gbpk
 		close();
 		if (!panel || (system != "gb" && system != "gbc") || taken) return;
 		if (confValue(settingsConf, "kiwami_pokemon_companion_" + system) != "on") return;
-		const std::vector<uint8_t> header = readRomFile(rom, 0x150);
-		std::string key, why;
-		if (detect(header.data(), header.size(), key) != Match::KNOWN) return;
-		GameData d;
-		if (!loadData(key, d, &why)) { fprintf(stderr, "banana-ui: gb companion: no data file: %s\n", why.c_str()); return; }
+		std::vector<GameData> ds = candidates(rom);
+		if (ds.empty()) return;
 		// RetroArch's stdout, held open both ways as upstream holds it
 		if (outFd < 0)
 		{
@@ -57,9 +75,9 @@ namespace banana::kiwami::gbpk
 			if (outFd < 0) { fprintf(stderr, "banana-ui: gb companion: no pipe for RetroArch's replies\n"); return; }
 		}
 		known = true;
-		data = d;
+		games = std::move(ds);
 		romPath = rom;
-		fprintf(stderr, "banana-ui: gb companion: %s\n", data.game.title.c_str());
+		fprintf(stderr, "banana-ui: gb companion: %s\n", titles(games).c_str());
 	}
 
 	void Game::attach(int outFd, const std::string& dataDir)
@@ -67,7 +85,7 @@ namespace banana::kiwami::gbpk
 		if (!known || outFd < 0) return;
 		mkdir((dataDir + "/cache").c_str(), 0755);
 		mkdir((dataDir + "/cache/gb-companion").c_str(), 0755);
-		host = std::make_unique<Host>(data, romPath, reader, dataDir + "/cache/gb-companion",
+		host = std::make_unique<Host>(games, romPath, reader, dataDir + "/cache/gb-companion",
 			confValue(dataDir + "/settings.conf", "gba_challenge") == "on", standIn);	// (upstream's Challenge mode row)
 		PanelSwitch::pending(host.get());
 	}
@@ -102,7 +120,7 @@ namespace banana::kiwami::gbpk
 		host.reset();
 		reader.close();
 		known = false;
-		data = GameData();
+		games.clear();
 		romPath.clear();
 	}
 
@@ -117,6 +135,8 @@ namespace banana::kiwami::gbpk
 		{
 			std::shared_ptr<const nds::Sprite> sprite(uint16_t, bool, uint8_t) const override { return nullptr; }
 		};
+		// the stand-ins' species given types of their own (gbtypes), by species; the others are Normal
+		std::map<uint16_t, std::array<nds::Type, 2>> standInTypes;
 		std::shared_ptr<const nds::RomData> makeStandIn(const GameData& d)
 		{
 			auto r = std::make_shared<StandIn>();
@@ -129,6 +149,7 @@ namespace banana::kiwami::gbpk
 				std::fill(std::begin(sp.base), std::end(sp.base), 50);
 				sp.catchRate = 45;
 				sp.genderRatio = d.gen == 1 ? 255 : 127;	// (no genders in Gen I: 255, none, draws no sign)
+				if (auto t = standInTypes.find((uint16_t)s); t != standInTypes.end()) { sp.types[0] = t->second[0]; sp.types[1] = t->second[1]; }
 			}
 			r->moves.resize(252);
 			for (size_t m = 1; m < r->moves.size(); m++) { r->moves[m].name = "Move " + std::to_string(m); r->moves[m].power = 40; r->moves[m].pp = 35; r->moves[m].accuracy = 100; }
@@ -198,29 +219,55 @@ namespace banana::kiwami::gbpk
 			std::getline(cs >> std::ws, rom);
 			s.gbaRelease();
 			g.close();
-			// the game: the ROM's header when one is given, else the fixture's folder name (crystal_battle: crystal)
-			std::string key = dir.substr(dir.find_last_of('/') + 1), why;
-			key = key.substr(0, key.find('_'));
-			bool ok = true;
+			// the game: the ROM's header when one is given (every game it names, as open), else the fixture's folder
+			// name (crystal_battle: crystal)
 			if (!rom.empty())
 			{
-				const std::vector<uint8_t> h = readRomFile(rom, 0x150);
-				ok = detect(h.data(), h.size(), key) == Match::KNOWN;
+				g.games = candidates(rom);
+				if (!g.games.empty()) fprintf(stderr, "banana-ui: gb companion: %s\n", titles(g.games).c_str());
 			}
-			if (ok && !loadData(key, g.data, &why)) { fprintf(stderr, "banana-ui: gbpanel: %s\n", why.c_str()); ok = false; }
+			else
+			{
+				// (the capture's release by its README, a ROM hack's versions having addresses of their own)
+				GameData d;
+				std::string why;
+				if (loadData(fixtureKey(dir.substr(dir.find_last_of('/') + 1)), d, &why))
+				{
+					std::ifstream rf(dir + "/README.txt");
+					pickRelease(d, captureRelease(d, std::string(std::istreambuf_iterator<char>(rf), std::istreambuf_iterator<char>())));
+					g.games = { d };
+				}
+				else fprintf(stderr, "banana-ui: gbpanel: %s\n", why.c_str());
+			}
+			const bool ok = !g.games.empty();
 			if (ok)
 			{
 				g.known = true;
 				g.romPath = rom;
-				g.standIn = rom.empty() ? makeStandIn(g.data) : nullptr;
+				g.standIn = rom.empty() ? makeStandIn(g.games[0]) : nullptr;
 				mkdir((out + "gb-state").c_str(), 0755);
-				g.host = std::make_unique<Host>(g.data, rom, g.reader, out + "gb-state", false, g.standIn);
+				g.host = std::make_unique<Host>(g.games, rom, g.reader, out + "gb-state", false, g.standIn);
 				PanelSwitch::pending(g.host.get());
 			}
 			s.gameOpen("Pokemon Test", "Game Boy Color", scr, true);
 			s.gbaAttach(nullptr);
 			fprintf(stderr, "banana-ui: gbpanel %s%s%s: companion %s\n", dir.c_str(), rom.empty() ? "" : " ", rom.c_str(),
-				ok ? g.data.game.title.c_str() : "none");
+				ok ? g.games[0].game.title.c_str() : "none");
+			return true;
+		}
+		if (op == "gbtypes")
+		{
+			int species = 0;
+			std::string a, b;
+			cs >> species >> a >> b;
+			const nds::Type t1 = typeByName(a), t2 = b.empty() ? t1 : typeByName(b);
+			if (species < 1 || species > 1023 || t1 == nds::NO_TYPE || t2 == nds::NO_TYPE)
+			{
+				fprintf(stderr, "banana-ui: gbtypes %d %s %s: not a species and its types\n", species, a.c_str(), b.c_str());
+				return true;
+			}
+			standInTypes[(uint16_t)species] = { t1, t2 };
+			fprintf(stderr, "banana-ui: gbtypes %d: %s %s\n", species, a.c_str(), b.empty() ? a.c_str() : b.c_str());
 			return true;
 		}
 		if (op == "gbfeed")

@@ -10,6 +10,7 @@
 #include "../../nds/nitro.h"
 #include "../../zip.h"
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -46,8 +47,11 @@ namespace banana::kiwami::gbpk
 			return best;
 		}
 
+		// (the retail games first: a title they share with a hack names them first)
 		const struct { const char* key; nds::GameId id; } GAMES[] = {
 			{ "red", RED }, { "blue", BLUE }, { "yellow", YELLOW }, { "gold", GOLD }, { "silver", SILVER }, { "crystal", CRYSTAL },
+			{ "crystal-legacy", CRYSTAL_LEGACY }, { "yellow-legacy", YELLOW_LEGACY }, { "purered", PURERED },
+			{ "pureblue", PUREBLUE }, { "puregreen", PUREGREEN }, { "crystal-clear", CRYSTAL_CLEAR },
 		};
 
 		bool readText(const std::string& path, std::string& out)
@@ -80,7 +84,7 @@ namespace banana::kiwami::gbpk
 			return true;
 		}
 
-		// the six games' header titles, from the data files there are (read once a folder; a copy, for any thread),
+		// the games' header titles, from the data files there are (read once a folder; a copy, for any thread),
 		// and whether a game code follows the title (the Game Boy Color games' releases have one)
 		struct Title { std::string title, key; bool coded = false; };
 		struct Index { std::string dir; std::vector<Title> titles; };
@@ -149,7 +153,7 @@ namespace banana::kiwami::gbpk
 		std::string path = dataDir() + "/" + key + ".ram.json", text;
 		json::Value v;
 		auto no = [&](const std::string& w) { if (why) *why = path + ": " + w; return false; };
-		if (!id) return no("not one of the six games");
+		if (!id) return no("not one of the games");
 		if (!readText(path, text)) return no("can't be read");
 		if (!json::parse(text, v)) return no("isn't JSON");
 		if (v["kind"].str() != "gb-pokemon-ram" || v["schema"].n != 1) return no("isn't a schema 1 gb-pokemon-ram file");
@@ -161,8 +165,12 @@ namespace banana::kiwami::gbpk
 		if (out.headerTitle.empty() || out.headerTitle.size() > 16) return no("has no header title");
 		for (const auto& r : v["releases"].arr)
 		{
-			Release rel{ r["sha1"].str(), r["name"].str(), r["code"].str() };
+			Release rel{ r["sha1"].str(), r["name"].str(), r["code"].str(), {}, {} };
 			if (rel.sha1.size() != 40) return no("has a release without its SHA-1");
+			// (a release's own addresses: a ROM hack's versions that disagree)
+			std::string w;
+			if (!readAddrs(r["ram"], rel.ram, true, &w) || !readAddrs(r["rom"], rel.rom, false, &w))
+				return no(w + " (release " + rel.name + ")");
 			out.releases.push_back(rel);
 		}
 		if (out.releases.empty()) return no("has no releases");
@@ -170,6 +178,18 @@ namespace banana::kiwami::gbpk
 		{
 			if (why) *why = path + ": " + *why;
 			return false;
+		}
+		// (a release's own address is one its versions disagree on: every release has it, and the game doesn't, so
+		// whichever is picked sets it)
+		for (const Release& r : out.releases)
+		{
+			auto same = [](const std::map<std::string, Addr>& a, const std::map<std::string, Addr>& b) {
+				return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](const auto& x, const auto& y) { return x.first == y.first; });
+			};
+			bool good = same(r.ram, out.releases[0].ram) && same(r.rom, out.releases[0].rom);
+			for (const auto& [k, a] : r.ram) good = good && !out.ram.count(k);
+			for (const auto& [k, a] : r.rom) good = good && !out.rom.count(k);
+			if (!good) return no("has a release whose own addresses aren't every release's and none of the game's (" + r.name + ")");
 		}
 		for (const auto& [k, n] : v["sizes"].obj) out.sizes[k] = (int)n.n;
 		// the guide's flags: each bank at a ram key, whole bytes from a byte's first bit, none over another; the
@@ -204,38 +224,154 @@ namespace banana::kiwami::gbpk
 		out.game.gen = out.gen == 1 ? GEN_I : GEN_II;
 		out.game.title = v["title"].str();
 		out.game.dexSize = out.gen == 1 ? 151 : 251;
+		// the items ([id, Gen IV id] pairs), balls, key items, types ({ "id": "name" }) and split
+		auto byte = [](const json::Value& x) { return x.type == json::Value::NUM && x.n >= 0 && x.n <= 255 && x.n == (int)x.n; };
+		if (v["items"].type != json::Value::ARR || v["types"].type != json::Value::OBJ) return no("has no items or no types");
+		for (const auto& e : v["items"].arr)
+		{
+			if (e.size() != 2 || !byte(e[0]) || e[0].n < 1 || e[1].type != json::Value::NUM || e[1].n < 1 || e[1].n > 65535)
+				return no("has an item it can't read");
+			out.items[(uint8_t)e[0].n] = (uint16_t)e[1].n;
+		}
+		auto ids = [&](const char* k, auto put) {
+			for (const auto& e : v[k].arr) { if (!byte(e)) return false; put((uint8_t)e.n); }
+			return v[k].isNull() || v[k].type == json::Value::ARR;
+		};
+		if (!ids("balls", [&](uint8_t i) { out.balls.insert(i); }) || !ids("key_items", [&](uint8_t i) { out.keyItems.insert(i); }) ||
+			!ids("special", [&](uint8_t i) { out.special.set(i); }) || !ids("split_stats", [&](uint8_t i) { out.splitStats.set(i); }))
+			return no("has a list of ids it can't read");
+		for (const auto& [k, name] : v["types"].obj)
+		{
+			char* end = nullptr;
+			const long t = strtol(k.c_str(), &end, 10);
+			if (k.empty() || *end || t < 0 || t > 255) return no("has a type id it can't read (" + k + ")");
+			out.types[(size_t)t] = typeByName(name.str());
+			if (out.types[(size_t)t] == nds::NO_TYPE) return no("has a type it doesn't know (" + name.str() + ")");
+		}
+		const std::string gd = v["guide"].str();
+		if (gd != "" && gd != "rom" && gd != "rom-regions") return no("has a guide it doesn't know (" + gd + ")");
+		out.romGuide = gd != "";
+		out.guideRegions = gd == "rom-regions";
+		const std::string gl = v["guide_levels"].str();
+		if (gl != "" && gl != "rom") return no("has guide levels it doesn't know (" + gl + ")");
+		out.romLevels = gl == "rom";
+		const std::string cs = v["charset"].str();
+		if (cs != "" && cs != "pure") return no("has a character set it doesn't know (" + cs + ")");
+		out.pureText = cs == "pure";
+		if (!v["dex_size"].isNull())
+		{
+			const json::Value& n = v["dex_size"];
+			if (n.type != json::Value::NUM || n.n < 1 || n.n > 1023 || n.n != (int)n.n) return no("has a dex_size it can't use");
+			out.game.dexSize = (int)n.n;
+		}
 		return true;
 	}
 
-	Match detect(const uint8_t* header, size_t n, std::string& key)
+	void pickRelease(GameData& d, int i)
 	{
-		key.clear();
+		d.release = i;
+		if (i < 0 || i >= (int)d.releases.size()) return;
+		for (const auto& [k, a] : d.releases[(size_t)i].ram) d.ram[k] = a;
+		for (const auto& [k, a] : d.releases[(size_t)i].rom) d.rom[k] = a;
+	}
+
+	int captureRelease(const GameData& d, const std::string& readme)
+	{
+		for (size_t at = readme.find("sha1 "); at != std::string::npos; at = readme.find("sha1 ", at + 1))
+		{
+			size_t n = 0;
+			while (at + 5 + n < readme.size() && isxdigit((unsigned char)readme[at + 5 + n])) n++;
+			if (n < 8) continue;
+			const std::string h = lower(readme.substr(at + 5, n));
+			for (size_t i = 0; i < d.releases.size(); i++)
+				if (d.releases[i].sha1.compare(0, h.size(), h) == 0) return (int)i;
+		}
+		return d.releases.empty() ? -1 : 0;
+	}
+
+	nds::Type typeByName(const std::string& name)
+	{
+		static const char* const NAMES[] = { "normal", "fighting", "flying", "poison", "ground", "rock", "bug", "ghost",
+			"steel", "fire", "water", "grass", "electric", "psychic", "ice", "dragon", "dark" };	// (nds::Type's order)
+		// (and the fork's own, from TYPELESS on)
+		static const char* const FORK_NAMES[] = { "typeless", "crystal", "bonemerang", "tri", "floating", "magma" };
+		if (const auto* f = std::find(std::begin(NAMES), std::end(NAMES), name); f != std::end(NAMES))
+			return (nds::Type)(f - std::begin(NAMES));
+		if (const auto* f = std::find(std::begin(FORK_NAMES), std::end(FORK_NAMES), name); f != std::end(FORK_NAMES))
+			return (nds::Type)(TYPELESS + (f - std::begin(FORK_NAMES)));
+		return nds::NO_TYPE;
+	}
+
+	std::vector<GameData> loadGames(const std::vector<std::string>& keys, std::string* why)
+	{
+		std::vector<GameData> out;
+		for (const std::string& k : keys)
+		{
+			GameData d;
+			std::string w;
+			if (loadData(k, d, &w)) out.push_back(std::move(d));
+			else if (why) *why += (why->empty() ? "" : "; ") + w;
+		}
+		return out;
+	}
+
+	std::string fixtureKey(const std::string& name)
+	{
+		std::string n = name, best;
+		std::replace(n.begin(), n.end(), '_', '-');
+		for (const auto& g : GAMES)
+		{
+			const size_t k = strlen(g.key);
+			if (n.compare(0, k, g.key) == 0 && (n.size() == k || n[k] == '-') && k > best.size()) best = g.key;
+		}
+		return best;
+	}
+
+	Match detect(const uint8_t* header, size_t n, std::vector<std::string>& keys)
+	{
+		keys.clear();
 		if (!header || n < 0x150) return Match::NONE;
 		// the title at 0x134: 16 bytes in the first cartridges, 11 when a game code follows at 0x13F (the Color
 		// games'); a shorter title ends with a 0
 		const char* t = (const char*)header + 0x134;
 		for (const auto& [title, k, coded] : index().titles)
 			if (memcmp(t, title.data(), title.size()) == 0 && ((coded && title.size() >= 11) || title.size() >= 16 || t[title.size()] == 0))
-			{
-				key = k;
-				return Match::KNOWN;
-			}
-		return Match::NONE;
+				keys.push_back(k);
+		return keys.empty() ? Match::NONE : Match::KNOWN;
+	}
+
+	namespace
+	{
+		// hash: the whole ROM's SHA-1 ("" for no ROM)
+		Match confirmHash(const std::vector<uint8_t>& rom, const std::string& hash, GameData& d)
+		{
+			d.release = -1;
+			d.game.romHash = hash;
+			d.game.code.clear();
+			for (size_t i = 0; i < d.releases.size(); i++)
+				if (!rom.empty() && d.releases[i].sha1 == hash)
+				{
+					pickRelease(d, (int)i);
+					// (the file's own code: the release's, since its SHA-1 is)
+					if (rom.size() >= 0x143 && !d.releases[i].code.empty()) d.game.code.assign((const char*)rom.data() + 0x13F, 4);
+					return Match::KNOWN;
+				}
+			return Match::UNSUPPORTED;
+		}
+		std::string sha1(const std::vector<uint8_t>& rom) { return rom.empty() ? "" : nds::nitro::sha1Hex(rom.data(), rom.size()); }
 	}
 
 	Match confirm(const std::vector<uint8_t>& rom, GameData& d)
 	{
-		d.release = -1;
-		d.game.romHash = rom.empty() ? "" : nds::nitro::sha1Hex(rom.data(), rom.size());
-		d.game.code.clear();
-		for (size_t i = 0; i < d.releases.size(); i++)
-			if (!rom.empty() && d.releases[i].sha1 == d.game.romHash)
-			{
-				d.release = (int)i;
-				// (the file's own code: the release's, since its SHA-1 is)
-				if (rom.size() >= 0x143 && !d.releases[i].code.empty()) d.game.code.assign((const char*)rom.data() + 0x13F, 4);
-				return Match::KNOWN;
-			}
-		return Match::UNSUPPORTED;
+		return confirmHash(rom, sha1(rom), d);
+	}
+
+	int confirmAny(const std::vector<uint8_t>& rom, std::vector<GameData>& ds)
+	{
+		const std::string hash = sha1(rom);
+		int picked = -1;
+		for (size_t i = 0; i < ds.size(); i++)
+			if (confirmHash(rom, hash, ds[i]) == Match::KNOWN && picked < 0) picked = (int)i;
+		return picked;
 	}
 }

@@ -1,8 +1,8 @@
 #pragma once
 // banana-ui (kiwami): the Game Boy Pokémon companion's ROM reader. The player's own ROM's tables as upstream's
 // nds::RomData, in the conventions the DS companion's pages and logic work with, as ui/src/gba/gen3rom.h does for
-// the GBA games: species by national number, types in nds::Type's order, items in Gen IV's numbering (items.inc;
-// GEN2_ONLY + the game's own id for the rest), TMs as Gen IV numbers them (TM01-50 = 1-50, HM01-07 = 93-99),
+// the GBA games: species by national number, types in nds::Type's order, items in Gen IV's numbering (the data
+// file's items; GEN2_ONLY + the game's own id for the rest), TMs as Gen IV numbers them (TM01-50 = 1-50, HM01-07 = 93-99),
 // evolution methods in ui/src/nds/rom.h's nds::evo numbering, places by zone = map group << 8 | map number (Gen I: the
 // map number), trainers by class << 8 | number (the battle's Battle::trainerId).
 // Where the tables are is the data file's rom section (pret's symbols, PokeDaisy's Gen1Dex.kt and Gen2Dex.kt where
@@ -12,26 +12,34 @@
 // additional term under section 7(b): LICENSE and NOTICE in this folder. SPDX-License-Identifier: GPL-3.0-only
 // Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 #include "games.h"
+#include "rules.h"
 #include "../../nds/model.h"
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
 namespace banana::kiwami::gbpk
 {
-	// Gen II's item ids in Gen IV's numbering where upstream's logic knows an item by it (items.inc), else
-	// GEN2_ONLY + the id; 0 for 0
+	// Gen II's item ids in Gen IV's numbering where upstream's logic knows an item by it (the data file's items),
+	// else GEN2_ONLY + the id; 0 for 0
 	constexpr uint16_t GEN2_ONLY = 1000;
-	uint16_t gen2Item(uint8_t id);
-	// Gen I's the same way (1000 + the id: a game is of one generation), its TMs and HMs as Gen IV's; and the pocket the
-	// pages put it in (the game has one bag list): balls, TMs and HMs, the game's key items, the rest
+	uint16_t gen2Item(const GameData& d, uint8_t id);
+	// Gen I's the same way (1000 + the id: a game is of one generation), its TMs and HMs as Gen IV's (from the data
+	// file's tm01 and hm01); and the pocket the pages put it in (the game has one bag list): balls, TMs and HMs, the
+	// game's key items, the rest
 	constexpr uint16_t GEN1_ONLY = 1000;
-	uint16_t gen1Item(uint8_t id);
-	nds::Pocket gen1Pocket(uint8_t id);
-	// Gen II's types (pret's constants/type_constants.asm: Normal .. Rock 0-5, Bug, Ghost, Steel 7-9, Fire .. Dark
-	// 20-27) in nds::Type's order; NO_TYPE for the others (Curse's ???)
-	nds::Type gen2Type(uint8_t t);
+	uint16_t gen1Item(const GameData& d, uint8_t id);
+	nds::Pocket gen1Pocket(const GameData& d, uint8_t id);
+	// a type id of the game's (its constants/type_constants.asm, both generations') in nds::Type's order; NO_TYPE for
+	// one it hasn't (Bird, Curse's ???)
+	nds::Type gen2Type(const GameData& d, uint8_t t);
+	// a damaging move's category by its type id: Special for the game's special types, else Physical
+	inline nds::MoveCategory category(const GameData& d, uint8_t t)
+	{
+		return d.special[t] ? nds::MoveCategory::SPECIAL : nds::MoveCategory::PHYSICAL;
+	}
 
 	// The game's tables from the ROM (the whole file; kept for the sprites, decoded on demand). Null with the reason
 	// in why when the data file lacks a table or a table's first entries don't check (another layout than the
@@ -42,12 +50,15 @@ namespace banana::kiwami::gbpk
 	// ---- for rom.cpp, rom1.cpp and rom2.cpp ----
 
 	// the ROM's bytes by bank and address: bank 0 at 0000-3FFF, bank n at its 4000-7FFF window; its text in the
-	// generation's character set
+	// game's character set, packed by the dictionary at file offset dict from byte dictFirst (Crystal Clear's: the data
+	// file's rom.textDict and textDictFirst, text.h)
 	struct RomView
 	{
 		static constexpr size_t NONE = (size_t)-1;
 		const std::vector<uint8_t>& b;
-		int gen = 2;
+		Charset charset = Charset::GEN2;
+		size_t dict = NONE;
+		int dictFirst = 0;
 		// the file offset of bank:addr; NONE outside the ROM
 		size_t at(int bank, uint32_t addr) const
 		{
@@ -102,8 +113,32 @@ namespace banana::kiwami::gbpk
 		Gen1Pics pics1;
 		std::vector<HiddenItem> hidden;		// by zone, in the maps' order (the Here page's secrets: host.cpp)
 		std::vector<uint16_t> national;		// Gen I: a species' national number by its internal index (0: none)
+		std::vector<uint8_t> form;			// Gen I: the form an internal index is (PureRGB's forms, internal species of
+											// their own that carry a base species' number: 1 up, in species past the
+											// Pokédex from the base's formsAt), 0 for the species itself
+		GameRules rules;					// the game's own rules (rules.h): its type chart, and PureRGB's; the host's
+		// PureRGB's species the type NPC can give back their original types (engine/pokemon/remap_typings.asm
+		// OriginalTypings), in the list's order, which is their bits' in the save (wPkmnTypeRemapFlags): the species
+		// index (a form never: the game compares its internal index) and its original types
+		struct OriginalTyping { uint16_t species = 0; nds::Type types[2] = { nds::NORMAL, nds::NORMAL }; };
+		std::vector<OriginalTyping> originalTypes;
+		// Crystal Clear's trainers whose party goes by the badge count (rom2.cpp): each one's parties by trainer id, the
+		// first its team in trainers
+		std::map<uint16_t, std::vector<std::vector<nds::TrainerMon>>> teams;
 		std::shared_ptr<const nds::Sprite> sprite(uint16_t species, bool female = false, uint8_t form = 0) const override;
 	};
+	// the party of a trainer with one for each badge count that Crystal Clear's ReadTrainerParty takes for a save with
+	// these badges (Live::badges: Johto's bits, Kanto's in the high byte): their count, 15 at most (its CountSetBits
+	// over wJohtoBadges and wKantoBadges, then bit 4 taken away). The Arena's choice of level (wram DC19), which the game
+	// takes instead there, isn't followed
+	int badgeTeam(uint16_t badges);
+	// a copy of rom's data with each such trainer's team its party `team` (its last when it has fewer); rom itself when
+	// it has none, or for the first party, which its teams already are
+	std::shared_ptr<const nds::RomData> withBadgeTeams(std::shared_ptr<const nds::RomData> rom, int team);
+	// a copy of rom's data with the species whose bit is set in remap (the save's wPkmnTypeRemapFlags, bit n the n-th
+	// of originalTypes) given their original types, as the game's IsMonTypeRemapped gives them in battle and on the
+	// summary; rom itself when it has no such list or no bit is set
+	std::shared_ptr<const nds::RomData> withOriginalTypes(std::shared_ptr<const nds::RomData> rom, uint32_t remap);
 	// the games' "n percent" (n * 255 / 100) as n
 	uint8_t percent(uint8_t raw);
 	// the four moves a Pokémon knows at its level without a trainer's own (the games' FillMoves and WriteMonMoves: the
@@ -111,6 +146,14 @@ namespace banana::kiwami::gbpk
 	void defaultMoves(const nds::RomData& r, nds::TrainerMon& m);
 	// an evolution's words ("Level 16", "Use Moon Stone"), the items by r's names
 	std::string evoHow(const nds::RomData& r, uint16_t method, uint16_t param);
+
+	// the type chart at o (both generations' data/types/type_matchups.asm, `name` the table's for the reason): attacker,
+	// defender and multiplier triples (pret's constants/battle_constants.asm: 20 super effective, 10 effective, 05 not
+	// very effective, 00 no effect) up to -1, past a -2 (Gen II's: the pairs Foresight takes away, which count as any
+	// other). Each type id through the data file's types; a pair listed twice multiplies, as the games' damage walks
+	// the whole table. False with the reason in why for a pair that isn't two of the game's types and one of the four,
+	// a table that runs on, or a chart in which Water isn't super effective on Fire.
+	bool readTypeChart(const RomView& r, const GameData& d, size_t o, const char* name, TypeChart& out, std::string* why);
 
 	// Gen I's tables into out (rom1.cpp)
 	bool readGen1(const RomView& r, const GameData& d, GbRomData& out, std::string* why);

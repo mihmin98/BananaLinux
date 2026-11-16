@@ -11,50 +11,50 @@
 
 namespace banana::kiwami::gbpk
 {
+	uint16_t gen2Item(const GameData& d, uint8_t id)
+	{
+		if (!id) return 0;
+		auto i = d.items.find(id);
+		return i != d.items.end() ? i->second : (uint16_t)(GEN2_ONLY + id);
+	}
+
 	namespace
 	{
-		// Gen I's and II's item ids to Gen IV's (items.inc)
-		struct ItemId { uint8_t id; uint16_t gen4; };
-#include "items.inc"
+		const int GEN1_TMS = 50, GEN1_HMS = 5;
+		// the data file's first TM and HM items (0: none, a file without them)
+		int tm01(const GameData& d) { return d.size("tm01"); }
+		int hm01(const GameData& d) { return d.size("hm01"); }
 	}
 
-	uint16_t gen2Item(uint8_t id)
+	uint16_t gen1Item(const GameData& d, uint8_t id)
 	{
 		if (!id) return 0;
-		for (const auto& e : GEN2_ITEMS) if (e.id == id) return e.gen4;
-		return (uint16_t)(GEN2_ONLY + id);
-	}
-
-	uint16_t gen1Item(uint8_t id)
-	{
-		if (!id) return 0;
-		for (const auto& e : GEN1_ITEMS) if (e.id == id) return e.gen4;
+		auto i = d.items.find(id);
+		if (i != d.items.end()) return i->second;
 		// TM01-50 as Gen IV's TM01-50 (328-377), HM01-05 as its HM01-05 (420-424)
-		if (id >= GEN1_TM01 && id < GEN1_TM01 + 50) return (uint16_t)(328 + id - GEN1_TM01);
-		if (id >= GEN1_HM01 && id < GEN1_HM01 + 5) return (uint16_t)(420 + id - GEN1_HM01);
+		if (tm01(d) > 0 && id >= tm01(d) && id < tm01(d) + GEN1_TMS) return (uint16_t)(328 + id - tm01(d));
+		if (hm01(d) > 0 && id >= hm01(d) && id < hm01(d) + GEN1_HMS) return (uint16_t)(420 + id - hm01(d));
 		return (uint16_t)(GEN1_ONLY + id);
 	}
 
-	nds::Pocket gen1Pocket(uint8_t id)
+	nds::Pocket gen1Pocket(const GameData& d, uint8_t id)
 	{
-		if ((id >= 0x01 && id <= 0x04) || id == 0x08) return nds::POCKET_BALLS;	// (the Safari Ball, a key item to the game)
-		if (id >= GEN1_HM01 && id < GEN1_TM01 + 50) return nds::POCKET_TMS;
-		for (uint8_t k : GEN1_KEY_ITEMS) if (k == id) return nds::POCKET_KEY;
+		if (d.balls.count(id)) return nds::POCKET_BALLS;	// (the Safari Ball too, a key item to the game)
+		if (hm01(d) > 0 && id >= hm01(d) && id < tm01(d) + GEN1_TMS) return nds::POCKET_TMS;
+		if (d.keyItems.count(id)) return nds::POCKET_KEY;
 		return nds::POCKET_ITEMS;
 	}
 
-	nds::Type gen2Type(uint8_t t)
+	nds::Type gen2Type(const GameData& d, uint8_t t)
 	{
-		if (t <= 5) return (nds::Type)t;
-		if (t >= 7 && t <= 9) return (nds::Type)(t - 1);
-		if (t >= 20 && t <= 27) return (nds::Type)(t - 20 + nds::FIRE);
-		return nds::NO_TYPE;
+		return d.types[t];
 	}
 
 	std::string RomView::text(size_t o, size_t max) const
 	{
 		if (o == NONE || o >= b.size()) return "";
-		return decode(gen, b.data() + o, std::min(max, b.size() - o));
+		if (dict != NONE) return decode(charset, b.data() + o, std::min(max, b.size() - o), TextDict{ b.data(), b.size(), dict, dictFirst });
+		return decode(charset, b.data() + o, std::min(max, b.size() - o));
 	}
 
 	size_t RomView::skip(size_t o, size_t max) const
@@ -62,6 +62,33 @@ namespace banana::kiwami::gbpk
 		for (size_t i = 0; o != NONE && i < max && o + i < b.size(); i++)
 			if (b[o + i] == 0x50) return o + i + 1;
 		return NONE;
+	}
+
+	bool readTypeChart(const RomView& r, const GameData& d, size_t o, const char* name, TypeChart& out, std::string* why)
+	{
+		auto no = [&](const std::string& w) { if (why) *why = w; return false; };
+		const uint8_t END = 0xFF, FORESIGHT = 0xFE;
+		const int MAX_ENTRIES = 255;
+		out.fill(-1);
+		int n = 0;
+		for (size_t e = o; ; e += 3)
+		{
+			if (!r.has(e, 1)) return no(std::string(name) + " runs past the ROM");
+			if (r.u8(e) == END) break;
+			if (r.u8(e) == FORESIGHT && !r.has(++e, 1)) return no(std::string(name) + " runs past the ROM");
+			if (r.u8(e) == END) break;
+			if (++n > MAX_ENTRIES || !r.has(e, 3)) return no(std::string(name) + " doesn't end");
+			const int a = chartIndex(gen2Type(d, r.u8(e))), t = chartIndex(gen2Type(d, r.u8(e + 1)));
+			const uint8_t m = r.u8(e + 2);
+			if (a < 0 || t < 0 || (m != 0 && m != 5 && m != 10 && m != 20))
+				return no(std::string(name) + "' entry " + std::to_string(n) + " isn't a type pair");
+			int8_t& c = out[(size_t)(a * CHART_TYPES + t)];
+			const int q = m * 4 / 10;		// (in quarters: 8, 4, 2, 0)
+			c = (int8_t)(c < 0 ? q : c * q / 4);
+		}
+		if (out[(size_t)(chartIndex(nds::WATER) * CHART_TYPES + chartIndex(nds::FIRE))] != 8)
+			return no(std::string(name) + " doesn't make Water super effective on Fire: not the game's chart");
+		return true;
 	}
 
 	uint8_t percent(uint8_t raw) { return (uint8_t)((raw * 100 + 127) / 255); }
@@ -99,11 +126,14 @@ namespace banana::kiwami::gbpk
 		}
 	}
 
-	// (no picture by gender or form in these games: one a species)
-	std::shared_ptr<const nds::Sprite> GbRomData::sprite(uint16_t species, bool, uint8_t) const
+	// (no picture by gender in these games; by form only PureRGB's, each its own species past the Pokédex)
+	std::shared_ptr<const nds::Sprite> GbRomData::sprite(uint16_t species, bool, uint8_t form) const
 	{
 		if (!rom) return nullptr;
-		if (gen == 1) return gen1FrontPic(RomView{ *rom, 1 }, pics1, species);
+		// (a form's index as upstream's nds::speciesIndex gives it, which the tests' binary doesn't link)
+		const nds::Species* base = species < this->species.size() ? &this->species[species] : nullptr;
+		const uint16_t i = form && base && base->formsAt && form < base->formCount ? (uint16_t)(base->formsAt + form - 1) : species;
+		if (gen == 1) return gen1FrontPic(RomView{ *rom, Charset::GEN1 }, pics1, i);
 		return gen2FrontPic(RomView{ *rom }, pics, species);
 	}
 
@@ -116,10 +146,57 @@ namespace banana::kiwami::gbpk
 		out->rom = rom;
 		out->game = d.game;
 		out->gen = d.gen;
-		RomView r{ *rom, d.gen };
+		RomView r{ *rom, d.charset() };
 		std::string w;
 		if (d.gen != 1 && d.gen != 2) return no(d.game.title + ": not a Game Boy game's data file");
+		// (Crystal Clear's packed text: its dictionary, from its first byte to 0x5F, three bytes an entry)
+		if (d.rom.count("textDict"))
+		{
+			r.dict = r.at(d.rom.at("textDict"));
+			r.dictFirst = d.size("textDictFirst");
+			if (r.dictFirst < 1 || r.dictFirst >= 0x60 || !r.has(r.dict, 3 * (size_t)(0x60 - r.dictFirst)))
+				return no(d.game.title + "'s ROM: its text's dictionary (rom.textDict, textDictFirst) isn't in the ROM");
+		}
 		if (!(d.gen == 1 ? readGen1(r, d, *out, &w) : readGen2(r, d, *out, &w))) return no(d.game.title + "'s ROM: " + w);
+		// the rules the data file names: the types whose category goes by the attacker's stats, PureRGB's options (the
+		// game has them where its data file reads them) and its Hyper Ball (an item of its own: rom.h gen1Item)
+		for (int t = 0; t < 256; t++)
+			if (d.splitStats[t] && chartIndex(d.types[t]) >= 0) out->rules.byStats[(size_t)chartIndex(d.types[t])] = true;
+		out->rules.pureOptions = d.at("options3").ok();
+		if (const int h = d.size("hyperBall"); d.gen == 1 && h > 0 && h < 256) out->rules.hyperBall = gen1Item(d, (uint8_t)h);
+		return out;
+	}
+
+	int badgeTeam(uint16_t badges)
+	{
+		int n = 0;
+		for (int b = 0; b < 16; b++) n += badges >> b & 1;
+		return std::min(n, 15);
+	}
+
+	std::shared_ptr<const nds::RomData> withBadgeTeams(std::shared_ptr<const nds::RomData> rom, int team)
+	{
+		const auto* gb = dynamic_cast<const GbRomData*>(rom.get());
+		if (!gb || gb->teams.empty() || team <= 0) return rom;
+		auto out = std::make_shared<GbRomData>(*gb);
+		for (const auto& [id, parties] : gb->teams)
+			if (auto t = out->trainers.find(id); t != out->trainers.end() && !parties.empty())
+				t->second.team = parties[std::min((size_t)team, parties.size() - 1)];
+		return out;
+	}
+
+	std::shared_ptr<const nds::RomData> withOriginalTypes(std::shared_ptr<const nds::RomData> rom, uint32_t remap)
+	{
+		const auto* gb = dynamic_cast<const GbRomData*>(rom.get());
+		if (!gb || gb->originalTypes.empty() || !remap) return rom;
+		auto out = std::make_shared<GbRomData>(*gb);
+		for (size_t n = 0; n < gb->originalTypes.size() && n < 32; n++)
+		{
+			const GbRomData::OriginalTyping& o = gb->originalTypes[n];
+			if (!(remap >> n & 1) || o.species >= out->species.size()) continue;
+			out->species[o.species].types[0] = o.types[0];
+			out->species[o.species].types[1] = o.types[1];
+		}
 		return out;
 	}
 }

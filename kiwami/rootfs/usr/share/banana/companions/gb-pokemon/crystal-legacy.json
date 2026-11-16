@@ -1,0 +1,486 @@
+{
+  "code": "BYTE",
+  "game": "crystal-legacy",
+  "kind": "nds-pokemon-guide",
+  "milestones": [
+    {
+      "done_when": "flag:1213",
+      "foe": {
+        "ace_level": 10,
+        "class": "Leader",
+        "name": "Falkner"
+      },
+      "id": "gym-1-falkner",
+      "kind": "gym",
+      "level_cap": 10,
+      "name": "Gym 1: Falkner",
+      "place": "violet-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (FALKNER)",
+      "trainer_ids": [
+        257
+      ]
+    },
+    {
+      "done_when": "flag:1214",
+      "foe": {
+        "ace_level": 16,
+        "class": "Leader",
+        "name": "Bugsy"
+      },
+      "id": "gym-2-bugsy",
+      "kind": "gym",
+      "level_cap": 16,
+      "name": "Gym 2: Bugsy",
+      "place": "azalea-town",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (BUGSY)",
+      "trainer_ids": [
+        769
+      ]
+    },
+    {
+      "done_when": "flag:1215",
+      "foe": {
+        "ace_level": 21,
+        "class": "Leader",
+        "name": "Whitney"
+      },
+      "id": "gym-3-whitney",
+      "kind": "gym",
+      "level_cap": 21,
+      "name": "Gym 3: Whitney",
+      "place": "goldenrod-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (WHITNEY)",
+      "trainer_ids": [
+        513
+      ]
+    },
+    {
+      "done_when": "flag:1216",
+      "foe": {
+        "ace_level": 25,
+        "class": "Leader",
+        "name": "Morty"
+      },
+      "id": "gym-4-morty",
+      "kind": "gym",
+      "level_cap": 25,
+      "name": "Gym 4: Morty",
+      "place": "ecruteak-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (MORTY)",
+      "trainer_ids": [
+        1025
+      ]
+    },
+    {
+      "done_when": "flag:1218",
+      "foe": {
+        "ace_level": 31,
+        "class": "Leader",
+        "name": "Chuck"
+      },
+      "id": "gym-5-chuck",
+      "kind": "gym",
+      "level_cap": 31,
+      "name": "Gym 5: Chuck",
+      "place": "cianwood-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (CHUCK)",
+      "tips": "Chuck's gym can be taken out of order, and the team follows the badges you have: its top level is 36 with 5 badges, 38 with 6 badges, and 31 with any other count. This is the team for 4 badges, the story's order.",
+      "trainer_ids": [
+        1793
+      ]
+    },
+    {
+      "done_when": "flag:1217",
+      "foe": {
+        "ace_level": 36,
+        "class": "Leader",
+        "name": "Jasmine"
+      },
+      "id": "gym-6-jasmine",
+      "kind": "gym",
+      "level_cap": 36,
+      "name": "Gym 6: Jasmine",
+      "place": "olivine-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (JASMINE_6)",
+      "tips": "Jasmine's gym can be taken out of order, and the team follows the badges you have: its top level is 36 with 5 badges, 38 with 6 badges, and 36 with any other count. This is the team for 5 badges, the story's order.",
+      "trainer_ids": [
+        1538
+      ]
+    },
+    {
+      "done_when": "flag:1219",
+      "foe": {
+        "ace_level": 38,
+        "class": "Leader",
+        "name": "Pryce"
+      },
+      "id": "gym-7-pryce",
+      "kind": "gym",
+      "level_cap": 38,
+      "name": "Gym 7: Pryce",
+      "place": "mahogany-town",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (PRYCE_7)",
+      "tips": "Pryce's gym can be taken out of order, and the team follows the badges you have: its top level is 35 with 5 badges, 38 with 6 badges, and 33 with any other count. This is the team for 6 badges, the story's order.",
+      "trainer_ids": [
+        1283
+      ]
+    },
+    {
+      "done_when": "flag:1220",
+      "foe": {
+        "ace_level": 45,
+        "class": "Leader",
+        "name": "Clair"
+      },
+      "id": "gym-8-clair",
+      "kind": "gym",
+      "level_cap": 45,
+      "name": "Gym 8: Clair",
+      "place": "blackthorn-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (CLAIR)",
+      "trainer_ids": [
+        2049
+      ]
+    },
+    {
+      "done_when": "flag:2048",
+      "foe": {
+        "ace_level": 50,
+        "class": "Elite Four",
+        "name": "Will"
+      },
+      "id": "e4-will",
+      "kind": "elite4",
+      "level_cap": 50,
+      "name": "Elite Four: Will",
+      "place": "indigo-plateau",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (WILL)",
+      "trainer_ids": [
+        2817
+      ]
+    },
+    {
+      "done_when": "flag:2049",
+      "foe": {
+        "ace_level": 52,
+        "class": "Elite Four",
+        "name": "Koga"
+      },
+      "id": "e4-koga",
+      "kind": "elite4",
+      "level_cap": 52,
+      "name": "Elite Four: Koga",
+      "place": "indigo-plateau",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (KOGA)",
+      "trainer_ids": [
+        3841
+      ]
+    },
+    {
+      "done_when": "flag:2050",
+      "foe": {
+        "ace_level": 54,
+        "class": "Elite Four",
+        "name": "Bruno"
+      },
+      "id": "e4-bruno",
+      "kind": "elite4",
+      "level_cap": 54,
+      "name": "Elite Four: Bruno",
+      "place": "indigo-plateau",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (BRUNO)",
+      "trainer_ids": [
+        3329
+      ]
+    },
+    {
+      "done_when": "flag:2051",
+      "foe": {
+        "ace_level": 55,
+        "class": "Elite Four",
+        "name": "Karen"
+      },
+      "id": "e4-karen",
+      "kind": "elite4",
+      "level_cap": 55,
+      "name": "Elite Four: Karen",
+      "place": "indigo-plateau",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (KAREN)",
+      "trainer_ids": [
+        3585
+      ]
+    },
+    {
+      "done_when": "flag:68",
+      "foe": {
+        "ace_level": 56,
+        "class": "Champion",
+        "name": "Lance"
+      },
+      "id": "champion-lance",
+      "kind": "champion",
+      "level_cap": 56,
+      "name": "Champion: Lance",
+      "place": "indigo-plateau",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (LANCE)",
+      "trainer_ids": [
+        4097
+      ]
+    },
+    {
+      "done_when": "flag:1221",
+      "foe": {
+        "ace_level": 66,
+        "class": "Leader",
+        "name": "Brock"
+      },
+      "id": "gym-9-brock",
+      "kind": "gym",
+      "level_cap": 66,
+      "name": "Gym 9: Brock",
+      "place": "pewter-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (BROCK)",
+      "trainer_ids": [
+        4353
+      ]
+    },
+    {
+      "done_when": "flag:1222",
+      "foe": {
+        "ace_level": 63,
+        "class": "Leader",
+        "name": "Misty"
+      },
+      "id": "gym-10-misty",
+      "kind": "gym",
+      "level_cap": 63,
+      "name": "Gym 10: Misty",
+      "place": "cerulean-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (MISTY)",
+      "trainer_ids": [
+        4609
+      ]
+    },
+    {
+      "done_when": "flag:1223",
+      "foe": {
+        "ace_level": 60,
+        "class": "Leader",
+        "name": "Lt. Surge"
+      },
+      "id": "gym-11-lt-surge",
+      "kind": "gym",
+      "level_cap": 60,
+      "name": "Gym 11: Lt. Surge",
+      "place": "vermilion-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (LT_SURGE)",
+      "trainer_ids": [
+        4865
+      ]
+    },
+    {
+      "done_when": "flag:1224",
+      "foe": {
+        "ace_level": 62,
+        "class": "Leader",
+        "name": "Erika"
+      },
+      "id": "gym-12-erika",
+      "kind": "gym",
+      "level_cap": 62,
+      "name": "Gym 12: Erika",
+      "place": "celadon-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (ERIKA)",
+      "trainer_ids": [
+        5377
+      ]
+    },
+    {
+      "done_when": "flag:1225",
+      "foe": {
+        "ace_level": 64,
+        "class": "Leader",
+        "name": "Janine"
+      },
+      "id": "gym-13-janine",
+      "kind": "gym",
+      "level_cap": 64,
+      "name": "Gym 13: Janine",
+      "place": "fuchsia-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (JANINE)",
+      "trainer_ids": [
+        6657
+      ]
+    },
+    {
+      "done_when": "flag:1226",
+      "foe": {
+        "ace_level": 66,
+        "class": "Leader",
+        "name": "Sabrina"
+      },
+      "id": "gym-14-sabrina",
+      "kind": "gym",
+      "level_cap": 66,
+      "name": "Gym 14: Sabrina",
+      "place": "saffron-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (SABRINA)",
+      "trainer_ids": [
+        8961
+      ]
+    },
+    {
+      "done_when": "flag:1227",
+      "foe": {
+        "ace_level": 67,
+        "class": "Leader",
+        "name": "Blaine"
+      },
+      "id": "gym-15-blaine",
+      "kind": "gym",
+      "level_cap": 67,
+      "name": "Gym 15: Blaine",
+      "place": "seafoam-islands",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (BLAINE)",
+      "trainer_ids": [
+        11777
+      ]
+    },
+    {
+      "done_when": "flag:1228",
+      "foe": {
+        "ace_level": 69,
+        "class": "Leader",
+        "name": "Blue"
+      },
+      "id": "gym-16-blue",
+      "kind": "gym",
+      "level_cap": 69,
+      "name": "Gym 16: Blue",
+      "place": "viridian-city",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (BLUE)",
+      "trainer_ids": [
+        16385
+      ]
+    },
+    {
+      "done_when": "flag:2001",
+      "foe": {
+        "ace_level": 93,
+        "name": "Red"
+      },
+      "id": "red",
+      "kind": "postgame",
+      "level_cap": 93,
+      "name": "Red (Silver Cave)",
+      "place": "silver-cave",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt, GuideCrystalLegacyGen.kt (RED)",
+      "trainer_ids": [
+        16129
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "id": "note-tip-1",
+      "kind": "tip",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt (CRYSTAL_TIPS)",
+      "text": "The game's clock has three times of day: morning from 4 AM, day from 10 AM and night from 6 PM. Grass and caves have a list for each, and HERE shows the one for the time your game's clock says.",
+      "title": "Why did the POKéMON on this route change?"
+    },
+    {
+      "id": "note-tip-2",
+      "kind": "tip",
+      "quality": "reference-only",
+      "source": "PokeDaisy GuideCrystal.kt (CRYSTAL_TIPS)",
+      "text": "Each tree you HEADBUTT is common, rare or almost empty, picked from where the tree stands and your trainer ID. HERE lists both tables; try every tree on a route to find the rare ones.",
+      "title": "Why do some trees never have the rare POKéMON?"
+    }
+  ],
+  "places": {
+    "azalea-town": {
+      "name": "Azalea Town"
+    },
+    "blackthorn-city": {
+      "name": "Blackthorn City"
+    },
+    "celadon-city": {
+      "name": "Celadon City"
+    },
+    "cerulean-city": {
+      "name": "Cerulean City"
+    },
+    "cianwood-city": {
+      "name": "Cianwood City"
+    },
+    "ecruteak-city": {
+      "name": "Ecruteak City"
+    },
+    "fuchsia-city": {
+      "name": "Fuchsia City"
+    },
+    "goldenrod-city": {
+      "name": "Goldenrod City"
+    },
+    "indigo-plateau": {
+      "name": "Indigo Plateau"
+    },
+    "mahogany-town": {
+      "name": "Mahogany Town"
+    },
+    "olivine-city": {
+      "name": "Olivine City"
+    },
+    "pewter-city": {
+      "name": "Pewter City"
+    },
+    "saffron-city": {
+      "name": "Saffron City"
+    },
+    "seafoam-islands": {
+      "name": "Seafoam Islands"
+    },
+    "silver-cave": {
+      "name": "Silver Cave"
+    },
+    "vermilion-city": {
+      "name": "Vermilion City"
+    },
+    "violet-city": {
+      "name": "Violet City"
+    },
+    "viridian-city": {
+      "name": "Viridian City"
+    }
+  },
+  "revision": 1,
+  "schema": 1,
+  "sources": [
+    "PokeDaisy by Lidor Itzhari, 135ac809 (GPL-3.0): GuideCrystal.kt's bosses, their order and rules, and its tips; GuideCrystalLegacyGen.kt's flags and teams, generated there from Crystal Legacy v1.3.1's build",
+    "The player's ROM: the trainers' teams, the places' maps and the hidden items, read when the game starts (kiwami/GB-POKEMON.md)"
+  ],
+  "title": "Pokémon Crystal Legacy"
+}

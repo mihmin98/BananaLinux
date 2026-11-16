@@ -36,6 +36,12 @@ namespace banana::kiwami::gbpk
 		uint64_t serial() const { return serial_; }
 		// the last set: a battle on (wild or trainer)
 		bool inBattle() const;
+		// the last set's PureRGB switches (0 or false for a game without them): the species given back their original
+		// types (wPkmnTypeRemapFlags' 24 bits), the options byte whose bits 0-3 are the four matchups (wOptions3), and
+		// the signature moves turned off (the event flag FLAG_SIGNATURE_MOVES_TURNED_OFF)
+		uint32_t typeRemap() const;
+		uint8_t options3() const;
+		bool signaturesOff() const;
 		// the emulator's reply when it had no data ("no memory map defined"), from the last set that had one; cleared by
 		// a set answered in full
 		const std::string& error() const { return err_; }

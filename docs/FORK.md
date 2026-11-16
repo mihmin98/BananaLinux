@@ -56,7 +56,7 @@ The rule: a new file of the fork's own wherever the build allows one; an upstrea
 | Boot and network services | hook folders that run every file in them: `/etc/banana/sleep.d/` (around a suspend), `/usr/share/udhcpc/default.script.d/` (on an address from DHCP) |
 | banana-ui | `ui/src/kiwami/` (inside `ui/`: the package builds only that folder): its own theme behind `banana::Menu`, its own settings rows, its own handlers for the host's events. C libraries it vendors go unchanged in `ui/src/kiwami/third_party/<library>/`, each with the `SHA256SUMS` of its pinned version's files (checked by `kiwami/tests/ci.sh`) and a `VENDORED` note, and are built by `ui/src/kiwami/kiwami.mk` (the `ui/Makefile`'s third `kiwami:` line), which also compiles banana-ui's own sources one file per call (*How the build takes in the fork*) |
 | A feature's code under another licence | its own folder with its `LICENSE` and `NOTICE`: the Game Boy Pokémon companion's `ui/src/kiwami/gbpk/` (GPL-3.0 with PokeDaisy's 7(b) attribution term, `kiwami/GB-POKEMON.md`). What upstream's files' hooks call there is header-only (`gbpk.h`, `rules.h`, the `.inc` files), as upstream's test binaries link `ui/src/nds/` without the fork's sources |
-| Scripts that make the fork's committed data | `kiwami/tools/` (`pokedaisy-extract.py`, `pret-extract.py`), each with a `--check` that `kiwami/tests/ci.sh` runs against the `SOURCES` it writes |
+| Scripts that make the fork's committed data | `kiwami/tools/` (`pokedaisy-extract.py`, `pret-extract.py`, `gbpk-port.py`), each with a `--check` that `kiwami/tests/ci.sh` runs against the `SOURCES` it writes |
 | Data kept for reference, not built or installed | `kiwami/data/` (PokeDaisy's reference data in `kiwami/data/pokedaisy/`), outside `kiwami/rootfs/` so nothing of it reaches the image |
 | Tests of the fork's features | `kiwami/tests/` (a one-line `kiwami:` hook if `make test` has to run them) |
 | A feature's investigation and plan | `.workspace/<NNNN>-<name>/` |
@@ -273,7 +273,7 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    (in `ci.sh`) fails when the two no longer make the same binary. A source upstream adds to `SRC` is compiled as an
    object with no change; one added after `kiwami.mk`'s include line stays in the link's own call. And the Game Boy
    Pokémon companion's rules in upstream's DS companion (`kiwami/GB-POKEMON.md`): `model.cpp`'s first line of `one()`
-   gives Gen I's type chart cells while a Red, Blue or Yellow is read, and `logic.cpp`'s first lines of `damage()`,
+   gives the type chart's cells of the Game Boy game being read (its ROM's), and `logic.cpp`'s first lines of `damage()`,
    `effectiveSpeed()` and `catchChance()` hand Gen I and II (`kiwami::gbpk::GEN_I`/`GEN_II`, values of upstream's
    `nds::Gen`) to the fork's own formulas in `ui/src/kiwami/gbpk/rules.h` (`effectiveSpeed`'s `Gen` isn't named, so its
    hook asks `oldRules()`, which the companion's host turns on and off with the game); `model.h`'s `statExp` line
@@ -312,10 +312,18 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    IVs, EVs or abilities draws empty or upstream's values for the Game Boy games until a hook skips it, which
    `kiwami/tests/gbpk-ui.sh`'s shots and its trace lines (`KIWAMI_GBPK_TRACE=1`) show. And the same companion's guides:
    `ui/src/nds/guide.cpp` includes `ui/src/kiwami/gbpk/guide-games.inc` as the last rows of its `GAMES` table (the six
-   games' ids as literals, keys and codes), so `loadGuideFile` takes their files; the fork's host loads them itself
+   games' and the ROM hacks' ids as literals, keys and codes), so `loadGuideFile` takes their files; the fork's host loads them itself
    from `gb-pokemon/`. A change upstream makes to `GameRow`'s fields breaks the rows at compile time; a schema upstream
    adds to the guide files (a field, a `done_when` rule) is the fork's to use or not, and `kiwami/tests/gbpk-units.cpp`
    loads Crystal's file through upstream's loader and follows its milestones through upstream's `nextMilestone`.
+   And the same companion's own types (PureRGB's six, values of upstream's `nds::Type` from 32, past `NUM_TYPES`:
+   `ui/src/kiwami/gbpk/gbpk.h`): `pages.cpp` includes `gbpk.h` after `../lang.h`, and `typeChip`'s first line draws
+   their chips (`extraTypeName`, `extraTypeColor`) before upstream's `if (t >= NUM_TYPES) return 0;`; `logic.cpp`'s
+   `typeName`, a one-line function, is changed rather than added to, the fork's names first and upstream's line as it
+   was after them, so an upstream change to it is a conflict on that line alone, taken with the fork's part put back.
+   Every other place upstream names, colours or counts types stops at `NUM_TYPES` (an empty name, grey, not counted),
+   so a new one does too; one that indexes an array by a type without that guard reads past it for these, which
+   `kiwami/tests/gbpk-units.cpp` built with `-fsanitize=address,undefined` shows (its advice and chart over them).
    In upstream's companion code (`ui/src/nds/`, `ui/src/gba/`, `ui/src/pokemon.*`) as a whole, what to look for: a
    member added to `nds::Live`, `Mon`, `RomData`, `PageData` or `gba::Panel`, which the fork's reader, ROM reader or
    `PanelSwitch` may have to fill or forward (a `Live` field left empty shows as nothing on the pages, or as wrong

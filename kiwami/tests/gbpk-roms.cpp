@@ -1,6 +1,6 @@
 // The Game Boy Pokémon companion's ROM reader (ui/src/kiwami/gbpk/rom.h) on the player's own ROMs, which are never in
-// the repository: each .gb/.gbc in the folder that is a release the data files list (kiwami/tests/gbpk/roms.sha1, by
-// SHA-1) is read, and what the ROM is known to hold is checked against what was read, the game's guide file with it.
+// the repository: each .gb/.gbc in the folder, or in a subfolder of it one level down (the ROM hacks' romhacks/), that
+// is a release the data files list (kiwami/tests/gbpk/roms.sha1, by SHA-1) is read, and what the ROM is known to hold is checked against what was read, the game's guide file with it.
 // With a PokeDaisy checkout, every species' gender ratio and growth rate are compared with PokeDaisy's tables
 // (Gen2SpeciesCrystal.kt), and Crystal's, Red's, Blue's and Yellow's hidden items with their guides' (GuideCrystalGen.kt,
 // GuideGen1Gen.kt). With
@@ -20,11 +20,13 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../third_party/stb_image_write.h"
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <dirent.h>
+#include <sys/stat.h>
 #include <fstream>
 #include <map>
 #include <regex>
@@ -107,7 +109,9 @@ static void checkPics(const nds::RomData& r, const std::vector<uint8_t>& rom, co
 			}
 	}
 	const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
-	CHECK(drawn == count && sized == count && count == (g.gen == 1 ? 151 : 251));
+	// (the Pokédex's, and PureRGB's forms after them, each of its own internal index: GbRomData::form)
+	const int forms = (int)std::count_if(g.form.begin(), g.form.end(), [](uint8_t f) { return f != 0; });
+	CHECK(drawn == count && sized == count && count == (g.gen == 1 ? 151 : 251) + forms);
 	if (g.gen == 1)
 	{
 		auto bulbasaur = r.sprite(1), mewtwo = r.sprite(150);
@@ -183,11 +187,71 @@ static void checkMaps(const nds::RomData& r, const std::string& out, const std::
 		const uint16_t id = cx >= 0 && cy >= 0 && cx < j.gridW && cy < j.gridH ? j.cells[(size_t)cy * j.gridW + cx] : 0xFFFF;
 		EQ(id < r.locationNames.size() ? r.locationNames[id] : "", "New Bark Town");
 	}
+	// (every named place on a map, but Crystal Clear's Origin Plains, whose landmark reads the code past its table of
+	// stand-ins: on none)
 	int placed = 0, named = 0;
+	std::set<std::string> unplaced;
 	for (const auto& [z, l] : r.zones)
-		if (!l.name.empty() && l.name != "Special") { named++; placed += l.spot.map >= 0; }
-	CHECK(placed == named && named > 300);
+		if (!l.name.empty() && l.name != "Special") { named++; placed += l.spot.map >= 0; if (l.spot.map < 0) unplaced.insert(l.name); }
+	CHECK(named > 300 && (key == "crystal-clear" ? unplaced == std::set<std::string>{ "Origin Plains" } : placed == named));
 	fprintf(stderr, "gbpk-roms: %s: %d places on the Pokégear's maps\n", current.c_str(), placed);
+}
+
+// Crystal Clear's own, on each of its eight builds: its packed text decoded whole (Crystal's words: every move
+// description and Pokédex page Crystal's, when its ROM was read before, but Natu's and Teddiursa's categories, which
+// the hack wrote "LITTLEBIRD" and "LITTLEBEAR"), its trainers with a party for each badge count (Falkner's first
+// Crystal's, his last Lv70-75 with a Zapdos; class 39's eleventh record, with no name, passed over to the twentieth),
+// its rods' chances out of 100 (New Bark Town's), Headbutt from TreeMons' set 1 (New Bark Town's: AIPOM first, Lv11,
+// 20 %), and the landmarks past the Fast Ship named and placed by their stand-ins' regions
+static std::vector<std::string> crystalTexts;		// (each species' and move's, Crystal's: kept as its ROM is read)
+static std::vector<std::string> texts(const nds::RomData& r)
+{
+	std::vector<std::string> v;
+	for (int i = 1; i <= 251; i++)
+		v.push_back(r.moves[i].description + "|" + (i == 177 || i == 216 ? "" : r.species[i].category) + "|" + r.species[i].dexText);
+	return v;
+}
+static void checkClear(const nds::RomData& r)
+{
+	EQ(r.moves[1].description, "Pounds with fore- legs or tail.");
+	EQ(r.species[1].dexText, "While it is young, it uses the nutrients that are stored in the seeds on its back in order to grow.");
+	if (!crystalTexts.empty()) CHECK(texts(r) == crystalTexts);
+	const auto* gb = dynamic_cast<const GbRomData*>(&r);
+	CHECK(gb && r.trainers.size() == 538 && gb->teams.size() == 386);
+	if (!gb) return;
+	auto f = gb->teams.find(1 << 8 | 1);
+	CHECK(f != gb->teams.end() && f->second.size() == 16);
+	if (f != gb->teams.end() && f->second.size() == 16)
+	{
+		const auto& last = f->second[15];
+		CHECK(last.size() == 6 && last[0].species == 18 && last[0].level == 70 && last[5].species == 145 && last[5].level == 75);
+		auto later = withBadgeTeams(std::shared_ptr<const nds::RomData>(&r, [](const nds::RomData*) {}), badgeTeam(0xFFFF));
+		CHECK(later->trainers.at(1 << 8 | 1).team.size() == 6 && later->trainers.at(1 << 8 | 1).team[5].level == 75);
+	}
+	int class39 = 0;
+	for (const auto& [id, t] : r.trainers) class39 += id >> 8 == 39;
+	CHECK(class39 == 19 && !r.trainers.count(39 << 8 | 11) && r.trainers.count(39 << 8 | 20));
+	EQ(r.species[177].category, "Littlebird");
+	const nds::Location* nb = nullptr;
+	for (const auto& [z, l] : r.zones) if (z == (24 << 8 | 4)) nb = &l;
+	CHECK(nb && nb->name == "New Bark Town");
+	int rods[3] = { 0, 0, 0 };
+	const nds::Encounter* tree = nullptr;
+	for (const auto& e : nb ? nb->encounters : std::vector<nds::Encounter>{})
+	{
+		const int rod = e.kind == nds::EncounterKind::OLD_ROD ? 0 : e.kind == nds::EncounterKind::GOOD_ROD ? 1 : e.kind == nds::EncounterKind::SUPER_ROD ? 2 : -1;
+		if (rod >= 0 && e.time != nds::TimeOfDay::DAY && e.time != nds::TimeOfDay::NIGHT) rods[rod] += e.percent;
+		if (e.kind == nds::EncounterKind::HEADBUTT && !tree) tree = &e;
+	}
+	CHECK(rods[0] == 100 && rods[1] == 100 && rods[2] == 100);
+	CHECK(tree && tree->species == 190 && tree->minLevel == 11 && tree->percent == 20);
+	auto mapOf = [&](const std::string& name) -> int {
+		for (const auto& [z, l] : r.zones) if (l.name == name) return l.spot.map;
+		return -2;
+	};
+	CHECK(r.locationNames.size() == 117 && r.locationNames[96] == "Viridian Forest" && r.locationNames[116] == "Origin Plains");
+	CHECK(mapOf("Viridian Forest") == 1 && mapOf("Cherrygrove Bay") == 0 && mapOf("Safari Zone") == 1 && mapOf("Origin Plains") == -1);
+	fprintf(stderr, "gbpk-roms: %s: its text decoded, %zu trainers with a party for each badge count\n", current.c_str(), gb->teams.size());
 }
 
 static void checkGen2(const nds::RomData& r, const std::string& key, const std::string& pokedaisy)
@@ -211,6 +275,10 @@ static void checkGen2(const nds::RomData& r, const std::string& key, const std::
 	EQ(c.category, "Leaf");
 	CHECK(c.height == 9 && c.weight == 64);	// 2'11" and 14.0 lb: 0.9 m, and 6.4 kg as the game reckons it
 	CHECK(c.dexText.size() > 40 && c.dexText.find("  ") == std::string::npos);
+	// every species' Pokédex page (Crystal Legacy's through its pointers with their banks)
+	int pages = 0;
+	for (size_t s = 1; s < r.species.size(); s++) pages += !r.species[s].category.empty() && r.species[s].dexText.size() > 20;
+	CHECK(pages == 251);
 	CHECK(!c.tms.empty() && c.tms.back() >= 93);	// (Cut and Flash: HMs)
 	// the moves: Pound, Quick Attack's priority, Vital Throw's, a special one, TM01
 	CHECK(r.moves[1].power == 40 && r.moves[1].accuracy == 100 && r.moves[1].pp == 35 && r.moves[1].cat == nds::MoveCategory::PHYSICAL);
@@ -239,11 +307,14 @@ static void checkGen2(const nds::RomData& r, const std::string& key, const std::
 	const nds::Location* newBark = nullptr;
 	for (const auto& [z, l] : r.zones) if (l.name == "New Bark Town" && fishes(&l)) newBark = &l;
 	CHECK(newBark && !fishes(route29));
+	// (the first Falkner: Crystal Legacy's second is his rematch; its first has a Pidgey and a Noctowl, Lv8 and 10, its
+	// data/trainers/parties.asm FalknerGroup at V1.3.1)
 	const nds::Trainer* falkner = nullptr;
-	for (const auto& [id, t] : r.trainers) if (t.name == "Falkner") falkner = &t;
+	for (const auto& [id, t] : r.trainers) if (t.name == "Falkner" && !falkner) falkner = &t;
 	CHECK(falkner && falkner->cls == "Leader" && falkner->id == (1 << 8 | 1));
-	CHECK(falkner && falkner->team.size() == 2 && falkner->team[0].species == 16 && falkner->team[0].level == 7 &&
-		falkner->team[1].species == 17 && falkner->team[1].level == 9);
+	const bool legacy = key == "crystal-legacy";
+	CHECK(falkner && falkner->team.size() == 2 && falkner->team[0].species == 16 && falkner->team[0].level == (legacy ? 8 : 7) &&
+		falkner->team[1].species == (legacy ? 164 : 17) && falkner->team[1].level == (legacy ? 10 : 9));
 	// every place with wild Pokémon is named, and the kinds are there
 	std::set<nds::EncounterKind> kinds;
 	int places = 0, unnamed = 0;
@@ -255,11 +326,16 @@ static void checkGen2(const nds::RomData& r, const std::string& key, const std::
 			for (const auto& e : l.encounters) kinds.insert(e.kind);
 		}
 	CHECK(unnamed == 0 && places > 80);
-	CHECK(kinds.count(nds::EncounterKind::SURF) && kinds.count(nds::EncounterKind::OLD_ROD) && kinds.count(nds::EncounterKind::SUPER_ROD) &&
-		kinds.count(nds::EncounterKind::HEADBUTT) && kinds.count(nds::EncounterKind::ROCK_SMASH));
+	std::string lacking;
+	for (auto [k, n] : { std::pair{ nds::EncounterKind::SURF, "Surf" }, { nds::EncounterKind::OLD_ROD, "Old Rod" },
+			{ nds::EncounterKind::SUPER_ROD, "Super Rod" }, { nds::EncounterKind::HEADBUTT, "Headbutt" }, { nds::EncounterKind::ROCK_SMASH, "Rock Smash" } })
+		if (!kinds.count(k)) lacking += std::string(lacking.empty() ? "" : ", ") + n;
+	EQ(lacking, "");
 	CHECK(r.trainers.size() > 400);
 	fprintf(stderr, "gbpk-roms: %s: %zu places, %d with wild Pokémon, %zu trainers, %zu place names\n", current.c_str(),
 		r.zones.size(), places, r.trainers.size(), r.locationNames.size());
+	if (key == "crystal") crystalTexts = texts(r);
+	if (key == "crystal-clear") checkClear(r);
 
 	// PokeDaisy's gender ratios and growth rates (its tables are Crystal's; Gold's and Silver's species are the same)
 	if (!pokedaisy.empty())
@@ -281,10 +357,15 @@ static void checkGen2(const nds::RomData& r, const std::string& key, const std::
 // data/trainers/parties.asm and special_moves.asm, engine/items/item_effects.asm)
 static void checkGen1(const nds::RomData& r, const GameData& d)
 {
-	const bool yellow = d.game.id == YELLOW;
-	CHECK(r.species.size() == 152 && r.moves.size() == 166);
+	// (Yellow Legacy is Yellow's engine with its own changes, each checked by its own values: its source at V1.0.10;
+	// PureRed, PureBlue and PureGreen are Red's, theirs at v2.7.7, the same in v2.7.6 for every value here)
+	const bool yellow = baseGame(d.game.id) == YELLOW, legacy = d.game.id == YELLOW_LEGACY;
+	const bool pure = d.game.id == PURERED || d.game.id == PUREBLUE || d.game.id == PUREGREEN;
+	// (PureRGB's twelve forms after the 151: Armored Mewtwo, Powered Haunter, Hardened Onix, Floating Magneton and
+	// Weezing, the five spirits, Winter Dragonair, Volcanic Magmar; its constants/pokemon_constants.asm)
+	CHECK(r.species.size() == (pure ? 164u : 152u) && r.moves.size() == 166);
 	int named = 0;
-	for (size_t s = 1; s < r.species.size(); s++) named += !r.species[s].name.empty() && !r.species[s].learnset.empty() && !r.species[s].dexText.empty();
+	for (size_t s = 1; s <= 151 && s < r.species.size(); s++) named += !r.species[s].name.empty() && !r.species[s].learnset.empty() && !r.species[s].dexText.empty();
 	CHECK(named == 151);
 	named = 0;
 	for (size_t m = 1; m < r.moves.size(); m++) named += !r.moves[m].name.empty();
@@ -300,30 +381,50 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 	EQ(b.category, "Seed");
 	CHECK(b.height == 7 && b.weight == 68);	// 2'04" and 15.0 lb: 0.7 m, 6.8 kg
 	CHECK(b.dexText.size() > 40 && b.dexText.back() == '.' && b.dexText.find("  ") == std::string::npos);
-	CHECK(!b.tms.empty() && b.tms.back() == 93);	// (Cut: HM01)
+	CHECK(!b.tms.empty() && b.tms.back() == (pure ? 97 : 93));	// (Cut: HM01; PureRGB's Flash, HM05)
 	EQ(r.species[151].name, "Mew");
-	CHECK(r.species[151].base[0] == 100 && r.species[151].base[4] == 100 && r.species[151].tms.size() == 55);
+	CHECK(r.species[151].base[0] == 100 && r.species[151].base[4] == 100 && (pure || r.species[151].tms.size() == 55));
 	EQ(r.species[29].name, "Nidoran♀");
-	// Clefairy by a Moon Stone, Kadabra by trade
+	// Clefairy by a Moon Stone, Kadabra by trade (Yellow Legacy's at level 42, data/pokemon/evos_moves.asm); Yellow
+	// Legacy's Metapod at 10, its stray "db 7, HARDEN" passed over as the game does, Harden at 7
 	CHECK(r.species[35].evolutions.size() == 1 && r.species[35].evolutions[0].into == 36);
 	EQ(r.species[35].evolutions.empty() ? "" : r.species[35].evolutions[0].how, "Use Moon Stone");
-	CHECK(r.species[64].evolutions.size() == 1 && r.species[64].evolutions[0].method == nds::evo::TRADE && r.species[64].evolutions[0].into == 65);
+	// (PureRGB's Kadabra by trade or at 37)
+	if (pure)
+		CHECK(r.species[64].evolutions.size() == 2 && r.species[64].evolutions[0].method == nds::evo::TRADE &&
+			r.species[64].evolutions[1].method == nds::evo::LEVEL && r.species[64].evolutions[1].param == 37 && r.species[64].evolutions[1].into == 65);
+	else
+		CHECK(r.species[64].evolutions.size() == 1 && r.species[64].evolutions[0].into == 65 && (legacy ?
+			r.species[64].evolutions[0].method == nds::evo::LEVEL && r.species[64].evolutions[0].param == 42 : r.species[64].evolutions[0].method == nds::evo::TRADE));
+	const nds::Species& metapod = r.species[11];
+	CHECK(metapod.evolutions.size() == 1 && metapod.evolutions[0].param == 10 && metapod.evolutions[0].into == 12);
+	if (legacy) CHECK(metapod.learnset.size() >= 2 && metapod.learnset.back().level == 7 && metapod.learnset.back().move == 106);
 	// the moves: Pound, Quick Attack's and Counter's priorities, a special one, TM01 and HM01
 	EQ(r.moves[1].name, "Pound");
 	CHECK(r.moves[1].power == 40 && r.moves[1].accuracy == 100 && r.moves[1].pp == 35 && r.moves[1].cat == nds::MoveCategory::PHYSICAL);
-	CHECK((int8_t)r.moves[98].priority == 1 && (int8_t)r.moves[68].priority == -1 && r.moves[33].priority == 0);
+	// (PureRGB's PriorityMoves, Comet Punch among them, and no move last: data/battle/priority_moves.asm)
+	if (pure) CHECK((int8_t)r.moves[98].priority == 1 && (int8_t)r.moves[4].priority == 1 && r.moves[68].priority == 0 && r.moves[33].priority == 0);
+	else CHECK((int8_t)r.moves[98].priority == 1 && (int8_t)r.moves[68].priority == -1 && r.moves[33].priority == 0);
 	EQ(r.moves[98].name, "Quick Attack");
 	CHECK(r.moves[53].type == nds::FIRE && r.moves[53].cat == nds::MoveCategory::SPECIAL);	// Flamethrower
-	CHECK(r.tmMoves[0] == 5 && r.tmMoves[92] == 15);	// TM01 Mega Punch, HM01 Cut
+	// Lick, Ghost: physical below SPECIAL in the retail games, special in Yellow Legacy (Ghost after its DEF SPECIAL), its
+	// power 40 there (data/moves/moves.asm), 20 in the retail games, 35 in PureRGB's (physical by its type here; its
+	// Ghost goes by the attacker's stats, rules.h)
+	CHECK(r.moves[122].type == nds::GHOST && r.moves[122].power == (legacy ? 40 : pure ? 35 : 20) &&
+		r.moves[122].cat == (legacy ? nds::MoveCategory::SPECIAL : nds::MoveCategory::PHYSICAL));
+	CHECK(r.tmMoves[0] == (pure ? 8 : 5) && r.tmMoves[92] == 15);	// TM01 Mega Punch (PureRGB's Ice Punch), HM01 Cut
 	// items
 	EQ(r.items[1].name, "Master Ball");
 	CHECK(r.items[1].pocket == nds::POCKET_BALLS && r.items[2].price == 1200);
 	EQ(r.items[81].name, "Moon Stone");
 	EQ(r.items[328].name, "TM01");
 	EQ(r.items[424].name, "HM05");
-	CHECK(r.items[GEN1_ONLY + 0x28].name == "Rare Candy" && r.items[GEN1_ONLY + 0x28].price == 4800);
+	CHECK(r.items[GEN1_ONLY + 0x28].name == "Rare Candy" && r.items[GEN1_ONLY + 0x28].price == (pure ? 4000 : 4800));
+	// (PureRGB's Hyper Ball where Red's Town Map was, a ball no Gen IV id has: data/items/names.asm)
+	if (pure) CHECK(r.items[GEN1_ONLY + 5].name == "Hyper Ball" && r.items[GEN1_ONLY + 5].pocket == nds::POCKET_BALLS);
 	// Route 1's grass; fishing at Pallet Town: the Old Rod's Magikarp, the Good Rod's Goldeen and Poliwag, the Super
-	// Rod's; none on Route 1
+	// Rod's; none on Route 1. Yellow Legacy's Old Rod is its OldRodMons, Goldeen and Poliwag at 5, its Good Rod's
+	// Horsea and Krabby at 20 (data/wild/old_rod.asm, good_rod.asm)
 	const nds::Location* route1 = place(r, "Route 1");
 	bool pidgey = false, rattata = false;
 	for (const auto& e : route1 ? route1->encounters : std::vector<nds::Encounter>{})
@@ -336,13 +437,29 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 			if (e.kind == k && e.species == species && (!level || e.minLevel == level)) return true;
 		return false;
 	};
-	CHECK(has(pallet, nds::EncounterKind::OLD_ROD, 129, 5) && has(pallet, nds::EncounterKind::GOOD_ROD, 118, 10) &&
-		has(pallet, nds::EncounterKind::GOOD_ROD, 60, 10));
+	if (legacy)
+		CHECK(has(pallet, nds::EncounterKind::OLD_ROD, 118, 5) && has(pallet, nds::EncounterKind::OLD_ROD, 60, 5) &&
+			has(pallet, nds::EncounterKind::GOOD_ROD, 116, 20) && has(pallet, nds::EncounterKind::GOOD_ROD, 98, 20));
+	else if (pure)
+	{
+		// (PureRGB's Old Rod: Magikarp or Goldeen at 10; its Good Rod at 16, Pallet Town on its ocean list (Horsea,
+		// Magikarp, Shellder, Tentacool), Cerulean City not (Goldeen, Poliwag, Magikarp, and Poliwag at 18))
+		const nds::Location* cerulean = r.zones.count(3) ? &r.zones.at(3) : nullptr;
+		CHECK(has(pallet, nds::EncounterKind::OLD_ROD, 129, 10) && has(pallet, nds::EncounterKind::OLD_ROD, 118, 10) &&
+			has(pallet, nds::EncounterKind::GOOD_ROD, 116, 16) && has(pallet, nds::EncounterKind::GOOD_ROD, 90, 16) &&
+			has(pallet, nds::EncounterKind::GOOD_ROD, 72, 16) && !has(pallet, nds::EncounterKind::GOOD_ROD, 118, 0));
+		CHECK(has(cerulean, nds::EncounterKind::GOOD_ROD, 118, 16) && has(cerulean, nds::EncounterKind::GOOD_ROD, 60, 18) &&
+			!has(cerulean, nds::EncounterKind::GOOD_ROD, 116, 0));
+	}
+	else
+		CHECK(has(pallet, nds::EncounterKind::OLD_ROD, 129, 5) && has(pallet, nds::EncounterKind::GOOD_ROD, 118, 10) &&
+			has(pallet, nds::EncounterKind::GOOD_ROD, 60, 10));
 	int superRod = 0;
 	for (const auto& e : pallet ? pallet->encounters : std::vector<nds::Encounter>{}) superRod += e.kind == nds::EncounterKind::SUPER_ROD;
 	CHECK(superRod >= 1 && superRod <= 4 && !has(route1, nds::EncounterKind::OLD_ROD, 129, 0));
-	// Brock: Geodude and Onix, Lv 12 and 14 (Yellow's 10 and 12), Onix with Bide (Yellow's: Bind and Bide); Lorelei's
-	// Lapras with Blizzard (Red's and Blue's TeamMoves; Yellow's table gives it too)
+	// Brock: Geodude and Onix, Lv 12 and 14 (Yellow's 10 and 12), Onix with Bide (Yellow's: Bind and Bide; Yellow
+	// Legacy's Constrict, Bide and Bind); Lorelei's Lapras with Blizzard (Red's and Blue's TeamMoves; Yellow's table
+	// gives it too; Yellow Legacy's Surf, data/trainers/special_moves.asm)
 	const nds::Trainer* brock = nullptr;
 	const nds::Trainer* lorelei = nullptr;
 	for (const auto& [id, t] : r.trainers)
@@ -353,8 +470,79 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 	CHECK(brock && brock->cls == "Brock" && (brock->id & 0xFF) == 1);
 	CHECK(brock && brock->team.size() == 2 && brock->team[0].species == 74 && brock->team[1].species == 95 &&
 		brock->team[0].level == (yellow ? 10 : 12) && brock->team[1].level == (yellow ? 12 : 14));
-	CHECK(brock && brock->team.size() == 2 && brock->team[1].moves[yellow ? 3 : 2] == 117 && (!yellow || brock->team[1].moves[2] == 20));
-	CHECK(lorelei && lorelei->team.size() == 5 && lorelei->team[4].species == 131 && lorelei->team[4].moves[2] == 59);
+	if (legacy)
+		CHECK(brock && brock->team.size() == 2 && brock->team[1].moves[0] == 132 && brock->team[1].moves[2] == 117 && brock->team[1].moves[3] == 20);
+	else
+		CHECK(brock && brock->team.size() == 2 && brock->team[1].moves[yellow ? 3 : 2] == 117 && (!yellow || brock->team[1].moves[2] == 20));
+	if (pure)
+	{
+		// (PureRGB's Lorelei has six; its TeamMoves give Agatha's sixth, Gengar, Thunderbolt second; its Lance's party
+		// takes MoveSetMappings' moveset, his Gyarados Hyper Beam, Hydro Pump, Flamethrower and Dragon Rage, his first
+		// Dragonite at 68 with the alternate palette's bit; data/trainers/parties.asm, custom_movesets.asm)
+		const nds::Trainer* agatha = nullptr;
+		const nds::Trainer* lance = nullptr;
+		for (const auto& [id, t] : r.trainers)
+		{
+			if (t.name == "Agatha" && !agatha) agatha = &t;
+			if (t.name == "Lance" && !lance) lance = &t;
+		}
+		CHECK(lorelei && lorelei->team.size() == 6 && lorelei->team[5].species == 131);
+		CHECK(agatha && agatha->team.size() == 6 && agatha->team[5].species == 94 && agatha->team[5].moves[1] == 85);
+		CHECK(lance && lance->team.size() == 6 && lance->team[0].species == 130 && lance->team[0].moves[0] == 63 &&
+			lance->team[0].moves[1] == 56 && lance->team[0].moves[2] == 53 && lance->team[0].moves[3] == 82 &&
+			lance->team[3].species == 149 && lance->team[3].level == 68);
+		// its forms: after the 151, named as their base, with their own types (Floating Weezing Poison and Floating,
+		// Hardened Onix Crystal and Ground: data/pokemon/base_stats/floating_weezing.asm, hardened_onix.asm), and the
+		// internal index each is
+		const nds::Species& weezing = r.species[110];
+		const nds::Species& onix = r.species[95];
+		CHECK(weezing.formsAt > 151 && weezing.formCount == 2 && onix.formsAt > 151 && onix.formCount == 2);
+		if (weezing.formsAt > 151 && weezing.formsAt < r.species.size() && onix.formsAt > 151 && onix.formsAt < r.species.size())
+		{
+			const nds::Species& fw = r.species[weezing.formsAt];
+			const nds::Species& ho = r.species[onix.formsAt];
+			EQ(fw.name, "Weezing");
+			CHECK(fw.types[0] == nds::POISON && fw.types[1] == FLOATING && ho.types[0] == CRYSTAL_TYPE && ho.types[1] == nds::GROUND);
+		}
+		const GbRomData& g = static_cast<const GbRomData&>(r);
+		int forms = 0;
+		for (size_t i = 0; i < g.form.size(); i++) forms += g.form[i] != 0 && g.national[i] >= 1;
+		CHECK(forms == 12);
+		// its rules: the 23 species the type NPC switches back, Butterfree (Bug and Flying) first, Kabutops (Rock and Water)
+		// last, each once and none a form (engine/pokemon/remap_typings.asm OriginalTypings)
+		std::set<uint16_t> switchable;
+		for (const auto& o : g.originalTypes) switchable.insert(o.species);
+		CHECK(g.originalTypes.size() == 23 && switchable.size() == 23 && *switchable.rbegin() <= 151);
+		if (g.originalTypes.size() == 23)
+			CHECK(g.originalTypes[0].species == 12 && g.originalTypes[0].types[0] == nds::BUG && g.originalTypes[0].types[1] == nds::FLYING &&
+				g.originalTypes[22].species == 141 && g.originalTypes[22].types[0] == nds::ROCK && g.originalTypes[22].types[1] == nds::WATER);
+		// the 19 signature moves (the eight battle rules before them passed over): Drill Peck by Fearow at 110, Fire Punch
+		// by Magmar at 105, Hypnosis by Hypno at its own power and 85 %; each move's name the ROM's for one move only, as
+		// the damage finds it by its name (engine/battle/remap_move_data.asm RemappableMoves)
+		CHECK(g.rules.signatures.size() == 19);
+		int peck = 0, punch = 0, hypnosis = 0;
+		for (const Signature& s : g.rules.signatures)
+		{
+			peck += s.move == "Drill Peck" && s.species == 22 && s.power == 110 && !s.accuracy;
+			punch += s.move == "Fire Punch" && s.species == 126 && s.power == 105;
+			hypnosis += s.move == "Hypnosis" && s.species == 97 && !s.power && s.accuracy == 85;
+			int named = 0;
+			for (const auto& m : r.moves) named += m.name == s.move;
+			if (named != 1) fprintf(stderr, "gbpk-roms: FAIL %s: %d moves are named %s\n", current.c_str(), named, s.move.c_str());
+			CHECK(named == 1);
+		}
+		CHECK(peck == 1 && punch == 1 && hypnosis == 1);
+		// Ghost by the attacker's base stats: Gengar's Special above its Attack, Machamp's not; the options, the Hyper Ball
+		CHECK(g.rules.byStats[nds::GHOST] && g.rules.statsSpecial[94] && !g.rules.statsSpecial[68] && g.rules.pureOptions &&
+			g.rules.hyperBall == GEN1_ONLY + 5);
+	}
+	else
+	{
+		const GbRomData& g = static_cast<const GbRomData&>(r);
+		CHECK(g.originalTypes.empty() && g.rules.signatures.empty() && !g.rules.pureOptions && !g.rules.hyperBall && !g.rules.byStats[nds::GHOST]);
+	}
+	if (!pure)
+		CHECK(lorelei && lorelei->team.size() == 5 && lorelei->team[4].species == 131 && lorelei->team[4].moves[2] == (legacy ? 57 : 59));
 	// every place with wild Pokémon is named
 	std::set<nds::EncounterKind> kinds;
 	int places = 0, unnamed = 0;
@@ -374,9 +562,56 @@ static void checkGen1(const nds::RomData& r, const GameData& d)
 }
 
 // the hidden items from the maps' events, and the game's guide file over this ROM: every place found by its name,
-// every boss's teams the ROM's with its top level (the Champion of Gen I three, one for each starter). Crystal's hidden
-// items are PokeDaisy's, by flag and item (its GuideCrystalGen.kt's HIDDEN lines: landmark|HIDDEN|item|flag|...); Red's,
-// Blue's and Yellow's by map, flag and item (GuideGen1Gen.kt's <prefix>_AREAS_RAW: map|HIDDEN|item|0x20000 + flag|...).
+// every boss's teams the ROM's with its top level (the Champion of Gen I three, one for each starter). Crystal's and
+// Crystal Legacy's hidden items are PokeDaisy's, by flag and item (the HIDDEN lines of its GuideCrystalGen.kt and
+// GuideCrystalLegacyGen.kt: landmark|HIDDEN|item|flag|...); Red's, Blue's, Yellow's and Yellow Legacy's by map, flag and
+// item (GuideGen1Gen.kt's <prefix>_AREAS_RAW: map|HIDDEN|item|0x20000 + flag|...).
+// the ROM's type chart (TypeEffects, TypeMatchups), cell for cell, against the one the companion used before it read
+// the ROM's: for Red, Blue and Yellow upstream's with Gen I's five differences (rules.h's fallback), for Gold, Silver
+// and Crystal upstream's own without Fairy; and no entry for a type past Dark. Only the retail games: a ROM hack's
+// chart is its own
+static void checkChart(const nds::RomData& r, const GameData& d)
+{
+	const TypeChart& c = static_cast<const GbRomData&>(r).rules.chart;
+	// (a ROM hack's own chart: read, which checks Water on Fire, and its entries counted; PureRGB's with its own types:
+	// Water on Crystal 0.5x, Ground on Floating 0x, Bonemerang on Flying no entry (neutral), data/types/type_matchups.asm)
+	if (baseGame(d.game.id) != d.game.id)
+	{
+		int listed = 0;
+		for (int8_t q : c) listed += q >= 0;
+		CHECK(listed > 80);
+		if (d.game.id == PURERED || d.game.id == PUREBLUE || d.game.id == PUREGREEN)
+		{
+			auto cell = [&](nds::Type a, nds::Type t) { return c[(size_t)(chartIndex(a) * CHART_TYPES + chartIndex(t))]; };
+			CHECK(cell(nds::WATER, CRYSTAL_TYPE) == 2 && cell(nds::GROUND, FLOATING) == 0 && cell(BONEMERANG, nds::FLYING) == -1 &&
+				cell(BONEMERANG, nds::FIRE) == 8 && cell(TRI, nds::FLYING) == 8 && cell(nds::WATER, MAGMA) == 0);
+		}
+		fprintf(stderr, "gbpk-roms: %s: the type chart's %d entries\n", current.c_str(), listed);
+		return;
+	}
+	useRules(d.game.gen);
+	useGameRules(nullptr);
+	int differ = 0, listed = 0;
+	for (int a = 0; a < CHART_TYPES; a++)
+		for (int t = 0; t < CHART_TYPES; t++)
+		{
+			const int q = c[(size_t)(a * CHART_TYPES + t)];
+			listed += q >= 0;
+			const bool old = a <= nds::DARK && t <= nds::DARK;
+			const int want = old ? nds::effectiveness((nds::Type)a, (nds::Type)t, nds::NO_TYPE) : -1;
+			if ((old && (q < 0 ? 4 : q) != want) || (!old && q != -1))
+			{
+				if (++differ <= 5) fprintf(stderr, "gbpk-roms: FAIL %s: the chart's type %d on type %d is %d quarters, not %d\n",
+					current.c_str(), a, t, q, want);
+			}
+		}
+	useRules(nds::Gen::IV);
+	checks++;
+	if (differ) failed++;
+	fprintf(stderr, "gbpk-roms: %s: the type chart's %d entries, the companion's chart before it %s\n", current.c_str(), listed,
+		differ ? "differs" : "cell for cell");
+}
+
 static void checkGuide(const nds::RomData& r, const GameData& d, const std::string& pokedaisy)
 {
 	const std::vector<HiddenItem>& hidden = static_cast<const GbRomData&>(r).hidden;
@@ -385,24 +620,25 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 		named += r.zones.count(h.zone) && !r.zones.at(h.zone).name.empty() && h.item < r.items.size() && !r.items[h.item].name.empty();
 	CHECK(hidden.size() > 50 && named == (int)hidden.size());
 	fprintf(stderr, "gbpk-roms: %s: %zu hidden items\n", current.c_str(), hidden.size());
-	if (d.key == "crystal" && !pokedaisy.empty())
+	if ((d.key == "crystal" || d.key == "crystal-legacy") && !pokedaisy.empty())
 	{
-		std::ifstream f(pokedaisy + "/app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt");
+		std::ifstream f(pokedaisy + "/app/src/main/kotlin/com/pokedaisy/app/companion/data/" +
+			(d.key == "crystal" ? "GuideCrystalGen.kt" : "GuideCrystalLegacyGen.kt"));
 		// (a multiset: the National Park's Full Heal lies on the park's map and on its Bug Contest copy, one flag)
 		std::multiset<std::pair<int, int>> theirs, ours;
 		for (std::string l; std::getline(f, l);)
 		{
 			int lm, item, flag;
-			if (sscanf(l.c_str(), "%d|HIDDEN|%d|%d|", &lm, &item, &flag) == 3) theirs.insert({ flag, gen2Item((uint8_t)item) });
+			if (sscanf(l.c_str(), "%d|HIDDEN|%d|%d|", &lm, &item, &flag) == 3) theirs.insert({ flag, gen2Item(d, (uint8_t)item) });
 		}
 		for (const HiddenItem& h : hidden) ours.insert({ h.flag, h.item });
 		CHECK(theirs.size() == 85 && ours == theirs);
 		fprintf(stderr, "gbpk-roms: %s: the %zu hidden items are PokeDaisy's, by flag and item\n", current.c_str(), theirs.size());
 	}
-	if (d.gen == 1 && !pokedaisy.empty())
+	if ((d.key == "red" || d.key == "blue" || d.key == "yellow" || d.key == "yellow-legacy") && !pokedaisy.empty())
 	{
 		std::ifstream f(pokedaisy + "/app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen1Gen.kt");
-		const std::string table = std::string(d.key == "red" ? "G1R" : d.key == "blue" ? "G1B" : "G1Y") + "_AREAS_RAW";
+		const std::string table = std::string(d.key == "red" ? "G1R" : d.key == "blue" ? "G1B" : d.key == "yellow" ? "G1Y" : "G1L") + "_AREAS_RAW";
 		std::set<std::tuple<int, int, int>> theirs, ours;
 		bool in = false;
 		for (std::string l; std::getline(f, l);)
@@ -410,7 +646,7 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 			if (l.find("val " + table) != std::string::npos) in = true;
 			else if (in && l == ")") break;
 			int map, item, flag;
-			if (in && sscanf(l.c_str(), "%d|HIDDEN|%d|%d|", &map, &item, &flag) == 3) theirs.insert({ map, flag - 0x20000, gen1Item((uint8_t)item) });
+			if (in && sscanf(l.c_str(), "%d|HIDDEN|%d|%d|", &map, &item, &flag) == 3) theirs.insert({ map, flag - 0x20000, gen1Item(d, (uint8_t)item) });
 		}
 		// (and one more: the item left on UNUSED_MAP_6F, a map the game never loads, which PokeDaisy's generator leaves
 		// out; the Here page lists a map's own, so it never shows)
@@ -419,7 +655,7 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 		for (const HiddenItem& h : hidden)
 			if (h.zone == UNUSED_MAP_6F) unused++;
 			else ours.insert({ h.zone, h.flag, h.item });
-		CHECK(theirs.size() == (d.key == "yellow" ? 54u : 53u) && unused == 1 && ours.size() + 1 == hidden.size() && ours == theirs);
+		CHECK(theirs.size() == (baseGame(d.game.id) == YELLOW ? 54u : 53u) && unused == 1 && ours.size() + 1 == hidden.size() && ours == theirs);
 		fprintf(stderr, "gbpk-roms: %s: the %zu hidden items are PokeDaisy's, by map, flag and item, and one on a map the game never loads\n",
 			current.c_str(), theirs.size());
 	}
@@ -453,6 +689,46 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 			g.milestones.size(), order.c_str());
 		return;
 	}
+	if (d.guideRegions)
+	{
+		// Crystal Clear's, from the ROM's trainers in its regions' order (gsguide.h): its sixteen leaders, the Elite Four
+		// and Lance, by their ported classes (not its post-game Champion and Elite 4 of the same names); a save with no
+		// badge starts in Johto, its leaders by their badges, one with Brock's in Kanto; each leader with the party it
+		// will have (the save's badge count and one more for each gym before it), so the levels of the gyms not yet
+		// beaten rise along the road, in each region and from one to the other (a beaten one shows the count's party,
+		// as the next gym does: a level or two either way)
+		auto road = [&](uint16_t badges, std::string& order, std::string& late)
+		{
+			const nds::GuideData g = romGuide(r, d, badges);
+			int last = 0, gyms = 0;
+			for (const nds::Milestone& m : g.milestones)
+			{
+				order += (order.empty() ? "" : ", ") + m.foeName;
+				if (m.kind != "gym") continue;
+				gyms++;
+				if (m.doneWhen != "badge:" + std::to_string(m.badge) || m.badge < 1) late += " " + m.foeName + " (" + m.doneWhen + ")";
+				if (m.badge >= 1 && (badges >> (m.badge - 1) & 1)) continue;
+				if (m.levelCap < last) late += " " + m.foeName + " (" + std::to_string(m.levelCap) + ")";
+				last = m.levelCap;
+			}
+			return gyms;
+		};
+		std::string johto, kanto, late;
+		CHECK(road(0, johto, late) == 16);
+		CHECK(road(1 << 8, kanto, late) == 16);
+		EQ(johto, "Falkner, Bugsy, Whitney, Morty, Jasmine, Chuck, Pryce, Clair, Will, Koga, Bruno, Karen, Lance, "
+			"Brock, Misty, Lt.Surge, Erika, Janine, Sabrina, Blaine, Blue");
+		EQ(kanto, "Brock, Misty, Lt.Surge, Erika, Janine, Sabrina, Blaine, Blue, Will, Koga, Bruno, Karen, Lance, "
+			"Falkner, Bugsy, Whitney, Morty, Jasmine, Chuck, Pryce, Clair");
+		EQ(late, "");
+		const nds::GuideData g = romGuide(r, d);
+		if (g.milestones.size() == 21)
+			CHECK(g.milestones[0].levelCap == 9 && g.milestones[20].levelCap == 75 && g.milestones[12].levelCap == 50);
+		fprintf(stderr, "gbpk-roms: %s: the guide from the ROM's trainers by region, %zu milestones, levels %d to %d: %s\n",
+			current.c_str(), g.milestones.size(), g.milestones.empty() ? 0 : g.milestones.front().levelCap,
+			g.milestones.empty() ? 0 : g.milestones.back().levelCap, johto.c_str());
+		return;
+	}
 	const std::string path = dataDir() + "/" + d.key + ".json";
 	if (FILE* f = fopen(path.c_str(), "r")) fclose(f);
 	else return;
@@ -461,6 +737,48 @@ static void checkGuide(const nds::RomData& r, const GameData& d, const std::stri
 	const nds::GuideResolver res = nds::guideResolver(r);
 	CHECK(nds::loadGuideFile(path, g, d.game.id, &why, &res));
 	EQ(why, "");
+	// (PureRGB's: Red's and Blue's bosses by their trainer ids, at the levels of the ROM's teams, gsguide.h romLevels;
+	// each id a trainer of the boss's name, its letters: the ROM's "LT.SURGE"; the Champion's class has no name in
+	// PureRGB, data/trainers/names.asm li "" ; champion rival, shortened for some free space)
+	if (d.romLevels)
+	{
+		romLevels(g, r);
+		auto letters = [](const std::string& n) { std::string o; for (char c : n) if (isalpha((unsigned char)c)) o += (char)tolower((unsigned char)c); return o; };
+		for (const nds::Milestone& m : g.milestones)
+			for (uint16_t id : m.trainerIds)
+			{
+				auto t = r.trainers.find(id);
+				const bool same = t != r.trainers.end() && (letters(t->second.name) == letters(m.foeName) ||
+					(m.kind == "champion" && t->second.name.empty()));
+				if (!same) fprintf(stderr, "gbpk-roms: FAIL %s: %s: trainer %04X isn't %s\n", current.c_str(), m.id.c_str(), id, m.foeName.c_str());
+				CHECK(same);
+			}
+		// (PureRGB's own levels, data/trainers/parties.asm: Brock's Onix 14, Giovanni's Rhydon 64 at Viridian Gym,
+		// Lorelei's Lapras 66, Lance's Dragonite 69, the Champion's starter 72)
+		CHECK(g.milestones.size() == 13);
+		if (g.milestones.size() == 13)
+			CHECK(g.milestones[0].levelCap == 14 && g.milestones[7].levelCap == 64 && g.milestones[8].levelCap == 66 &&
+				g.milestones[11].levelCap == 69 && g.milestones[12].levelCap == 72 && g.milestones[12].foeAceLevel == 72);
+	}
+	// (Red's and Blue's: the parties PureRGB's guides name, its class each, are the ones their guides find here by name
+	// and level, the story's fights: PureGreen's are PureRed's)
+	if (d.key == "red" || d.key == "blue")
+	{
+		nds::GuideData p;
+		CHECK(nds::loadGuideFile(dataDir() + "/pure" + d.key + ".json", p, d.key == "red" ? PURERED : PUREBLUE, &why, nullptr));
+		CHECK(p.milestones.size() == g.milestones.size());
+		for (size_t i = 0; i < p.milestones.size() && i < g.milestones.size(); i++)
+		{
+			std::set<int> ours, theirs;
+			for (uint16_t id : g.milestones[i].trainerIds) ours.insert(id & 0xFF);
+			for (uint16_t id : p.milestones[i].trainerIds) theirs.insert(id & 0xFF);
+			if (ours != theirs || p.milestones[i].id != g.milestones[i].id)
+				fprintf(stderr, "gbpk-roms: FAIL %s: pure%s.json's %s doesn't name the parties of %s\n", current.c_str(), d.key.c_str(),
+					p.milestones[i].id.c_str(), g.milestones[i].id.c_str());
+			CHECK(ours == theirs && p.milestones[i].id == g.milestones[i].id);
+		}
+		fprintf(stderr, "gbpk-roms: %s: pure%s.json's bosses are this guide's parties\n", current.c_str(), d.key.c_str());
+	}
 	std::string unresolved;
 	for (const std::string& p : g.unresolved) unresolved += (unresolved.empty() ? "" : ", ") + p;
 	EQ(unresolved, "");
@@ -497,31 +815,46 @@ int main(int argc, char** argv)
 	std::set<std::string> listed;
 	std::ifstream lf(argv[2]);
 	for (std::string l; std::getline(lf, l);) if (l.size() > 40 && l[0] != '#') listed.insert(l.substr(0, 40));
+	// (each file named by its path from the folder, as gbpk-roms.sh names it)
 	std::vector<std::string> files;
-	if (DIR* dp = opendir(dir.c_str()))
-	{
+	auto scan = [&](const std::string& sub, bool deeper, auto& self) -> void {
+		DIR* dp = opendir((sub.empty() ? dir : dir + "/" + sub).c_str());
+		if (!dp) return;
 		while (dirent* e = readdir(dp))
 		{
 			std::string n = e->d_name;
+			if (n == "." || n == "..") continue;
+			const std::string path = sub.empty() ? n : sub + "/" + n;
+			struct stat st;
+			if (stat((dir + "/" + path).c_str(), &st) != 0) continue;
+			if (S_ISDIR(st.st_mode)) { if (deeper) self(path, false, self); continue; }
 			std::string low = n;
 			for (char& ch : low) ch = (char)tolower((unsigned char)ch);
-			if ((low.size() > 3 && low.compare(low.size() - 3, 3, ".gb") == 0) || (low.size() > 4 && low.compare(low.size() - 4, 4, ".gbc") == 0)) files.push_back(n);
+			if ((low.size() > 3 && low.compare(low.size() - 3, 3, ".gb") == 0) || (low.size() > 4 && low.compare(low.size() - 4, 4, ".gbc") == 0)) files.push_back(path);
 		}
 		closedir(dp);
-	}
+	};
+	scan("", true, scan);
 	std::sort(files.begin(), files.end());
 	int read = 0;
 	for (const std::string& n : files)
 	{
 		current = n;
 		auto rom = std::make_shared<std::vector<uint8_t>>(readRomFile(dir + "/" + n, 8u << 20));
-		std::string key, why;
-		GameData d;
-		if (detect(rom->data(), rom->size(), key) != Match::KNOWN || !loadData(key, d, &why) || confirm(*rom, d) != Match::KNOWN)
+		// (the game as the companion's host picks it: every game the header names, the SHA-1 picking one)
+		std::vector<std::string> keys;
+		std::string why;
+		std::vector<GameData> ds;
+		if (detect(rom->data(), rom->size(), keys) == Match::KNOWN) ds = loadGames(keys, &why);
+		const int k = confirmAny(*rom, ds);
+		if (k < 0)
 		{
 			fprintf(stderr, "gbpk-roms: %s: not a release the data files list, left alone\n", n.c_str());
 			continue;
 		}
+		GameData d = ds[k];
+		const std::string key = d.key;
+		why.clear();
 		CHECK(listed.count(d.game.romHash));
 		auto t0 = std::chrono::steady_clock::now();
 		auto r = readRom(rom, d, &why);
@@ -535,12 +868,14 @@ int main(int argc, char** argv)
 		if (d.gen == 1)
 		{
 			checkGen1(*r, d);
+			checkChart(*r, d);
 			checkGuide(*r, d, pokedaisy);
 			checkPics(*r, *rom, out ? out : "", key);
 			checkTownMap(*r, out ? out : "", key);
 			continue;
 		}
 		checkGen2(*r, key, pokedaisy);
+		checkChart(*r, d);
 		checkGuide(*r, d, pokedaisy);
 		checkPics(*r, *rom, out ? out : "", key);
 		checkMaps(*r, out ? out : "", key);

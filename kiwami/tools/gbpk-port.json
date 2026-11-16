@@ -1,0 +1,1198 @@
+{
+  "base": {
+    "crystal-clear": {
+      "build": "pokecrystal11",
+      "game": "crystal",
+      "repo": "pokecrystal",
+      "sha1": "f2f52230b536214ef7c9924f483392993e226cfb"
+    }
+  },
+  "games": {
+    "crystal-clear": {
+      "balls": [
+        1,
+        2,
+        4,
+        5,
+        157,
+        159,
+        160,
+        161,
+        164,
+        165,
+        166,
+        177
+      ],
+      "const": {
+        "badgeBoulder": {
+          "how": "the base's",
+          "symbol": "BOULDERBADGE",
+          "value": 0
+        },
+        "badgeCascade": {
+          "how": "the base's",
+          "symbol": "CASCADEBADGE",
+          "value": 1
+        },
+        "badgeEarth": {
+          "how": "the base's",
+          "symbol": "EARTHBADGE",
+          "value": 7
+        },
+        "badgeFog": {
+          "how": "the base's",
+          "symbol": "FOGBADGE",
+          "value": 3
+        },
+        "badgeGlacier": {
+          "how": "the base's",
+          "symbol": "GLACIERBADGE",
+          "value": 6
+        },
+        "badgeHive": {
+          "how": "the base's",
+          "symbol": "HIVEBADGE",
+          "value": 1
+        },
+        "badgeMarsh": {
+          "how": "the base's",
+          "symbol": "MARSHBADGE",
+          "value": 5
+        },
+        "badgeMineral": {
+          "how": "the base's",
+          "symbol": "MINERALBADGE",
+          "value": 4
+        },
+        "badgePlain": {
+          "how": "the base's",
+          "symbol": "PLAINBADGE",
+          "value": 2
+        },
+        "badgeRainbow": {
+          "how": "the base's",
+          "symbol": "RAINBOWBADGE",
+          "value": 3
+        },
+        "badgeRising": {
+          "how": "the base's",
+          "symbol": "RISINGBADGE",
+          "value": 7
+        },
+        "badgeSoul": {
+          "how": "the base's",
+          "symbol": "SOULBADGE",
+          "value": 4
+        },
+        "badgeStorm": {
+          "how": "the base's",
+          "symbol": "STORMBADGE",
+          "value": 5
+        },
+        "badgeThunder": {
+          "how": "the base's",
+          "symbol": "THUNDERBADGE",
+          "value": 2
+        },
+        "badgeVolcano": {
+          "how": "the base's",
+          "symbol": "VOLCANOBADGE",
+          "value": 6
+        },
+        "badgeZephyr": {
+          "how": "the base's",
+          "symbol": "ZEPHYRBADGE",
+          "value": 0
+        },
+        "champion": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "CHAMPION",
+          "value": 15
+        },
+        "eliteBruno": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "BRUNO",
+          "value": 12
+        },
+        "eliteKaren": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "KAREN",
+          "value": 13
+        },
+        "eliteKoga": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "KOGA",
+          "value": 14
+        },
+        "eliteWill": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "WILL",
+          "value": 10
+        },
+        "fastShipLandmark": {
+          "how": "code",
+          "symbol": "LANDMARK_FAST_SHIP",
+          "value": 95
+        },
+        "fishChances": {
+          "how": "code",
+          "value": 100
+        },
+        "fishGroupSize": {
+          "how": "fixed by its code",
+          "value": 6
+        },
+        "kantoLandmark": {
+          "how": "code",
+          "symbol": "KANTO_LANDMARK",
+          "value": 47
+        },
+        "landmarkRegionsFirst": {
+          "how": "code",
+          "value": 96
+        },
+        "leaderBlaine": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "BLAINE",
+          "value": 43
+        },
+        "leaderBlue": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "BLUE",
+          "value": 59
+        },
+        "leaderBrock": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "BROCK",
+          "value": 16
+        },
+        "leaderBugsy": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "BUGSY",
+          "value": 3
+        },
+        "leaderChuck": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "CHUCK",
+          "value": 7
+        },
+        "leaderClair": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "CLAIR",
+          "value": 8
+        },
+        "leaderErika": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "ERIKA",
+          "value": 20
+        },
+        "leaderFalkner": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "FALKNER",
+          "value": 1
+        },
+        "leaderJanine": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "JANINE",
+          "value": 25
+        },
+        "leaderJasmine": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "JASMINE",
+          "value": 6
+        },
+        "leaderLtSurge": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "LT_SURGE",
+          "value": 18
+        },
+        "leaderMisty": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "MISTY",
+          "value": 17
+        },
+        "leaderMorty": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "MORTY",
+          "value": 4
+        },
+        "leaderPryce": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "PRYCE",
+          "value": 5
+        },
+        "leaderSabrina": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "SABRINA",
+          "value": 33
+        },
+        "leaderWhitney": {
+          "how": "by its class's and first trainer's names",
+          "symbol": "WHITNEY",
+          "value": 2
+        },
+        "numEvents": {
+          "how": "code",
+          "symbol": "NUM_EVENTS",
+          "value": 2048
+        },
+        "numLandmarks": {
+          "how": "count",
+          "symbol": "NUM_LANDMARKS",
+          "value": 117
+        },
+        "numMoves": {
+          "how": "the base's",
+          "symbol": "NUM_ATTACKS",
+          "value": 251
+        },
+        "numPokemon": {
+          "how": "the base's",
+          "symbol": "NUM_POKEMON",
+          "value": 251
+        },
+        "numTrainerClasses": {
+          "how": "code",
+          "symbol": "NUM_TRAINER_CLASSES",
+          "value": 105
+        },
+        "textDictFirst": {
+          "how": "code",
+          "value": 22
+        },
+        "trainerItem": {
+          "how": "fixed by its code",
+          "value": 4
+        },
+        "trainerMoves": {
+          "how": "fixed by its code",
+          "value": 16
+        },
+        "trainerNickname": {
+          "how": "fixed by its code",
+          "value": 8
+        },
+        "trainerTeams": {
+          "how": "fixed by its code",
+          "value": 2
+        },
+        "treeMonsFirst": {
+          "how": "fixed by its code",
+          "value": 1
+        },
+        "vitalThrow": {
+          "how": "the base's",
+          "symbol": "VITAL_THROW",
+          "value": 233
+        }
+      },
+      "files": {
+        "items": "from crystal",
+        "types": "from crystal"
+      },
+      "header_title": "PM_CRYSTAL",
+      "items": {
+        "BLACKBELT_I": [
+          98,
+          241
+        ],
+        "BLACKGLASSES": [
+          102,
+          240
+        ],
+        "CHARCOAL": [
+          138,
+          249
+        ],
+        "DRAGON_FANG": [
+          144,
+          250
+        ],
+        "DRAGON_SCALE": [
+          151,
+          235
+        ],
+        "FAST_BALL": [
+          161,
+          492
+        ],
+        "FIRE_STONE": [
+          22,
+          82
+        ],
+        "FRIEND_BALL": [
+          164,
+          497
+        ],
+        "GOOD_ROD": [
+          59,
+          446
+        ],
+        "GREAT_BALL": [
+          4,
+          3
+        ],
+        "HARD_STONE": [
+          125,
+          238
+        ],
+        "HEAVY_BALL": [
+          157,
+          495
+        ],
+        "KINGS_ROCK": [
+          82,
+          221
+        ],
+        "LEAF_STONE": [
+          34,
+          85
+        ],
+        "LEVEL_BALL": [
+          159,
+          493
+        ],
+        "LIGHT_BALL": [
+          163,
+          236
+        ],
+        "LOVE_BALL": [
+          166,
+          496
+        ],
+        "LURE_BALL": [
+          160,
+          494
+        ],
+        "MAGNET": [
+          108,
+          242
+        ],
+        "MASTER_BALL": [
+          1,
+          1
+        ],
+        "METAL_COAT": [
+          143,
+          233
+        ],
+        "MIRACLE_SEED": [
+          117,
+          239
+        ],
+        "MOON_BALL": [
+          165,
+          498
+        ],
+        "MOON_STONE": [
+          8,
+          81
+        ],
+        "MYSTIC_WATER": [
+          95,
+          243
+        ],
+        "NEVERMELTICE": [
+          107,
+          246
+        ],
+        "OLD_ROD": [
+          58,
+          445
+        ],
+        "PARK_BALL": [
+          177,
+          499
+        ],
+        "POISON_BARB": [
+          81,
+          245
+        ],
+        "POKE_BALL": [
+          5,
+          4
+        ],
+        "SHARP_BEAK": [
+          77,
+          244
+        ],
+        "SILVERPOWDER": [
+          88,
+          222
+        ],
+        "SOFT_SAND": [
+          76,
+          237
+        ],
+        "SPELL_TAG": [
+          113,
+          247
+        ],
+        "SUN_STONE": [
+          169,
+          80
+        ],
+        "SUPER_ROD": [
+          61,
+          447
+        ],
+        "THICK_CLUB": [
+          118,
+          258
+        ],
+        "THUNDERSTONE": [
+          23,
+          83
+        ],
+        "TWISTEDSPOON": [
+          96,
+          248
+        ],
+        "ULTRA_BALL": [
+          2,
+          2
+        ],
+        "UP_GRADE": [
+          172,
+          252
+        ],
+        "WATER_STONE": [
+          24,
+          84
+        ]
+      },
+      "ram": {
+        "backupMapGroup": {
+          "addr": "0xDCAD",
+          "bank": 1,
+          "how": "votes 2",
+          "symbol": "wBackupMapGroup"
+        },
+        "battleMode": {
+          "addr": "0xD22D",
+          "bank": 1,
+          "how": "votes 28",
+          "symbol": "wBattleMode"
+        },
+        "battleMon": {
+          "addr": "0xC62C",
+          "bank": 0,
+          "how": "votes 6",
+          "symbol": "wBattleMon"
+        },
+        "breedMon1": {
+          "addr": "0xDF0C",
+          "bank": 1,
+          "how": "votes 14",
+          "symbol": "wBreedMon1"
+        },
+        "breedMon2": {
+          "addr": "0xDF45",
+          "bank": 1,
+          "how": "votes 12",
+          "symbol": "wBreedMon2"
+        },
+        "curBattleMon": {
+          "addr": "0xD0D4",
+          "bank": 1,
+          "how": "votes 28",
+          "symbol": "wCurBattleMon"
+        },
+        "curOTMon": {
+          "addr": "0xC663",
+          "bank": 0,
+          "how": "votes 18",
+          "symbol": "wCurOTMon"
+        },
+        "dayCareLady": {
+          "addr": "0xDF2C",
+          "bank": 1,
+          "how": "votes 3",
+          "symbol": "wDayCareLady"
+        },
+        "dayCareMan": {
+          "addr": "0xDEF5",
+          "bank": 1,
+          "how": "votes 2",
+          "symbol": "wDayCareMan"
+        },
+        "dexCaught": {
+          "addr": "0xDA0E",
+          "bank": 1,
+          "how": "votes 2",
+          "symbol": "wPokedexCaught"
+        },
+        "dexSeen": {
+          "addr": "0xDEB9",
+          "bank": 1,
+          "how": "votes 3",
+          "symbol": "wPokedexSeen"
+        },
+        "enemyMon": {
+          "addr": "0xD206",
+          "bank": 1,
+          "how": "votes 9",
+          "symbol": "wEnemyMon"
+        },
+        "enemyStatLevels": {
+          "addr": "0xC6D4",
+          "bank": 0,
+          "how": "votes 18",
+          "symbol": "wEnemyStatLevels"
+        },
+        "eventFlags": {
+          "addr": "0xDA72",
+          "bank": 1,
+          "how": "code, the base's too",
+          "symbol": "wEventFlags"
+        },
+        "eventFlags2": {
+          "addr": "0xD6F6",
+          "bank": 1,
+          "how": "code"
+        },
+        "eventFlags2End": {
+          "addr": "0xD71E",
+          "bank": 1,
+          "how": "votes 2",
+          "symbol": "wMapObjects"
+        },
+        "gameTime": {
+          "addr": "0xD4C4",
+          "bank": 1,
+          "how": "votes 5",
+          "symbol": "wGameTimeHours"
+        },
+        "johtoBadges": {
+          "addr": "0xD857",
+          "bank": 1,
+          "how": "votes 3",
+          "symbol": "wJohtoBadges"
+        },
+        "kantoBadges": {
+          "addr": "0xD858",
+          "bank": 1,
+          "how": "votes 3",
+          "symbol": "wKantoBadges"
+        },
+        "mapGroup": {
+          "addr": "0xDA3A",
+          "bank": 1,
+          "how": "votes 11",
+          "symbol": "wMapGroup"
+        },
+        "mapNumber": {
+          "addr": "0xDA3B",
+          "bank": 1,
+          "how": "votes 12 (1 stray)",
+          "symbol": "wMapNumber"
+        },
+        "menu2D": {
+          "addr": "0xCFA1",
+          "bank": 0,
+          "how": "votes 11",
+          "symbol": "w2DMenuCursorInitY"
+        },
+        "menuCursor": {
+          "addr": "0xCFA9",
+          "bank": 0,
+          "how": "votes 72",
+          "symbol": "wMenuCursorY"
+        },
+        "money": {
+          "addr": "0xD84E",
+          "bank": 1,
+          "how": "votes 6",
+          "symbol": "wMoney"
+        },
+        "moveMenuType": {
+          "addr": "0xD235",
+          "bank": 1,
+          "how": "votes 8",
+          "symbol": "wMoveSelectionMenuType"
+        },
+        "numBalls": {
+          "addr": "0xD8D7",
+          "bank": 1,
+          "how": "votes 4",
+          "symbol": "wNumBalls"
+        },
+        "numItems": {
+          "addr": "0xD892",
+          "bank": 1,
+          "how": "votes 15",
+          "symbol": "wNumItems"
+        },
+        "numKeyItems": {
+          "addr": "0xD8BC",
+          "bank": 1,
+          "how": "votes 7",
+          "symbol": "wNumKeyItems"
+        },
+        "otPartyCount": {
+          "addr": "0xD280",
+          "bank": 1,
+          "how": "votes 20",
+          "symbol": "wOTPartyCount"
+        },
+        "otPartyMons": {
+          "addr": "0xD288",
+          "bank": 1,
+          "how": "votes 11",
+          "symbol": "wOTPartyMons"
+        },
+        "otherTrainerClass": {
+          "addr": "0xD22F",
+          "bank": 1,
+          "how": "votes 4",
+          "symbol": "wOtherTrainerClass"
+        },
+        "otherTrainerID": {
+          "addr": "0xD231",
+          "bank": 1,
+          "how": "code, the base's too",
+          "symbol": "wOtherTrainerID"
+        },
+        "partyCount": {
+          "addr": "0xDCD7",
+          "bank": 1,
+          "how": "votes 84",
+          "symbol": "wPartyCount"
+        },
+        "partyMenuAction": {
+          "addr": "0xD141",
+          "bank": 1,
+          "how": "votes 9",
+          "symbol": "wPartyMenuActionText"
+        },
+        "partyMonNicknames": {
+          "addr": "0xDE41",
+          "bank": 1,
+          "how": "votes 28 (1 stray)",
+          "symbol": "wPartyMonNicknames"
+        },
+        "partyMonOTs": {
+          "addr": "0xDDFF",
+          "bank": 1,
+          "how": "votes 22 (1 stray)",
+          "symbol": "wPartyMonOTs"
+        },
+        "partyMons": {
+          "addr": "0xDCDF",
+          "bank": 1,
+          "how": "votes 30 (1 stray)",
+          "symbol": "wPartyMons"
+        },
+        "playerGender": {
+          "addr": "0xD472",
+          "bank": 1,
+          "how": "code",
+          "symbol": "wPlayerGender"
+        },
+        "playerID": {
+          "addr": "0xD47B",
+          "bank": 1,
+          "how": "votes 10",
+          "symbol": "wPlayerID"
+        },
+        "playerName": {
+          "addr": "0xD47D",
+          "bank": 1,
+          "how": "votes 14",
+          "symbol": "wPlayerName"
+        },
+        "playerStatLevels": {
+          "addr": "0xC6CC",
+          "bank": 0,
+          "how": "votes 7",
+          "symbol": "wPlayerStatLevels"
+        },
+        "roamMon1": {
+          "addr": "0xDFCF",
+          "bank": 1,
+          "how": "code, the base's too",
+          "symbol": "wRoamMon1"
+        },
+        "roamMon2": {
+          "addr": "0xDFD6",
+          "bank": 1,
+          "how": "code, the base's too",
+          "symbol": "wRoamMon2"
+        },
+        "roamMon3": {
+          "addr": "0xDFDD",
+          "bank": 1,
+          "how": "code, the base's too",
+          "symbol": "wRoamMon3"
+        },
+        "stepsToEgg": {
+          "addr": "0xDF2D",
+          "bank": 1,
+          "how": "code, the base's too",
+          "symbol": "wStepsToEgg"
+        },
+        "tileMap": {
+          "addr": "0xC4A0",
+          "bank": 0,
+          "how": "votes 44",
+          "symbol": "wTilemap"
+        },
+        "timeOfDay": {
+          "addr": "0xD269",
+          "bank": 1,
+          "how": "votes 11",
+          "symbol": "wTimeOfDay"
+        },
+        "tmsHms": {
+          "addr": "0xD859",
+          "bank": 1,
+          "how": "votes 6",
+          "symbol": "wTMsHMs"
+        },
+        "tradeFlags": {
+          "addr": "0xD960",
+          "bank": 1,
+          "how": "code, the base's too",
+          "symbol": "wTradeFlags"
+        },
+        "xCoord": {
+          "addr": "0xDCB8",
+          "bank": 1,
+          "how": "votes 12",
+          "symbol": "wXCoord"
+        },
+        "yCoord": {
+          "addr": "0xDCB7",
+          "bank": 1,
+          "how": "votes 8",
+          "symbol": "wYCoord"
+        }
+      },
+      "releases": [
+        {
+          "code": "BYTE",
+          "name": "v2.5.11",
+          "rom": {
+            "evosAttacksPointers": {
+              "addr": "0x4CF9",
+              "bank": 16,
+              "how": "votes 5",
+              "symbol": "EvosAttacksPointers"
+            },
+            "moveDescriptions": {
+              "addr": "0x4E80",
+              "bank": 11,
+              "how": "code, the base's too",
+              "symbol": "MoveDescriptions"
+            }
+          },
+          "sha1": "a1c4da6b0057c98fe4ebea45d6812a484fc69abd"
+        },
+        {
+          "code": "BYTE",
+          "name": "v2.5.11 Color Filter",
+          "rom": {
+            "evosAttacksPointers": {
+              "addr": "0x4CF9",
+              "bank": 16,
+              "how": "votes 5",
+              "symbol": "EvosAttacksPointers"
+            },
+            "moveDescriptions": {
+              "addr": "0x4E80",
+              "bank": 11,
+              "how": "code, the base's too",
+              "symbol": "MoveDescriptions"
+            }
+          },
+          "sha1": "6fc677bf7a9db103cb9ee11ac08d26782e69ae41"
+        },
+        {
+          "code": "BYTE",
+          "name": "v2.5.11 SGB Mode",
+          "rom": {
+            "evosAttacksPointers": {
+              "addr": "0x4CF9",
+              "bank": 16,
+              "how": "votes 5",
+              "symbol": "EvosAttacksPointers"
+            },
+            "moveDescriptions": {
+              "addr": "0x4E80",
+              "bank": 11,
+              "how": "code, the base's too",
+              "symbol": "MoveDescriptions"
+            }
+          },
+          "sha1": "8be3dea853b39442f36f94c3988e074788c5ecec"
+        },
+        {
+          "code": "BYTE",
+          "name": "v2.5.11 Color Filter SGB Mode",
+          "rom": {
+            "evosAttacksPointers": {
+              "addr": "0x4CF9",
+              "bank": 16,
+              "how": "votes 5",
+              "symbol": "EvosAttacksPointers"
+            },
+            "moveDescriptions": {
+              "addr": "0x4E80",
+              "bank": 11,
+              "how": "code, the base's too",
+              "symbol": "MoveDescriptions"
+            }
+          },
+          "sha1": "913c49bd487efb4516b94fc427a1b12628be3daa"
+        },
+        {
+          "code": "BYTE",
+          "name": "v2.6.0",
+          "rom": {
+            "evosAttacksPointers": {
+              "addr": "0x4D0E",
+              "bank": 16,
+              "how": "votes 5",
+              "symbol": "EvosAttacksPointers"
+            },
+            "moveDescriptions": {
+              "addr": "0x4EA0",
+              "bank": 11,
+              "how": "code, the base's too",
+              "symbol": "MoveDescriptions"
+            }
+          },
+          "sha1": "84d5c4924c3f1f3fc690669148b7e392948fb23d"
+        },
+        {
+          "code": "BYTE",
+          "name": "v2.6.0 Color Filter",
+          "rom": {
+            "evosAttacksPointers": {
+              "addr": "0x4D0E",
+              "bank": 16,
+              "how": "votes 5",
+              "symbol": "EvosAttacksPointers"
+            },
+            "moveDescriptions": {
+              "addr": "0x4EA0",
+              "bank": 11,
+              "how": "code, the base's too",
+              "symbol": "MoveDescriptions"
+            }
+          },
+          "sha1": "534876e4e4d0d79a82fef3bbe5bea11c40451727"
+        },
+        {
+          "code": "BYTE",
+          "name": "v2.6.0 SGB Mode",
+          "rom": {
+            "evosAttacksPointers": {
+              "addr": "0x4D0E",
+              "bank": 16,
+              "how": "votes 5",
+              "symbol": "EvosAttacksPointers"
+            },
+            "moveDescriptions": {
+              "addr": "0x4EA0",
+              "bank": 11,
+              "how": "code, the base's too",
+              "symbol": "MoveDescriptions"
+            }
+          },
+          "sha1": "059632e84a92d6870a1e83c313a72974224f9c1c"
+        },
+        {
+          "code": "BYTE",
+          "name": "v2.6.0 Color Filter SGB Mode",
+          "rom": {
+            "evosAttacksPointers": {
+              "addr": "0x4D0E",
+              "bank": 16,
+              "how": "votes 5",
+              "symbol": "EvosAttacksPointers"
+            },
+            "moveDescriptions": {
+              "addr": "0x4EA0",
+              "bank": 11,
+              "how": "code, the base's too",
+              "symbol": "MoveDescriptions"
+            }
+          },
+          "sha1": "88c943e6d76dbde9f8edace5df396fe6bbc9e146"
+        }
+      ],
+      "rom": {
+        "baseData": {
+          "addr": "0x5698",
+          "bank": 20,
+          "how": "data 32",
+          "symbol": "BaseData"
+        },
+        "dexEntryBanks": {
+          "addr": "0x7DDC",
+          "bank": 21,
+          "how": "code, the base's too",
+          "symbol": "GetDexEntryPointer.PokedexEntryBanks"
+        },
+        "dexEntryPointers": {
+          "addr": "0x7E03",
+          "bank": 21,
+          "how": "code, the base's too",
+          "symbol": "PokedexDataPointerTable"
+        },
+        "engineFlags": {
+          "addr": "0x44B4",
+          "bank": 32,
+          "how": "data 486",
+          "symbol": "EngineFlags"
+        },
+        "fishGroups": {
+          "addr": "0x7D25",
+          "bank": 17,
+          "how": "code",
+          "symbol": "FishGroups"
+        },
+        "grassProbs": {
+          "addr": "0x5BE7",
+          "bank": 17,
+          "how": "code, the base's too",
+          "symbol": "GrassMonProbTable"
+        },
+        "itemAttributes": {
+          "addr": "0x7587",
+          "bank": 1,
+          "how": "code, the base's too",
+          "symbol": "ItemAttributes"
+        },
+        "itemDescriptions": {
+          "addr": "0x49D1",
+          "bank": 114,
+          "how": "code, the base's too",
+          "symbol": "ItemDescriptions"
+        },
+        "itemNames": {
+          "addr": "0x4000",
+          "bank": 114,
+          "how": "data 16",
+          "symbol": "ItemNames"
+        },
+        "johtoGrass": {
+          "addr": "0x5DB4",
+          "bank": 17,
+          "how": "code, the base's too",
+          "symbol": "JohtoGrassWildMons"
+        },
+        "johtoMap": {
+          "addr": "0x60A5",
+          "bank": 36,
+          "how": "data 32",
+          "symbol": "JohtoMap"
+        },
+        "johtoWater": {
+          "addr": "0x6B1C",
+          "bank": 17,
+          "how": "code, the base's too",
+          "symbol": "JohtoWaterWildMons"
+        },
+        "kantoGrass": {
+          "addr": "0x6CD6",
+          "bank": 17,
+          "how": "code, the base's too",
+          "symbol": "KantoGrassWildMons"
+        },
+        "kantoMap": {
+          "addr": "0x620E",
+          "bank": 36,
+          "how": "data 32",
+          "symbol": "KantoMap"
+        },
+        "kantoWater": {
+          "addr": "0x77AC",
+          "bank": 17,
+          "how": "code, the base's too",
+          "symbol": "KantoWaterWildMons"
+        },
+        "landmarkRegions": {
+          "addr": "0x6F8B",
+          "bank": 114,
+          "how": "code"
+        },
+        "landmarks": {
+          "addr": "0x6833",
+          "bank": 114,
+          "how": "code, the base's too",
+          "symbol": "Landmarks"
+        },
+        "mapGroups": {
+          "addr": "0x4000",
+          "bank": 37,
+          "how": "code",
+          "symbol": "MapGroupPointers"
+        },
+        "mapHeadersEnd": {
+          "addr": "0x515C",
+          "bank": 37,
+          "how": "code, the base's too",
+          "symbol": "NewBarkTown_MapAttributes"
+        },
+        "monPalettes": {
+          "addr": "0x622C",
+          "bank": 2,
+          "how": "code",
+          "symbol": "PokemonPalettes"
+        },
+        "moveEffectPriorities": {
+          "addr": "0x450A",
+          "bank": 15,
+          "how": "code, the base's too",
+          "symbol": "MoveEffectPriorities"
+        },
+        "moveNames": {
+          "addr": "0x5E9B",
+          "bank": 114,
+          "how": "data 16",
+          "symbol": "MoveNames"
+        },
+        "moves": {
+          "addr": "0x4166",
+          "bank": 16,
+          "how": "data 1757",
+          "symbol": "Moves"
+        },
+        "picPointers": {
+          "addr": "0x4000",
+          "bank": 72,
+          "how": "code",
+          "symbol": "PokemonPicPointers"
+        },
+        "picsBanks": {
+          "addr": "0x542D",
+          "bank": 20,
+          "how": "code, the base's too",
+          "symbol": "FixPicBank.PicsBanks"
+        },
+        "pokegearPals": {
+          "addr": "0x799B",
+          "bank": 2,
+          "how": "code, the base's too",
+          "symbol": "MalePokegearPals"
+        },
+        "pokemonNames": {
+          "addr": "0x75F8",
+          "bank": 20,
+          "how": "data 2510",
+          "symbol": "PokemonNames"
+        },
+        "rockMonMaps": {
+          "addr": "0x7B31",
+          "bank": 17,
+          "how": "code",
+          "symbol": "RockMonMaps"
+        },
+        "textDict": {
+          "addr": "0x11FF",
+          "bank": 0,
+          "how": "code"
+        },
+        "timeFishGroups": {
+          "addr": "0x7F1B",
+          "bank": 17,
+          "how": "code, the base's too",
+          "symbol": "TimeFishGroups"
+        },
+        "tmHmMoves": {
+          "addr": "0x4F8F",
+          "bank": 4,
+          "how": "code, the base's too",
+          "symbol": "TMHMMoves"
+        },
+        "townMapGfx": {
+          "addr": "0x53A0",
+          "bank": 62,
+          "how": "code",
+          "symbol": "TownMapGFX"
+        },
+        "townMapPalMap": {
+          "addr": "0x602D",
+          "bank": 36,
+          "how": "code, the base's too",
+          "symbol": "TownMapPals.PalMap"
+        },
+        "trainerClassNames": {
+          "addr": "0x43FB",
+          "bank": 11,
+          "how": "code, the base's too",
+          "symbol": "TrainerClassNames"
+        },
+        "trainerGroupsFar": {
+          "addr": "0x4416",
+          "bank": 14,
+          "how": "code",
+          "symbol": "TrainerGroups"
+        },
+        "treeMonMaps": {
+          "addr": "0x7AC8",
+          "bank": 17,
+          "how": "code",
+          "symbol": "TreeMonMaps"
+        },
+        "treeMons": {
+          "addr": "0x7AA4",
+          "bank": 17,
+          "how": "code",
+          "symbol": "TreeMons"
+        },
+        "typeChart": {
+          "addr": "0x4BCD",
+          "bank": 13,
+          "how": "data 332",
+          "symbol": "TypeMatchups"
+        },
+        "unownPicPointers": {
+          "addr": "0x4000",
+          "bank": 73,
+          "how": "code, the base's too",
+          "symbol": "UnownPicPointers"
+        },
+        "waterProbs": {
+          "addr": "0x5BF5",
+          "bank": 17,
+          "how": "code, the base's too",
+          "symbol": "WaterMonProbTable"
+        }
+      },
+      "special": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27
+      ],
+      "types": {
+        "0": "normal",
+        "1": "fighting",
+        "2": "flying",
+        "20": "fire",
+        "21": "water",
+        "22": "grass",
+        "23": "electric",
+        "24": "psychic",
+        "25": "ice",
+        "26": "dragon",
+        "27": "dark",
+        "3": "poison",
+        "4": "ground",
+        "5": "rock",
+        "7": "bug",
+        "8": "ghost",
+        "9": "steel"
+      }
+    }
+  },
+  "kind": "gb-pokemon-port",
+  "schema": 1
+}

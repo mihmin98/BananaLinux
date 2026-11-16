@@ -1,5 +1,6 @@
 # The ROMs the Game Boy Pokémon companion's ROM tests expect (kiwami/GB-POKEMON.md, "The ROMs for the tests"), checked
-# in the player's own folders by kiwami/tests/gbpk-roms.sh. None of them is in the repository. One line a file:
+# in the player's own folders (and their subfolders one level down) by kiwami/tests/gbpk-roms.sh. None of them is in
+# the repository. One line a file:
 #   <sha1> <system> <required|optional> <game> <file name: No-Intro's for a dump, the file's own for a hack>
 # system is the folder the file is looked for in: gb in GB_ROMS (~/gb-companion/roms), gba in GBA_ROMS
 # (~/gba-companion/roms), nds in NDS_ROMS (~/nds-companion/roms). A file is found by its SHA-1, whatever its name. The
@@ -20,6 +21,24 @@ a0fc810f1d4e124434f7be2c989ab5b5892ddf36 gb optional crystal Pokemon - Crystal V
 # ROM hacks read as the retail game they patch: roms.patches says what each changes, and gbpk-roms.sh checks it
 e7bfd2c2245597da5016e682fca8f19665c6cfd0 gb optional red Pokemon - Red Version (USA, Europe) (Fast Red) (v1.0) (80C).gb
 5030c1114554207191f2e6ffb1f2920cf3d7c668 gb optional blue Pokemon - Blue Version (USA, Europe) (Fast Blue) (v1.0) (80C).gb
+# ROM hacks read as games of their own: each its release's patch applied to the retail ROM it names (kiwami/GB-POKEMON.md,
+# The ROM hacks)
+74a6727e4406c35bc2d4f81347a5c5fdb8970663 gb optional crystal-legacy Pokemon Crystal - Legacy (v1.3.1) (TheSmithPlays).gbc
+2ac87de42afc70ef6016805acb3b206644417f97 gb optional yellow-legacy Pokemon Yellow - Pokemon Yellow Legacy (v1.0.10) (TheSmithPlays).gb
+2e94d09c1e16a57eb079404c030f26fdeeac949d gb optional purered Pokemon Red - PureRed (v2.7.6) (Vortyne).gb
+60d445d5a38364cc77e8fd1c043157e50e7df209 gb optional purered Pokemon Red - PureRed (v2.7.7) (Vortyne).gb
+d419fe244fa17196f7df46ddab47c840e7573652 gb optional pureblue Pokemon Blue - PureBlue (v2.7.6) (Vortyne).gb
+b96ee563112c2b17ce1828e48446e1d71d61e8b5 gb optional pureblue Pokemon Blue - PureBlue (v2.7.7) (Vortyne).gb
+fe4c63a67c8b28770916cc7b1788f9eeb04ccf02 gb optional puregreen Pokemon Blue - PureGreen (v2.7.6) (Vortyne).gb
+258ec7fef3d966cfb2a7e16c15fe1a329cf392ce gb optional puregreen Pokemon Blue - PureGreen (v2.7.7) (Vortyne).gb
+a1c4da6b0057c98fe4ebea45d6812a484fc69abd gb optional crystal-clear Pokemon Crystal - Crystal Clear (v2.5.11) (ShockSlayer).gbc
+6fc677bf7a9db103cb9ee11ac08d26782e69ae41 gb optional crystal-clear Pokemon Crystal - Crystal Clear (v2.5.11) (Color Filter) (ShockSlayer).gbc
+8be3dea853b39442f36f94c3988e074788c5ecec gb optional crystal-clear Pokemon Crystal - Crystal Clear (v2.5.11) (SGB Mode) (ShockSlayer).gbc
+913c49bd487efb4516b94fc427a1b12628be3daa gb optional crystal-clear Pokemon Crystal - Crystal Clear (v2.5.11) (Color Filter) (SGB Mode) (ShockSlayer).gbc
+84d5c4924c3f1f3fc690669148b7e392948fb23d gb optional crystal-clear Pokemon Crystal - Crystal Clear (v2.6.0) (ShockSlayer).gbc
+534876e4e4d0d79a82fef3bbe5bea11c40451727 gb optional crystal-clear Pokemon Crystal - Crystal Clear (v2.6.0) (Color Filter) (ShockSlayer).gbc
+059632e84a92d6870a1e83c313a72974224f9c1c gb optional crystal-clear Pokemon Crystal - Crystal Clear (v2.6.0) (SGB Mode) (ShockSlayer).gbc
+88c943e6d76dbde9f8edace5df396fe6bbc9e146 gb optional crystal-clear Pokemon Crystal - Crystal Clear (v2.6.0) (Color Filter) (SGB Mode) (ShockSlayer).gbc
 
 # Game Boy Advance and DS: the other mainline games PokeDaisy supports (English releases), for a later comparison of
 # upstream's guides with PokeDaisy's tables; nothing reads them yet, and none is required

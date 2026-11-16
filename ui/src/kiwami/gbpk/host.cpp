@@ -15,16 +15,18 @@ namespace banana::kiwami::gbpk
 	namespace
 	{
 		// the game's guide: its file in the data folder (<key>.json, the places' maps found by name in the ROM), or for
-		// Gold and Silver, which have none, the one their ROM's trainers make (gsguide.h); with the ROM's hidden items as
+		// a game whose data file says "guide": "rom" or "rom-regions" (Gold, Silver and Crystal Clear, which have none)
+		// the one its ROM's trainers make for the save's badges (gsguide.h), and its bosses at the ROM's levels when it
+		// says "guide_levels": "rom" (PureRGB's); with the ROM's hidden items as
 		// the Here page's secrets, each listed whether found or not, as upstream's companions list theirs. A game
 		// without a file (or with one it refuses) has the hidden items alone.
-		std::shared_ptr<const nds::GuideData> guideFor(const GameData& d, const nds::RomData& rom)
+		std::shared_ptr<const nds::GuideData> guideFor(const GameData& d, const nds::RomData& rom, uint16_t badges = 0)
 		{
 			auto g = std::make_shared<nds::GuideData>();
 			const nds::GuideResolver res = nds::guideResolver(rom);
 			std::string why;
-			if (d.game.id == GOLD || d.game.id == SILVER)
-				*g = romGuide(rom, d);
+			if (d.romGuide)
+				*g = romGuide(rom, d, badges);
 			else if (!nds::loadGuideFile(dataDir() + "/" + d.key + ".json", *g, d.game.id, &why, &res))
 			{
 				fprintf(stderr, "banana-ui: gb companion: no guide: %s\n", why.c_str());
@@ -32,6 +34,7 @@ namespace banana::kiwami::gbpk
 			}
 			else
 			{
+				if (d.romLevels) romLevels(*g, rom);
 				if (!why.empty()) fprintf(stderr, "banana-ui: gb companion: guide: %s\n", why.c_str());
 				for (const std::string& p : g->unresolved) fprintf(stderr, "banana-ui: gb companion: guide: no map is %s\n", p.c_str());
 			}
@@ -59,14 +62,21 @@ namespace banana::kiwami::gbpk
 		}
 	}
 
-	Host::Host(const GameData& d, std::string rom, Reader& r, std::string sd, bool ch, std::shared_ptr<const nds::RomData> si)
-		: data(d), romPath(std::move(rom)), stateDir(std::move(sd)), reader(r), challenge(ch), standIn(std::move(si)) {}
+	Host::Host(std::vector<GameData> ds, std::string rom, Reader& r, std::string sd, bool ch, std::shared_ptr<const nds::RomData> si)
+		: games(std::move(ds)), data(games.empty() ? GameData() : games[0]), romPath(std::move(rom)), stateDir(std::move(sd)),
+		reader(r), challenge(ch), standIn(std::move(si)) {}
 
 	Host::~Host()
 	{
 		session.reset();	// (stopped first: it saves the journey on this thread)
 		if (load.valid()) load.wait();
 		reader.close();
+		if (rules)	// (the Session has stopped: nothing asks the chart now)
+		{
+			useGameRules(nullptr);
+			setSwitches(0, false);
+			rules.reset();
+		}
 		// (upstream's hosts don't put the chart back: an Emerald after Red would be judged by Gen I's)
 		if (base.rom)
 		{
@@ -88,20 +98,25 @@ namespace banana::kiwami::gbpk
 			if (standIn) begin({ standIn, data, false, guideFor(data, *standIn) });
 			else
 			{
-				// the ROM: the whole file (or the game in its .zip or .7z), its SHA-1 among the releases, then its tables
+				// the ROM: the whole file (or the game in its .zip or .7z), its SHA-1 among the games' releases (which
+				// picks the game), then its tables
 				loading = true;
-				load = std::async(std::launch::async, [d = data, path = romPath]() mutable
+				load = std::async(std::launch::async, [ds = games, path = romPath]() mutable
 				{
 					Loaded l;
 					const auto t0 = std::chrono::steady_clock::now();
 					auto rom = std::make_shared<std::vector<uint8_t>>(readRomFile(path, 8u << 20));
-					if (confirm(*rom, d) != Match::KNOWN)
+					const int k = confirmAny(*rom, ds);
+					if (k < 0)
 					{
+						std::string t;
+						for (const GameData& g : ds) t += (t.empty() ? "" : " or ") + g.game.title;
 						fprintf(stderr, "banana-ui: gb companion: %s: not a release the companion knows (sha1 %s)\n",
-							d.game.title.c_str(), d.game.romHash.c_str());
+							t.c_str(), ds.empty() ? "" : ds[0].game.romHash.c_str());
 						l.unsupported = true;
 						return l;
 					}
+					GameData& d = ds[k];
 					std::string why;
 					l.rom = readRom(rom, d, &why);
 					l.d = d;
@@ -137,6 +152,8 @@ namespace banana::kiwami::gbpk
 			if (l->valid)
 			{
 				setBadges(l->badges);
+				if (pure) switches();
+				if (teams) badgeTeams(l->badges);
 				session->feed(l);
 				fed++;
 			}
@@ -166,13 +183,76 @@ namespace banana::kiwami::gbpk
 		base.guide = l.guide ? l.guide : std::make_shared<nds::GuideData>();
 		useRules(data.game.gen);
 		fprintf(stderr, "banana-ui: gb companion: rules on (Generation %s)\n", data.gen == 1 ? "I" : "II");
+		// the game's own rules, read from its ROM: its type chart, and PureRGB's (none for the tests' stand-in: rules.h
+		// falls back on the generation's)
+		asRead = base.rom;
+		pure = false;
+		switchesSeen = false;
+		teams = false;
+		lastTeam = 0;	// (the ROM's data as read: each trainer's first party)
+		if (const auto* gb = dynamic_cast<const GbRomData*>(base.rom.get()); gb && gb->rom)
+		{
+			rules = std::make_unique<GameRules>(gb->rules);
+			useGameRules(rules.get());
+			pure = gb->rules.pureOptions || !gb->originalTypes.empty();
+			teams = !gb->teams.empty();
+		}
+		setSwitches(0, false);
 		reader.open(data);
+		startSession();
+		lastSerial = 0;
+	}
+
+	void Host::startSession()
+	{
+		session.reset();	// (the one before, stopped first: it saves the journey, which this one reads)
 		auto ss = std::make_unique<nds::Session>(base.rom, base.guide, stateDir);
 		ss->setChallenge(challenge);
 		session = std::make_unique<nds::SessionThread>(std::move(ss));
 		out = base;
 		fresh = true;
-		lastSerial = 0;
+	}
+
+	// PureRGB's switches in the set just read: the options and the signature moves to the rules (each set, as the
+	// badges); a change of the species given back their original types starts the Session again on a copy of the ROM's
+	// data with those types (its pages and advice take a species' types from it), logged with the options
+	void Host::switches()
+	{
+		const auto* gb = dynamic_cast<const GbRomData*>(asRead.get());
+		const uint32_t remap = reader.typeRemap();
+		const uint8_t options = reader.options3() & 15;
+		const bool sigOff = reader.signaturesOff();
+		setSwitches(options, sigOff);
+		if (switchesSeen && remap == lastRemap && options == lastOptions && sigOff == lastSigOff) return;
+		if (switchesSeen ? remap != lastRemap : remap != 0)
+		{
+			base.rom = withOriginalTypes(asRead, remap);
+			startSession();
+		}
+		int n = 0;
+		for (size_t i = 0; gb && i < gb->originalTypes.size() && i < 32; i++) n += remap >> i & 1;
+		fprintf(stderr, "banana-ui: gb companion: PureRGB: %d species with their original types, matchups 0x%x%s\n", n,
+			options, sigOff ? ", signature moves off" : "");
+		switchesSeen = true;
+		lastRemap = remap;
+		lastOptions = options;
+		lastSigOff = sigOff;
+	}
+
+	// Crystal Clear's trainers whose party goes by the badge count: a change of the party the save's badges give starts
+	// the Session again on a copy of the ROM's data with each one's (its Battle page's foe and the guide's next fight
+	// take a trainer's team from it), logged, and with a guide made from the ROM for these badges (its region first,
+	// its leaders' levels as they'll be met: gsguide.h). (A game has these or PureRGB's switches, never both: the copy
+	// is of the data as read)
+	void Host::badgeTeams(uint16_t badges)
+	{
+		const int t = badgeTeam(badges);
+		if (t == lastTeam) return;
+		lastTeam = t;
+		base.rom = withBadgeTeams(asRead, t);
+		fprintf(stderr, "banana-ui: gb companion: the trainers' parties for %d badges\n", t);
+		if (data.romGuide) base.guide = guideFor(data, *asRead, badges);
+		startSession();
 	}
 
 	bool Host::takeData(nds::PageData& d)

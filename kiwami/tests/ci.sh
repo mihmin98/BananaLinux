@@ -74,10 +74,13 @@ else
 fi
 
 # the Game Boy Pokémon companion's data (kiwami/GB-POKEMON.md): the extraction scripts' committed outputs as SOURCES
-# records them (neither PokeDaisy nor pret needed), every value gbpk-symbols.txt asks for answered, and each data file
-# a gb-pokemon-ram file whose addresses are all WRAM or HRAM, beside PokeDaisy's LICENSE and NOTICE
+# records them (neither PokeDaisy nor pret nor the ROMs needed), every value gbpk-symbols.txt asks for answered, the
+# port's methods on made-up ROMs, and each data file a gb-pokemon-ram file whose addresses are all WRAM or HRAM,
+# beside PokeDaisy's LICENSE and NOTICE
 python3 -I kiwami/tools/pret-extract.py --check
 python3 -I kiwami/tools/pokedaisy-extract.py --check
+python3 -I kiwami/tools/gbpk-port.py --check
+python3 -I kiwami/tools/gbpk-port.py --self-test
 G=kiwami/rootfs/usr/share/banana/companions/gb-pokemon
 for f in LICENSE NOTICE SOURCES; do [ -s "$G/$f" ] || { echo "gb-pokemon: no $f in $G" >&2; exit 1; }; done
 grep -qF 'Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy' "$G/NOTICE" ||
@@ -100,13 +103,14 @@ EOF
 # PokeDaisy's reference data (kiwami/data/pokedaisy/, written by pokedaisy-extract.py --reference, checked against its
 # SOURCES above): its LICENSE and NOTICE, every file JSON, none of it in the image's overlay, and none of twenty of the
 # games' species, move and item names (in capitals and in title case) in it or in the image's data, but where a guide
-# names its bosses and places, and in text.json, PokeDaisy's own words, which name what they talk about
+# names its bosses and places, and in text.json, PokeDaisy's own words, which name what they talk about (and none in the
+# port's output, kiwami/tools/gbpk-port.json, made from the player's ROMs)
 P=kiwami/data/pokedaisy
 for f in LICENSE NOTICE README.md SOURCES; do [ -s "$P/$f" ] || { echo "pokedaisy: no $f in $P" >&2; exit 1; }; done
 grep -qF 'Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy' "$P/NOTICE" ||
     { echo "pokedaisy: $P/NOTICE hasn't PokeDaisy's attribution line" >&2; exit 1; }
 [ -z "$(find kiwami/rootfs -path '*pokedaisy*')" ] || { echo "pokedaisy: the reference data is in the overlay" >&2; exit 1; }
-python3 -I - "$P"/*/*.json "$G"/*.json <<'EOF'
+python3 -I - "$P"/*/*.json "$G"/*.json kiwami/tools/gbpk-port.json <<'EOF'
 import json, os, re, sys
 NAMES = ['BULBASAUR', 'CHARMANDER', 'PIKACHU', 'MEWTWO', 'CHIKORITA', 'LUGIA', 'TREECKO', 'RAYQUAZA', 'TURTWIG', 'SNIVY',
          'THUNDERBOLT', 'FLAMETHROWER', 'EARTHQUAKE', 'HYPER BEAM', 'TACKLE', 'MASTER BALL', 'RARE CANDY', 'LEFTOVERS',
@@ -144,7 +148,8 @@ EOF
 # ~/gb-companion/roms, as here), then the check on made-up folders: none is skipped; an empty one fails naming the six required files; a file
 # with a listed name and other bytes is a wrong file, and six of them can't pass; and, with a made-up list, a file
 # found by its SHA-1 under its name or another, an optional one missing, an unlisted file named, the GBA folder's
-# files looked for without failing the check
+# files looked for without failing the check; a listed file in a subfolder found by its path, one two levels down not
+# looked at, and a patch (.bps) beside it not named
 kiwami/tests/gbpk-roms.sh
 T=$(mktemp -d)
 rr() { GB_ROMS=$T/$1 GBA_ROMS=$T/${2:-none} NDS_ROMS=$T/none kiwami/tests/gbpk-roms.sh > "$T/out" 2>&1; }
@@ -164,18 +169,24 @@ while IFS= read -r n; do echo "$n" > "$T/six/$n"; done < "$T/required"
 ! rr six || { echo "gbpk-roms: six made-up files passed" >&2; exit 1; }
 while IFS= read -r n; do has "$n: wrong file: sha1 $(echo "$n" | sha1sum | cut -c1-40)"; done < "$T/required"
 printf a > "$T/ok/Made Up (USA).gb"; printf b > "$T/ok/b.GBC"; printf c > "$T/ok/c.gbc"; printf d > "$T/ok/readme.txt"
+mkdir -p "$T/ok/romhacks/deeper"; printf g > "$T/ok/romhacks/g.gbc"; printf i > "$T/ok/romhacks/g.bps"; printf j > "$T/ok/romhacks/deeper/j.gb"
 printf e > "$T/gba/e.gba"; printf f > "$T/gba/Made Up GBA (USA).gba"
 h() { printf "$1" | sha1sum | cut -c1-40; }
 { echo '# made up'
   echo "$(h a) gb required made Made Up (USA).gb"
   echo "$(h b) gb required made Made Up (Europe).gbc"
   echo "$(h z) gb optional made Made Up (Japan).gbc"
+  echo "$(h g) gb optional made Made Up Hack (v1).gbc"
+  echo "$(h j) gb optional made Made Up Deeper.gb"
   echo "$(h e) gba optional made Made Up Advance (USA).gba"
   echo "$(h z) gba optional made Made Up GBA (USA).gba"; } > "$T/list"
 GBPK_ROMS_LIST=$T/list rr ok gba || { echo "gbpk-roms: the made-up list's files failed: $(cat "$T/out")" >&2; exit 1; }
 has "Made Up (USA).gb: ok"
 has "Made Up (Europe).gbc: ok (named b.GBC)"
 has "Made Up (Japan).gbc: missing"
+has "Made Up Hack (v1).gbc: ok (named romhacks/g.gbc)"
+has "Made Up Deeper.gb: missing"
+! grep -qE 'g\.bps|deeper' "$T/out" || { echo "gbpk-roms: named a patch or a file two folders down: $(cat "$T/out")" >&2; exit 1; }
 has "not listed, left alone: c.gbc (sha1 $(h c))"
 has "2 of 2 required files ok in $T/ok"
 has "Made Up Advance (USA).gba: ok (named e.gba)"

@@ -63,13 +63,22 @@ namespace banana::kiwami::gbpk
 		if (kanto < 1 || kanto >= n || fastShip < 1 || fastShip >= n || !r.has(landmarks, (size_t)LANDMARK * n))
 			return no("the data file's kantoLandmark and fastShipLandmark aren't among the landmarks");
 		// each landmark's point on the screen and its map, as the Pokégear picks it (engine/pokegear/pokegear.asm
-		// InitPokegearTilemap.Map: from KANTO_LANDMARK on Kanto's, but the Fast Ship's on Johto's)
+		// InitPokegearTilemap.Map: from KANTO_LANDMARK on Kanto's, but the Fast Ship's on Johto's). Crystal Clear's
+		// RegionCheck gives a landmark from landmarkRegionsFirst on the map of a stand-in landmark from its table
+		// (rom.landmarkRegions), and its last landmark, Origin Plains, reads the code after the table: a stand-in that
+		// isn't one of the landmarks before the first is on no map
 		std::vector<int> lx(n), ly(n), region(n);
+		auto regionOf = [&](int lm) { return lm == LANDMARK_SPECIAL ? -1 : lm == fastShip ? 0 : lm >= kanto ? 1 : 0; };
+		const int standInFirst = d.rom.count("landmarkRegions") ? d.size("landmarkRegionsFirst") : n;
+		const size_t standIns = table("landmarkRegions");
+		if (standInFirst < n && (standInFirst <= std::max(kanto, fastShip) || !r.has(standIns, (size_t)(n - standInFirst))))
+			return no("the data file's landmarkRegions and landmarkRegionsFirst aren't a table of the landmarks past Crystal's");
 		for (int lm = 0; lm < n; lm++)
 		{
 			lx[lm] = r.u8(landmarks + (size_t)LANDMARK * lm) - 8;
 			ly[lm] = r.u8(landmarks + (size_t)LANDMARK * lm + 1) - 16;
-			region[lm] = lm == LANDMARK_SPECIAL ? -1 : lm == fastShip ? 0 : lm >= kanto ? 1 : 0;
+			const int s = lm < standInFirst ? lm : r.u8(standIns + (size_t)(lm - standInFirst));
+			region[lm] = s < standInFirst ? regionOf(s) : -1;
 		}
 
 		// the pictures: TownMapGFX's tiles (LZ), each map's tiles in the palette TownMapPals gives their id

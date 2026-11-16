@@ -1,6 +1,7 @@
-# What the Game Boy Pokémon companion takes from pret's disassemblies: kiwami/tools/pret-extract.py reads this list
-# and writes kiwami/tools/gbpk-extra.json. Only addresses, ROM offsets, ids and the ROM header's facts are taken;
-# none of pret's code or data tables (kiwami/GB-POKEMON.md, *Where the data comes from*).
+# What the Game Boy Pokémon companion takes from pret's disassemblies and the ROM hacks' forks of them:
+# kiwami/tools/pret-extract.py reads this list and writes kiwami/tools/gbpk-extra.json. Only addresses, ROM offsets,
+# ids and the ROM header's facts are taken; none of their code or data tables (kiwami/GB-POKEMON.md, *Where the data
+# comes from*).
 #
 # A line a value; '#' starts a comment. <games> is one game or several joined by commas (crystal,gold,silver).
 #
@@ -9,12 +10,55 @@
 #                                           and its symbols from <build>.sym on the repo's symbols branch. <name> is
 #                                           No-Intro's region and revision. A game's releases must agree on every
 #                                           value below, or the run fails.
+#   <game> build <folder> <build> <sha1> <name>   a ROM hack's release, built by the user from its source at the
+#                                           release's tag (<folder>, beside pret's; its HEAD must be the tag):
+#                                           <build>.gbc in its working tree must have <sha1> (the release's; the
+#                                           fork's roms.sha1 is pret's, left over), its header's title and code are
+#                                           read from it, and its symbols from <build>.sym beside it. <name> is the
+#                                           release's version
 #   <game> hack <sha1> <name>               a ROM hack read as the game it patches: kiwami/tests/gbpk/roms.patches
 #                                           must list <sha1> as a patch of one of the game's releases; its symbols
 #                                           are the release's, and it isn't one of PokeDaisy's set
 #   <games> ram.<key> <symbol>              a WRAM or HRAM address (bank 0 is C000-CFFF and HRAM, 1 the D000 bank)
 #   <games> rom.<key> <symbol>              a ROM address (its bank and address in the bank's window)
-#   <games> const.<key> <file> <name>       a constant from the repo's <file> (rgbds' const macros evaluated)
+#   <games> const.<key> <file> <name>       a constant from the repo's <file> (rgbds' const macros evaluated); several
+#                                           files joined by + are read in that order, as the game includes them
+#   item <NAME> <gen4> [ball]               an item upstream's logic knows by its Gen IV id (ui/src/nds/logic.cpp's
+#                                           Item enum, its TMs from 328 and HMs from 420, the rods, the stones and
+#                                           held items; upstream's ui/src/gba/gen3items.inc gives each), by its
+#                                           constant's name in any game; ball: one of the balls (0 for a ball Gen IV
+#                                           hasn't: 1000 + the game's own id, in the balls' pocket)
+#   <games> items <file>                    the game's item constants: each item line's name the const macro gives
+#                                           there is [its id, its Gen IV id] in the data file's items (a name it hasn't
+#                                           is passed over: a DEF of another item's id, as pokecrystal's SAFARI_BALL, is
+#                                           not an item), and the balls its balls
+#   <games> keyitems <file>                 Gen I's KeyItemFlags (data/items/key_items.asm, "dbit TRUE ; NAME" an item
+#                                           from 1, each name checked against the item constants' id): the TRUE ones'
+#                                           ids are the data file's key_items
+#   <games> types <file>                    the game's type constants: each one's id and the fork's name for it in the
+#                                           data file's types (BIRD and CURSE_TYPE left out; one the fork doesn't
+#                                           know stops the run), and those at or past SPECIAL its special types
+#   <games> split <TYPE> physical|special|stats   an exception to the type constants' split, the source in a comment:
+#                                           the type moved out of or into special, or to the attacker's stats
+#
+# A ROM hack with no source (Crystal Clear) is ported instead: kiwami/tools/gbpk-port.py, not pret-extract.py, reads
+# its lines (pret-extract.py passes over every game with a port line) and writes kiwami/tools/gbpk-port.json. It is on
+# its base game's ram., rom. and const. lines, which name the base's symbol, and has lines of its own:
+#   <game> port <repo> <build> <sha1> <name>   one of its builds, by the user's ROM's SHA-1; ported from <build>.sym on
+#                                           <repo>'s symbols branch and the base's ROM (its roms.sha1's). <name>'s
+#                                           first word is the version, whose builds must agree on every value
+#   <game> port.data <kind>.<key> <len>     found by the base's first <len> bytes at the symbol, once in the build
+#   <game> port.code <kind>.<key> <pattern> found by a pattern of the build's bytes, once (gbpk-port.py's header):
+#                                           a key the base hasn't (no base line) is found only so
+#   <game> port.count const.<key> rom.<table> <size> <offset>   a table's length, its entries up to the lowest pointer
+#   <game> port.same const.<key> rom.<table>   the base's constant, the table (port.data) being the base's bytes
+#   <game> port.fixed const.<key> <value> <pattern>   a layout of its own its code holds in its shape (not as a byte):
+#                                           <value>, if the pattern is found once in the build
+#   <game> port.trainer const.<key> rom.<groups> <base's groups>   a trainer class: the build's class (in <groups>, a
+#                                           bank and a pointer a class) whose first trainer has the name the base's
+#                                           class (its constant, in <base's groups>, a pointer a class) has, once
+#   <game> items|types from <base game>     the base game's items, by their names in the ROMs, and its types
+# A line with no port.* method is found by the votes of the base's code that uses the symbol.
 
 # The releases (PokeDaisy's GameTitles.kt must list the same SHA-1s for each game)
 crystal release pokecrystal pokecrystal USA
@@ -29,298 +73,639 @@ yellow release pokeyellow pokeyellow USA, Europe
 red hack e7bfd2c2245597da5016e682fca8f19665c6cfd0 Fast Red (v1.0)
 blue hack 5030c1114554207191f2e6ffb1f2920cf3d7c668 Fast Blue (v1.0)
 
+# The ROM hacks read as games of their own (kiwami/GB-POKEMON.md, *The ROM hacks*), each built from its tag with the
+# rgbds kiwami/DEPENDENCIES.md names, and given on the lines of the game whose engine it keeps where its symbol has the
+# same name (a line it is left off says why)
+# (Crystal Legacy, cRz-Shadows/Pokemon_Crystal_Legacy at V1.3.1, rgbds 0.5.2: PokeDaisy's GameTitles.kt has its SHA-1)
+crystal-legacy build Pokemon_Crystal_Legacy pokecrystal 74a6727e4406c35bc2d4f81347a5c5fdb8970663 v1.3.1
+# (Yellow Legacy, cRz-Shadows/Pokemon_Yellow_Legacy at V1.0.10, rgbds 0.6.1: PokeDaisy's GameTitles.kt has its SHA-1)
+yellow-legacy build Pokemon_Yellow_Legacy pokeyellow 2ac87de42afc70ef6016805acb3b206644417f97 v1.0.10
+# (PureRed, PureBlue and PureGreen, Vortyne/pureRGB at v2.7.6 and v2.7.7, a checkout a version, rgbds 1.0.3: PokeDaisy's
+# GameTitles.kt has PureRed's and PureBlue's v2.7.6; the other four SHA-1s are the release patches' on the retail ROMs)
+purered build pureRGB-2.7.6 pokered 2e94d09c1e16a57eb079404c030f26fdeeac949d v2.7.6
+purered build pureRGB-2.7.7 pokered 60d445d5a38364cc77e8fd1c043157e50e7df209 v2.7.7
+pureblue build pureRGB-2.7.6 pokeblue d419fe244fa17196f7df46ddab47c840e7573652 v2.7.6
+pureblue build pureRGB-2.7.7 pokeblue b96ee563112c2b17ce1828e48446e1d71d61e8b5 v2.7.7
+puregreen build pureRGB-2.7.6 pokegreen fe4c63a67c8b28770916cc7b1788f9eeb04ccf02 v2.7.6
+puregreen build pureRGB-2.7.7 pokegreen 258ec7fef3d966cfb2a7e16c15fe1a329cf392ce v2.7.7
+# (Crystal Clear, ShockSlayer's, no source: its eight builds, each its release's patch on Crystal (USA), ported from
+# Crystal rev 1, pokecrystal11. PokeDaisy's GameTitles.kt has the four Standard Colors and Color Filter builds'
+# SHA-1s; the four SGB Mode builds' are the user's patched ROMs'. Its lines of its own are after Gen II's ROM tables)
+crystal-clear port pokecrystal pokecrystal11 a1c4da6b0057c98fe4ebea45d6812a484fc69abd v2.5.11
+crystal-clear port pokecrystal pokecrystal11 6fc677bf7a9db103cb9ee11ac08d26782e69ae41 v2.5.11 Color Filter
+crystal-clear port pokecrystal pokecrystal11 8be3dea853b39442f36f94c3988e074788c5ecec v2.5.11 SGB Mode
+crystal-clear port pokecrystal pokecrystal11 913c49bd487efb4516b94fc427a1b12628be3daa v2.5.11 Color Filter SGB Mode
+crystal-clear port pokecrystal pokecrystal11 84d5c4924c3f1f3fc690669148b7e392948fb23d v2.6.0
+crystal-clear port pokecrystal pokecrystal11 534876e4e4d0d79a82fef3bbe5bea11c40451727 v2.6.0 Color Filter
+crystal-clear port pokecrystal pokecrystal11 059632e84a92d6870a1e83c313a72974224f9c1c v2.6.0 SGB Mode
+crystal-clear port pokecrystal pokecrystal11 88c943e6d76dbde9f8edace5df396fe6bbc9e146 v2.6.0 Color Filter SGB Mode
+
 # Gen II's WRAM that PokeDaisy reads too (Gen2Reader.kt's Gen2Config): pret's value must agree with it
-crystal,gold,silver ram.partyCount wPartyCount
-crystal,gold,silver ram.partyMons wPartyMons
-crystal,gold,silver ram.numItems wNumItems
-crystal,gold,silver ram.numKeyItems wNumKeyItems
-crystal,gold,silver ram.numBalls wNumBalls
-crystal,gold,silver ram.tmsHms wTMsHMs
-crystal,gold,silver ram.money wMoney
-crystal,gold,silver ram.mapGroup wMapGroup
-crystal,gold,silver ram.backupMapGroup wBackupMapGroup
-crystal,gold,silver ram.battleMode wBattleMode
-crystal,gold,silver ram.battleMon wBattleMon
-crystal,gold,silver ram.enemyMon wEnemyMon
-crystal,gold,silver ram.otPartyCount wOTPartyCount
-crystal,gold,silver ram.otPartyMons wOTPartyMons
-crystal,gold,silver ram.curOTMon wCurOTMon
-crystal ram.playerGender wPlayerGender
-crystal,gold,silver ram.gameTime wGameTimeHours
-crystal,gold,silver ram.dexCaught wPokedexCaught
-crystal,gold,silver ram.dexSeen wPokedexSeen
-crystal,gold,silver ram.menu2D w2DMenuCursorInitY
-crystal,gold,silver ram.menuCursor wMenuCursorY
-crystal,gold,silver ram.moveMenuType wMoveSelectionMenuType
-crystal,gold,silver ram.tileMap wTilemap
-crystal,gold,silver ram.partyMenuAction wPartyMenuActionText
-crystal,gold,silver ram.curBattleMon wCurBattleMon
+crystal,crystal-legacy,crystal-clear,gold,silver ram.partyCount wPartyCount
+crystal,crystal-legacy,crystal-clear,gold,silver ram.partyMons wPartyMons
+crystal,crystal-legacy,crystal-clear,gold,silver ram.numItems wNumItems
+crystal,crystal-legacy,crystal-clear,gold,silver ram.numKeyItems wNumKeyItems
+crystal,crystal-legacy,crystal-clear,gold,silver ram.numBalls wNumBalls
+crystal,crystal-legacy,crystal-clear,gold,silver ram.tmsHms wTMsHMs
+crystal,crystal-legacy,crystal-clear,gold,silver ram.money wMoney
+crystal,crystal-legacy,crystal-clear,gold,silver ram.mapGroup wMapGroup
+crystal,crystal-legacy,crystal-clear,gold,silver ram.backupMapGroup wBackupMapGroup
+crystal,crystal-legacy,crystal-clear,gold,silver ram.battleMode wBattleMode
+crystal,crystal-legacy,crystal-clear,gold,silver ram.battleMon wBattleMon
+crystal,crystal-legacy,crystal-clear,gold,silver ram.enemyMon wEnemyMon
+crystal,crystal-legacy,crystal-clear,gold,silver ram.otPartyCount wOTPartyCount
+crystal,crystal-legacy,crystal-clear,gold,silver ram.otPartyMons wOTPartyMons
+crystal,crystal-legacy,crystal-clear,gold,silver ram.curOTMon wCurOTMon
+crystal,crystal-legacy,crystal-clear ram.playerGender wPlayerGender
+crystal,crystal-legacy,crystal-clear,gold,silver ram.gameTime wGameTimeHours
+crystal,crystal-legacy,crystal-clear,gold,silver ram.dexCaught wPokedexCaught
+crystal,crystal-legacy,crystal-clear,gold,silver ram.dexSeen wPokedexSeen
+crystal,crystal-legacy,crystal-clear,gold,silver ram.menu2D w2DMenuCursorInitY
+crystal,crystal-legacy,crystal-clear,gold,silver ram.menuCursor wMenuCursorY
+crystal,crystal-legacy,crystal-clear,gold,silver ram.moveMenuType wMoveSelectionMenuType
+crystal,crystal-legacy,crystal-clear,gold,silver ram.tileMap wTilemap
+crystal,crystal-legacy,crystal-clear,gold,silver ram.partyMenuAction wPartyMenuActionText
+crystal,crystal-legacy,crystal-clear,gold,silver ram.curBattleMon wCurBattleMon
 # (PokeDaisy's GuideCrystalGen.kt has Crystal's)
-crystal,gold,silver ram.eventFlags wEventFlags
-crystal,gold,silver ram.timeOfDay wTimeOfDay
-crystal,gold,silver ram.johtoBadges wJohtoBadges
-crystal,gold,silver ram.tradeFlags wTradeFlags
+crystal,crystal-legacy,crystal-clear,gold,silver ram.eventFlags wEventFlags
+crystal,crystal-legacy,crystal-clear,gold,silver ram.timeOfDay wTimeOfDay
+crystal,crystal-legacy,crystal-clear,gold,silver ram.johtoBadges wJohtoBadges
+crystal,crystal-legacy,crystal-clear,gold,silver ram.tradeFlags wTradeFlags
 
 # Gen II's WRAM that PokeDaisy doesn't read
-crystal,gold,silver ram.kantoBadges wKantoBadges
-crystal,gold,silver ram.playerID wPlayerID
-crystal,gold,silver ram.playerName wPlayerName
-crystal,gold,silver ram.mapNumber wMapNumber
-crystal,gold,silver ram.yCoord wYCoord
-crystal,gold,silver ram.xCoord wXCoord
-crystal,gold,silver ram.partyMonOTs wPartyMonOTs
-crystal,gold,silver ram.partyMonNicknames wPartyMonNicknames
-crystal,gold,silver ram.playerStatLevels wPlayerStatLevels
-crystal,gold,silver ram.enemyStatLevels wEnemyStatLevels
-crystal,gold,silver ram.dayCareMan wDayCareMan
-crystal,gold,silver ram.breedMon1 wBreedMon1
-crystal,gold,silver ram.dayCareLady wDayCareLady
-crystal,gold,silver ram.breedMon2 wBreedMon2
-crystal,gold,silver ram.roamMon1 wRoamMon1
-crystal,gold,silver ram.roamMon2 wRoamMon2
-crystal,gold,silver ram.roamMon3 wRoamMon3
-crystal,gold,silver ram.stepsToEgg wStepsToEgg
-crystal,gold,silver ram.otherTrainerClass wOtherTrainerClass
-crystal,gold,silver ram.otherTrainerID wOtherTrainerID
+crystal,crystal-legacy,crystal-clear,gold,silver ram.kantoBadges wKantoBadges
+crystal,crystal-legacy,crystal-clear,gold,silver ram.playerID wPlayerID
+crystal,crystal-legacy,crystal-clear,gold,silver ram.playerName wPlayerName
+crystal,crystal-legacy,crystal-clear,gold,silver ram.mapNumber wMapNumber
+crystal,crystal-legacy,crystal-clear,gold,silver ram.yCoord wYCoord
+crystal,crystal-legacy,crystal-clear,gold,silver ram.xCoord wXCoord
+crystal,crystal-legacy,crystal-clear,gold,silver ram.partyMonOTs wPartyMonOTs
+crystal,crystal-legacy,crystal-clear,gold,silver ram.partyMonNicknames wPartyMonNicknames
+crystal,crystal-legacy,crystal-clear,gold,silver ram.playerStatLevels wPlayerStatLevels
+crystal,crystal-legacy,crystal-clear,gold,silver ram.enemyStatLevels wEnemyStatLevels
+crystal,crystal-legacy,crystal-clear,gold,silver ram.dayCareMan wDayCareMan
+crystal,crystal-legacy,crystal-clear,gold,silver ram.breedMon1 wBreedMon1
+crystal,crystal-legacy,crystal-clear,gold,silver ram.dayCareLady wDayCareLady
+crystal,crystal-legacy,crystal-clear,gold,silver ram.breedMon2 wBreedMon2
+crystal,crystal-legacy,crystal-clear,gold,silver ram.roamMon1 wRoamMon1
+crystal,crystal-legacy,crystal-clear,gold,silver ram.roamMon2 wRoamMon2
+crystal,crystal-legacy,crystal-clear,gold,silver ram.roamMon3 wRoamMon3
+crystal,crystal-legacy,crystal-clear,gold,silver ram.stepsToEgg wStepsToEgg
+crystal,crystal-legacy,crystal-clear,gold,silver ram.otherTrainerClass wOtherTrainerClass
+crystal,crystal-legacy,crystal-clear,gold,silver ram.otherTrainerID wOtherTrainerID
 
 # The event flags' count (a bit each at wEventFlags)
-crystal,gold,silver const.numEvents constants/event_flags.asm NUM_EVENTS
+crystal,crystal-legacy,crystal-clear,gold,silver const.numEvents constants/event_flags.asm NUM_EVENTS
 
 # Gen II's ROM tables (ui/src/kiwami/gbpk/rom2.cpp reads them; their layouts are named there). PokeDaisy's Gen2Dex.kt
 # gives some of them too (GEN2_DEX_CRYSTAL, GEN2_DEX_GOLD_SILVER): pret's value must agree with it
-crystal,gold,silver rom.baseData BaseData
-crystal,gold,silver rom.pokemonNames PokemonNames
-crystal,gold,silver rom.moves Moves
-crystal,gold,silver rom.moveNames MoveNames
-crystal,gold,silver rom.moveDescriptions MoveDescriptions
-crystal,gold,silver rom.moveEffectPriorities MoveEffectPriorities
-crystal,gold,silver rom.itemNames ItemNames
-crystal,gold,silver rom.itemAttributes ItemAttributes
-crystal,gold,silver rom.itemDescriptions ItemDescriptions
-crystal,gold,silver rom.evosAttacksPointers EvosAttacksPointers
-crystal,gold,silver rom.tmHmMoves TMHMMoves
-crystal,gold,silver rom.dexEntryPointers PokedexDataPointerTable
+crystal,crystal-legacy,crystal-clear,gold,silver rom.baseData BaseData
+crystal,crystal-legacy,crystal-clear,gold,silver rom.pokemonNames PokemonNames
+crystal,crystal-legacy,crystal-clear,gold,silver rom.moves Moves
+crystal,crystal-legacy,crystal-clear,gold,silver rom.moveNames MoveNames
+crystal,crystal-legacy,crystal-clear,gold,silver rom.moveDescriptions MoveDescriptions
+crystal,crystal-legacy,crystal-clear,gold,silver rom.moveEffectPriorities MoveEffectPriorities
+crystal,crystal-legacy,crystal-clear,gold,silver rom.itemNames ItemNames
+crystal,crystal-legacy,crystal-clear,gold,silver rom.itemAttributes ItemAttributes
+crystal,crystal-legacy,crystal-clear,gold,silver rom.itemDescriptions ItemDescriptions
+crystal,crystal-legacy,crystal-clear,gold,silver rom.evosAttacksPointers EvosAttacksPointers
+crystal,crystal-legacy,crystal-clear,gold,silver rom.tmHmMoves TMHMMoves
+crystal,crystal-clear,gold,silver rom.dexEntryPointers PokedexDataPointerTable
 # (Crystal looks a Pokédex entry's bank up in a table, a bank for each 64 species; Gold and Silver count from the
-# first entry's bank)
-crystal rom.dexEntryBanks GetDexEntryPointer.PokedexEntryBanks
+# first entry's bank; Crystal Legacy's table has the bank in each entry, a bank and a pointer a species, under its own
+# key, and no table of banks: engine/pokedex/pokedex_2.asm GetDexEntryPointer)
+crystal,crystal-clear rom.dexEntryBanks GetDexEntryPointer.PokedexEntryBanks
 gold,silver rom.dexEntryFirst BulbasaurPokedexEntry
-crystal,gold,silver rom.johtoGrass JohtoGrassWildMons
-crystal,gold,silver rom.johtoWater JohtoWaterWildMons
-crystal,gold,silver rom.kantoGrass KantoGrassWildMons
-crystal,gold,silver rom.kantoWater KantoWaterWildMons
-crystal,gold,silver rom.grassProbs GrassMonProbTable
-crystal,gold,silver rom.waterProbs WaterMonProbTable
-crystal,gold,silver rom.fishGroups FishGroups
-crystal,gold,silver rom.timeFishGroups TimeFishGroups
-crystal,gold,silver rom.treeMonMaps TreeMonMaps
-crystal,gold,silver rom.rockMonMaps RockMonMaps
-crystal,gold,silver rom.treeMons TreeMons
+crystal-legacy rom.dexEntryFar PokedexDataPointerTable
+crystal,crystal-legacy,crystal-clear,gold,silver rom.johtoGrass JohtoGrassWildMons
+crystal,crystal-legacy,crystal-clear,gold,silver rom.johtoWater JohtoWaterWildMons
+crystal,crystal-legacy,crystal-clear,gold,silver rom.kantoGrass KantoGrassWildMons
+crystal,crystal-legacy,crystal-clear,gold,silver rom.kantoWater KantoWaterWildMons
+crystal,crystal-legacy,crystal-clear,gold,silver rom.grassProbs GrassMonProbTable
+crystal,crystal-legacy,crystal-clear,gold,silver rom.waterProbs WaterMonProbTable
+crystal,crystal-legacy,crystal-clear,gold,silver rom.fishGroups FishGroups
+crystal,crystal-legacy,crystal-clear,gold,silver rom.timeFishGroups TimeFishGroups
+crystal,crystal-legacy,crystal-clear,gold,silver rom.treeMonMaps TreeMonMaps
+crystal,crystal-legacy,crystal-clear,gold,silver rom.rockMonMaps RockMonMaps
+crystal,crystal-legacy,crystal-clear,gold,silver rom.treeMons TreeMons
+# (Crystal Legacy's Rock Smash sets are a table of their own, from 0: engine/events/treemons.asm GetRockSmashMons)
+crystal-legacy rom.rockSmashMons RockSmashMons
 crystal,gold,silver rom.trainerGroups TrainerGroups
-crystal,gold,silver rom.trainerClassNames TrainerClassNames
-crystal,gold,silver rom.landmarks Landmarks
-crystal,gold,silver rom.mapGroups MapGroupPointers
+# (Crystal Legacy's groups are a bank and a pointer a class, under their own key, and its party types have four more
+# fields before the item and moves, by these bits: a nickname, two DVs, five words of stat experience, happiness;
+# data/trainers/party_pointers.asm, engine/battle/read_trainer_party.asm ReadTrainerPartyPieces)
+crystal-legacy,crystal-clear rom.trainerGroupsFar TrainerGroups
+crystal-legacy const.trainerNickname constants/trainer_data_constants.asm TRAINERTYPE_NICKNAME
+crystal-legacy const.trainerDvs constants/trainer_data_constants.asm TRAINERTYPE_DVS
+crystal-legacy const.trainerStatExp constants/trainer_data_constants.asm TRAINERTYPE_STAT_EXP
+crystal-legacy const.trainerHappiness constants/trainer_data_constants.asm TRAINERTYPE_HAPPINESS
+crystal,crystal-legacy,crystal-clear,gold,silver rom.trainerClassNames TrainerClassNames
+crystal,crystal-legacy,crystal-clear,gold,silver rom.landmarks Landmarks
+crystal,crystal-legacy,crystal-clear,gold,silver rom.mapGroups MapGroupPointers
 # (the first map's attributes follow the last map group's headers: where that group ends)
-crystal,gold,silver rom.mapHeadersEnd NewBarkTown_MapAttributes
+crystal,crystal-legacy,crystal-clear,gold,silver rom.mapHeadersEnd NewBarkTown_MapAttributes
+# (the type chart, data/types/type_matchups.asm: attacker, defender and multiplier triples; the Foresight pairs after
+# its -2, then -1)
+crystal,crystal-legacy,crystal-clear,gold,silver rom.typeChart TypeMatchups
 
 # Gen II's counts and the one move its priority names
-crystal,gold,silver const.numPokemon constants/pokemon_constants.asm NUM_POKEMON
-crystal,gold,silver const.numMoves constants/move_constants.asm NUM_ATTACKS
-crystal,gold,silver const.vitalThrow constants/move_constants.asm VITAL_THROW
-crystal,gold,silver const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINER_CLASSES
-crystal,gold,silver const.numLandmarks constants/landmark_constants.asm NUM_LANDMARKS
+crystal,crystal-legacy,crystal-clear,gold,silver const.numPokemon constants/pokemon_constants.asm NUM_POKEMON
+crystal,crystal-legacy,crystal-clear,gold,silver const.numMoves constants/move_constants.asm NUM_ATTACKS
+crystal,crystal-legacy,crystal-clear,gold,silver const.vitalThrow constants/move_constants.asm VITAL_THROW
+crystal,crystal-legacy,crystal-clear,gold,silver const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINER_CLASSES
+crystal,crystal-legacy,crystal-clear,gold,silver const.numLandmarks constants/landmark_constants.asm NUM_LANDMARKS
 # (the Pokégear: a landmark from KANTO_LANDMARK up is on the Kanto map, the Fast Ship's on Johto's)
-crystal,gold,silver const.kantoLandmark constants/landmark_constants.asm KANTO_LANDMARK
-crystal,gold,silver const.fastShipLandmark constants/landmark_constants.asm LANDMARK_FAST_SHIP
+crystal,crystal-legacy,crystal-clear,gold,silver const.kantoLandmark constants/landmark_constants.asm KANTO_LANDMARK
+crystal,crystal-legacy,crystal-clear,gold,silver const.fastShipLandmark constants/landmark_constants.asm LANDMARK_FAST_SHIP
+
+# Crystal Clear's values Crystal's code doesn't find by its votes (gbpk-port.py): where Crystal's code is kept around
+# the use, a pattern of it that gives Crystal's own value in Crystal too; where the hack rewrote it, a pattern of the
+# hack's own code, its routine named (the names are pokecrystal's for the routine it stands for)
+# (its RAM: Crystal's, but for the map ids and caught flags, which the votes find moved)
+# (ResetMapBufferEventFlags; EventFlagAction keeps flags 2048 and up in a second block: wEventFlags is its first 2048,
+# NUM_EVENTS by its cp, and the second block runs at most to wMapObjects, the 40 bytes Crystal leaves after wCmdQueue)
+crystal-clear port.code ram.eventFlags af 21 {addr} 22 c9
+crystal-clear port.code ram.eventFlags2 fe .. 21 .. .. 38 06 21 {addr} d6
+crystal-clear port.code const.numEvents 7a fe {hi} 21 .. .. 38 06 21
+crystal-clear ram.eventFlags2End wMapObjects
+# (TradeFlagAction)
+crystal-clear port.code ram.tradeFlags 21 {addr} fa .. .. 4f 3e 03 cd
+# (its player is one of three, 0-2 in wPlayerGender, not Crystal's bit: the hack's own check of it)
+crystal-clear port.code ram.playerGender fa {addr} fe 03 38 05 3e 02 ea
+# (InitRoamMons, DoEggStep, the battle's end, a single use each that the votes take only as one)
+crystal-clear port.code ram.roamMon1 cd .. .. af ea {addr} ea .. .. ea .. .. 3e ff
+crystal-clear port.code ram.roamMon2 cd .. .. af ea .. .. ea {addr} ea .. .. 3e ff
+crystal-clear port.code ram.roamMon3 cd .. .. af ea .. .. ea .. .. ea {addr} 3e ff
+crystal-clear port.code ram.stepsToEgg cb 6e c8 21 {addr} 35 c0
+crystal-clear port.code ram.otherTrainerID fa .. .. ea {addr} c9 3e 80 ea
+# (its ROM: the tables it kept as Crystal's, by their bytes; the Pokémon's names and the moves whole, so their counts are
+# Crystal's; the type chart whole, to its -1, so its types are)
+crystal-clear port.data rom.baseData 32
+crystal-clear port.data rom.pokemonNames 2510
+crystal-clear port.data rom.moves 1757
+crystal-clear port.data rom.moveNames 16
+crystal-clear port.data rom.itemNames 16
+crystal-clear port.data rom.typeChart 332
+crystal-clear port.data rom.johtoMap 32
+crystal-clear port.data rom.kantoMap 32
+crystal-clear port.same const.numPokemon rom.pokemonNames
+crystal-clear port.same const.numMoves rom.moves
+crystal-clear port.same const.vitalThrow rom.moves
+crystal-clear items from crystal
+crystal-clear types from crystal
+# (GetMoveDescription, GetMoveEffectPriority ... the code Crystal keeps around them)
+crystal-clear port.code rom.moveDescriptions e5 21 {addr} fa .. .. 3d 4f 06 00 09 09 2a
+crystal-clear port.code rom.moveEffectPriorities cd .. .. 21 {addr} 2a b8 28 08
+crystal-clear port.code rom.itemAttributes e5 c5 21 {addr} 4f 06 00 09 af ea .. .. fa .. .. 3d 4f 3e 07 cd .. .. 3e {bank} cd
+crystal-clear port.code rom.itemDescriptions d5 21 {addr} fa .. .. 3d 4f 06 00 09 09 5e
+crystal-clear port.code rom.tmHmMoves 47 0e 00 21 {addr} 2a a7 28 .. b8 28 03 0c
+crystal-clear port.code rom.dexEntryPointers e5 21 {addr} 78 3d 16 00 5f
+crystal-clear port.code rom.dexEntryBanks 07 07 e6 03 21 {addr} 16 00 5f 19 46
+crystal-clear port.code rom.landmarks 29 29 11 {addr} 19 2a 5f 56
+crystal-clear port.code rom.picsBanks d6 12 4f 06 00 21 {addr} 09 7e c1 e1 c9
+crystal-clear port.code rom.townMapPalMap fe 60 30 1f 21 {addr} cb 3f 38 0b
+crystal-clear port.code rom.unownPicPointers fa 34 d2 16 {bank} 21 {addr} 3d 01 06 00
+crystal-clear port.code rom.townMapGfx 21 {addr} 11 00 90 01 30 {bank} c3
+crystal-clear port.code rom.pokegearPals 21 {addr} 11 00 d0 01 30 00 3e 05
+# (the wild Pokémon's lookup, moved with the tables to another bank: _GrassWildmonLookup and _WaterWildmonLookup, each a
+# Johto and a Kanto table, the grass's 47 bytes a map and the water's 9; the odds before them, ChooseWildEncounter)
+crystal-clear port.code rom.johtoGrass 21 {addr} 11 .. .. cd .. .. 01 2f 00
+crystal-clear port.code rom.kantoGrass 21 .. .. 11 {addr} cd .. .. 01 2f 00
+crystal-clear port.code rom.johtoWater 21 {addr} 11 .. .. cd .. .. 01 09 00
+crystal-clear port.code rom.kantoWater 21 .. .. 11 {addr} cd .. .. 01 09 00
+crystal-clear port.code rom.grassProbs 01 0e 00 cd .. .. 11 {addr}
+crystal-clear port.code rom.waterProbs 23 23 23 cd .. .. 11 {addr} 28 0e
+# (the hack's own code: Fish, its groups 6 bytes each, Crystal's 7; GetFishGroupIndex's time table, 4 bytes as Crystal's)
+crystal-clear port.code rom.fishGroups 43 15 5a 16 00 21 {addr} 19
+crystal-clear port.code rom.timeFishGroups 5e 16 00 21 {addr} 19 19 19 19 fa
+# (TreeMonEncounter and RockMonEncounter, rewritten; GetTreeMons, its sets from 1, 19 of them, Crystal's from 0)
+crystal-clear port.code rom.treeMonMaps 21 {addr} cd .. .. 30 .. cd .. .. 30 .. 3e 0a cd .. .. fe 08 30 .. cd .. .. 30 .. 3e 08
+crystal-clear port.code rom.rockMonMaps 21 {addr} cd .. .. 30 .. cd .. .. 30 .. 3e 0a cd .. .. fe 08 30 .. cd .. .. 30 .. 3e 23
+crystal-clear port.code rom.treeMons a7 28 .. 3d 5f 16 00 21 {addr} 19 19 2a 66 6f
+# (ReadTrainerParty: its groups a bank and a pointer a class, as Crystal Legacy's; TrainerClassNames through
+# NamesPointers, the entry after wPartyMonOTs' and wOTPartyMonOTs'; its trainer class viewer, from 1 to the last)
+crystal-clear port.code rom.trainerGroupsFar fa 2f d2 3d 4f 06 00 21 {addr} 09 09 09
+crystal-clear port.code rom.trainerClassNames 00 00 00 .. 00 40 00 ff dd 00 .. .. {bank} {addr}
+crystal-clear port.code const.numTrainerClasses fa 2f d2 fe {byte} 28 .. 3c ea 2f d2
+# (GetAnyMapPointer, and the bank its rewritten callers switch to; the map headers end where the first map's attributes, New Bark Town's,
+# begin: Route 29's header and New Bark Town's)
+crystal-clear port.code rom.mapGroups c5 05 48 06 00 21 {addr} 09 09 2a 66 6f c1 0d 06 00 3e 09 / f0 9d f5 3e {bank} d7 cd .. .. 11 03 00 19 2a 66 6f
+crystal-clear port.code rom.mapHeadersEnd 25 01 02 .. .. 02 .. 00 .. 25 01 01 {addr} 01 .. 00 02
+# (GetFrontpicPointer; GetMonPalettePointer, its own palettes, unless an option's bit picks its second table, Crystal's
+# colours: D9C4 bit 2, clear in a new game, as in PokeDaisy's six captures)
+crystal-clear port.code rom.picPointers 21 {addr} 16 {bank} fe c9 20 03 79 16
+crystal-clear port.code rom.monPalettes 01 {addr} 3e 01 21 c4 d9 cd .. .. cb 57 28 03 01 .. .. e1 f1 09 c9
+# (its landmarks: as many as come before the first name; RegionCheck's, rewritten: the landmarks from the first past
+# Crystal's take their region from a stand-in landmark in a table of its own)
+crystal-clear port.count const.numLandmarks rom.landmarks 4 2
+crystal-clear port.code const.kantoLandmark 09 7e fe .. 28 04 fe {byte} 30 05
+crystal-clear port.code const.fastShipLandmark 09 7e fe {byte} 28 04 fe .. 30 05
+crystal-clear port.code rom.landmarkRegions 7b fe .. 38 0a d6 .. 4f 06 00 21 {addr} 09 7e
+crystal-clear port.code const.landmarkRegionsFirst 7b fe {byte} 38 0a d6 .. 4f 06 00 21
+# (its text is packed: PlaceNextChar's table of words and routines, a byte from the first)
+crystal-clear port.code rom.textDict d6 16 4f 06 00 21 {addr} 09 09 09 2a a7 20
+crystal-clear port.code const.textDictFirst d6 {byte} 4f 06 00 21 .. .. 09 09 09 2a a7 20
+# (its own layouts, in the shape of the code that reads them. Fish: a group is its three rods' pointers, no bite chance
+# before them (six add hl,de), and a rod's chances are cumulative out of RandomRange's 100, the roll from 1 (Crystal's
+# out of a byte's 256). GetTreeMons: TreeMons' first set is 1 (its dec a; Crystal's has a set 0). ReadTrainerParty: a
+# trainer whose type has bit 1 has a party for each badge count, Johto's and Kanto's (CountSetBits over both, 15 at
+# most), each with a type of its own and ended by -2, the last by -1; a member's item, nickname and moves by bits 2, 3
+# and 4, in that order, Crystal's moves and item bits 0 and 1)
+crystal-clear port.fixed const.fishGroupSize 6 43 15 5a 16 00 21 .. .. 19 19 19 19 19 19 cd
+crystal-clear port.code const.fishChances 3e {byte} cd .. .. 3c be 28 07 38 05 23 23 23
+crystal-clear port.fixed const.treeMonsFirst 1 a7 28 .. 3d 5f 16 00 21 .. .. 19 19 2a 66 6f
+crystal-clear port.fixed const.trainerTeams 2 ea .. .. cb 4f 28 28 cd .. .. 38 0f e5 21 .. .. 06 02 cd .. .. e1 cb 61 28 01 0d 79 a7 28 0a cd .. .. fe fe 20 f9 0d 18 f2
+crystal-clear port.fixed const.trainerItem 4 fa .. .. cb 57 28 15 e5 fa .. .. 3d 21 .. .. 01 30 00
+crystal-clear port.fixed const.trainerNickname 8 fa .. .. cb 5f 28 55 d5 11 .. .. cd .. .. fe 50
+crystal-clear port.fixed const.trainerMoves 16 fa .. .. cb 67 28 6b e5 fa .. .. 3d 21 .. .. 01 30 00
+# (its guide's bosses, gsguide.cpp, Gold's and Silver's lines: its classes are renumbered, Crystal's RIVAL1 gone, so
+# each is the class whose first trainer has the name Crystal's class's first trainer has, compared in the ROMs; its
+# post-game Elite 4 and Champion classes have names of their own. Its badges are Crystal's bits, as it keeps Crystal's
+# EngineFlags whole, the table setflag ENGINE_<badge> goes through to wJohtoBadges and wKantoBadges)
+crystal-clear rom.engineFlags EngineFlags
+crystal-clear port.data rom.engineFlags 486
+crystal-clear port.trainer const.leaderFalkner rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderBugsy rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderWhitney rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderMorty rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderJasmine rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderChuck rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderPryce rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderClair rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderBrock rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderMisty rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderLtSurge rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderErika rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderJanine rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderSabrina rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderBlaine rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.leaderBlue rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.eliteWill rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.eliteBruno rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.eliteKaren rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.eliteKoga rom.trainerGroupsFar TrainerGroups
+crystal-clear port.trainer const.champion rom.trainerGroupsFar TrainerGroups
+crystal-clear port.same const.badgeZephyr rom.engineFlags
+crystal-clear port.same const.badgeHive rom.engineFlags
+crystal-clear port.same const.badgePlain rom.engineFlags
+crystal-clear port.same const.badgeFog rom.engineFlags
+crystal-clear port.same const.badgeMineral rom.engineFlags
+crystal-clear port.same const.badgeStorm rom.engineFlags
+crystal-clear port.same const.badgeGlacier rom.engineFlags
+crystal-clear port.same const.badgeRising rom.engineFlags
+crystal-clear port.same const.badgeBoulder rom.engineFlags
+crystal-clear port.same const.badgeCascade rom.engineFlags
+crystal-clear port.same const.badgeThunder rom.engineFlags
+crystal-clear port.same const.badgeRainbow rom.engineFlags
+crystal-clear port.same const.badgeSoul rom.engineFlags
+crystal-clear port.same const.badgeMarsh rom.engineFlags
+crystal-clear port.same const.badgeVolcano rom.engineFlags
+crystal-clear port.same const.badgeEarth rom.engineFlags
 
 # Gen II's front pictures and their palettes (ui/src/kiwami/gbpk/pics.cpp), the Pokégear's Johto and Kanto maps
 # (maps.cpp). PokeDaisy's Gen2Dex.kt and Gen2Art.kt give them too: pret's value must agree with it. Crystal fixes a
 # picture's bank by an index into a table, Gold and Silver by a list of pairs (engine/gfx/load_pics.asm FixPicBank)
-crystal,gold,silver rom.picPointers PokemonPicPointers
-crystal,gold,silver rom.unownPicPointers UnownPicPointers
-crystal rom.picsBanks FixPicBank.PicsBanks
+crystal,crystal-legacy,crystal-clear,gold,silver rom.picPointers PokemonPicPointers
+crystal,crystal-legacy,crystal-clear,gold,silver rom.unownPicPointers UnownPicPointers
+crystal,crystal-legacy,crystal-clear rom.picsBanks FixPicBank.PicsBanks
 gold,silver rom.picBankFixes FixPicBank.FixPicBankTable
-crystal,gold,silver rom.monPalettes PokemonPalettes
-crystal,gold,silver rom.townMapGfx TownMapGFX
-crystal,gold,silver rom.johtoMap JohtoMap
-crystal,gold,silver rom.kantoMap KantoMap
-crystal,gold,silver rom.townMapPalMap TownMapPals.PalMap
+crystal,crystal-legacy,crystal-clear,gold,silver rom.monPalettes PokemonPalettes
+crystal,crystal-legacy,crystal-clear,gold,silver rom.townMapGfx TownMapGFX
+crystal,crystal-legacy,crystal-clear,gold,silver rom.johtoMap JohtoMap
+crystal,crystal-legacy,crystal-clear,gold,silver rom.kantoMap KantoMap
+crystal,crystal-legacy,crystal-clear,gold,silver rom.townMapPalMap TownMapPals.PalMap
 # (Crystal's boy's; the girl's differ only in the cities' colour, and the map is read once, not by the save)
-crystal rom.pokegearPals MalePokegearPals
+crystal,crystal-legacy,crystal-clear rom.pokegearPals MalePokegearPals
 gold,silver rom.pokegearPals PokegearPals
 
-# Gold and Silver's guide, built from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp): each gym leader's trainer
-# class, and the badge each one's gym gives (its bit in wJohtoBadges or wKantoBadges). Which leader gives which badge
-# is gsguide.cpp's table, from each gym's script (maps/*Gym.asm, Clair's maps/DragonsDenB1F.asm: setflag ENGINE_...)
-gold,silver const.leaderFalkner constants/trainer_constants.asm FALKNER
-gold,silver const.leaderBugsy constants/trainer_constants.asm BUGSY
-gold,silver const.leaderWhitney constants/trainer_constants.asm WHITNEY
-gold,silver const.leaderMorty constants/trainer_constants.asm MORTY
-gold,silver const.leaderJasmine constants/trainer_constants.asm JASMINE
-gold,silver const.leaderChuck constants/trainer_constants.asm CHUCK
-gold,silver const.leaderPryce constants/trainer_constants.asm PRYCE
-gold,silver const.leaderClair constants/trainer_constants.asm CLAIR
-gold,silver const.leaderBrock constants/trainer_constants.asm BROCK
-gold,silver const.leaderMisty constants/trainer_constants.asm MISTY
-gold,silver const.leaderLtSurge constants/trainer_constants.asm LT_SURGE
-gold,silver const.leaderErika constants/trainer_constants.asm ERIKA
-gold,silver const.leaderJanine constants/trainer_constants.asm JANINE
-gold,silver const.leaderSabrina constants/trainer_constants.asm SABRINA
-gold,silver const.leaderBlaine constants/trainer_constants.asm BLAINE
-gold,silver const.leaderBlue constants/trainer_constants.asm BLUE
-gold,silver const.badgeZephyr constants/ram_constants.asm ZEPHYRBADGE
-gold,silver const.badgeHive constants/ram_constants.asm HIVEBADGE
-gold,silver const.badgePlain constants/ram_constants.asm PLAINBADGE
-gold,silver const.badgeFog constants/ram_constants.asm FOGBADGE
-gold,silver const.badgeMineral constants/ram_constants.asm MINERALBADGE
-gold,silver const.badgeStorm constants/ram_constants.asm STORMBADGE
-gold,silver const.badgeGlacier constants/ram_constants.asm GLACIERBADGE
-gold,silver const.badgeRising constants/ram_constants.asm RISINGBADGE
-gold,silver const.badgeBoulder constants/ram_constants.asm BOULDERBADGE
-gold,silver const.badgeCascade constants/ram_constants.asm CASCADEBADGE
-gold,silver const.badgeThunder constants/ram_constants.asm THUNDERBADGE
-gold,silver const.badgeRainbow constants/ram_constants.asm RAINBOWBADGE
-gold,silver const.badgeSoul constants/ram_constants.asm SOULBADGE
-gold,silver const.badgeMarsh constants/ram_constants.asm MARSHBADGE
-gold,silver const.badgeVolcano constants/ram_constants.asm VOLCANOBADGE
-gold,silver const.badgeEarth constants/ram_constants.asm EARTHBADGE
+# Gold's, Silver's and Crystal Clear's guides, built from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp): each gym
+# leader's trainer class, the Elite Four's and the Champion's, and the badge each leader's gym gives (its bit in
+# wJohtoBadges or wKantoBadges). Which leader gives which badge is gsguide.cpp's table, from each gym's script
+# (maps/*Gym.asm, Clair's maps/DragonsDenB1F.asm: setflag ENGINE_...). Crystal's are Crystal Clear's base's (its port
+# lines are below Gen II's ROM tables): Crystal has a guide file of its own
+crystal,crystal-clear,gold,silver const.leaderFalkner constants/trainer_constants.asm FALKNER
+crystal,crystal-clear,gold,silver const.leaderBugsy constants/trainer_constants.asm BUGSY
+crystal,crystal-clear,gold,silver const.leaderWhitney constants/trainer_constants.asm WHITNEY
+crystal,crystal-clear,gold,silver const.leaderMorty constants/trainer_constants.asm MORTY
+crystal,crystal-clear,gold,silver const.leaderJasmine constants/trainer_constants.asm JASMINE
+crystal,crystal-clear,gold,silver const.leaderChuck constants/trainer_constants.asm CHUCK
+crystal,crystal-clear,gold,silver const.leaderPryce constants/trainer_constants.asm PRYCE
+crystal,crystal-clear,gold,silver const.leaderClair constants/trainer_constants.asm CLAIR
+crystal,crystal-clear,gold,silver const.leaderBrock constants/trainer_constants.asm BROCK
+crystal,crystal-clear,gold,silver const.leaderMisty constants/trainer_constants.asm MISTY
+crystal,crystal-clear,gold,silver const.leaderLtSurge constants/trainer_constants.asm LT_SURGE
+crystal,crystal-clear,gold,silver const.leaderErika constants/trainer_constants.asm ERIKA
+crystal,crystal-clear,gold,silver const.leaderJanine constants/trainer_constants.asm JANINE
+crystal,crystal-clear,gold,silver const.leaderSabrina constants/trainer_constants.asm SABRINA
+crystal,crystal-clear,gold,silver const.leaderBlaine constants/trainer_constants.asm BLAINE
+crystal,crystal-clear,gold,silver const.leaderBlue constants/trainer_constants.asm BLUE
+crystal,crystal-clear,gold,silver const.badgeZephyr constants/ram_constants.asm ZEPHYRBADGE
+crystal,crystal-clear,gold,silver const.badgeHive constants/ram_constants.asm HIVEBADGE
+crystal,crystal-clear,gold,silver const.badgePlain constants/ram_constants.asm PLAINBADGE
+crystal,crystal-clear,gold,silver const.badgeFog constants/ram_constants.asm FOGBADGE
+crystal,crystal-clear,gold,silver const.badgeMineral constants/ram_constants.asm MINERALBADGE
+crystal,crystal-clear,gold,silver const.badgeStorm constants/ram_constants.asm STORMBADGE
+crystal,crystal-clear,gold,silver const.badgeGlacier constants/ram_constants.asm GLACIERBADGE
+crystal,crystal-clear,gold,silver const.badgeRising constants/ram_constants.asm RISINGBADGE
+crystal,crystal-clear,gold,silver const.badgeBoulder constants/ram_constants.asm BOULDERBADGE
+crystal,crystal-clear,gold,silver const.badgeCascade constants/ram_constants.asm CASCADEBADGE
+crystal,crystal-clear,gold,silver const.badgeThunder constants/ram_constants.asm THUNDERBADGE
+crystal,crystal-clear,gold,silver const.badgeRainbow constants/ram_constants.asm RAINBOWBADGE
+crystal,crystal-clear,gold,silver const.badgeSoul constants/ram_constants.asm SOULBADGE
+crystal,crystal-clear,gold,silver const.badgeMarsh constants/ram_constants.asm MARSHBADGE
+crystal,crystal-clear,gold,silver const.badgeVolcano constants/ram_constants.asm VOLCANOBADGE
+crystal,crystal-clear,gold,silver const.badgeEarth constants/ram_constants.asm EARTHBADGE
+crystal,crystal-clear,gold,silver const.eliteWill constants/trainer_constants.asm WILL
+crystal,crystal-clear,gold,silver const.eliteBruno constants/trainer_constants.asm BRUNO
+crystal,crystal-clear,gold,silver const.eliteKaren constants/trainer_constants.asm KAREN
+crystal,crystal-clear,gold,silver const.eliteKoga constants/trainer_constants.asm KOGA
+crystal,crystal-clear,gold,silver const.champion constants/trainer_constants.asm CHAMPION
 
 # Gen I's WRAM that PokeDaisy reads too (Gen1Reader.kt's Gen1Config): pret's value must agree with it. The Game Boy
 # has no WRAM banks: D000-DFFF is the data files' bank 1, as the Game Boy Color games'
-red,blue,yellow ram.partyCount wPartyCount
-red,blue,yellow ram.partyMons wPartyMons
-red,blue,yellow ram.bagCount wNumBagItems
-red,blue,yellow ram.money wPlayerMoney
-red,blue,yellow ram.badges wObtainedBadges
-red,blue,yellow ram.curMap wCurMap
-red,blue,yellow ram.yCoord wYCoord
-red,blue,yellow ram.xCoord wXCoord
-red,blue,yellow ram.isInBattle wIsInBattle
-red,blue,yellow ram.battleMon wBattleMon
-red,blue,yellow ram.enemyMon wEnemyMon
-red,blue,yellow ram.enemyMonPartyPos wEnemyMonPartyPos
-red,blue,yellow ram.enemyPartyCount wEnemyPartyCount
-red,blue,yellow ram.enemyMons wEnemyMons
-red,blue,yellow ram.topMenuItemY wTopMenuItemY
-red,blue,yellow ram.moveMenuType wMoveMenuType
-red,blue,yellow ram.tileMap wTileMap
-red,blue,yellow ram.playTime wPlayTimeHours
-red,blue,yellow ram.partyMenuType wPartyMenuTypeOrMessageID
-red,blue,yellow ram.playerMonNumber wPlayerMonNumber
-red,blue,yellow const.bagSlots constants/menu_constants.asm BAG_ITEM_CAPACITY
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.partyCount wPartyCount
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.partyMons wPartyMons
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.bagCount wNumBagItems
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.money wPlayerMoney
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.badges wObtainedBadges
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.curMap wCurMap
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.yCoord wYCoord
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.xCoord wXCoord
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.isInBattle wIsInBattle
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.battleMon wBattleMon
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.enemyMon wEnemyMon
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.enemyMonPartyPos wEnemyMonPartyPos
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.enemyPartyCount wEnemyPartyCount
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.enemyMons wEnemyMons
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.topMenuItemY wTopMenuItemY
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.moveMenuType wMoveMenuType
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.tileMap wTileMap
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.playTime wPlayTimeHours
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.partyMenuType wPartyMenuTypeOrMessageID
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.playerMonNumber wPlayerMonNumber
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.bagSlots constants/menu_constants.asm BAG_ITEM_CAPACITY
 
 # Gen I's WRAM that PokeDaisy doesn't read
-red,blue,yellow ram.partyMonOTs wPartyMonOT
-red,blue,yellow ram.partyMonNicknames wPartyMonNicks
-red,blue,yellow ram.playerName wPlayerName
-red,blue,yellow ram.playerID wPlayerID
-red,blue,yellow ram.dexCaught wPokedexOwned
-red,blue,yellow ram.dexSeen wPokedexSeen
-red,blue,yellow ram.playerStatMods wPlayerMonStatMods
-red,blue,yellow ram.enemyStatMods wEnemyMonStatMods
-red,blue,yellow ram.trainerClass wTrainerClass
-red,blue,yellow ram.trainerNo wTrainerNo
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.partyMonOTs wPartyMonOT
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.partyMonNicknames wPartyMonNicks
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.playerName wPlayerName
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.playerID wPlayerID
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.dexCaught wPokedexOwned
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.dexSeen wPokedexSeen
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.playerStatMods wPlayerMonStatMods
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.enemyStatMods wEnemyMonStatMods
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.trainerClass wTrainerClass
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.trainerNo wTrainerNo
 # (Yellow's Pikachu: its happiness, and the species the game checks a party member's against, with its OT's id and name,
 # to tell the starter, engine/pikachu/pikachu_status.asm IsThisPartyMonStarterPikachu)
-yellow ram.pikachuHappiness wPikachuHappiness
+yellow,yellow-legacy ram.pikachuHappiness wPikachuHappiness
 yellow const.starterPikachu constants/pokemon_constants.asm STARTER
+# (Yellow Legacy renamed it, the same Pikachu: engine/pikachu/pikachu_status.asm IsThisPartyMonStarterPikachu, cp STARTER_PIKACHU)
+yellow-legacy const.starterPikachu constants/pokemon_constants.asm STARTER_PIKACHU
 
 # Gen I's ROM tables (ui/src/kiwami/gbpk/rom1.cpp reads them; their layouts are named there), under Gen II's keys where
 # a table plays the same part. PokeDaisy's Gen1Dex.kt gives some of them too (GEN1_DEX_RED, GEN1_DEX_YELLOW): pret's
 # value must agree with it. Red and Blue keep Mew's base data apart, in bank 1
-red,blue,yellow rom.baseData BaseStats
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.baseData BaseStats
 red,blue rom.mewBaseData MewBaseStats
-red,blue,yellow rom.dexOrder PokedexOrder
-red,blue,yellow rom.pokemonNames MonsterNames
-red,blue,yellow rom.dexEntryPointers PokedexEntryPointers
-red,blue,yellow rom.evosAttacksPointers EvosMovesPointerTable
-red,blue,yellow rom.moves Moves
-red,blue,yellow rom.moveNames MoveNames
-red,blue,yellow rom.itemNames ItemNames
-red,blue,yellow rom.itemPrices ItemPrices
-red,blue,yellow rom.tmHmMoves TechnicalMachines
+# (PureRGB's forms, internal species that carry a base species' Pokédex number, have their base data in a table of
+# their own, in NonDexPokemonSpecies' order: engine/pokemon/get_mon_header.asm GetMonHeader2; Mew is in BaseStats)
+purered,pureblue,puregreen rom.nonDexBaseData NonDexMonsBaseStats
+purered,pureblue,puregreen rom.nonDexSpecies NonDexPokemonSpecies
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.dexOrder PokedexOrder
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.pokemonNames MonsterNames
+red,blue,yellow,yellow-legacy rom.dexEntryPointers PokedexEntryPointers
+# (PureRGB's Pokédex pages are fixed records by Pokédex number, the category apart: an index a number into its list of
+# strings, data/pokemon/dex_entries.asm and dex_pokemon_categories.asm)
+purered,pureblue,puregreen rom.dexEntryData DexEntryData
+purered,pureblue,puregreen rom.dexCategoryMap PokemonCategoryMapping
+purered,pureblue,puregreen rom.dexCategories DexCategoryStrings
+# (the page's text_far: PureRGB renumbered the text commands, its dex_entry macro's text_far_end)
+purered,pureblue,puregreen const.textFar macros/scripts/text.asm TX_FAR_END
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.evosAttacksPointers EvosMovesPointerTable
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.moves Moves
+red,blue,yellow,yellow-legacy rom.moveNames MoveNames
+red,blue,yellow,yellow-legacy rom.itemNames ItemNames
+# (PureRGB's names are a pointer each, in the table's bank: data/moves/names.asm, data/items/names.asm)
+purered,pureblue,puregreen rom.moveNameTable MoveNameJumpTable
+purered,pureblue,puregreen rom.itemNameTable ItemNameJumpTable
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.itemPrices ItemPrices
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.tmHmMoves TechnicalMachines
 # (the places' names, as the town map gives them: a map's own entry outdoors, its group's indoors)
-red,blue,yellow rom.externalMapEntries ExternalMapEntries
-red,blue,yellow rom.internalMapEntries InternalMapEntries
-red,blue,yellow rom.wildData WildDataPointers
-red,blue,yellow rom.wildSlots WildMonEncounterSlotChances
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.externalMapEntries ExternalMapEntries
+red,blue,yellow,yellow-legacy rom.internalMapEntries InternalMapEntries
+# (PureRGB's indoor entries have a fifth byte, the map whose wild Pokémon the town map shows there:
+# data/maps/town_map_entries.asm internal_map)
+purered,pureblue,puregreen rom.internalMapEntriesWild InternalMapEntries
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.wildData WildDataPointers
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.wildSlots WildMonEncounterSlotChances
 # (the Old Rod's one Pokémon is in its code, lb bc, 5, MAGIKARP; the Super Rod's tables are Red's and Blue's groups,
 # Yellow's four slots a map)
-red,blue,yellow rom.oldRod ItemUseOldRod
-red,blue,yellow rom.goodRodMons GoodRodMons
-red,blue rom.superRod SuperRodData
-yellow rom.superRodSlots SuperRodFishingSlots
+red,blue,yellow,purered,pureblue,puregreen rom.oldRod ItemUseOldRod
+# (Yellow Legacy's Old Rod is a table, two of level and species as GoodRodMons: engine/items/item_effects.asm ld hl, OldRodMons)
+yellow-legacy rom.oldRodMons OldRodMons
+red,blue,yellow,yellow-legacy rom.goodRodMons GoodRodMons
+# (PureRGB's Old Rod is Magikarp or Goldeen in its code, read as retail's is; its Good Rod has four of level and species
+# to -1, and four others on its ocean maps: engine/items/item_effects.asm ItemUseGoodRod, data/wild/good_rod.asm,
+# data/maps/ocean_maps.asm IsMapOceanMap)
+purered,pureblue,puregreen rom.goodRodList GoodRodMons
+purered,pureblue,puregreen rom.goodRodOcean GoodRodMonsOcean
+purered,pureblue,puregreen rom.oceanMaps OceanMaps
+red,blue,purered,pureblue,puregreen rom.superRod SuperRodData
+yellow,yellow-legacy rom.superRodSlots SuperRodFishingSlots
 # (the last class's trainers end where the trainers' AI begins)
-red,blue,yellow rom.trainerGroups TrainerDataPointers
-red,blue,yellow rom.trainerGroupsEnd TrainerAI
-red,blue,yellow rom.trainerClassNames TrainerNames
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.trainerGroups TrainerDataPointers
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.trainerGroupsEnd TrainerAI
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.trainerClassNames TrainerNames
 # (the moves some bosses are given over their level's: Red's and Blue's gym leaders' and Elite Four's, Yellow's table)
 red,blue rom.loneMoves LoneMoves
 red,blue rom.teamMoves TeamMoves
-yellow rom.specialTrainerMoves SpecialTrainerMoves
+# (PureRGB's LoneMoves name the member, the move's place and the move, and its TeamMoves go to the sixth member's second
+# move; a party of its own kind $FD takes a moveset for each member from MoveSetMappings: engine/battle/read_trainer_party.asm
+# ReadTrainer, data/trainers/custom_movesets.asm LoadTrainerMoveSet)
+purered,pureblue,puregreen rom.loneMoveSlots LoneMoves
+purered,pureblue,puregreen rom.teamMoveSixth TeamMoves
+purered,pureblue,puregreen rom.trainerMoveSets MoveSetMappings
+yellow,yellow-legacy rom.specialTrainerMoves SpecialTrainerMoves
+# (the type chart, data/types/type_matchups.asm: attacker, defender and multiplier triples up to -1)
+red,blue,purered,pureblue,puregreen rom.typeChart TypeEffects
+yellow,yellow-legacy rom.typeChart TypeEffects
+
+# The items upstream's logic and pages know by their Gen IV id (rom.cpp gen1Item and gen2Item); any other is 1000 +
+# the game's own id. Gen I's TMs and HMs are counted from tm01 and hm01 (below), not listed.
+item MASTER_BALL 1 ball
+item ULTRA_BALL 2 ball
+item GREAT_BALL 3 ball
+item POKE_BALL 4 ball
+item SAFARI_BALL 5 ball
+item SUN_STONE 80
+item MOON_STONE 81
+item FIRE_STONE 82
+item THUNDER_STONE 83
+item THUNDERSTONE 83
+item WATER_STONE 84
+item LEAF_STONE 85
+item METAL_COAT 233
+item DRAGON_SCALE 235
+item LIGHT_BALL 236
+item SOFT_SAND 237
+item HARD_STONE 238
+item MIRACLE_SEED 239
+item BLACKGLASSES 240
+item BLACKBELT_I 241
+item MAGNET 242
+item MYSTIC_WATER 243
+item SHARP_BEAK 244
+item POISON_BARB 245
+item NEVERMELTICE 246
+item SPELL_TAG 247
+item TWISTEDSPOON 248
+item CHARCOAL 249
+item DRAGON_FANG 250
+item UP_GRADE 252
+item KINGS_ROCK 221
+item SILVERPOWDER 222
+item THICK_CLUB 258
+item OLD_ROD 445
+item GOOD_ROD 446
+item SUPER_ROD 447
+# (Gen II's balls of its own; the Park Ball, the Bug-Catching Contest's x1.5, is Gen IV's Sport Ball)
+item FAST_BALL 492 ball
+item LEVEL_BALL 493 ball
+item LURE_BALL 494 ball
+item HEAVY_BALL 495 ball
+item LOVE_BALL 496 ball
+item FRIEND_BALL 497 ball
+item MOON_BALL 498 ball
+item PARK_BALL 499 ball
+# (PureRGB's Hyper Ball, where Red's Town Map was: no Gen IV ball, so the fork's catch rules know it by its own id)
+item HYPER_BALL 0 ball
+crystal,crystal-legacy,gold,silver items constants/item_constants.asm
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen items constants/item_constants.asm
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen keyitems data/items/key_items.asm
+
+# The types (the move's type id is its category too: Physical below SPECIAL, Special from it, pret's
+# engine/battle/effect_commands.asm)
+crystal,crystal-legacy,gold,silver types constants/type_constants.asm
+# (Crystal Legacy keeps Ghost before SPECIAL and Dark after it for trades, and its damage makes Ghost special and Dark
+# physical: engine/battle/effect_commands.asm PlayerAttackDamage and EnemyAttackDamage, cp GHOST / cp DARK first)
+crystal-legacy split GHOST special
+crystal-legacy split DARK physical
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen types constants/type_constants.asm
+# (PureRGB's Ghost is special when the attacker's base Special is above its Attack: engine/battle/core.asm
+# GetDamageVarsForPlayerAttack and GetDamageVarsForEnemyAttack, PureRGB's comment in constants/type_constants.asm)
+purered,pureblue,puregreen split GHOST stats
 
 # Gen I's counts, its first TM and HM items, and the moves its priorities name
-red,blue,yellow const.numPokemon constants/pokedex_constants.asm NUM_POKEMON
-red,blue,yellow const.numPokemonIndexes constants/pokemon_constants.asm NUM_POKEMON_INDEXES
-red,blue,yellow const.numMoves constants/move_constants.asm NUM_ATTACKS
-red,blue,yellow const.numItems constants/item_constants.asm NUM_ITEMS
-red,blue,yellow const.hm01 constants/item_constants.asm HM01
-red,blue,yellow const.tm01 constants/item_constants.asm TM01
-red,blue,yellow const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINERS
-red,blue,yellow const.numMaps constants/map_constants.asm NUM_MAPS
-red,blue,yellow const.firstIndoorMap constants/map_constants.asm FIRST_INDOOR_MAP
-red,blue,yellow const.quickAttack constants/move_constants.asm QUICK_ATTACK
-red,blue,yellow const.counter constants/move_constants.asm COUNTER
+red,blue,yellow,yellow-legacy const.numPokemon constants/pokedex_constants.asm NUM_POKEMON
+# (PureRGB's NUM_POKEMON counts MissingNo., its DEX_MISSINGNO 0: Mew's number is the count)
+purered,pureblue,puregreen const.numPokemon constants/pokedex_constants.asm DEX_MEW
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.numPokemonIndexes constants/pokemon_constants.asm NUM_POKEMON_INDEXES
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.numMoves constants/move_constants.asm NUM_ATTACKS
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.numItems constants/item_constants.asm NUM_ITEMS
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.hm01 constants/item_constants.asm HM01
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.tm01 constants/item_constants.asm TM01
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.numTrainerClasses constants/trainer_constants.asm NUM_TRAINERS
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.numMaps constants/map_constants.asm NUM_MAPS
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.firstIndoorMap constants/map_constants.asm FIRST_INDOOR_MAP
+red,blue,yellow,yellow-legacy const.quickAttack constants/move_constants.asm QUICK_ATTACK
+red,blue,yellow,yellow-legacy const.counter constants/move_constants.asm COUNTER
+# (PureRGB's priority is a list, each +1, and no move is -1: data/battle/priority_moves.asm, engine/battle/core.asm
+# CheckPriority)
+purered,pureblue,puregreen rom.priorityMoves PriorityMoves
 # (Red's and Blue's gym leaders by their gym's number, which each gym's script gives the battle for LoneMoves:
 # scripts/PewterGym.asm 1 .. scripts/ViridianGym.asm 8)
-red,blue const.leaderBrock constants/trainer_constants.asm BROCK
-red,blue const.leaderMisty constants/trainer_constants.asm MISTY
-red,blue const.leaderLtSurge constants/trainer_constants.asm LT_SURGE
-red,blue const.leaderErika constants/trainer_constants.asm ERIKA
-red,blue const.leaderKoga constants/trainer_constants.asm KOGA
-red,blue const.leaderSabrina constants/trainer_constants.asm SABRINA
-red,blue const.leaderBlaine constants/trainer_constants.asm BLAINE
-red,blue const.leaderGiovanni constants/trainer_constants.asm GIOVANNI
+red,blue,purered,pureblue,puregreen const.leaderBrock constants/trainer_constants.asm BROCK
+red,blue,purered,pureblue,puregreen const.leaderMisty constants/trainer_constants.asm MISTY
+red,blue,purered,pureblue,puregreen const.leaderLtSurge constants/trainer_constants.asm LT_SURGE
+red,blue,purered,pureblue,puregreen const.leaderErika constants/trainer_constants.asm ERIKA
+red,blue,purered,pureblue,puregreen const.leaderKoga constants/trainer_constants.asm KOGA
+red,blue,purered,pureblue,puregreen const.leaderSabrina constants/trainer_constants.asm SABRINA
+red,blue,purered,pureblue,puregreen const.leaderBlaine constants/trainer_constants.asm BLAINE
+red,blue,purered,pureblue,puregreen const.leaderGiovanni constants/trainer_constants.asm GIOVANNI
 
 # Gen I's front pictures and their palettes (ui/src/kiwami/gbpk/pics.cpp), the town map (maps.cpp). PokeDaisy's
 # Gen1Dex.kt and Gen1Art.kt give some of them too: pret's value must agree with it. A picture's bank is by the species'
 # internal index (home/pics.asm UncompressMonSprite): "Pics 1" below TANGELA + 1, "Pics 2" below MOLTRES + 1, "Pics 3"
 # below BEEDRILL + 2, "Pics 4" below STARMIE + 1, "Pics 5" the rest; Red's and Blue's Mew, its base data apart, in
 # MewPicFront's bank. Each section's bank is its first picture's
-red,blue,yellow rom.pics1 RhydonPicFront
-red,blue,yellow rom.pics2 GrowlithePicFront
-red,blue,yellow rom.pics3 ArticunoPicFront
-red,blue,yellow rom.pics4 DodrioPicFront
-red,blue,yellow rom.pics5 BulbasaurPicFront
+red,blue,yellow,yellow-legacy rom.pics1 RhydonPicFront
+red,blue,yellow,yellow-legacy rom.pics2 GrowlithePicFront
+red,blue,yellow,yellow-legacy rom.pics3 ArticunoPicFront
+red,blue,yellow,yellow-legacy rom.pics4 DodrioPicFront
+red,blue,yellow,yellow-legacy rom.pics5 BulbasaurPicFront
 red,blue rom.mewPicFront MewPicFront
-red,blue,yellow const.picsTangela constants/pokemon_constants.asm TANGELA
-red,blue,yellow const.picsMoltres constants/pokemon_constants.asm MOLTRES
-red,blue,yellow const.picsBeedrill constants/pokemon_constants.asm BEEDRILL
-red,blue,yellow const.picsStarmie constants/pokemon_constants.asm STARMIE
+red,blue,yellow,yellow-legacy const.picsTangela constants/pokemon_constants.asm TANGELA
+red,blue,yellow,yellow-legacy const.picsMoltres constants/pokemon_constants.asm MOLTRES
+red,blue,yellow,yellow-legacy const.picsBeedrill constants/pokemon_constants.asm BEEDRILL
+red,blue,yellow,yellow-legacy const.picsStarmie constants/pokemon_constants.asm STARMIE
+# (PureRGB's base data is longer, the front picture's bank its own byte: constants/pokemon_data_constants.asm, home/pics.asm
+# UncompressMonSprite)
+purered,pureblue,puregreen const.baseDataSize constants/battle_constants.asm+constants/item_constants.asm+constants/pokemon_data_constants.asm BASE_DATA_SIZE
+purered,pureblue,puregreen const.basePicBank constants/battle_constants.asm+constants/item_constants.asm+constants/pokemon_data_constants.asm BASE_PICBANK
 # (a palette id a species by its national number, then the palettes: on a Super Game Boy Red's and Blue's, on a Game
 # Boy Color Yellow's own, engine/gfx/palettes.asm)
-red,blue,yellow rom.monPaletteIds MonsterPalettes
-red,blue rom.palettes SuperPalettes
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.monPaletteIds MonsterPalettes
+red,blue,purered,pureblue,puregreen rom.palettes SuperPalettes
 yellow rom.palettes CGBBasePalettes
-red,blue,yellow const.palTownMap constants/palette_constants.asm PAL_TOWNMAP
+# (Yellow Legacy renamed it, the same table after SuperPalettes: data/sgb/sgb_palettes.asm, engine/gfx/palettes.asm ld de, GBCBasePalettes)
+yellow-legacy rom.palettes GBCBasePalettes
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.palTownMap constants/palette_constants.asm PAL_TOWNMAP
 # (the town map: its run-length tile map and tiles, engine/items/town_map.asm LoadTownMap; the places its cursor steps
 # through, TownMapOrder, which name the cells)
-red,blue,yellow rom.townMap CompressedMap
-red,blue,yellow rom.townMapTiles WorldMapTileGraphics
-red,blue,yellow rom.townMapOrder TownMapOrder
-red,blue,yellow rom.townMapOrderEnd TownMapOrderEnd
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.townMap CompressedMap
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.townMapTiles WorldMapTileGraphics
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.townMapOrder TownMapOrder
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.townMapOrderEnd TownMapOrderEnd
 
 # Red's, Blue's and Yellow's guides (pokedaisy-extract.py, from PokeDaisy's GuideGen1Gen.kt, which has these too:
 # pret's value must agree with it): the event flags and the toggleable objects' flags, which the milestones' done_when
 # name; the event flags' count; and the toggleable object the Hall of Fame hides (scripts/HallOfFame.asm), the Cerulean
 # Cave guard, by which an Elite Four member stays beaten once the League is won (the lobby clears their rooms' flags)
-red,blue,yellow ram.eventFlags wEventFlags
-red,blue,yellow ram.toggleFlags wToggleableObjectFlags
-red,blue,yellow const.numEvents constants/event_constants.asm NUM_EVENTS
-red,blue,yellow const.toggleCeruleanCaveGuy constants/toggle_constants.asm TOGGLE_CERULEAN_CAVE_GUY
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen ram.eventFlags wEventFlags
+red,blue,yellow,purered,pureblue,puregreen ram.toggleFlags wToggleableObjectFlags
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen const.numEvents constants/event_constants.asm NUM_EVENTS
+red,blue,yellow,purered,pureblue,puregreen const.toggleCeruleanCaveGuy constants/toggle_constants.asm TOGGLE_CERULEAN_CAVE_GUY
+# (Yellow Legacy keeps pret's older names for them, the same flags: wMissableObjectFlags, constants/hide_show_constants.asm)
+yellow-legacy ram.toggleFlags wMissableObjectFlags
+yellow-legacy const.toggleCeruleanCaveGuy constants/hide_show_constants.asm HS_CERULEAN_CAVE_GUY
 # (the hidden items, ui/src/kiwami/gbpk/rom1.cpp: the maps with hidden events, each map's events, those that call
 # HiddenItems, and their flags by HiddenItemCoords' order; Red's and Blue's maps point to their events through a table
 # of their own, Yellow's each with its pointer)
-red,blue,yellow rom.hiddenEventMaps HiddenEventMaps
-red,blue rom.hiddenEventPointers HiddenEventPointers
-red,blue,yellow rom.hiddenItems HiddenItems
-red,blue,yellow rom.hiddenItemCoords HiddenItemCoords
+red,blue,yellow,purered,pureblue,puregreen rom.hiddenEventMaps HiddenEventMaps
+# (Yellow Legacy's, by pret's older name: data/events/hidden_objects.asm, each map with its pointer as Yellow's)
+yellow-legacy rom.hiddenEventMaps HiddenObjectMaps
+red,blue,purered,pureblue,puregreen rom.hiddenEventPointers HiddenEventPointers
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.hiddenItems HiddenItems
+# (PureRGB's hidden items of two, three and five of the item call functions of their own: engine/events/hidden_items.asm)
+purered,pureblue,puregreen rom.hiddenItems2 HiddenItems2
+purered,pureblue,puregreen rom.hiddenItems3 HiddenItems3
+purered,pureblue,puregreen rom.hiddenItems5 HiddenItems5
+red,blue,yellow,yellow-legacy,purered,pureblue,puregreen rom.hiddenItemCoords HiddenItemCoords
+# PureRed's, PureBlue's and PureGreen's guides: Red's and Blue's converted (pokedaisy-extract.py GEN1_HACK_GUIDES), each
+# flag of theirs by its name, Red's and Blue's number to PureRGB's (each of their milestones' flags must have a line:
+# the Elite Four's rooms and the Champion, the toggleable object by toggleCeruleanCaveGuy above), and each boss's class
+# (the leaders' above) with its party in the map's object_event (data/maps/objects/LoreleisRoom.asm .. ChampionsRoom
+# by its script, scripts/ChampionsRoom.asm). Their dotted keys stay out of the data files
+red,blue,purered,pureblue,puregreen const.flag.EVENT_BEAT_LORELEIS_ROOM_TRAINER_0 constants/event_constants.asm EVENT_BEAT_LORELEIS_ROOM_TRAINER_0
+red,blue,purered,pureblue,puregreen const.flag.EVENT_BEAT_BRUNOS_ROOM_TRAINER_0 constants/event_constants.asm EVENT_BEAT_BRUNOS_ROOM_TRAINER_0
+red,blue,purered,pureblue,puregreen const.flag.EVENT_BEAT_AGATHAS_ROOM_TRAINER_0 constants/event_constants.asm EVENT_BEAT_AGATHAS_ROOM_TRAINER_0
+red,blue,purered,pureblue,puregreen const.flag.EVENT_BEAT_LANCES_ROOM_TRAINER_0 constants/event_constants.asm EVENT_BEAT_LANCES_ROOM_TRAINER_0
+red,blue,purered,pureblue,puregreen const.flag.EVENT_BEAT_CHAMPION_RIVAL constants/event_constants.asm EVENT_BEAT_CHAMPION_RIVAL
+purered,pureblue,puregreen const.class.LORELEI constants/trainer_constants.asm LORELEI
+purered,pureblue,puregreen const.class.BRUNO constants/trainer_constants.asm BRUNO
+purered,pureblue,puregreen const.class.AGATHA constants/trainer_constants.asm AGATHA
+purered,pureblue,puregreen const.class.LANCE constants/trainer_constants.asm LANCE
+purered,pureblue,puregreen const.class.RIVAL3 constants/trainer_constants.asm RIVAL3
+
+# PureRGB's switches (ui/src/kiwami/gbpk/rules.h, host.cpp): the species the type NPC gives back their original types,
+# a bit each in its list's order (engine/pokemon/remap_typings.asm OriginalTypings, IsMonTypeRemapped); the battle
+# options' four matchups, wOptions3's bits 0-3 (ram/wram.asm, engine/battle/core.asm RemapTypeMatchupBasedOnOptions);
+# the signature moves and the event flag that turns them off (engine/battle/remap_move_data.asm RemappableMoves,
+# CheckRemapMoveData); the Hyper Ball (engine/items/item_effects.asm ItemUseBall)
+purered,pureblue,puregreen ram.typeRemapFlags wPkmnTypeRemapFlags
+purered,pureblue,puregreen ram.options3 wOptions3
+purered,pureblue,puregreen rom.originalTypings OriginalTypings
+purered,pureblue,puregreen rom.remappableMoves RemappableMoves
+purered,pureblue,puregreen const.signaturesOff constants/event_constants.asm FLAG_SIGNATURE_MOVES_TURNED_OFF
+purered,pureblue,puregreen const.hyperBall constants/item_constants.asm HYPER_BALL

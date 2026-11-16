@@ -34,6 +34,7 @@ GEN2_DEX = DATA + '/Gen2Dex.kt'
 GEN2_ART = DATA + '/Gen2Art.kt'
 GEN1_ART = DATA + '/Gen1Art.kt'
 CRYSTAL_GUIDE = DATA + '/GuideCrystalGen.kt'
+CRYSTAL_LEGACY_GUIDE = DATA + '/GuideCrystalLegacyGen.kt'
 CRYSTAL_RULES = DATA + '/GuideCrystal.kt'
 GEN1_GUIDE = DATA + '/GuideGen1Gen.kt'
 GEN1_RULES = DATA + '/GuideGen1.kt'
@@ -50,7 +51,8 @@ FOLDER = os.path.dirname(SOURCES)
 SECTION = 'pokedaisy'
 
 # The games: their key, generation, title, PokeDaisy's config, its ROM tables' config (Gen2Dex.kt, Gen1Dex.kt), its
-# art's (Gen2Art.kt, Gen1Art.kt) and the title GameTitles.kt gives their releases
+# art's (Gen2Art.kt, Gen1Art.kt) and the title GameTitles.kt gives their releases (its RETAIL map's, or HACKS' for the
+# ROM hacks read as games of their own: kiwami/GB-POKEMON.md, The ROM hacks)
 GAMES = [
     ('crystal', 2, 'Crystal', 'GEN2_CRYSTAL', 'GEN2_DEX_CRYSTAL', 'CRYSTAL', 'Pokémon Crystal'),
     ('gold', 2, 'Gold', 'GEN2_GOLD', 'GEN2_DEX_GOLD_SILVER', 'GOLD', 'Pokémon Gold'),
@@ -58,7 +60,45 @@ GAMES = [
     ('red', 1, 'Red', 'GEN1_RED', 'GEN1_DEX_RED', 'RED', 'Pokémon Red'),
     ('blue', 1, 'Blue', 'GEN1_BLUE', 'GEN1_DEX_RED', 'BLUE', 'Pokémon Blue'),
     ('yellow', 1, 'Yellow', 'GEN1_YELLOW', 'GEN1_DEX_YELLOW', 'YELLOW', 'Pokémon Yellow'),
+    ('crystal-legacy', 2, 'Crystal Legacy', 'GEN2_CRYSTAL_LEGACY', 'GEN2_DEX_CRYSTAL_LEGACY', 'CRYSTAL_LEGACY',
+     'Pokémon Crystal Legacy'),
+    ('yellow-legacy', 1, 'Yellow Legacy', 'GEN1_YELLOW_LEGACY', 'GEN1_DEX_YELLOW_LEGACY', 'YELLOW_LEGACY',
+     'Pokémon Yellow Legacy'),
+    ('purered', 1, 'PureRed', 'GEN1_PURE_RED', 'GEN1_DEX_PURE_RED', 'PURE_RED', 'Pokémon PureRed'),
+    ('pureblue', 1, 'PureBlue', 'GEN1_PURE_BLUE', 'GEN1_DEX_PURE_RED', 'PURE_BLUE', 'Pokémon PureBlue'),
+    # (PokeDaisy reads no PureGreen: pret-extract's values alone)
+    ('puregreen', 1, 'PureGreen', None, None, None, None),
+    # (a version a config: PORTED's)
+    ('crystal-clear', 2, 'Crystal Clear', None, None, None, 'Pokémon Crystal Clear'),
 ]
+# the ROM hacks among them: their data files say their Pokédex's size (the retail games' is their generation's)
+HACK_DEX_SIZE = {'crystal-legacy': 251, 'yellow-legacy': 151, 'purered': 151, 'pureblue': 151, 'puregreen': 151,
+                 'crystal-clear': 251}
+# the ROM hacks with no source, whose values kiwami/tools/gbpk-port.py finds in the player's ROMs (PORT, its
+# gbpk-port.json, instead of pret's EXTRA): PokeDaisy's configs for each version (Gen2Reader.kt's, Gen2Dex.kt's and
+# Gen2Art.kt's), each checked against that version's builds (a release's name's first word). GameTitles.kt lists some
+# of the builds (Crystal Clear's Standard Colors and Color Filter, not its SGB Mode ones: the user's, gbpk-symbols.txt)
+PORT = 'kiwami/tools/gbpk-port.json'
+PORTED = {'crystal-clear': {
+    'v2.6.0': ('GEN2_CRYSTAL_CLEAR_V2_6_0', 'GEN2_DEX_CRYSTAL_CLEAR_V2_6_0', 'CRYSTAL_CLEAR_V2_6_0'),
+    'v2.5.11': ('GEN2_CRYSTAL_CLEAR_V2_5_11', 'GEN2_DEX_CRYSTAL_CLEAR_V2_5_11', 'CRYSTAL_CLEAR_V2_5_11')}}
+# their configs' fields read another way than the retail games': PokeDaisy's coords (wYCoord, then wXCoord, where
+# Crystal Clear keeps them, apart from its moved map ids) checked against ram.yCoord; Gen2DexTables' textDict
+# (PlaceNextChar's table) against rom.textDict; Gen2ArtTables' party icons, PokeDaisy's own art
+PORT_RAM = {'coords': 'yCoord'}
+PORT_DEX = {'textDict': 'textDict'}
+# (and left out: PokeDaisy colours the front pictures with Crystal's palettes, which Crystal Clear shows only with an
+# option's bit set; the data file has its own, a new game's: gbpk-symbols.txt's rom.monPalettes)
+PORT_DEX_SKIP = {'palettes': 'Crystal\'s colours, an option of the hack\'s; its own palettes instead'}
+PORT_ART_SKIP = {k: 'PokeDaisy\'s own art (the party icons), not the companion\'s'
+                 for k in ('iconBanks', 'unownIcons', 'iconPalettes')}
+# the releases GameTitles.kt lists for a game whose other releases PokeDaisy doesn't read (PureRGB's v2.7.7, which
+# came after; the others' SHA-1s are the release patches' on the user's ROMs, gbpk-symbols.txt's build lines). Its
+# configs are that release's: where the game's releases disagree on an address, PokeDaisy's is checked against it
+PD_RELEASES = {'purered': 'v2.7.6', 'pureblue': 'v2.7.6'}
+# the games whose text is in a character set of their own (the data file's "charset"; PokeDaisy's Gen1Charset, which
+# its configs must name): PureRGB's one-byte words, quotes and signs (its constants/charmap.asm)
+CHARSET = {'purered': 'pure', 'pureblue': 'pure', 'puregreen': 'pure'}
 
 # Gen2Config's fields that are the games' own tables, or PokeDaisy's features outside the companion: left out
 SKIP = {
@@ -95,19 +135,25 @@ DEX_SKIP = {
     'dexEntryFirstBank': 'checked against pret\'s rom.dexEntryFirst instead',
     'textDict': 'a ROM hack\'s', 'packed': 'a ROM hack\'s', 'dexOrder': 'a ROM hack\'s', 'baseDataSize': 'a ROM hack\'s',
     'picBankDirect': 'a ROM hack\'s', 'unown': 'Unown\'s species, 201 in the retail games', 'lastItem': 'firstTm - 1 in the retail games',
-    'dexEntryFar': 'a ROM hack\'s', 'polished': 'a ROM hack\'s',
+    'polished': 'a ROM hack\'s',
 }
 # (Gold's and Silver's dexEntryBanks and picsBanks are PokeDaisy's placeholders: their entries' bank is counted from
-# the first's, and their pictures' banks are fixed by picBankFixes' pairs)
+# the first's, and their pictures' banks are fixed by picBankFixes' pairs. A config with dexEntryFar, Crystal Legacy's,
+# has a bank in each entry of its dexEntryPointers, which the rom section takes as dexEntryFar; its dexEntryBanks is a
+# placeholder too)
 DEX_UNUSED = {('GEN2_DEX_GOLD_SILVER', 'dexEntryBanks'), ('GEN2_DEX_GOLD_SILVER', 'picsBanks')}
 
 # Gen1DexTables' fields: the ROM tables the data files' rom section takes (by its key), the Pokédex's RAM, which
 # pret's must agree with, the front pictures' banks (checked against pret's: DEX1_PICS), the fields whose default is
 # the English retail games' (checked), and what is left out
 DEX1_ROM = {'baseStats': 'baseData', 'dexEntryPointers': 'dexEntryPointers', 'mewBaseStats': 'mewBaseData',
-            'monsterPalettes': 'monPaletteIds', 'cgbPalettes': 'palettes'}
+            'monsterPalettes': 'monPaletteIds', 'cgbPalettes': 'palettes', 'dexEntryData': 'dexEntryData',
+            'categoryMapping': 'dexCategoryMap', 'categoryStrings': 'dexCategories'}
 DEX1_RAM = {'owned': 'dexCaught', 'seen': 'dexSeen'}
 DEX1_PICS = ('picsBank', 'picsBankBreaks', 'mewPicsBank')
+# (PureRGB's: its base data's size, its picture bank's place in it and its page's text command, against pret's; its
+# character set against CHARSET's)
+DEX1_SIZES = {'baseStatsSize': 'baseDataSize', 'picBankOffset': 'basePicBank', 'textFar': 'textFar'}
 DEX1_DEFAULT = ('metric', 'charset', 'baseStatsSize', 'picBankOffset', 'dexEntryData', 'categoryMapping',
                 'categoryStrings', 'textFar')
 DEX1_SKIP = {'internalToDex': 'a table of the game\'s (its species\' internal order), read from the ROM instead'}
@@ -119,7 +165,7 @@ ART_ROM = {'townMapGfx': 'townMapGfx', 'townMapPalMap': 'townMapPalMap', 'pokege
 ART_LISTS = {'townMaps': ('johtoMap', 'kantoMap')}
 ART_SKIP = {k: 'PokeDaisy\'s own art, not the companion\'s' for k in (
     'font', 'fontPath', 'icons', 'monMenuIcons', 'eggIcon', 'heldItemIcons', 'partyMenuObPals', 'iconsDir',
-    'holdIconsPath', 'playerSprites', 'objectPals', 'playerPaths')}
+    'holdIconsPath', 'playerSprites', 'objectPals', 'playerPaths', 'iconBankSplit', 'iconPalNibbles')}
 ART_SKIP.update({'name': 'PokeDaisy\'s name for the art\'s files', 'sha1s': 'the releases, from GameTitles.kt instead',
                  'townMapPaths': 'PokeDaisy\'s files'})
 # Gen1ArtTables' fields: the town map's tables the rom section takes, and what is left out (PokeDaisy's own art, and
@@ -132,10 +178,19 @@ ART1_SKIP.update({'sha1': 'the releases, from GameTitles.kt instead', 'dexCount'
                   'townMapPath': 'PokeDaisy\'s file', 'townMapColors': 'colours sampled from an emulator; the ROM\'s instead',
                   'charset': 'English\'s, as the data files\' text'})
 
-# GuideCrystalGen.kt's RAM constants (WRAM bank 1), by the data file's key
-CRYSTAL_GUIDE_RAM = {'CR_EVENT_FLAGS': 'eventFlags', 'CR_TIME_OF_DAY': 'timeOfDay', 'CR_BADGES': 'johtoBadges',
-                     'CR_TRADE_FLAGS': 'tradeFlags'}
-CRYSTAL_GUIDE_SIZES = {'CR_EVENT_FLAG_BYTES': 'eventFlagBytes', 'CR_TRADE_FLAG_BYTES': 'tradeFlagBytes'}
+# Crystal's and Crystal Legacy's guides (GuideCrystal.kt's two, each over its generated file): the generated file and
+# its constants' prefix, GuideCrystal.kt's names for the game's boss helper, its world, its League rule, its bosses
+# and its guide, and what the generated file was made from
+CRYSTAL_GUIDES = {
+    'crystal': (CRYSTAL_GUIDE, 'CR', 'crBoss', 'CrystalWorld', 'crLeague', 'BOSSES_CRYSTAL', 'GUIDE_CRYSTAL',
+                'pret/pokecrystal'),
+    'crystal-legacy': (CRYSTAL_LEGACY_GUIDE, 'CL', 'clBoss', 'CrystalLegacyWorld', 'clLeague', 'BOSSES_CRYSTAL_LEGACY',
+                       'GUIDE_CRYSTAL_LEGACY', 'Crystal Legacy v1.3.1\'s build'),
+}
+# the generated files' RAM constants (<prefix>_<name>, WRAM bank 1), by the data file's key, and their sizes
+CRYSTAL_GUIDE_RAM = {'EVENT_FLAGS': 'eventFlags', 'TIME_OF_DAY': 'timeOfDay', 'BADGES': 'johtoBadges',
+                     'TRADE_FLAGS': 'tradeFlags'}
+CRYSTAL_GUIDE_SIZES = {'EVENT_FLAG_BYTES': 'eventFlagBytes', 'TRADE_FLAG_BYTES': 'tradeFlagBytes'}
 
 # Crystal's guide (GuideCrystal.kt's bosses and tips over GuideCrystalGen.kt's flags and teams): the guide file's
 # milestones by the title's first words, and the places PokeDaisy names that aren't a landmark's name in the game
@@ -143,10 +198,35 @@ GUIDE_KINDS = [('LEADER ', 'gym', 'Gym', 'Leader'), ('ELITE FOUR ', 'elite4', 'E
                ('CHAMPION ', 'champion', 'Champion', 'Champion'), ('', 'postgame', None, None)]
 PLACE_ALIAS = {'POKéMON LEAGUE': 'INDIGO PLATEAU', 'MT. SILVER': 'SILVER CAVE'}
 
-# Red's, Blue's and Yellow's guides (GuideGen1.kt's rules over GuideGen1Gen.kt's tables): each game's names there (its
-# constants' prefix, its RAM's and its world's), and the guide file's code (the fork's own: the carts have none,
-# ui/src/kiwami/gbpk/guide-games.inc)
-GEN1_GUIDES = {'red': ('G1R', 'RED', 'PKRD'), 'blue': ('G1B', 'BLUE', 'PKBL'), 'yellow': ('G1Y', 'YELLOW', 'PKYL')}
+# Red's, Blue's, Yellow's and Yellow Legacy's guides (GuideGen1.kt's rules over GuideGen1Gen.kt's tables): each game's
+# names there (its constants' prefix, its RAM's and its world's), the guide file's code (the fork's own: the carts have
+# none, ui/src/kiwami/gbpk/guide-games.inc), and what its tables were generated from
+GEN1_GUIDES = {'red': ('G1R', 'RED', 'PKRD', 'pret/pokered and pret/pokeyellow'),
+               'blue': ('G1B', 'BLUE', 'PKBL', 'pret/pokered and pret/pokeyellow'),
+               'yellow': ('G1Y', 'YELLOW', 'PKYL', 'pret/pokered and pret/pokeyellow'),
+               'yellow-legacy': ('G1L', 'YELLOW_LEGACY', 'PKYL', 'Yellow Legacy v1.0.10\'s build')}
+# the ROM hacks whose guide is a retail game's converted (PokeDaisy has none of theirs): the game whose bosses, order and
+# flags it takes, and what the hack's own values come from. Each flag by its name (gbpk-symbols.txt's const.flag.<NAME>
+# lines: the retail game's number to the hack's), the toggleable object by its toggleCeruleanCaveGuy; each boss by
+# trainer_ids (GEN1_BOSS_PARTIES, the hack's classes), its levels left to the ROM ("guide_levels": "rom", the host's
+# gsguide.cpp romLevels); the in-game trades left out (PureRGB's are its own: data/events/trades.asm)
+GEN1_HACK_GUIDES = {'purered': ('red', 'PKRD', 'PureRGB v2.7.6\'s and v2.7.7\'s builds'),
+                    'pureblue': ('blue', 'PKBL', 'PureRGB v2.7.6\'s and v2.7.7\'s builds'),
+                    'puregreen': ('red', 'PKRD', 'PureRGB v2.7.6\'s and v2.7.7\'s builds')}
+# each boss of <prefix>_BOSSES_RAW by its key: the const of its trainer class (the data file's leader<Name>, or
+# gbpk-symbols.txt's const.class.<NAME>) and its parties in the story, by the map's object_event (data/maps/objects/
+# PewterGym.asm OPP_BROCK, 1 .. ViridianGym.asm OPP_GIOVANNI, 3, LoreleisRoom.asm OPP_LORELEI, 1 ..) and the Champion's
+# by his script, one for each starter (scripts/ChampionsRoom.asm, OPP_RIVAL3 1-3). The ROM tests check them against
+# the trainers Red's and Blue's guides find in their ROMs
+GEN1_BOSS_PARTIES = {'BROCK': ('leaderBrock', [1]), 'MISTY': ('leaderMisty', [1]), 'LT. SURGE': ('leaderLtSurge', [1]),
+                     'ERIKA': ('leaderErika', [1]), 'KOGA': ('leaderKoga', [1]), 'SABRINA': ('leaderSabrina', [1]),
+                     'BLAINE': ('leaderBlaine', [1]), 'GIOVANNI': ('leaderGiovanni', [3]),
+                     'LORELEI': ('class.LORELEI', [1]), 'BRUNO': ('class.BRUNO', [1]), 'AGATHA': ('class.AGATHA', [1]),
+                     'LANCE': ('class.LANCE', [1]), 'CHAMPION': ('class.RIVAL3', [1, 2, 3])}
+# the games whose guide the host builds from the ROM's trainers (ui/src/kiwami/gbpk/gsguide.cpp), PokeDaisy having
+# none, and its order: "rom" the story's (Gold's and Silver's: Johto, the Elite Four, the Champion, Kanto), "rom-regions"
+# Crystal Clear's (the region the save started in, the Elite Four, the Champion, the other region)
+ROM_GUIDES = {'gold': 'rom', 'silver': 'rom', 'crystal-clear': 'rom-regions'}
 # GuideGen1Gen.kt's RAM constants (<prefix>_<name>, Gen I's D000-DFFF the data files' bank 1), by the data file's key,
 # and its sizes; what is left out
 GEN1_GUIDE_RAM = {'EVENT_FLAGS': 'eventFlags', 'MISSABLE_FLAGS': 'toggleFlags', 'BADGES': 'badges'}
@@ -344,17 +424,38 @@ def config_values(name, fields, configs, skip=None):
 def read_dex(src, name):
     """A Gen2DexTables config's fields: name -> (bank, address) for a pair, an int, or the text it couldn't read."""
     s = strip_comments(src)
-    m = re.search(r'\bval\s+%s\s*=\s*Gen2DexTables\(' % name, s)
-    if not m:
-        fail('no %s = Gen2DexTables(...) in %s' % (name, GEN2_DEX))
-    out = {}
-    for a in split_args(s[m.end():closing(s, m.end() - 1)]):
-        am = re.fullmatch(r'(\w+)\s*=\s*(.+)', a, re.S)
-        if not am:
-            fail('%s: an argument it can\'t read: %s' % (name, a))
-        v = am.group(2).strip()
+
+    def value(v):
+        v = v.strip()
         pm = re.fullmatch(r'(0x[0-9A-Fa-f]+|\d+)\s+to\s+(0x[0-9A-Fa-f]+|\d+)', v)
-        out[am.group(1)] = (int(pm.group(1), 0), int(pm.group(2), 0)) if pm else evaluate(v) if evaluate(v) is not None else v
+        return (int(pm.group(1), 0), int(pm.group(2), 0)) if pm else evaluate(v) if evaluate(v) is not None else v
+    m = re.search(r'\bval\s+%s\s*=\s*Gen2DexTables\(' % name, s)
+    if m:
+        out = {}
+        for a in split_args(s[m.end():closing(s, m.end() - 1)]):
+            am = re.fullmatch(r'(\w+)\s*=\s*(.+)', a, re.S)
+            if not am:
+                fail('%s: an argument it can\'t read: %s' % (name, a))
+            out[am.group(1)] = value(am.group(2))
+        return out
+    # (one made from another, X.let { Gen2DexTables(...) }, by position, its 'it.field' the other's field: Crystal
+    # Clear v2.5.11's, v2.6.0's but for the move descriptions)
+    m = re.search(r'\bval\s+%s\s*=\s*(\w+)\.let\s*\{\s*Gen2DexTables\(' % name, s)
+    c = re.search(r'class Gen2DexTables\(', s)
+    if not m or not c:
+        fail('no %s = Gen2DexTables(...) in %s' % (name, GEN2_DEX))
+    order = [re.match(r'val\s+(\w+)\s*:', p).group(1) for p in split_args(s[c.end():closing(s, c.end() - 1)], angles=True)]
+    base, out = read_dex(src, m.group(1)), {}
+    for i, a in enumerate(split_args(s[m.end():closing(s, m.end() - 1)])):
+        if i >= len(order) or '=' in a:
+            fail('%s: an argument it can\'t read: %s' % (name, a))
+        im = re.fullmatch(r'it\.(\w+)', a.strip())
+        if im and im.group(1) != order[i]:
+            fail('%s: %s is given %s' % (name, order[i], a))
+        if im and order[i] in base:
+            out[order[i]] = base[order[i]]
+        elif not im:
+            out[order[i]] = value(a)
     return out
 
 
@@ -364,24 +465,31 @@ def gen1_dex(name, fields, configs):
     or a default of the English retail games' that the config changes."""
     rom, ram, pics, unread = {}, {}, {}, []
     for k, text in resolve(name, fields, configs).items():
-        if k in DEX1_SKIP or (k in DEX1_ROM and text == 'null'):
+        # (a table it hasn't: null, or PokeDaisy's 0 to 0, PureRGB's dexEntryPointers)
+        if k in DEX1_SKIP or (k in DEX1_ROM and text in ('null', '0 to 0')):
             continue
         pm = re.fullmatch(r'(0x[0-9A-Fa-f]+|\d+)\s+to\s+(0x[0-9A-Fa-f]+|\d+)', text or '')
         lm = re.fullmatch(r'intArrayOf\(([^)]*)\)', text or '')
         v = evaluate(text or '')
         if k in DEX1_ROM and pm:
             rom[DEX1_ROM[k]] = (int(pm.group(1), 0), int(pm.group(2), 0))
-        elif k in DEX1_RAM and isinstance(v, int) and not isinstance(v, bool):
-            ram[DEX1_RAM[k]] = addr_value(v)
+        elif k in DEX1_RAM and (isinstance(v, tuple) or (isinstance(v, int) and not isinstance(v, bool))):
+            ram[DEX1_RAM[k]] = addr_value(v)      # (a plain address, or wramx(bank, address): PureRGB's)
         elif k in DEX1_PICS and isinstance(v, int) and not isinstance(v, bool):
             pics[k] = v
         elif k in DEX1_PICS and lm and all(isinstance(evaluate(x), int) for x in split_args(lm.group(1))):
             pics[k] = [evaluate(x) for x in split_args(lm.group(1))]
         elif k in DEX1_DEFAULT and text == fields[k][1]:
             continue
+        elif k in DEX1_SIZES and isinstance(v, int) and not isinstance(v, bool):
+            pics[DEX1_SIZES[k]] = v
+        elif k == 'charset' and re.fullmatch(r'Gen1Charset\.\w+', text or ''):
+            pics['charset'] = text.split('.')[1].lower()
         else:
             unread.append('%s.%s = %s' % (name, k, text))
-    unread += ['%s.%s (no value)' % (name, k) for k in DEX1_PICS if k not in pics]
+    # (the pictures' banks by internal index: none where the base data gives each one's, PureRGB's picBankOffset)
+    if 'basePicBank' not in pics:
+        unread += ['%s.%s (no value)' % (name, k) for k in DEX1_PICS if k not in pics]
     return rom, ram, pics, unread
 
 
@@ -443,15 +551,17 @@ def guide_consts(src):
             for m in re.finditer(r'const val (\w+)\s*=\s*(0x[0-9A-Fa-f]+|\d+)\b', strip_comments(src))}
 
 
-def retail_sha1s(src):
+def retail_sha1s(src, maps=('RETAIL',)):
+    """GameTitles.kt's SHA-1s by title, from its RETAIL map (and HACKS', given)."""
     s = strip_comments(src)
-    m = re.search(r'private val RETAIL\s*:[^=]*=\s*mapOf\(', s)
-    if not m:
-        fail('no RETAIL map in %s' % TITLES)
-    body = s[m.end():closing(s, m.end() - 1)]
     out = {}
-    for h, title in re.findall(r'"([0-9a-f]{40})"\s+to\s+"([^"]+)"', body):
-        out.setdefault(title, set()).add(h)
+    for name in maps:
+        m = re.search(r'private val %s\s*:[^=]*=\s*mapOf\(' % name, s)
+        if not m:
+            fail('no %s map in %s' % (name, TITLES))
+        body = s[m.end():closing(s, m.end() - 1)]
+        for h, title in re.findall(r'"([0-9a-f]{40})"\s+to\s+"([^"]+)"', body):
+            out.setdefault(title, set()).add(h)
     return out
 
 
@@ -503,67 +613,105 @@ def slug(s):
     return re.sub(r'[^a-z0-9]+', '-', s.lower().replace('é', 'e')).strip('-')
 
 
-def crystal_guide(rules_src, gen_src, first_derived):
-    """The guide file of Crystal (nds-pokemon-guide, schema 1) and the bits derived from the save's flags its milestones
-    read: each boss of GuideCrystal.kt in its order, done by its flag, or by a rule over two (crLeague's, a lambda's)
-    as a derived bit from first_derived on; its team's trainer id and top level from GuideCrystalGen.kt; the tips as
-    notes. Returns (guide, derived, unread)."""
+def scaled_teams(s, helper, world):
+    """A boss helper whose team goes by the badges owned, as Crystal Legacy's clScaledBoss: {count: the team key's
+    suffix} for the counts it names, any other count the key's own team; None when the rules have no such helper."""
+    m = re.search(r'fun %s\(' % helper, s)
+    if not m:
+        return None
+    lam = braced(s, closing(s, m.end() - 1))
+    body = ' '.join(s[m.start():s.index(lam, m.start()) + len(lam)].split())
+    w = re.fullmatch(r'fun %s\(title: String, where: String, done: Int, key: String\) = Boss\(title, where, done\) \{ p -> '
+                 r'%s\.trainer\(when \(\(0 until 16\)\.count \{ p\.flag\(CR_BADGE_FLAG \+ it\) \}\) \{ ((?:\d+ -> "\$\{key\}_\w+" )+)'
+                 r'else -> key \}\) \}' % (helper, world), body)
+    if not w:
+        fail('%s: %s isn\'t a Boss whose team goes by the 16 badges\' count' % (CRYSTAL_RULES, helper))
+    return {int(n): x for n, x in re.findall(r'(\d+) -> "\$\{key\}(_\w+)"', w.group(1))}
+
+
+def crystal_guide(key, guide_title, rules_src, gen_src, first_derived):
+    """The guide file of Crystal or Crystal Legacy (nds-pokemon-guide, schema 1; CRYSTAL_GUIDES' names for each) and
+    the bits derived from the save's flags its milestones read: each boss of GuideCrystal.kt in its order, done by its
+    flag, or by a rule over two (the League's, a lambda's) as a derived bit from first_derived on; its team's trainer
+    id and top level from the generated file (a gym whose team goes by the badges, Crystal Legacy's clScaledBoss, the
+    team for the badges the story's order has there, and a tip saying so); the tips as notes. Returns (guide, derived,
+    unread)."""
+    gen_file, prefix, helper, world, league_fn, bosses_name, guide_name, made_from = CRYSTAL_GUIDES[key]
     consts = guide_consts(gen_src)
     unread = []
-    m = re.search(r'\bval CR_BOSSES_RAW\s*:[^=]*=\s*listOf\(\s*"""(.*?)"""', gen_src, re.S)
+    m = re.search(r'\bval %s_BOSSES_RAW\s*:[^=]*=\s*listOf\(\s*"""(.*?)"""' % prefix, gen_src, re.S)
     if not m:
-        fail('no CR_BOSSES_RAW in %s' % CRYSTAL_GUIDE)
+        fail('no %s_BOSSES_RAW in %s' % (prefix, gen_file))
     teams = {}
     for line in m.group(1).splitlines():
         if not line.strip():
             continue
         f = line.split('|')
         if len(f) != 5 or not f[1].isdigit() or not f[2].isdigit():
-            fail('%s: a boss line it can\'t read: %s' % (CRYSTAL_GUIDE, line))
+            fail('%s: a boss line it can\'t read: %s' % (gen_file, line))
         teams[f[0]] = (int(f[1]) << 8 | int(f[2]), max(int(x.split()[0]) for x in f[4].split(';')))
     s = strip_comments(rules_src)
-    # (the shapes the conversion takes: crBoss is a Boss of its title, place, flag and rule, its team the key's)
-    if not re.search(r'fun crBoss\(title: String, where: String, done: Int, key: String, doneIf: \(\(SaveProgress\) -> Boolean\)\? = null\)\s*=\s*'
-                     r'Boss\(title, where, done, doneIf = doneIf\)\s*\{\s*CrystalWorld\.trainer\(key\)\s*\}', s):
-        fail('%s: crBoss isn\'t Boss(title, where, done, doneIf) with CrystalWorld\'s team' % CRYSTAL_RULES)
-    gm = re.search(r'\bval GUIDE_CRYSTAL\s*=\s*GameGuide\(', s)
+    # (the shapes the conversion takes: the boss helper is a Boss of its title, place, flag and rule, its team the key's
+    # in the game's world)
+    if not re.search(r'fun %s\(title: String, where: String, done: Int, key: String, doneIf: \(\(SaveProgress\) -> Boolean\)\? = null\)\s*=\s*'
+                     r'Boss\(title, where, done, doneIf = doneIf\)\s*\{\s*%s\.trainer\(key\)\s*\}' % (helper, world), s):
+        fail('%s: %s isn\'t Boss(title, where, done, doneIf) with %s\'s team' % (CRYSTAL_RULES, helper, world))
+    gm = re.search(r'\bval %s\s*=\s*GameGuide\(' % guide_name, s)
     gbody = gm and s[gm.end():closing(s, gm.end() - 1)]
-    if not gbody or not re.search(r'bosses\s*=\s*BOSSES_CRYSTAL\b', gbody) or not re.search(r'pages\s*=\s*listOf\(CRYSTAL_TIPS\)', gbody):
-        fail('%s: GUIDE_CRYSTAL isn\'t BOSSES_CRYSTAL with CRYSTAL_TIPS' % CRYSTAL_RULES)
-    lm = re.search(r'fun crLeague\(own: Int\)[^=]*=', s)
+    if not gbody or not re.search(r'bosses\s*=\s*%s\b' % bosses_name, gbody) or \
+            not re.search(r'world\s*=\s*%s\b' % world, gbody) or not re.search(r'pages\s*=\s*listOf\(CRYSTAL_TIPS\)', gbody):
+        fail('%s: %s isn\'t %s in %s with CRYSTAL_TIPS' % (CRYSTAL_RULES, guide_name, bosses_name, world))
+    lm = re.search(r'fun %s\(own: Int\)[^=]*=' % league_fn, s)
     league = lm and braced(s, lm.end())
-    bm = re.search(r'\bval BOSSES_CRYSTAL\s*=\s*listOf\(', s)
+    scaled_fn = helper[:2] + 'ScaledBoss'
+    scaled = scaled_teams(s, scaled_fn, world)
+    bm = re.search(r'\bval %s\s*=\s*listOf\(' % bosses_name, s)
     if not bm:
-        fail('no BOSSES_CRYSTAL in %s' % CRYSTAL_RULES)
+        fail('no %s in %s' % (bosses_name, CRYSTAL_RULES))
     places, milestones, derived, gyms = {}, [], [], 0
     for it in split_args(s[bm.end():closing(s, bm.end() - 1)]):
-        if not it.startswith('crBoss('):
-            unread.append('BOSSES_CRYSTAL: %s' % it)
+        fn = next((f for f in (helper, scaled_fn) if it.startswith(f + '(')), None)
+        if not fn or (fn == scaled_fn and scaled is None):
+            unread.append('%s: %s' % (bosses_name, it))
             continue
-        c = closing(it, len('crBoss'))
-        args, rest = split_args(it[len('crBoss('):c]), it[c + 1:].strip()
-        title, where, key = (kotlin_string(args[i]) for i in (0, 1, 3)) if len(args) >= 4 else (None, None, None)
-        if not title or not where or key not in teams or len(args) > 5:
-            unread.append('BOSSES_CRYSTAL: %s' % it)
+        c = closing(it, len(fn))
+        args, rest = split_args(it[len(fn) + 1:c]), it[c + 1:].strip()
+        title, where, team = (kotlin_string(args[i]) for i in (0, 1, 3)) if len(args) >= 4 else (None, None, None)
+        if not title or not where or team not in teams or len(args) > (4 if fn == scaled_fn else 5):
+            unread.append('%s: %s' % (bosses_name, it))
             continue
         rule = None
         if len(args) == 5:
-            cm = re.fullmatch(r'crLeague\((\w+)\)', args[4])
+            cm = re.fullmatch(r'%s\((\w+)\)' % league_fn, args[4])
             if cm and league and cm.group(1) in consts:
                 rule = flag_rule(league, consts, {'own': consts[cm.group(1)]})
         elif rest:
-            rule = flag_rule(rest, consts)
+            rule = flag_rule(rest, consts) if fn == helper else None
         elif args[2] in consts:
             rule = ('flag', consts[args[2]])
         if not rule or (args[2] != '0' and len(args) + bool(rest) > 4):
-            unread.append('BOSSES_CRYSTAL: %s (its rule)' % title)
+            unread.append('%s: %s (its rule)' % (bosses_name, title))
             continue
-        prefix, kind, label, cls = next(k for k in GUIDE_KINDS if title.startswith(k[0]))
-        foe = name_case(title[len(prefix):])
+        kprefix, kind, label, cls = next(k for k in GUIDE_KINDS if title.startswith(k[0]))
+        foe = name_case(title[len(kprefix):])
         if kind == 'gym':
             where = re.sub(r' GYM$', '', where)
         place_name = name_case(PLACE_ALIAS.get(where, where))
         places[slug(place_name)] = {'name': place_name}
+        tips = None
+        if fn == scaled_fn:
+            # (a gym taken in any order, its team by the badges owned: the one for the badges the story's order has
+            # there, the gyms before it; the others in the tip)
+            if kind != 'gym':
+                unread.append('%s: %s (a scaled boss that isn\'t a leader)' % (bosses_name, title))
+                continue
+            others = {n: teams.get(team + x) for n, x in scaled.items()}
+            if None in others.values():
+                fail('%s: %s has no team %s' % (gen_file, team, ', '.join(team + x for x in scaled.values())))
+            tips = ('%s\'s gym can be taken out of order, and the team follows the badges you have: its top level is %s, '
+                    'and %d with any other count. This is the team for %d badges, the story\'s order.' %
+                    (foe, ', '.join('%d with %d badges' % (others[n][1], n) for n in sorted(others)), teams[team][1], gyms))
+            team += scaled.get(gyms, '')
         if kind == 'gym':
             gyms += 1
             mid, name = 'gym-%d-%s' % (gyms, slug(foe)), 'Gym %d: %s' % (gyms, foe)
@@ -577,12 +725,15 @@ def crystal_guide(rules_src, gen_src, first_derived):
             bit = first_derived + len(derived)
             derived.append({'bit': bit, rule[0]: rule[1], 'for': mid})
             done = 'flag:%d' % bit
-        tid, ace = teams[key]
+        tid, ace = teams[team]
         ms = {'id': mid, 'name': name, 'kind': kind, 'place': slug(place_name), 'level_cap': ace,
               'foe': {'name': foe, 'ace_level': ace}, 'trainer_ids': [tid], 'done_when': done,
-              'quality': 'reference-only', 'source': 'PokeDaisy GuideCrystal.kt, GuideCrystalGen.kt (%s)' % key}
+              'quality': 'reference-only',
+              'source': 'PokeDaisy GuideCrystal.kt, %s (%s)' % (os.path.basename(gen_file), team)}
         if cls:
             ms['foe']['class'] = cls
+        if tips:
+            ms['tips'] = tips
         milestones.append(ms)
     notes = []
     tm = re.search(r'\bval CRYSTAL_TIPS\s*=\s*page\(', s)
@@ -599,10 +750,10 @@ def crystal_guide(rules_src, gen_src, first_derived):
         notes.append({'id': 'note-tip-%d' % (len(notes) + 1), 'kind': 'tip', 'title': q, 'text': a,
                       'quality': 'reference-only', 'source': 'PokeDaisy GuideCrystal.kt (CRYSTAL_TIPS)'})
     guide = {
-        'schema': 1, 'kind': 'nds-pokemon-guide', 'game': 'crystal', 'code': 'BYTE', 'title': 'Pokémon Crystal',
-        'revision': 1,
+        'schema': 1, 'kind': 'nds-pokemon-guide', 'game': key, 'code': 'BYTE', 'title': guide_title, 'revision': 1,
         'sources': ['PokeDaisy by Lidor Itzhari, %s (GPL-3.0): GuideCrystal.kt\'s bosses, their order and rules, and '
-                    'its tips; GuideCrystalGen.kt\'s flags and teams, generated there from pret/pokecrystal' % PIN[:8],
+                    'its tips; %s\'s flags and teams, generated there from %s' %
+                    (PIN[:8], os.path.basename(gen_file), made_from),
                     'The player\'s ROM: the trainers\' teams, the places\' maps and the hidden items, read when the '
                     'game starts (kiwami/GB-POKEMON.md)'],
         'places': places, 'milestones': milestones, 'notes': notes,
@@ -642,13 +793,17 @@ def gen1_rules(rules_src, prefix, world):
     return out
 
 
-def gen1_guide(gen_src, key, prefix, code, title, sizes, cave_guy, first_derived):
-    """The guide file of Red, Blue or Yellow (nds-pokemon-guide, schema 1) and the bits derived from the save's flags its
-    milestones read: each boss of GuideGen1Gen.kt's <prefix>_BOSSES_RAW in its order (a key's lines one boss, its
+def gen1_guide(gen_src, key, prefix, code, made_from, title, sizes, cave_guy, first_derived, hack=None):
+    """The guide file of Red, Blue, Yellow or Yellow Legacy (nds-pokemon-guide, schema 1) and the bits derived from the
+    save's flags its milestones read: each boss of GuideGen1Gen.kt's <prefix>_BOSSES_RAW in its order (a key's lines one boss, its
     teams the Champion's by his starter), a gym done by its badge, the others by a derived bit when any of their flags
     is set (the event flags from bit 0, the toggleable objects' after them); the in-game trades as the Pokédex's notes
     on the Pokémon given, by their place. The item balls, gifts and key items of <prefix>_AREAS_RAW are left out, and
-    its hidden items are the ROM's. Returns (guide, derived, unread)."""
+    its hidden items are the ROM's. Returns (guide, derived, unread).
+    hack (GEN1_HACK_GUIDES' games): the retail game's guide made a ROM hack's. sizes and cave_guy are the retail game's,
+    and hack gives the hack's: 'flag' (a retail event flag's number to the hack's), 'events' (its event flags' bits),
+    'cave_guy', 'ids' (each boss key's trainer_ids) and 'made_from'. Its milestones have their trainer_ids and no
+    levels (the ROM's), and it has no trades."""
     unread, groups = [], {}
     events, toggles = 8 * sizes['eventFlagBytes'], 8 * sizes['toggleFlagBytes']
     for line in raw_table(gen_src, prefix + '_BOSSES_RAW', GEN1_GUIDE):
@@ -684,12 +839,12 @@ def gen1_guide(gen_src, key, prefix, code, title, sizes, cave_guy, first_derived
         bits = []
         for n in flags:
             if n < events:
-                bits.append(n)
+                bits.append(hack['flag'](n) if hack else n)
             elif GEN1_BANKS['G1_MISSABLE_FLAG'] <= n < GEN1_BANKS['G1_MISSABLE_FLAG'] + toggles:
                 if n - GEN1_BANKS['G1_MISSABLE_FLAG'] != cave_guy:
                     fail('%s: %s is done by toggleable object %d, not pret\'s TOGGLE_CERULEAN_CAVE_GUY %d' %
                          (key, bkey, n - GEN1_BANKS['G1_MISSABLE_FLAG'], cave_guy))
-                bits.append(events + n - GEN1_BANKS['G1_MISSABLE_FLAG'])
+                bits.append(hack['events'] + hack['cave_guy'] if hack else events + n - GEN1_BANKS['G1_MISSABLE_FLAG'])
             else:
                 bits = None
                 break
@@ -715,12 +870,19 @@ def gen1_guide(gen_src, key, prefix, code, title, sizes, cave_guy, first_derived
         ms = {'id': mid, 'name': name, 'kind': kind, 'place': slug(place_name), 'level_cap': ace,
               'foe': {'name': foe, 'ace_level': ace}, 'done_when': done_when, 'quality': 'reference-only',
               'source': 'PokeDaisy GuideGen1.kt, GuideGen1Gen.kt (%s_BOSSES_RAW %s)' % (prefix, bkey)}
+        if hack:
+            if bkey not in hack['ids']:
+                fail('%s: %s_BOSSES_RAW\'s %s has no party in GEN1_BOSS_PARTIES' % (key, prefix, bkey))
+            del ms['level_cap']
+            ms['foe'] = {'name': foe}
+            ms['trainer_ids'] = hack['ids'][bkey]
+            ms['source'] += ', with %s\'s flags and trainers' % hack['made_from']
         if leader:
             ms['leader'] = leader
         milestones.append(ms)
     # the in-game trades: map|TRADE|the Pokémon given|its flag|count|the Pokémon wanted|the place
     evolutions = []
-    for line in raw_table(gen_src, prefix + '_AREAS_RAW', GEN1_GUIDE):
+    for line in [] if hack else raw_table(gen_src, prefix + '_AREAS_RAW', GEN1_GUIDE):
         f = line.split('|')
         if len(f) < 2 or f[1] != 'TRADE':
             continue
@@ -732,16 +894,124 @@ def gen1_guide(gen_src, key, prefix, code, title, sizes, cave_guy, first_derived
     guide = {
         'schema': 1, 'kind': 'nds-pokemon-guide', 'game': key, 'code': code, 'title': title, 'revision': 1,
         'sources': ['PokeDaisy by Lidor Itzhari, %s (GPL-3.0): GuideGen1.kt\'s rules; GuideGen1Gen.kt\'s bosses, their '
-                    'order and flags, and the in-game trades, generated there from pret/pokered and pret/pokeyellow'
-                    % PIN[:8],
+                    'order and flags, and the in-game trades, generated there from %s' % (PIN[:8], made_from),
                     'The player\'s ROM: the trainers\' teams, the places\' maps and the hidden items, read when the '
                     'game starts (kiwami/GB-POKEMON.md)'],
         'places': places, 'milestones': milestones, 'evolutions': evolutions,
     }
+    if hack:
+        guide['sources'] = [
+            'PokeDaisy by Lidor Itzhari, %s (GPL-3.0): GuideGen1.kt\'s rules; GuideGen1Gen.kt\'s bosses, their order and '
+            'flags, generated there from %s, as the game %s is: its flags by their names and its bosses\' trainer classes '
+            'from %s' % (PIN[:8], made_from, title, hack['made_from']),
+            'The player\'s ROM: the trainers\' teams and their levels, the places\' maps and the hidden items, read when '
+            'the game starts (kiwami/GB-POKEMON.md)']
     return guide, derived, unread
 
 
 # --- The data files ---
+
+def ported(key, title, pd_title, port, gen2_configs, dex_src, art_src, titles):
+    """A ported ROM hack's data file (PORTED): gbpk-port.json's values, each version's PokeDaisy configs checked against
+    them (a value both give must agree), and what PokeDaisy has that isn't read. Its flags: the event flags' two blocks
+    (Crystal Clear keeps those from NUM_EVENTS on in a second, up to ram.eventFlags2End: gbpk-symbols.txt)."""
+    g = port['games'].get(key)
+    if g is None:
+        fail('%s has no %s' % (PORT, key))
+    unread = []
+    fields, configs = gen2_configs
+    versions = {r['name'].split()[0] for r in g['releases']}
+    if versions != set(PORTED[key]):
+        fail('%s: %s\'s versions are %s, PORTED\'s %s' % (key, PORT, sorted(versions), sorted(PORTED[key])))
+
+    def where(v):
+        return 'port (%s: %s)' % (v.get('symbol', 'its own'), v['how'])
+    src = {kind: {k: where(v) for k, v in g[kind].items()} for kind in ('ram', 'rom')}
+    sizes, pd_own = {}, set()
+    for version, (cfg, dex_cfg, art_cfg) in PORTED[key].items():
+        rels = [r for r in g['releases'] if r['name'].split()[0] == version]
+        ram, pd_sizes, u = config_values(cfg, fields, configs)
+        unread += u
+        rom = {}
+        for k, v in read_dex(dex_src, dex_cfg).items():
+            if (k in DEX_SKIP and k not in PORT_DEX) or k in PORT_DEX_SKIP:
+                continue
+            if k in DEX_ROM and isinstance(v, tuple):
+                rom[DEX_ROM[k]] = v
+            elif k in PORT_DEX and isinstance(v, tuple):
+                rom[PORT_DEX[k]] = v
+            elif k in DEX_SIZES and isinstance(v, int) and not isinstance(v, bool):
+                pd_sizes[DEX_SIZES[k]] = v
+            else:
+                unread.append('%s.%s = %s' % (dex_cfg, k, v))
+        for k, v in read_art(art_src, art_cfg).items():
+            if k in ART_SKIP or k in PORT_ART_SKIP:
+                continue
+            if k in ART_ROM and isinstance(v, tuple):
+                rom[ART_ROM[k]] = v
+            elif k in ART_LISTS and isinstance(v, list) and len(v) == len(ART_LISTS[k]):
+                rom.update(zip(ART_LISTS[k], v))
+            else:
+                unread.append('%s.%s = %s' % (art_cfg, k, v))
+        for kind, have in (('ram', ram), ('rom', rom)):
+            for k, pv in have.items():
+                pk = PORT_RAM.get(k, k) if kind == 'ram' else k
+                for r in rels:
+                    v = r.get(kind, {}).get(pk) or g[kind].get(pk)
+                    if v is None:
+                        fail('%s %s.%s: PokeDaisy\'s %s has it, %s hasn\'t' % (key, kind, pk, version, PORT))
+                    if (v['bank'], int(v['addr'], 16)) != pv:
+                        fail('%s %s.%s: PokeDaisy says %02X:%04X, %s %s:%s for %s' %
+                             (key, kind, pk, pv[0], pv[1], PORT, v['bank'], v['addr'], r['name']))
+                if pk in g[kind]:
+                    src[kind][pk] = 'pokedaisy ' + where(g[kind][pk])
+                else:
+                    pd_own.add((kind, pk))
+        for k, v in pd_sizes.items():
+            if sizes.setdefault(k, v) != v:
+                fail('%s sizes.%s: PokeDaisy\'s versions say %d and %d' % (key, k, sizes[k], v))
+    for k, v in g['const'].items():
+        n = v['value'] if k != 'numEvents' else v['value'] // 8
+        k = k if k != 'numEvents' else 'eventFlagBytes'
+        if k == 'eventFlagBytes' and v['value'] % 8:
+            fail('%s: NUM_EVENTS %d isn\'t whole bytes' % (key, v['value']))
+        if sizes.setdefault(k, n) != n:
+            fail('%s sizes.%s: PokeDaisy says %d, %s %d (%s)' % (key, k, sizes[k], PORT, n, v['how']))
+    sha1s = {r['sha1'] for r in g['releases']}
+    if not titles.get(pd_title) or not titles[pd_title] <= sha1s:
+        fail('%s: GameTitles.kt\'s "%s" SHA-1s %s aren\'t among %s\'s' % (key, pd_title, sorted(titles.get(pd_title, ())), PORT))
+    # (the second block of event flags: its bytes up to ram.eventFlags2End, which isn't read itself)
+    ram = {k: v for k, v in g['ram'].items() if k != 'eventFlags2End'}
+    flags = [{'ram': 'eventFlags', 'bytes': sizes['eventFlagBytes'], 'first': 0}]
+    if 'eventFlags2' in ram:
+        a, end = g['ram']['eventFlags2'], g['ram'].get('eventFlags2End')
+        n = int(end['addr'], 16) - int(a['addr'], 16) if end and end['bank'] == a['bank'] else 0
+        if n <= 0:
+            fail('%s: ram.eventFlags2End isn\'t after ram.eventFlags2' % key)
+        flags.append({'ram': 'eventFlags2', 'bytes': n, 'first': 8 * sizes['eventFlagBytes']})
+
+    def addrs(kind, have, srcs):
+        return {k: {'bank': v['bank'], 'addr': v['addr'], 'src': srcs.get(k, where(v))} for k, v in sorted(have.items())}
+    releases = []
+    for r in g['releases']:
+        rel = {k: r[k] for k in ('sha1', 'name', 'code')}
+        for kind in ('ram', 'rom'):
+            if r.get(kind):
+                rel[kind] = addrs(kind, r[kind], {k: ('pokedaisy ' if (kind, k) in pd_own else '') + where(v)
+                                                  for k, v in r[kind].items()})
+        releases.append(rel)
+    doc = {
+        'schema': 1, 'kind': 'gb-pokemon-ram', 'game': key, 'gen': 2, 'title': title,
+        'header_title': g['header_title'], 'releases': releases,
+        'ram': addrs('ram', ram, src['ram']), 'sizes': dict(sorted(sizes.items())), 'flags': flags,
+        'rom': addrs('rom', g['rom'], src['rom']),
+        'items': sorted(v for v in g['items'].values() if v[1]), 'balls': g['balls'], 'types': g['types'],
+        'special': g['special'], 'dex_size': HACK_DEX_SIZE[key],
+    }
+    if key in ROM_GUIDES:
+        doc['guide'] = ROM_GUIDES[key]
+    return doc, unread
+
 
 def build(checkout):
     inputs = {}
@@ -757,43 +1027,60 @@ def build(checkout):
     dex_src = read(GEN2_DEX)
     art_src = read(GEN2_ART)
     art1_src = read(GEN1_ART)
-    guide_src = read(CRYSTAL_GUIDE)
-    guide = guide_consts(guide_src)
+    crystal_srcs = {k: read(v[0]) for k, v in CRYSTAL_GUIDES.items()}
     rules_src = read(CRYSTAL_RULES)
     gen1_guide_src = read(GEN1_GUIDE)
     gen1_guide_consts = guide_consts(gen1_guide_src)
     gen1_rules_src = read(GEN1_RULES)
-    titles = retail_sha1s(read(TITLES))
+    titles = retail_sha1s(read(TITLES), ('RETAIL', 'HACKS'))
     extra_text = open(os.path.join(REPO, EXTRA), encoding='utf-8').read()
     inputs[EXTRA] = pe.sha256(extra_text.encode('utf-8'))
     extra = json.loads(extra_text)
     files, unread = {}, []
+    port_text = open(os.path.join(REPO, PORT), encoding='utf-8').read()
+    inputs[PORT] = pe.sha256(port_text.encode('utf-8'))
+    port = json.loads(port_text)
     for key, gen, title, cfg, dex_cfg, art_cfg, pd_title in GAMES:
-        if gen == 1:
+        if key in PORTED:
+            doc, u = ported(key, title, pd_title, port, (fields, configs), dex_src, art_src, titles)
+            unread += u
+            files['%s/%s.ram.json' % (FOLDER, key)] = pe.dump(doc).encode('utf-8')
+            continue
+        g = extra['games'].get(key)
+        if g is None:
+            fail('%s has no %s' % (EXTRA, key))
+        if cfg is None:
+            ram, sizes = {}, {}
+        elif gen == 1:
             ram, sizes, u = config_values(cfg, fields1, configs1, GEN1_SKIP)
+            unread += u
             if resolve(cfg, fields1, configs1).get('language') != "'E'":
                 unread.append('%s.language isn\'t English\'s' % cfg)
         else:
             ram, sizes, u = config_values(cfg, fields, configs)
-        unread += u
+            unread += u
         rom, rom_src, pics = {}, {}, {}
-        if gen == 1:
+        if gen == 1 and dex_cfg:
             dex_rom, dex_ram, pics, u = gen1_dex(dex_cfg, dex1_fields, dex1_configs)
             unread += u
             rom.update(dex_rom)
             rom_src.update({k: 'pokedaisy' for k in dex_rom})
             ram.update(dex_ram)
         dex = read_dex(dex_src, dex_cfg) if gen == 2 else {}
+        far = dex.get('dexEntryFar') is True
         for k, v in dex.items():
-            if (dex_cfg, k) in DEX_UNUSED or k in DEX_SKIP:
+            if (dex_cfg, k) in DEX_UNUSED or k in DEX_SKIP or (far and k in ('dexEntryFar', 'dexEntryBanks')):
                 continue
-            if k in DEX_ROM and isinstance(v, tuple):
+            if far and k == 'dexEntryPointers' and isinstance(v, tuple):
+                rom['dexEntryFar'], rom_src['dexEntryFar'] = v, 'pokedaisy'
+            elif k in DEX_ROM and isinstance(v, tuple):
                 rom[DEX_ROM[k]], rom_src[DEX_ROM[k]] = v, 'pokedaisy'
             elif k in DEX_SIZES and isinstance(v, int) and not isinstance(v, bool):
                 sizes[DEX_SIZES[k]] = v
             else:
                 unread.append('%s.%s = %s' % (dex_cfg, k, v))
-        art = read_art(art_src, art_cfg) if gen == 2 else read_art(art1_src, art_cfg, 'Gen1ArtTables', GEN1_ART)
+        art = {} if art_cfg is None else read_art(art_src, art_cfg) if gen == 2 else \
+            read_art(art1_src, art_cfg, 'Gen1ArtTables', GEN1_ART)
         art_rom, art_skip = (ART_ROM, ART_SKIP) if gen == 2 else (ART1_ROM, ART1_SKIP)
         for k, v in art.items():
             if k in art_skip:
@@ -806,18 +1093,22 @@ def build(checkout):
             else:
                 unread.append('%s.%s = %s' % (art_cfg, k, v))
         src = {k: 'pokedaisy' for k in ram}
-        if key == 'crystal':
+        if key in CRYSTAL_GUIDES:
+            gen_file, cprefix = CRYSTAL_GUIDES[key][:2]
+            guide = guide_consts(crystal_srcs[key])
             for c, k in CRYSTAL_GUIDE_RAM.items():
+                c = cprefix + '_' + c
                 if c not in guide:
-                    unread.append('%s: no %s' % (CRYSTAL_GUIDE, c))
+                    unread.append('%s: no %s' % (gen_file, c))
                     continue
                 v = addr_value(('addr', 1, guide[c]))
                 if k in ram and ram[k] != v:
-                    fail('crystal ram.%s: %s says %02X:%04X, %s %02X:%04X' % (k, GEN2, ram[k][0], ram[k][1], c, v[0], v[1]))
+                    fail('%s ram.%s: %s says %02X:%04X, %s %02X:%04X' % (key, k, GEN2, ram[k][0], ram[k][1], c, v[0], v[1]))
                 ram[k], src[k] = v, 'pokedaisy'
             for c, k in CRYSTAL_GUIDE_SIZES.items():
+                c = cprefix + '_' + c
                 if c not in guide:
-                    unread.append('%s: no %s' % (CRYSTAL_GUIDE, c))
+                    unread.append('%s: no %s' % (gen_file, c))
                     continue
                 sizes[k] = guide[c]
         if key in GEN1_GUIDES:
@@ -839,26 +1130,47 @@ def build(checkout):
                 if c.startswith(prefix + '_') and c[len(prefix) + 1:] not in {**GEN1_GUIDE_RAM, **GEN1_GUIDE_SIZES, **GEN1_GUIDE_SKIP}:
                     unread.append('%s: %s' % (GEN1_GUIDE, c))
             unread += ['%s: %s' % (GEN1_RULES, u) for u in gen1_rules(gen1_rules_src, prefix, GEN1_GUIDES[key][1])]
-        g = extra['games'].get(key)
-        if g is None:
-            fail('%s has no %s' % (EXTRA, key))
-        for k, v in g['ram'].items():
-            pv = (v['bank'], int(v['addr'], 16))
-            if k in ram and ram[k] != pv:
-                fail('%s ram.%s: PokeDaisy says %02X:%04X, pret\'s %s %02X:%04X' %
-                     (key, k, ram[k][0], ram[k][1], v['symbol'], pv[0], pv[1]))
-            src[k] = 'pokedaisy pret (%s)' % v['symbol'] if k in ram else 'pret (%s)' % v['symbol']
-            ram[k] = pv
-        for k, v in g.get('rom', {}).items():
-            pv = (v['bank'], int(v['addr'], 16))
-            if k in rom and rom[k] != pv:
-                fail('%s rom.%s: PokeDaisy says %02X:%04X, pret\'s %s %02X:%04X' %
-                     (key, k, rom[k][0], rom[k][1], v['symbol'], pv[0], pv[1]))
-            rom_src[k] = 'pokedaisy pret (%s)' % v['symbol'] if k in rom else 'pret (%s)' % v['symbol']
-            rom[k] = pv
+        # (pret's values over PokeDaisy's, which must agree; where a ROM hack's releases disagree on an address, each
+        # release has its own, and PokeDaisy's is checked against its release's, PD_RELEASES)
+        own = {kind: {} for kind in ('ram', 'rom')}
+        pd_rel = [r for r in g['releases'] if r['name'] == PD_RELEASES.get(key)]
+        for kind, have, hsrc in (('ram', ram, src), ('rom', rom, rom_src)):
+            for k in set(g.get(kind, {})) | {k for r in g['releases'] for k in r.get(kind, {})}:
+                v = g[kind].get(k) or (pd_rel[0].get(kind, {}).get(k) if pd_rel else None)
+                if v is None:   # (each release its own, PokeDaisy's none of them)
+                    if k in have:
+                        fail('%s %s.%s: PokeDaisy has it, and no release of its is PokeDaisy\'s' % (key, kind, k))
+                else:
+                    pv = (v['bank'], int(v['addr'], 16))
+                    if k in have and have[k] != pv:
+                        fail('%s %s.%s: PokeDaisy says %02X:%04X, pret\'s %s %02X:%04X' %
+                             (key, kind, k, have[k][0], have[k][1], v['symbol'], pv[0], pv[1]))
+                if k in g[kind]:
+                    hsrc[k] = 'pokedaisy pret (%s)' % v['symbol'] if k in have else 'pret (%s)' % v['symbol']
+                    have[k] = pv
+                else:
+                    for r in g['releases']:
+                        if k in r.get(kind, {}):
+                            rv = r[kind][k]
+                            pd = k in have and r is (pd_rel[0] if pd_rel else None)
+                            own[kind].setdefault(r['sha1'], {})[k] = {
+                                'bank': rv['bank'], 'addr': rv['addr'],
+                                'src': ('pokedaisy pret (%s)' if pd else 'pret (%s)') % rv['symbol']}
+                    have.pop(k, None)
+                    hsrc.pop(k, None)
+        # (PureRGB's: its base data's size, its picture bank's place in it, its page's text command and its character
+        # set, against pret's constants and CHARSET)
+        for k in DEX1_SIZES.values():
+            if k in pics:
+                c = g.get('const', {}).get(k)
+                if not c or c['value'] != pics[k]:
+                    fail('%s: PokeDaisy\'s %s is %s, pret\'s %s' % (key, k, pics[k], c and c['value']))
+        if dex_cfg and pics.get('charset', 'en') != CHARSET.get(key, 'en'):
+            fail('%s: PokeDaisy\'s Gen1Charset is %s, not %s' % (key, pics.get('charset', 'en'), CHARSET.get(key, 'en')))
         # (Gen I's front pictures: PokeDaisy's first bank and the internal indexes where the next begins, as
-        # UncompressMonSprite counts them, and Red's and Blue's Mew's bank, against pret's sections and constants)
-        if pics:
+        # UncompressMonSprite counts them, and Red's and Blue's Mew's bank, against pret's sections and constants;
+        # none where the base data gives each picture's bank)
+        if pics and 'basePicBank' not in pics:
             c, r = g.get('const', {}), g.get('rom', {})
             want = {'picsBank': r['pics1']['bank'],
                     'picsBankBreaks': [c['picsTangela']['value'] + 1, c['picsMoltres']['value'] + 1,
@@ -873,6 +1185,8 @@ def build(checkout):
             fail('%s: PokeDaisy\'s dexEntryFirstBank %s isn\'t pret\'s first Pokédex entry\'s bank %02X' %
                  (key, dex.get('dexEntryFirstBank'), rom['dexEntryFirst'][0]))
         for k, v in g.get('const', {}).items():
+            if '.' in k:    # (the hack guides' flags and classes, for the conversion: not the data file's)
+                continue
             if k != 'numEvents':
                 if k in sizes and sizes[k] != v['value']:
                     fail('%s sizes.%s: PokeDaisy says %d, pret\'s %s %d' % (key, k, sizes[k], v['symbol'], v['value']))
@@ -884,25 +1198,68 @@ def build(checkout):
             if sizes.get('eventFlagBytes', n // 8) != n // 8:
                 fail('%s: PokeDaisy has %d bytes of event flags, pret %d' % (key, sizes['eventFlagBytes'], n // 8))
             sizes['eventFlagBytes'] = n // 8
-        # (the ROM hacks read as the game they patch aren't PokeDaisy's: gbpk-symbols.txt's hack lines)
-        pret_sha1 = {r['sha1'] for r in g['releases'] if not r.get('hack')}
-        if titles.get(pd_title, set()) != pret_sha1:
+        # (the ROM hacks read as the game they patch aren't PokeDaisy's: gbpk-symbols.txt's hack lines; nor are the
+        # releases of a game it reads one of, PD_RELEASES)
+        pret_sha1 = {r['sha1'] for r in g['releases'] if not r.get('hack') and
+                     (key not in PD_RELEASES or r['name'] == PD_RELEASES[key])}
+        if pd_title and titles.get(pd_title, set()) != pret_sha1:
             fail('%s: GameTitles.kt\'s "%s" SHA-1s %s aren\'t pret\'s %s' %
                  (key, pd_title, sorted(titles.get(pd_title, ())), sorted(pret_sha1)))
+        if not pd_title and any(pret_sha1 & v for v in titles.values()):
+            fail('%s: GameTitles.kt has a release of it: give its title' % key)
         releases = [{k: r[k] for k in ('sha1', 'name', 'code', 'hack') if k in r} for r in g['releases']]
+        for r in releases:
+            for kind in ('ram', 'rom'):
+                if r['sha1'] in own[kind]:
+                    r[kind] = own[kind][r['sha1']]
         # the flag banks its guide reads (Live::flags: each bank's bits from its first, the derived bits after them)
         flags, derived = [], []
-        if key == 'crystal':
+        if key in CRYSTAL_GUIDES:
             flags = [{'ram': 'eventFlags', 'bytes': sizes['eventFlagBytes'], 'first': 0}]
-            gd, derived, u = crystal_guide(rules_src, guide_src, 8 * sizes['eventFlagBytes'])
+            gd, derived, u = crystal_guide(key, pd_title, rules_src, crystal_srcs[key], 8 * sizes['eventFlagBytes'])
             unread += u
             files['%s/%s.json' % (FOLDER, key)] = pe.dump(gd).encode('utf-8')
         elif key in GEN1_GUIDES:
             ev = sizes['eventFlagBytes']
             flags = [{'ram': 'eventFlags', 'bytes': ev, 'first': 0},
                      {'ram': 'toggleFlags', 'bytes': sizes['toggleFlagBytes'], 'first': 8 * ev}]
-            gd, derived, u = gen1_guide(gen1_guide_src, key, prefix, GEN1_GUIDES[key][2], pd_title, sizes,
+            gd, derived, u = gen1_guide(gen1_guide_src, key, prefix, *GEN1_GUIDES[key][2:], pd_title, sizes,
                                         sizes['toggleCeruleanCaveGuy'], 8 * (ev + sizes['toggleFlagBytes']))
+            unread += u
+            files['%s/%s.json' % (FOLDER, key)] = pe.dump(gd).encode('utf-8')
+        elif key in GEN1_HACK_GUIDES:
+            base, code, made_from = GEN1_HACK_GUIDES[key]
+            bprefix = GEN1_GUIDES[base][0]
+            bc, hc = extra['games'][base]['const'], g['const']
+            # (the retail game's flags by name: each of its flag lines' number, the hack's for the same name)
+            names = {v['value']: k for k, v in bc.items() if k.startswith('flag.')}
+
+            def flag(n, key=key, base=base, names=names, hc=hc):
+                if n not in names:
+                    fail('%s: %s\'s guide names event flag %d, which no const.flag line of %s gives' % (key, base, n, base))
+                if names[n] not in hc:
+                    fail('%s: no %s line for %s, whose %s is %d' % (key, names[n], key, base, n))
+                return hc[names[n]]['value']
+            # (the toggleable objects' bytes: the retail game's, PokeDaisy's <prefix>_MISSABLE_FLAG_BYTES, as PureRGB's
+            # wToggleableObjectFlags is the same flag_array $100, ram/wram.asm)
+            bsizes = {'eventFlagBytes': bc['numEvents']['value'] // 8,
+                      'toggleFlagBytes': gen1_guide_consts[bprefix + '_MISSABLE_FLAG_BYTES']}
+            sizes['toggleFlagBytes'] = bsizes['toggleFlagBytes']
+            ev, cave = sizes['eventFlagBytes'], sizes['toggleCeruleanCaveGuy']
+            if not 0 <= cave < 8 * sizes['toggleFlagBytes']:
+                fail('%s: TOGGLE_CERULEAN_CAVE_GUY %d is past its %d bytes of toggleable objects' % (key, cave, sizes['toggleFlagBytes']))
+            ids = {}
+            for bkey, (c, parties) in GEN1_BOSS_PARTIES.items():
+                cls = sizes.get(c) if not c.startswith('class.') else hc.get(c, {}).get('value')
+                if not cls:
+                    fail('%s: no trainer class %s for %s' % (key, c, bkey))
+                ids[bkey] = [cls << 8 | n for n in parties]
+            hack = {'flag': flag, 'events': 8 * ev, 'cave_guy': cave, 'ids': ids, 'made_from': made_from}
+            flags = [{'ram': 'eventFlags', 'bytes': ev, 'first': 0},
+                     {'ram': 'toggleFlags', 'bytes': sizes['toggleFlagBytes'], 'first': 8 * ev}]
+            gd, derived, u = gen1_guide(gen1_guide_src, key, bprefix, code, GEN1_GUIDES[base][3], title, bsizes,
+                                        extra['games'][base]['const']['toggleCeruleanCaveGuy']['value'],
+                                        8 * (ev + sizes['toggleFlagBytes']), hack)
             unread += u
             files['%s/%s.json' % (FOLDER, key)] = pe.dump(gd).encode('utf-8')
         doc = {
@@ -914,6 +1271,29 @@ def build(checkout):
         }
         if derived:
             doc['derived'] = derived
+        # the game's items, types and physical/special split, pret's (gbpk-symbols.txt's items, keyitems, types and
+        # split lines): ids only, the items' names left in gbpk-extra.json
+        for k in ('items', 'types'):
+            if k not in g:
+                fail('%s: %s has no %s for %s' % (EXTRA, key, k, key))
+        doc['items'] = sorted(v for v in g['items'].values() if v[1])    # (a ball Gen IV hasn't: in balls only)
+        doc['balls'] = g['balls']
+        if gen == 1:
+            if 'key_items' not in g:
+                fail('%s: %s has no key_items' % (EXTRA, key))
+            doc['key_items'] = g['key_items']
+        doc['types'] = g['types']
+        doc['special'] = g['special']
+        if g.get('split_stats'):
+            doc['split_stats'] = sorted(g['split_stats'])
+        if key in ROM_GUIDES:
+            doc['guide'] = ROM_GUIDES[key]
+        if key in GEN1_HACK_GUIDES:
+            doc['guide_levels'] = 'rom'
+        if key in HACK_DEX_SIZE:
+            doc['dex_size'] = HACK_DEX_SIZE[key]
+        if key in CHARSET:
+            doc['charset'] = CHARSET[key]
         files['%s/%s.ram.json' % (FOLDER, key)] = pe.dump(doc).encode('utf-8')
     if unread:
         print('unread:', file=sys.stderr)
@@ -2310,7 +2690,7 @@ def main(argv):
     if len(args) > 1 or any(a.startswith('-') for a in args) or (ref and check):
         sys.exit('usage: pokedaisy-extract.py [<pokedaisy checkout>] [--check | --reference] [--any-commit]')
     outs = ['%s/%s.ram.json' % (FOLDER, g[0]) for g in GAMES] + [FOLDER + '/LICENSE'] + \
-        ['%s/%s.json' % (FOLDER, k) for k in ['crystal'] + list(GEN1_GUIDES)]
+        ['%s/%s.json' % (FOLDER, k) for k in list(CRYSTAL_GUIDES) + list(GEN1_GUIDES) + list(GEN1_HACK_GUIDES)]
     if not args:
         if not check:
             fail('give PokeDaisy\'s checkout, or --check')

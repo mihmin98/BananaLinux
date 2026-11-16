@@ -1,11 +1,12 @@
 Game Boy Pokémon companion tests (the kiwami fork of BananaOS)
 
-fixtures/ holds PokeDaisy's RAM captures of Gold, Silver and Crystal (and from step 12 of the plan, Red, Blue and
-Yellow), copied unchanged from PokeDaisy's app/src/test/resources/fixtures/ at commit 135ac809: each folder a moment of
+fixtures/ holds PokeDaisy's RAM captures of Gold, Silver and Crystal, Red, Blue and Yellow, and of the ROM hacks the
+companion reads as games of their own (Crystal Legacy, Yellow Legacy, PureRed, PureBlue, Crystal Clear), copied unchanged from PokeDaisy's app/src/test/resources/fixtures/ at commit 135ac809: each folder a moment of
 a game, as the emulated console's memory had it (wram.bin C000-DFFF as the bus had it, hram.bin FF80-FFFE, and for the
 Color games wramx.bin, the eight WRAM banks, 0x1000 each), with PokeDaisy's README.txt saying what the moment is.
 kiwami/tests/gbpk-units.cpp replays them to the companion's reader. Like any RAM dump they hold a few kilobytes the game
-copied there from its ROM; the saves in them are new games PokeDaisy's author played headless.
+copied there from its ROM; the saves in them are new games PokeDaisy's author played headless (a hack's, the retail
+save rewritten for it, as its README says).
 
 made-up/ is the fork's own (made-up ROMs and archives, kiwami/tests/gbpk/made-up/make-fixtures.sh).
 

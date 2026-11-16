@@ -1,4 +1,11 @@
 {
+  "balls": [
+    1,
+    2,
+    3,
+    4,
+    8
+  ],
   "derived": [
     {
       "any": [
@@ -56,6 +63,93 @@
   "game": "blue",
   "gen": 1,
   "header_title": "POKEMON BLUE",
+  "items": [
+    [
+      1,
+      1
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      3,
+      3
+    ],
+    [
+      4,
+      4
+    ],
+    [
+      8,
+      5
+    ],
+    [
+      10,
+      81
+    ],
+    [
+      32,
+      82
+    ],
+    [
+      33,
+      83
+    ],
+    [
+      34,
+      84
+    ],
+    [
+      47,
+      85
+    ],
+    [
+      76,
+      445
+    ],
+    [
+      77,
+      446
+    ],
+    [
+      78,
+      447
+    ]
+  ],
+  "key_items": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    31,
+    41,
+    42,
+    43,
+    44,
+    45,
+    48,
+    63,
+    64,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    76,
+    77,
+    78
+  ],
   "kind": "gb-pokemon-ram",
   "ram": {
     "badges": {
@@ -416,6 +510,11 @@
       "bank": 14,
       "src": "pret (TrainerAI)"
     },
+    "typeChart": {
+      "addr": "0x6474",
+      "bank": 15,
+      "src": "pret (TypeEffects)"
+    },
     "wildData": {
       "addr": "0x4EEB",
       "bank": 3,
@@ -458,5 +557,31 @@
     "toggleCeruleanCaveGuy": 8,
     "toggleFlagBytes": 32
   },
-  "title": "Blue"
+  "special": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26
+  ],
+  "title": "Blue",
+  "types": {
+    "0": "normal",
+    "1": "fighting",
+    "2": "flying",
+    "20": "fire",
+    "21": "water",
+    "22": "grass",
+    "23": "electric",
+    "24": "psychic",
+    "25": "ice",
+    "26": "dragon",
+    "3": "poison",
+    "4": "ground",
+    "5": "rock",
+    "7": "bug",
+    "8": "ghost"
+  }
 }

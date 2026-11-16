@@ -374,7 +374,11 @@ Each step is one commit, and leaves the tree building, `make test` and `kiwami/t
     with this machine's OpenSSL (as in 0030 and 0034).
   - `kiwami/DEPENDENCIES.md` unchanged (no dependency). `docs/FORK.md` updated in step 3. `docs/ARCHITECTURE.md` and
     `CLAUDE.md` unchanged: nothing structural.
-  - Left: the image for `rgds-plus` from the branch, which the user builds, and the manual tests M1-M10.
+  - The image for `rgds-plus` from the branch: 0.5.3.4 from `c897421e` (`make banana-ui-rebuild-rgds-plus`, then
+    `make rgds-plus`, on the output of 0034's image: only banana-ui differs since), its banana-ui holding the strip.
+- **Results, the rest** (2026-11-16): the manual tests were a quick check on the RG DS Plus by the user, not M1-M10
+  each, with no logs analysed (*Manual tests*). Every criterion A1-A14 is covered by an automated test, and those
+  passed; their confirmation on the hardware is that quick check. Marked done at the user's request, to merge.
 
 ## Automated tests
 
@@ -401,18 +405,23 @@ Network > SSH) or from the card on a computer: `banana/logs/banana-ui.log` on th
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | Start a GBA game in RetroArch; look at the panel; play past two minute changes without touching it; then play 10+ min | Strip at once: Wi-Fi, (Tailscale if on), `Played 0:00`, battery %, date, time as the top screen's menu showed. Time and played turn at the minute with no touch. Strip legible when dimmed | `banana-ui.log` (`panel status:` lines), photo of the panel | A3, A4, A5, A12, A13 | not run |
-| M2 | rgds-plus | Same with the setting off | The hint as before, no `panel status` line | `banana-ui.log` | A2 | not run |
-| M3 | rgds-plus | In a game: plug the charger, unplug; play until the % drops one | Bolt and accent level within 10 s of plugging; gone within 10 s of unplugging; the new % within 10 s | `banana-ui.log` (`charging` lines with times), photos | A6, A12 | not run |
-| M4 | rgds-plus | In a game: switch the Wi-Fi off from the router side or walk out of range, then back; with Tailscale on, `tailscale down` over SSH then `up` | Wi-Fi dims within 10 s and comes back; Tailscale's mark goes and returns within 10 s | `banana-ui.log`, `/data/banana/logs/tailscale.log`, `ip addr show tailscale0` over SSH before and after | A7, A8, A12 | not run |
-| M5 | rgds-plus | In a game at `Played 0:0x`, close the lid for 3+ min, open it | The time right on the first frame after waking; a line starting `after a sleep:`; `Played` hasn't added the sleep; the game's play time in the library afterwards matches | `banana-ui.log` (the after-sleep line, `game ended after … s`), `/data/banana/logs/sleep.log` (bananad's) around the sleep | A5, A9, A12 | not run |
-| M6 | rgds-plus | A GBA Pokémon game with the companion on: the pages, then F to the menu, then back | Pages as before; the menu shows the strip | photo of each | A10 | not run |
-| M7 | rgds-plus | Settings > Other systems > Screen: RetroArch on the bottom; start a game | The panel on the top screen, with the strip | photo | A3, A11 | not run |
-| M8 | rgds-plus | Clock set to 12-hour, theme Light, battery at 100% on the charger (or near); start a game | `02:32 PM`-style time, Light colours, nothing overlapping at 1024x768 | photo, `banana-ui.log` | A4, A11, A14 | not run |
-| M9 | rgds-plus | A C64 or ZX Spectrum game (six tiles): open the Keys tile, close it | The strip with six tiles; the keyboard unchanged; strip back after Done | photo | A3, A10 | not run |
-| M10 | rgds-plus | Battery under 10% (or `battery` from a nearly empty charge), not charging | Percentage and level in red | photo, `banana-ui.log` | A6 | not run |
+| M1 | rgds-plus | Start a GBA game in RetroArch; look at the panel; play past two minute changes without touching it; then play 10+ min | Strip at once: Wi-Fi, (Tailscale if on), `Played 0:00`, battery %, date, time as the top screen's menu showed. Time and played turn at the minute with no touch. Strip legible when dimmed | `banana-ui.log` (`panel status:` lines), photo of the panel | A3, A4, A5, A12, A13 | quick check only |
+| M2 | rgds-plus | Same with the setting off | The hint as before, no `panel status` line | `banana-ui.log` | A2 | quick check only |
+| M3 | rgds-plus | In a game: plug the charger, unplug; play until the % drops one | Bolt and accent level within 10 s of plugging; gone within 10 s of unplugging; the new % within 10 s | `banana-ui.log` (`charging` lines with times), photos | A6, A12 | quick check only |
+| M4 | rgds-plus | In a game: switch the Wi-Fi off from the router side or walk out of range, then back; with Tailscale on, `tailscale down` over SSH then `up` | Wi-Fi dims within 10 s and comes back; Tailscale's mark goes and returns within 10 s | `banana-ui.log`, `/data/banana/logs/tailscale.log`, `ip addr show tailscale0` over SSH before and after | A7, A8, A12 | quick check only |
+| M5 | rgds-plus | In a game at `Played 0:0x`, close the lid for 3+ min, open it | The time right on the first frame after waking; a line starting `after a sleep:`; `Played` hasn't added the sleep; the game's play time in the library afterwards matches | `banana-ui.log` (the after-sleep line, `game ended after … s`), `/data/banana/logs/sleep.log` (bananad's) around the sleep | A5, A9, A12 | quick check only |
+| M6 | rgds-plus | A GBA Pokémon game with the companion on: the pages, then F to the menu, then back | Pages as before; the menu shows the strip | photo of each | A10 | quick check only |
+| M7 | rgds-plus | Settings > Other systems > Screen: RetroArch on the bottom; start a game | The panel on the top screen, with the strip | photo | A3, A11 | quick check only |
+| M8 | rgds-plus | Clock set to 12-hour, theme Light, battery at 100% on the charger (or near); start a game | `02:32 PM`-style time, Light colours, nothing overlapping at 1024x768 | photo, `banana-ui.log` | A4, A11, A14 | quick check only |
+| M9 | rgds-plus | A C64 or ZX Spectrum game (six tiles): open the Keys tile, close it | The strip with six tiles; the keyboard unchanged; strip back after Done | photo | A3, A10 | quick check only |
+| M10 | rgds-plus | Battery under 10% (or `battery` from a nearly empty charge), not charging | Percentage and level in red | photo, `banana-ui.log` | A6 | quick check only |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- 2026-11-16, image 0.5.3.4 from `c897421e` on the RG DS Plus: **a quick check by the user, M1-M10 not each run and
+  no logs analysed.** The user found the image working and asked to mark the final check complete and merge. What only
+  the device shows (the real battery and charger, Wi-Fi dropping, a real sleep, the dimmed panel, the photos'
+  layouts) is so far confirmed only by that check; the headless tests cover the same logic with stand-ins.
 
 ## Deviations
 
@@ -446,4 +455,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 1. The strip's state, with no screen | done | Status on the game panel: the strip's state, with no screen |
 | 2. The Second screen row | done | Status on the game panel: the Second screen row |
 | 3. The strip drawn instead of the hint | done | Status on the game panel: the strip drawn instead of the hint |
-| 4. Final check | in progress: the automated part done | Status on the game panel: the final check's automated part |
+| 4. Final check | done | Status on the game panel: the final check's automated part; Status on the game panel: the final check |

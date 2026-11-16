@@ -1402,6 +1402,35 @@ Where the implementation turned out different from this plan, why, and what chan
   numbers. The tests' ROM table loses Crystal Legacy's row: *The ROM hacks* lists the sixteen releases with their
   SHA-1s.
 
+- **2026-11-16, step 16**: the automated part of the final check is run on `5f6210cc` before the manual tests (the
+  user's choice); the step is done when M1 to M7 have passed. Its results:
+  - `make test` (`run.sh`, `bshare-test.sh` 21 passed, `fetch-test.sh` 55 passed), `make -C ui` (its five warnings all
+    in upstream's files: `settings.cpp`, `soft.cpp`, `settings_files.cpp`, `nds/rom.cpp`), `make -C system/bananad
+    CFLAGS="-O2 -Werror"` and `kiwami/tests/ci.sh .buildroot` pass. `ci.sh`'s `gbpk-roms.sh` read the six required
+    retail ROMs, Crystal (USA), Fast Red, Fast Blue and the sixteen hacks (25 ROMs, 2370 checks); `gbpk-units` 3240
+    checks.
+  - `gbpk-units` with `-fsanitize=address,undefined` (at `-O1`, without `-Werror`, as step 8): 3240 checks, no
+    sanitizer report; its two `-Wformat-truncation` warnings are step 8's, now at `rom1.cpp:304` and `rom2.cpp:210`.
+  - The scripts against their checkouts and the ROMs (`--check` with them) give the committed files: `pret-extract.py`
+    over the eight checkouts, `gbpk-port.py` (Crystal Clear), `pokedaisy-extract.py` at `135ac809` (a worktree at the
+    `PIN`, the user's checkout being at another commit). The Yellow Legacy and PureRGB checkouts and rgbds 0.5.2, 0.6.1
+    and 1.0.3 had been removed and were made again as *Before the steps* says; the eight builds gave their releases'
+    SHA-1s.
+  - The hooks: `main...HEAD` changes 18 upstream files, the 18 that have `kiwami:`; this feature's are step 8's three
+    lines (`logic.cpp`'s `typeName`, `pages.cpp`'s include and chip).
+  - **The renders' baseline is `kiwami` before the feature (`2b178f82`), not `main`**: the fork already differs from
+    `main` on screen (the `sv-*` shots, the Wi-Fi, share and Bluetooth rows of earlier features), and `main`'s `make ui`
+    stops at `banana-bshare` against the host's OpenSSL. `kiwami`'s from a `git archive` copy, `make -C ui host`,
+    `run.sh`. All 875 shots both have differ only by the clock and the date (the runs five minutes apart), Bshare's
+    random PIN, the free space of the disk each copy is on (`files-cards`), and two shots caught in an animation
+    (`640x480-bt-audio-bot`, `640x480-ndsoverlay-drag`), which rendered again on both sides at once were identical (and
+    `bt-audio` differs between two runs of the same side). `kiwami`'s copy, built without Bshare, has no `sv-*` shots.
+  - `gbpk-ui.sh` on both sides at once: the 80 shots both have (the retail games, Settings, upstream's panel) are
+    identical; the branch's other 44 are the hacks' pages.
+  - `kiwami/DEPENDENCIES.md` lists the three repositories and rgbds 0.5.2, 0.6.1 and 1.0.3; `docs/FORK.md`,
+    `kiwami/GB-POKEMON.md` and `CLAUDE.md` describe the hacks and step 8's hooks; `docs/ARCHITECTURE.md` doesn't
+    describe the companion.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -1423,4 +1452,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 13. Crystal Clear | done | GB Pokémon hacks: Crystal Clear, its packed text, its memory and its ROM |
 | 14. Crystal Clear's guide | done | GB Pokémon hacks: Crystal Clear's guide, built from its ROM by region |
 | 15. The documentation and the weight | done | GB Pokémon hacks: the documentation, and what the hacks weigh |
-| 16. Final check | todo | |
+| 16. Final check | automated part passed (2026-11-16); waiting on M1 to M7 | |

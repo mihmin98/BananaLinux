@@ -1,6 +1,6 @@
 # 0034 Tailscale icon: investigation
 
-Issue: #34 · Branch: `k/0034-tailscale-icon` · Status: draft · Confidence: 97% (proceed)
+Issue: #34 · Branch: `k/0034-tailscale-icon` · Status: refined · Confidence: 97% (proceed)
 
 ## The request
 

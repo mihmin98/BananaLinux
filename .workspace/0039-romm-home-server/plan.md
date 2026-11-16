@@ -368,6 +368,8 @@ kept to what the step touches; `make test` runs once per step that changes banan
     - A game renamed on the server: the listing, and the outcome checked against the rework's own build in the same
       case (its `launch.status` and the card's save the same).
     - A search with two near names: the exact one kept.
+  - `kiwami/tests/romm-list.sh`, `kiwami/tests/romm-big.py` (changed, *Deviations*): the one-game run by its
+    remembered id; `GET /api/roms/<id>` and `search_term` in the big stand-in.
   - `kiwami/tests/ci.sh` (changed).
   - `docs/FORK.md` (changed).
 - **Tests**: `romm-lookup.sh`, `romm-list.sh` (paging unchanged for full runs, A2), `ui/tests/sync-slots.sh` (the
@@ -630,6 +632,23 @@ Where the implementation turned out different from this plan, why, and what chan
   RomM, after Show sync times, so `sync-times-ui.sh` reaches Show sync times with two Ups from Server for RomM (one
   for Romhost), and `docs/FORK.md`'s note on the row's place names the fork's rows after Forget and the BIOS row's
   test. Step 8's Installs from RomM row (between them) adds one more Up for RomM. Agreed with the user.
+- **2026-11-16, step 4: the ids are keyed by the card file's path, and `romm-list.sh` and `romm-big.py` change.**
+  - `kiwami-romm.json`'s `ids` map the card file's roms-relative path (what `--rom` names and `onCard()` returns,
+    `gba/Foo (USA).gba`, `psx/Game.m3u`) to the RomM id, not `folder/fs_name`, so the lookup is one map read and needs
+    no name rebuilt for a disc set or a subfolder. Agreed with the user.
+  - `romm-list.sh`'s listings before its one-game run now remember game 10's id, so that run asks
+    `GET /api/roms/200010` and lists nothing. Its check expects that (A9 on the big library), and `romm-big.py`
+    answers `GET /api/roms/<id>` and `search_term`. Agreed with the user.
+  - RomM 5.4.1's `search_term` (`backend/handler/database/roms_handler.py`, `_filter_by_search_term()`) isn't a
+    substring of the whole term. It splits the term at `|` into alternatives, and each blank-separated word has to be
+    in the game's name, file name or other titles, case aside (on MariaDB, a word of 3+ letters through FULLTEXT as the
+    start of one of theirs). A card file's stem always matches its own `fs_name` this way. The two stand-ins copy that.
+    The search's answer goes to the loop as it came, near names and all: the rework's own matching (`onCard() ==
+    onlyRom`) keeps the exact game, and `record()` records only that one.
+  - `record()` clears `Romm`'s `cardIndex` after a full listing. `onCard()` memoizes the card's ROMs for the whole run,
+    so without it a game Get games downloads later in the same Sync now would be missing when the saves look.
+  - `romm-lookup.sh` builds the rework's own `banana-sync` from `git archive cab127ba` at `-O0` (5 s), when the
+    repository has that commit (CI's checkout has the whole history), and says it skipped the comparison otherwise.
 
 ## Progress
 
@@ -640,7 +659,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 1. The rework taken in, with 0022 and 0024 re-ported | done | Merge upstream's Home server rework (cab127ba) into k/0039-romm-home-server |
 | 2. BIOS downloads in banana-sync | done | RomM home server: BIOS downloads from RomM into /data/bios and DraStic's folder |
 | 3. The BIOS page in Settings | done | RomM home server: a BIOS page on Home server |
-| 4. A game's sync before it starts, without listing its system | todo | |
+| 4. A game's sync before it starts, without listing its system | done | RomM home server: a game's save synced before it without listing its system |
 | 5. ROMs found by their hash in Sync now | todo | |
 | 6. The game list kept on the card and brought up to date | todo | |
 | 7. Installs from RomM's web page, in banana-sync | todo | |

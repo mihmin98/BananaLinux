@@ -18,6 +18,15 @@ What it answers, from RomM 5.4.1's code (rommapp/romm, tag 5.4.1):
                                               folders and names; the content 404 for a file gone. Each needs
                                               firmware.read (403 {"detail": "Forbidden"}), as RomM checks the scope
                                               before what the request names
+  GET /api/roms/<id>                          endpoints/roms/__init__.py get_rom(): the game as upstream's stand-in
+                                              lists it, found in its platforms' listings (the fields banana-sync reads
+                                              of RomM's DetailedRomSchema are a listed game's); 404 when none has it
+  GET /api/roms?...&search_term=<s>           upstream's stand-in's listing of the platform, only the games the search
+                                              finds, then limit and offset: handler/database/roms_handler.py
+                                              _filter_by_search_term(), <s> split at "|" into terms, any of which, a
+                                              term's words (split at blanks) each in the game's name or file name, case
+                                              aside (PostgreSQL's way; MariaDB's FULLTEXT takes a word of three letters
+                                              or more as the start of one of theirs, which a game's own name holds too)
 The tests' own hooks, under /kiwami/ (no token):
   POST /kiwami/fault {"path": <regex on "METHOD /path">, "kind": "truncate", "count"?: 1}: the next matching answers
        cut to half their body, the whole length announced, the connection closed
@@ -90,6 +99,10 @@ class H(http.server.BaseHTTPRequestHandler):
             return self.hook(p, raw)
         if p == "/api/firmware" or p.startswith("/api/firmware/"):
             return self.firmware(method, p, urllib.parse.parse_qs(u.query))
+        if method == "GET" and re.fullmatch(r"/api/roms/\d+", p):
+            return self.rom(int(p.split("/")[3]))
+        if method == "GET" and p == "/api/roms" and "search_term" in urllib.parse.parse_qs(u.query, keep_blank_values=True):
+            return self.search(urllib.parse.parse_qsl(u.query, keep_blank_values=True))
         if p == "/api/auth/device/init" and method == "POST":
             try:
                 log("init scopes: " + ",".join(json.loads(raw).get("requested_scopes") or []))
@@ -132,14 +145,50 @@ class H(http.server.BaseHTTPRequestHandler):
         with lock:
             return TOKENS.get(a[7:], set()) if a.startswith("Bearer ") else None
 
-    # ---- firmware: <firmware dir>/<fs_slug>/<file>, on the platform upstream's stand-in lists for that folder
-    def platforms(self):
-        c = http.client.HTTPConnection("127.0.0.1", UPSTREAM, timeout=30)
-        c.request("GET", "/api/platforms", headers={"Authorization": self.headers.get("Authorization", "")})
+    # ---- upstream's stand-in asked, with this request's token: (status, its JSON or None)
+    def ask(self, path):
+        c = http.client.HTTPConnection("127.0.0.1", UPSTREAM, timeout=60)
+        c.request("GET", path, headers={"Authorization": self.headers.get("Authorization", "")})
         r = c.getresponse()
         body = r.read()
         c.close()
-        return {p["fs_slug"]: p["id"] for p in json.loads(body)} if r.status == 200 else {}
+        try:
+            return r.status, json.loads(body)
+        except ValueError:
+            return r.status, None
+
+    # ---- firmware: <firmware dir>/<fs_slug>/<file>, on the platform upstream's stand-in lists for that folder
+    def platforms(self):
+        status, j = self.ask("/api/platforms")
+        return {p["fs_slug"]: p["id"] for p in j} if status == 200 else {}
+
+    # ---- a game alone, and RomM's search: from upstream's stand-in's listings
+    def listing(self, pid, params=()):
+        q = urllib.parse.urlencode([(k, v) for k, v in params if k not in ("platform_ids", "platform_id", "limit", "offset", "search_term")] +
+                                   [("platform_ids", pid), ("limit", 100000), ("offset", 0), ("with_files", "true")])
+        return self.ask("/api/roms?" + q)
+
+    def rom(self, rid):
+        status, ps = self.ask("/api/platforms")
+        if status != 200:
+            return self.send(status, ps)
+        for p in ps:
+            status, page = self.listing(p["id"])
+            for it in (page or {}).get("items", []) if status == 200 else []:
+                if it["id"] == rid:
+                    return self.send(200, it)
+        return self.send(404, {"detail": f"Rom with ID {rid} not found"})
+
+    def search(self, qsl):
+        q = dict(qsl)
+        terms = [t.strip() for t in q.get("search_term", "").split("|") if t.strip()]
+        status, page = self.listing(q.get("platform_ids") or q.get("platform_id") or "0", qsl)
+        if status != 200:
+            return self.send(status, page)
+        found = lambda it: any(all(any(w.lower() in (it.get(k) or "").lower() for k in ("name", "fs_name")) for w in t.split()) for t in terms)
+        items = [it for it in page["items"] if not terms or found(it)]
+        lim, off = int(q.get("limit", 50)), int(q.get("offset", 0))
+        return self.send(200, {"items": items[off:off + lim], "total": len(items), "limit": lim, "offset": off})
 
     def files(self):
         ids = self.platforms()

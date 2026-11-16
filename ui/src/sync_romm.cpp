@@ -5,6 +5,7 @@
 #include "save_vault.h"
 #include "kiwami/syncmem.h"	// kiwami: RomM's game list kept small (banana-sync's memory)
 #include "kiwami/synctimes.h"	// kiwami: each phase's time (Home server > Show sync times)
+#include "kiwami/romm/romm.h"	// kiwami: one game's sync without listing its system (lookup.h)
 #include <algorithm>
 #include <ctime>
 #include <dirent.h>
@@ -129,12 +130,11 @@ namespace bsync
 			banana::kiwami::syncmem::Listing listing(*j, platforms);	// kiwami: Sync now's progress while the list is read
 			for (auto& pf : platforms)
 			{
+				banana::kiwami::romm::Pages pages(*this, onlyRom, sendOk, pf.first, pf.second);	// kiwami: one game's alone first, else 0022's pages
 				for (long long off = 0;; off += banana::kiwami::syncmem::PAGE)	// kiwami: syncmem::PAGE a page, upstream 500
 				{
 					// (with_files: each ROM's files[], with their hashes and a disc set's discs; RomM 5.4 lists none without it)
-					std::string q = "/api/roms?platform_ids=" + std::to_string(pf.first) + "&platform_id=" + std::to_string(pf.first) +
-						"&limit=" + std::to_string(banana::kiwami::syncmem::PAGE) + "&offset=" + std::to_string(off) + "&order_by=name&with_files=true&with_char_index=false&with_filter_values=false&with_rom_id_index=false&with_provider_metadata=false";	// kiwami: syncmem::PAGE a page, and no provider metadata (RomM after 5.4.1)
-					Resp rr = call("GET", q);
+					Resp rr = pages.fetch(off);	// kiwami: the query is Pages' (0022's, syncmem::PAGE a page without provider metadata)
 					if (rr.code != 200) { err = "roms: " + rr.error(); return false; }
 					JPtr page = rr.json();
 					const JVal* items = page ? (page->isArr() ? page.get() : page->get("items")) : nullptr;
@@ -155,6 +155,7 @@ namespace bsync
 					if (page->isArr() || items->arr.size() < banana::kiwami::syncmem::PAGE || (total >= 0 && off + banana::kiwami::syncmem::PAGE >= total)) break;	// kiwami: syncmem::PAGE a page
 				}
 			}
+			banana::kiwami::romm::record(*this);	// kiwami: the games' RomM ids, for the sync before a game
 			listed = true;
 			allPlatforms = platforms; allRoms = roms; allJson = romJson;
 			view(skip);

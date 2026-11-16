@@ -5,8 +5,8 @@
 # under 100 MB where upstream's held every page's whole tree. Against romm-big.py's 400 games on each of six systems
 # (and 3ds, which Banana has no system for), about 25 KB of JSON a game with RomM's provider blocks: the peak of each
 # run (the child's ru_maxrss), the requests made, the games listed with RomM's edge cases, the games downloaded, the
-# progress while the list is read (Listing games), the save brought before a game, and the peak memory each sync's
-# report ends with. Also slim()'s unit tests (syncmem-units.cpp), and the guard: every key Romm reads of a listed game
+# progress while the list is read (Listing games), the save brought before a game (the game alone, by the RomM id the
+# listings before it remembered: ui/src/kiwami/romm/lookup.h), and the peak memory each sync's report ends with. Also slim()'s unit tests (syncmem-units.cpp), and the guard: every key Romm reads of a listed game
 # (sync_romm.cpp's manifest(), romFiles(), romTitle(), romRegions()) is kept by syncmem.h, so a field upstream starts
 # reading isn't dropped. banana-sync is built from ui/Makefile's own rule, its sources as upstream lists them. Needs
 # g++ and python3. Run by kiwami/tests/ci.sh, or by hand:
@@ -120,6 +120,8 @@ grep -q '	Tab Game 0005	' "$T/games.out" || err "games: game 5's tab not a space
 ! grep -q 'Game 0001	\|Escape\|Game 0009	' "$T/games.out" || err "games: a game manifest() skips is listed"
 [ "$GAMES" -lt $BOUND ] || err "games peaked at $((GAMES / 1024)) MB, over the $MB MB bound"
 requests games 12
+# (the RomM id of the game on the card remembered, for the sync before it)
+grep -q '"gba/Game 0010 (USA).gba": 200010' "$C/banana/kiwami-romm.json" 2>/dev/null || err "games: game 10's RomM id not remembered: $(cat "$C/banana/kiwami-romm.json" 2>/dev/null)"
 # (no status written: Get games' refresh must not show in Sync now's row), and Get games' list kept on the card
 [ ! -e "$C/run/sync.status" ] || err "games wrote a status: $(cat "$C/run/sync.status")"
 [ "$(wc -l < "$C/banana/homesync-server-games.tsv" 2>/dev/null || echo 0)" -ge 2377 ] || err "games: no Get games' list on the card"
@@ -152,7 +154,7 @@ LOGKB=$(tail -n 1 "$LOG" 2>/dev/null | sed -n 's/^memory: peak \([0-9]*\) kB$/\1
 [ -z "$LOGKB" ] || [ "$LOGKB" -lt $BOUND ] || err "sync.log: the games-only sync's own peak $LOGKB kB, over the $MB MB bound"
 [ -z "$failed" ] || exit 1
 
-# one game's sync before it starts: its system's games listed alone, and its save brought from the slot
+# one game's sync before it starts: the game alone, by its remembered id, no listing, and its save brought from the slot
 : > "$T/requests.log"
 bs "$T/one.out" sync --rom "gba/Game 0010 (USA).gba" --auto launch || fail "the sync before a game failed: $(tail -n 3 "$T/one.out")"
 ONE=$KB
@@ -160,7 +162,8 @@ S=$C/saves/gba/Game\ 0010\ \(USA\).srm
 [ "$(wc -c < "$S" 2>/dev/null)" = 131072 ] && [ "$(head -c 11 "$S")" = "gba save 10" ] || err "the sync before a game: no saves/gba/Game 0010 (USA).srm"
 case "$(cat "$C/run/launch.status" 2>/dev/null)" in "done 0 0 0 1 0 0|"*) ;; *) err "the sync before a game: launch.status $(cat "$C/run/launch.status" 2>/dev/null)";; esac
 [ "$ONE" -lt $BOUND ] || err "the sync before a game peaked at $((ONE / 1024)) MB, over the $MB MB bound"
-requests "the sync before a game" 2 2
+requests "the sync before a game" 0
+[ "$(grep -c '^GET /api/roms/200010?$' "$T/requests.log")" = 1 ] || err "the sync before a game: not one GET /api/roms/200010: $(grep '^GET /api/roms' "$T/requests.log" | head -n 3)"
 [ ! -e "$C/run/sync.times" ] || err "the sync before a game wrote sync.times"
 [ -z "$failed" ] || exit 1
 
@@ -196,4 +199,4 @@ if [ -n "$OTHER" ]; then
     echo "romm-list: the other banana-sync peaked at $((OGAMES / 1024)) MB listing the games; its games, cards and saves the same ($(find "$T/card-this/roms" -type f | wc -l) files, games-only $(cat "$T/this-get.rc"), before a game $(cat "$T/this-one.rc"))"
 fi
 
-echo "romm-list: games $((GAMES / 1024)) MB, games-only sync $((GET / 1024)) MB, before a game $((ONE / 1024)) MB peak; 12 requests of 200, 12 listing statuses; $KEYS keys Romm reads kept; sync.log's peak $LOGKB kB"
+echo "romm-list: games $((GAMES / 1024)) MB, games-only sync $((GET / 1024)) MB, before a game $((ONE / 1024)) MB peak (by its id); 12 requests of 200, 12 listing statuses; $KEYS keys Romm reads kept; sync.log's peak $LOGKB kB"

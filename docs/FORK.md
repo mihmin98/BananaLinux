@@ -313,7 +313,17 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    upstream changes that mapping, the line follows it. A scope upstream adds to its own list goes before the fork's;
    if upstream starts asking for `firmware.read` itself, the fork's `SCOPES` drops it. The fork's verbs reach RomM
    through upstream's `newRomm()`, `Backend::call()` and `fetchTo()`, so a change to those shows in
-   `kiwami/tests/romm-bios.sh`. And banana-ui's rule in
+   `kiwami/tests/romm-bios.sh`. One game's sync (before or after it) doesn't list the game's system
+   (`ui/src/kiwami/romm/lookup.h`): `sync_romm.cpp` includes `kiwami/romm/romm.h`. In `Romm::list()`, each platform's
+   page loop takes its pages from a `romm::Pages` made before it, whose `fetch(off)` replaces the loop's query and
+   `call()` (0022's query moved into it, `romsQuery()`). For one game's run it first asks for the game alone: its
+   remembered id (`GET /api/roms/<id>`), else RomM's name search. Both answers go to the loop as one short page, which
+   ends it. `romm::record(*this)`, the line before `listed = true`, keeps the ids of the games on either card in
+   `kiwami-romm.json` and clears `cardIndex` after a full listing. It reads `Romm`'s `roms`, `onlyRom`, `onCard()` and
+   `cardIndex`, and `Pages` copies `list()`'s rule for a game's file on the card (`entryOf()`: a disc set's `.m3u`, none
+   for another game of several files). A change to those, or to how `list()` pages, shows in
+   `kiwami/tests/romm-lookup.sh` (the requests a sync before a game makes, and the outcome of a renamed game against
+   the rework's own build) and in `romm-list.sh`. And banana-ui's rule in
    `ui/Makefile`: `kiwami.mk` compiles its `SRC` one file per call with the rule's command, so a change to that command
    (a flag, a variable, how it reads `SRC`) is followed in `kiwami.mk`'s object rules. `kiwami/tests/ui-objects.sh`
    (in `ci.sh`) fails when the two no longer make the same binary. A source upstream adds to `SRC` is compiled as an

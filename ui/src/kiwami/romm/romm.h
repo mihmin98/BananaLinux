@@ -2,12 +2,12 @@
 // banana-sync (kiwami): the fork's RomM additions (0039, .workspace/0039-romm-home-server/), header-only so
 // banana-sync's build recipe stays upstream's (ui/Makefile's kiwami: line names these headers as dependencies). Its
 // hooks are in upstream's sync.cpp (the pairing's scopes, the kiwami verb, dropServerLists()) and sync_romm.cpp
-// (kiwamiFolder(), the platforms' mapping exported):
+// (kiwamiFolder(), the platforms' mapping exported; Romm::list()'s pages and the ids it records, lookup.h):
 //   banana-sync kiwami bios list           BIOS files of RomM's for the systems Banana has (bios.h)
 //   banana-sync kiwami bios get <id>...    those downloaded into /data/bios (and the DS's into DraStic's folder)
 // Each prints its lines on stdout, the last one the result ("ok ..." or "error <why>"), for Settings' pages to read.
 // They don't write sync.log, so the last sync's report stays. The fork's own state on the card is
-// banana/kiwami-romm.json (stateFile()), which Forget and a pairing with another server drop (dropState()).
+// banana/kiwami-romm.json (stateFile(), State), which Forget and a pairing with another server drop (dropState()).
 #include "../../sync_core.h"
 #include "../../sync_romm.h"
 #include "../../sync_util.h"
@@ -33,6 +33,28 @@ namespace banana::kiwami::romm
 	inline std::string stateFile() { return bsync::ROOT + "/banana/kiwami-romm.json"; }
 	// the server's pairing gone or replaced (dropServerLists()): what the fork kept of it goes too
 	inline void dropState() { unlink(stateFile().c_str()); }
+	// what the fork remembers of the paired server between runs (stateFile()). It holds no secret: File sharing shows
+	// it, unlike the pairing. A run reads it again just before it writes, so another run's change in between is kept
+	struct State
+	{
+		std::map<std::string, long long> ids;	// a game on either card (roms-relative, as sync --rom names it) -> its RomM id
+		static State load()
+		{
+			State s;
+			JPtr j = banana::readJsonFile(stateFile());
+			const JVal* ids = j && j->isObj() ? j->get("ids") : nullptr;
+			if (ids && ids->isObj())
+				for (auto& kv : ids->obj) if (kv.second && kv.second->isNum() && kv.second->n > 0) s.ids[kv.first] = (long long)kv.second->n;
+			return s;
+		}
+		bool save() const
+		{
+			std::string o = "{\n \"version\": 1,\n \"ids\": {";
+			bool first = true;
+			for (auto& kv : ids) { o += std::string(first ? "\n  " : ",\n  ") + bsync::jsonStr(kv.first) + ": " + std::to_string(kv.second); first = false; }
+			return bsync::writeAtomic(stateFile(), o + "}\n}\n");
+		}
+	};
 
 	// the paired RomM, for a command: its pairing read (c) and a backend to ask it through; "" when ready, else why not
 	struct Paired
@@ -92,3 +114,4 @@ namespace banana::kiwami::romm
 }
 
 #include "bios.h"
+#include "lookup.h"

@@ -9,7 +9,11 @@
 #   GET /api/heartbeat                         version 5.4.1
 #   GET /api/platforms                         nds, gba, gbc, snes, genesis (folder megadrive), psx, 3ds: ids 1 to 7
 #   GET /api/roms                              platform_ids (or platform_id), limit, offset; items and total. Other
-#                                              parameters are ignored, as RomM 5.4.1 does (with_provider_metadata too)
+#                                              parameters are ignored, as RomM 5.4.1 does (with_provider_metadata too);
+#                                              search_term: only the games it finds (RomM 5.4.1's
+#                                              roms_handler.py _filter_by_search_term(): terms split at "|", any of
+#                                              them; a term's words each in the game's name or file name, case aside)
+#   GET /api/roms/<id>                         the game alone, as listed; 404 for none
 #   GET /api/roms/<id>/content/<name>          a game's one file: "rom <id>\n"
 #                                              (after 3 s for the game ROMM_BIG_SLOW=<id> names in the environment, so
 #                                              a test can look at a sync while it downloads)
@@ -179,8 +183,16 @@ class H(http.server.BaseHTTPRequestHandler):
             lim, off = int(q.get("limit", 50)), int(q.get("offset", 0))
             if pid not in BY_ID:
                 return self.send(200, {"items": [], "total": 0, "limit": lim, "offset": off})
+            terms = [t.strip() for t in q.get("search_term", "").split("|") if t.strip()]
+            if terms:
+                found = lambda it: any(all(any(w.lower() in str(it.get(k) or "").lower() for k in ("name", "fs_name")) for w in t.split()) for t in terms)
+                items = [it for it in (game(pid, i) for i in range(1, N + 1)) if found(it)]
+                return self.send(200, {"items": items[off:off + lim], "total": len(items), "limit": lim, "offset": off})
             items = [game(pid, i) for i in range(off + 1, min(off + lim, N) + 1)]
             return self.send(200, {"items": items, "total": N, "limit": lim, "offset": off})
+        if len(parts) == 4 and p.startswith("/api/roms/") and parts[3].isdigit():
+            pid, i = divmod(int(parts[3]), 100000)
+            return self.send(200, game(pid, i)) if pid in BY_ID and 1 <= i <= N else self.send(404, {"detail": f"Rom with ID {parts[3]} not found"})
         if p.startswith("/api/roms/") and "/files/content/" in p:
             return self.send(200, content(int(parts[3])), "application/octet-stream")
         if p.startswith("/api/roms/") and "/content/" in p:

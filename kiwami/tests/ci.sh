@@ -235,6 +235,10 @@ kiwami/tests/sync-times.sh
 # RomM's BIOS files in banana-sync: the pairing's scopes, the list, the downloads into bios/ and DraStic's folder
 kiwami/tests/romm-bios.sh
 
+# One game's sync in banana-sync without listing its system: its remembered RomM id, else RomM's name search, else the
+# listing (with the Home server rework's own outcome)
+kiwami/tests/romm-lookup.sh
+
 # Show sync times in banana-ui's Settings, headless, when banana-ui is built: the line under Sync now's bar and the row
 if [ -x ui/banana-ui ]; then kiwami/tests/sync-times-ui.sh; else echo "sync-times-ui: skipped, no ui/banana-ui (make ui)"; fi
 

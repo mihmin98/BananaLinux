@@ -148,8 +148,8 @@ Each step is one commit, and leaves the tree building and `make test` passing.
     - **Moving the left part.** Each later `draw`, `fill` and `pushClip` is forwarded with `x + shift`, until the
       first one whose right edge passes `round(560 × scale)` or whose top is at or below `round(58 × scale)`. That
       one, the clock, and everything after it are forwarded unchanged. `popClip` is always forwarded.
-    - **Recorded for the log**: the right edge of the last moved draw (the left part's end), and the leftmost x of the
-      draws in the bar after the stop (the clock's and the date's start).
+    - **Recorded for the log**: the furthest right edge of the moved draws (the left part's end), and the leftmost x
+      of the draws in the bar after the stop (the clock's and the date's start).
     - **No Wi-Fi.** If the screen ends while still seeking and the icon was due, nothing was changed. The line
       `kiwami: tailscale icon: no Wi-Fi icon in the bar` is logged once per process.
     - **The log line**, written when its values change (on the icon showing or going, or the bar's layout changing;
@@ -309,12 +309,16 @@ Notes from the runs (what the logs showed, what was fixed):
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
 
+- 2026-11-16, step 1: the log's "the left part ends at" is the furthest right edge of the moved draws, not the
+  right edge of the last one. The engine draws the logo after the version text, and the logo ends before it; the
+  step's own expected value (`ends at 320`, the version text's edge) was already the furthest. Step 1's wording fixed.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. The backend that puts the icon after Wi-Fi | todo | |
+| 1. The backend that puts the icon after Wi-Fi | done | Tailscale icon: a backend that puts it after the Wi-Fi icon |
 | 2. The menu's bar through it | todo | |
 | 3. Final check | todo | |

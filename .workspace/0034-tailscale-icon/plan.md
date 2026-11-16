@@ -270,6 +270,31 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 - Every acceptance criterion is met: each is listed by at least one automated or manual test, and those passed.
 - Progress marked done.
 - **Commit**: `Tailscale icon: the final check`
+- **Results, the automated part** (2026-11-16, at `632c0fc4`):
+  - `make -C ui`, `make test` and `kiwami/tests/ci.sh .buildroot` passed at the end of step 2, on the code committed
+    as it was (nothing changed since): `statusbar-units` 53 checks, `tailscale-icon-ui: all checks passed`,
+    `ui-objects` byte for byte, `ci exit 0`. `make -B -C system/bananad CFLAGS="-O2 -Werror"` builds with no warning.
+  - The hooks: `main...HEAD` changes 18 upstream files, the same 18 that have `kiwami:`; this feature's are the three
+    `main.cpp` lines (the include, the headless menu's and `makeMenu`'s `RndsMenu`), nothing else.
+  - **The renders' baseline is `kiwami` before the feature (`d70e26f1`), not `main`**, as in 0030: the fork already
+    differs from `main` on screen. `d70e26f1` from a `git archive` copy, `make -C ui host`, and `ui/tests/run.sh` on
+    both sides at once, both passing. Of the 875 shots both have, 743 are identical and 132 differ, each in one of:
+    - the clock's minute (the runs drifted a minute apart): the menu's at the bar's right end (at its rest, risen, and
+      under the low-battery warning), the layout themes' (Canvas, the broken Canvas and Swiss Poster of `badtheme` and
+      `badrange`, drawn on the host's backend, which this feature doesn't reach), the time zone page's (`st-tz`), and
+      the save states' times (`states-sel`, files each run makes);
+    - noise 0030 recorded: Bshare's random PIN (`bs-options-pin`), the free space of the disk each copy is on
+      (`files-cards`), `bt-audio`, and the DS overlay's animation (`ndsoverlay-open`, `-drag`), whose shots rendered
+      again on both sides at once are identical;
+    - pixels the same, the PNG files' bytes not (an encoding difference, 38 shots).
+
+    None is in the bar's left part. The 176 `sv-*` shots are the branch's alone: the baseline copy was built without
+    Bshare's tool (as in 0030).
+  - `bench`: the same within noise. The menu's averages 0.01-0.02 ms on both sides, the arrival's 0.08-0.69 ms; worst
+    frames vary both ways; nothing over 12 ms (A7).
+  - `kiwami/DEPENDENCIES.md` unchanged (no dependency). `docs/FORK.md` updated in step 2. `docs/ARCHITECTURE.md` and
+    `CLAUDE.md` describe nothing this changes (the one "status bar" is the low-battery warning).
+  - Left: the `rgds-plus` image and the manual tests M1-M8.
 
 ## Automated tests
 
@@ -319,6 +344,9 @@ Where the implementation turned out different from this plan, why, and what chan
   icon shows on them too. The plan had taken Ocean for a layout theme. Agreed with the user: it shows there (the same
   bar, the theme's ink). The test's layout theme is Canvas, and a run on Ocean checks the icon is shown; A2, A8, the
   step's test 4, the tests table and M6 updated. No code change.
+- 2026-11-16, step 3: the renders and the `bench` times are compared with `kiwami` before the feature (`d70e26f1`),
+  not `main`, which the fork already differs from on screen (as in 0030). And `make test`, `make -C ui` and `ci.sh` are
+  step 2's runs on the same code, not run again.
 
 ## Progress
 
@@ -328,4 +356,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. The backend that puts the icon after Wi-Fi | done | Tailscale icon: a backend that puts it after the Wi-Fi icon |
 | 2. The menu's bar through it | done | Tailscale icon: the menu's status bar draws through it |
-| 3. Final check | todo | |
+| 3. Final check | automated part done; the manual tests left | Tailscale icon: the final check's automated part |

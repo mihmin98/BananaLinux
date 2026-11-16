@@ -15,8 +15,12 @@
 #                                              a test can look at a sync while it downloads)
 #   GET /api/roms/<file id>/files/content/<n>  a file of a game of several: "rom <file id>\n"
 #   GET /assets/romm/resources/roms/...        a small PNG, or a JPEG for a .jpg
-#   GET /api/saves, /api/saves/<id>/content    two saves: GBA's and DS's game 10
+#   GET /api/saves, /api/saves/<id>/content    two saves in the autosave slot: GBA's and DS's game 10; rom_ids, slot and
+#                                              platform_id filter them, as RomM 5.4.1 does
 #   GET /api/states                            none
+#   GET /api/devices/<id>                      the card's device (the rework's check before the saves), sync on
+#   POST /api/sync/negotiate                   the asked games with a save in the slot (the rework only logs the plan),
+#   POST /api/sync/sessions/<id>/complete      and the session closed
 # Any "Bearer rmm_..." token is taken; anything else gets 403.
 # Game i (from 1) of platform p: id p * 100000 + i, "Game <i:04> (USA).<ext>", one file. These are RomM's edge cases:
 #   1 missing from RomM's disk             6 a path out of the folder (../Escape (USA))
@@ -42,7 +46,9 @@ PNG = bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010806000000"
 JPEG = bytes.fromhex("ffd8ffe000104a46494600010100000100010000ffd9")
 TS = "?ts=2026-10-31 15:44:32.123456+00:00"
 SLOW = int(os.environ.get("ROMM_BIG_SLOW") or 0)
-SAVES = {1: (200010, "Game 0010 (USA).srm", b"gba save 10\n"), 2: (100010, "Game 0010 (USA).sav", b"nds save 10\n")}
+# (each its system's size, as the rework takes only those: GBA's 128 KiB, a DS 512 KiB EEPROM)
+SAVES = {1: (200010, "Game 0010 (USA).srm", (b"gba save 10\n" * 11000)[:128 << 10]),
+         2: (100010, "Game 0010 (USA).sav", (b"nds save 10\n" * 44000)[:512 << 10])}
 
 
 def content(fid):
@@ -183,17 +189,36 @@ class H(http.server.BaseHTTPRequestHandler):
             return self.send(200, content(int(parts[3])), "application/octet-stream")
         if p == "/api/saves":
             pid = int(q.get("platform_id", 0))
+            rids = {int(r) for r in urllib.parse.parse_qs(u.query).get("rom_ids", [])}
             return self.send(200, [{"id": sid, "rom_id": rid, "file_name": fn, "file_name_no_ext": fn.rsplit(".", 1)[0],
                                     "file_extension": fn.rsplit(".", 1)[1], "file_size_bytes": len(data), "user_id": 1,
-                                    "emulator": None, "slot": None, "missing_from_fs": False, "content_hash": hashlib.md5(data).hexdigest(),
+                                    "emulator": None, "slot": "autosave", "missing_from_fs": False, "content_hash": hashlib.md5(data).hexdigest(),
                                     "updated_at": "2026-10-31T15:44:32.123456+00:00", "created_at": "2026-10-31T15:44:32.123456+00:00",
                                     "download_path": f"/api/saves/{sid}/content/{fn}", "screenshot": None}
-                                   for sid, (rid, fn, data) in SAVES.items() if not pid or rid // 100000 == pid])
+                                   for sid, (rid, fn, data) in SAVES.items() if (not pid or rid // 100000 == pid) and
+                                   (not rids or rid in rids) and q.get("slot", "autosave") == "autosave"])
         if p.startswith("/api/saves/") and p.endswith("/content"):
             s = SAVES.get(int(parts[3]))
             return self.send(200, s[2], "application/octet-stream") if s else self.send(404, {"detail": "Save not found"})
         if p == "/api/states":
             return self.send(200, [])
+        if p.startswith("/api/devices/"):
+            return self.send(200, {"id": parts[3], "name": "test", "sync_enabled": True, "capabilities": {}})
+        return self.send(404, {"detail": "Not Found"})
+
+    def do_POST(self):
+        u = urllib.parse.urlsplit(self.path)
+        with open(LOG, "a") as f:
+            f.write(f"POST {u.path}?{u.query}\n")
+        body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+        if not self.headers.get("Authorization", "").startswith("Bearer rmm_"):
+            return self.send(403, {"detail": "Forbidden"})
+        if u.path == "/api/sync/negotiate":
+            with_save = {rid for rid, _, _ in SAVES.values()}
+            return self.send(200, {"session_id": 1, "operations": [{"rom_id": r, "slot": "autosave", "action": "download"}
+                                                                   for r in body.get("rom_ids", []) if r in with_save]})
+        if u.path.startswith("/api/sync/sessions/") and u.path.endswith("/complete"):
+            return self.send(200, {})
         return self.send(404, {"detail": "Not Found"})
 
 

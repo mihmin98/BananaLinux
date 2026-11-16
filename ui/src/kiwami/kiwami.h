@@ -20,7 +20,7 @@
 //   and progress per system (ra-stats.cpp), fetched when the page opens or on Y, kept on the card for offline. Games on
 //   this card (kiwami.ra.games): the library's games the emulators recorded achievements for (ra-games.cpp), A on one
 //   its achievements, locked and unlocked (ra-game.cpp), the game identified by hashing it as RetroArch does.
-//   Network > Home server > Show sync times (kiwami_sync_times in settings.conf, after Sync now): while a sync runs and
+//   Network > Home server > Show sync times (kiwami_sync_times in settings.conf, the page's last row): while a sync runs and
 //   Sync now is selected, a line under its bar with the phase, its time, its time left and the sync's time
 //   (sync-times.cpp, from banana-sync's sync.times: synctimes.h), Settings waking each second for it.
 //   Other systems > Second screen > Status on the game panel (kiwami_panel_status in settings.conf, after Game panel

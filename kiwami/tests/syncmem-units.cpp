@@ -1,5 +1,6 @@
 // banana-sync's RomM listing held small (ui/src/kiwami/syncmem.h), checked on its own: slim()'s copy of a game answers
-// every read Romm::manifest() makes exactly as the game RomM sent does, edge cases included, holds nothing else, and
+// every read Romm makes of a listed game (manifest(), romTitle(), romRegions(), romFiles() in ui/src/sync_romm.cpp)
+// exactly as the game RomM sent does, edge cases included, holds nothing else, and
 // lets the rest of the page go; Sync now's progress while the list is read; and the peak memory a sync's report ends
 // with. Built and run by kiwami/tests/romm-list.sh with the host's g++:
 //   g++ -std=c++17 -Wall -Werror -I ui/src kiwami/tests/syncmem-units.cpp ui/src/json.cpp -o syncmem-units
@@ -42,13 +43,31 @@ static void sameMember(const JVal& a, const JVal& b, const char* k, const std::s
 	checks++;
 }
 
-// every read of manifest()'s, the original against slim()'s copy
+// an array read for its strings, as romTitle() reads tags and romRegions() regions: each string element, in order
+static std::string strings(const JVal& g, const char* k)
+{
+	std::string out;
+	if (const JVal* a = g.get(k))
+		if (a->isArr()) for (auto& e : a->arr) if (e->isStr()) out += "[" + e->s + "]";
+	return out;
+}
+// a file's archive members, as romFiles() reads them: each one's size and CRC
+static std::string members(const JVal& f)
+{
+	std::string out;
+	if (const JVal* ms = f.get("archive_members"))
+		if (ms->isArr()) for (auto& m : ms->arr) out += n(m->num("size", -1)) + "/" + m->str("crc_hash") + ";";
+	return out;
+}
+
+// every read of Romm's, the original against slim()'s copy
 static void same(const JVal& game, const std::string& where)
 {
 	JPtr s = syncmem::slim(game);
 	CHECK(s && s->isObj());
 	if (!s) return;
 	for (const char* k : syncmem::GAME_KEYS) sameMember(game, *s, k, where);
+	for (const char* k : syncmem::GAME_STRINGS) EQ(strings(*s, k), strings(game, k));
 	const JVal* fa = game.get("files");
 	const JVal* fb = s->get("files");
 	CHECK((fa && fa->isArr()) == (fb && fb->isArr()));
@@ -56,7 +75,10 @@ static void same(const JVal& game, const std::string& where)
 	{
 		CHECK(fa->arr.size() == fb->arr.size());
 		for (size_t i = 0; i < fa->arr.size() && i < fb->arr.size(); i++)
+		{
 			for (const char* k : syncmem::FILE_KEYS) sameMember(*fa->arr[i], *fb->arr[i], k, where + " files[" + std::to_string(i) + "]");
+			EQ(members(*fb->arr[i]), members(*fa->arr[i]));
+		}
 	}
 	const JVal* ma = game.get("metadatum");
 	const JVal* mb = s->get("metadatum");
@@ -80,17 +102,27 @@ static void same(const JVal& game, const std::string& where)
 static void onlyKept(const JVal& s)
 {
 	std::set<std::string> game(std::begin(syncmem::GAME_KEYS), std::end(syncmem::GAME_KEYS)), file(std::begin(syncmem::FILE_KEYS), std::end(syncmem::FILE_KEYS)),
-		meta(std::begin(syncmem::META_KEYS), std::end(syncmem::META_KEYS));
+		meta(std::begin(syncmem::META_KEYS), std::end(syncmem::META_KEYS)), member(std::begin(syncmem::MEMBER_KEYS), std::end(syncmem::MEMBER_KEYS));
 	game.insert({ "files", "metadatum" });
+	for (const char* k : syncmem::GAME_STRINGS) game.insert(k);
+	file.insert("archive_members");
 	for (const char* k : syncmem::META_FIRST) meta.insert(k);
 	for (auto& m : s.obj)
 	{
 		if (!game.count(m.first)) { failed++; fprintf(stderr, "syncmem-units: FAIL the copy kept \"%s\"\n", m.first.c_str()); }
 		checks++;
 	}
+	// (tags and regions: strings only)
+	for (const char* k : syncmem::GAME_STRINGS)
+		if (const JVal* a = s.get(k)) for (auto& e : a->arr) CHECK(e->isStr());
 	if (const JVal* fs = s.get("files"))
 		for (auto& f : fs->arr)
+		{
 			for (auto& m : f->obj) { checks++; if (!file.count(m.first)) { failed++; fprintf(stderr, "syncmem-units: FAIL the copy kept files[].\"%s\"\n", m.first.c_str()); } }
+			if (const JVal* ms = f->get("archive_members"))
+				for (auto& e : ms->arr)
+					for (auto& m : e->obj) { checks++; if (!member.count(m.first)) { failed++; fprintf(stderr, "syncmem-units: FAIL the copy kept archive_members[].\"%s\"\n", m.first.c_str()); } }
+		}
 	if (const JVal* md = s.get("metadatum"))
 	{
 		for (auto& m : md->obj) { checks++; if (!meta.count(m.first)) { failed++; fprintf(stderr, "syncmem-units: FAIL the copy kept metadatum.\"%s\"\n", m.first.c_str()); } }
@@ -109,6 +141,7 @@ static void testSlim()
 	JPtr g = parse(std::string(R"j({"id": 200010, "platform_id": 2, "platform_slug": "gba", "fs_name": "Game 0010 (USA).gba",
 		"fs_name_no_ext": "Game 0010 (USA)", "name": "Game 0010", "fs_size_bytes": 11, "has_multiple_files": false,
 		"missing_from_fs": false, "summary": "About it.", "path_cover_large": "/assets/romm/resources/roms/2/200010/cover/big.png?ts=2026-10-31 15:44:32.123456+00:00",
+		"revision": "A", "tags": ["Beta", "Hack v1.2"], "regions": ["USA", "Europe"], "languages": ["En"], "updated_at": "2026-10-31T15:44:32+00:00",
 		"metadatum": {"rom_id": 200010, "genres": ["Action", "Puzzle"], "publishers": ["Banana", "Peel"], "first_release_date": 1262304000000, "average_rating": 7},
 		"files": [{"id": 2000100, "rom_id": 200010, "file_name": "Game 0010 (USA).gba", "file_path": "gba", "file_size_bytes": 11,
 			"full_path": "x", "crc_hash": null, "md5_hash": "ABC", "sha1_hash": "DEF", "category": null}], )j") + RA + "}");
@@ -118,8 +151,12 @@ static void testSlim()
 	onlyKept(*s);
 	EQ(s->str("fs_name"), "Game 0010 (USA).gba");
 	CHECK(!s->get("merged_ra_metadata") && !s->get("igdb_metadata") && !s->get("merged_screenshots") && !s->get("platform_slug"));
-	// (fs_name_no_ext is read by list() from the page itself, not by manifest())
-	CHECK(!s->get("fs_name_no_ext"));
+	EQ(s->str("fs_name_no_ext"), "Game 0010 (USA)");
+	EQ(s->str("revision"), "A");
+	EQ(s->str("updated_at"), "2026-10-31T15:44:32+00:00");
+	EQ(strings(*s, "tags"), "[Beta][Hack v1.2]");
+	EQ(strings(*s, "regions"), "[USA][Europe]");
+	CHECK(!s->get("languages"));
 	CHECK(s->get("metadatum")->get("genres")->arr.size() == 1 && s->get("metadatum")->get("publishers")->arr.size() == 1);
 
 	// the edge cases: nulls, a number for a name, a release date in seconds, scalars given as arrays and objects (the
@@ -127,14 +164,26 @@ static void testSlim()
 	JPtr e = parse(R"({"id": "300007", "platform_id": 3.0, "fs_name": ["not", "a", "name"], "name": 1942, "fs_size_bytes": null,
 		"has_multiple_files": "yes", "missing_from_fs": 1, "summary": null, "path_cover_large": {"url": "x"},
 		"metadatum": {"genres": [7, "Action"], "publishers": [], "first_release_date": "1262304000"},
-		"files": [{"id": 1, "file_name": "a.cue", "file_size_bytes": null, "sha1_hash": ["x"], "md5_hash": {"y": 1}}, "not an object", 5]})");
+		"tags": ["Beta", 7, null, ["x"], "", "Proto"], "regions": "USA", "revision": null,
+		"files": [{"id": 1, "file_name": "a.cue", "file_size_bytes": null, "sha1_hash": ["x"], "md5_hash": {"y": 1},
+			"archive_members": [{"size": 512, "crc_hash": "ABCD1234", "name": "a.bin"}, {"size": null}, "not a member", 3]}, "not an object", 5,
+			{"id": 2, "archive_members": {"size": 1}}]})");
 	if (!e) return;
 	same(*e, "the edge cases");
 	JPtr se = syncmem::slim(*e);
 	onlyKept(*se);
 	CHECK(se->get("summary") && se->get("summary")->kind == JVal::NUL);
 	CHECK(se->get("path_cover_large") && se->get("path_cover_large")->kind == JVal::NUL);
-	CHECK(se->get("files")->arr.size() == 3 && se->get("files")->arr[1]->isObj() && se->get("files")->arr[1]->obj.empty());
+	CHECK(se->get("files")->arr.size() == 4 && se->get("files")->arr[1]->isObj() && se->get("files")->arr[1]->obj.empty());
+	// tags: the strings only, the empty one too (romTitle() skips it itself); regions not an array: left out
+	EQ(strings(*se, "tags"), "[Beta][][Proto]");
+	CHECK(!se->get("regions"));
+	// archive_members: as many as there were, each its size and CRC (an empty object for one that isn't an object);
+	// one that isn't an array left out
+	const JVal* ms = se->get("files")->arr[0]->get("archive_members");
+	CHECK(ms && ms->isArr() && ms->arr.size() == 4 && ms->arr[2]->obj.empty());
+	EQ(members(*se->get("files")->arr[0]), "512/ABCD1234;-1/;-1/;-1/;");
+	CHECK(!se->get("files")->arr[3]->get("archive_members"));
 	CHECK(se->get("files")->arr[0]->get("file_size_bytes") != nullptr);	// present (null): manifest() takes its 0
 	EQ(se->get("metadatum")->get("genres")->arr[0]->s, "");
 	CHECK(se->get("metadatum")->get("publishers")->isArr() && se->get("metadatum")->get("publishers")->arr.empty());

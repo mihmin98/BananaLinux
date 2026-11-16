@@ -1,9 +1,10 @@
 #pragma once
 // banana-sync (kiwami): each phase of a Home server sync timed, for Network > Home server > Show sync times
-// (ui/src/sync.cpp). A phase is a status title: status() hands every line it writes to seen(), and a "running" line
-// whose title (Games 3/10 is Games, an empty one Starting) isn't the phase in hand starts a new one. Its start goes to
-// <run>/sync.times, one line written before that phase's first status, which the menu reads to draw the sync's and
-// the phase's clocks under Sync now's bar:
+// (ui/src/sync.cpp, sync_core.cpp, sync_romm.cpp). A phase is a status title: status() hands every line it writes to
+// seen(), and a "running" line whose title (Reading saves 2/6 is Reading saves, Downloading game 3 of 20 is
+// Downloading, an empty one Starting) isn't the phase in hand starts a new one. Its start goes to <run>/sync.times, one
+// line written before that phase's first status, which the menu reads to draw the sync's and the phase's clocks under
+// Sync now's bar:
 //   <banana-sync's pid> <the sync's start> <the phase's start> <the phase>
 // in CLOCK_MONOTONIC milliseconds, so time asleep isn't counted. The file goes when the sync ends ("done", "error"); a
 // sync killed leaves it, and the menu takes it only while its pid is sync.pid's. Each phase's duration, with its last
@@ -11,8 +12,8 @@
 // checked against the list, files removed, the gamelists, the saves read) get one through tick(), at most every
 // TICK_MS. With the setting off, none of this writes anything. banana-ui's side is at the end: the times file read
 // (parse()), and the line drawn under the bar (line(): the phase, its time, its time left, the sync's time), worked
-// out live from the status and the two starts (sync-times.cpp). Header-only: banana-sync is built from sync.cpp and
-// json.cpp alone.
+// out live from the status and the two starts (sync-times.cpp). Header-only: banana-sync's build recipe stays
+// upstream's.
 #include <algorithm>
 #include <cstdio>
 #include <ctime>
@@ -48,9 +49,27 @@ namespace banana::kiwami::synctimes
 			what = rest.substr(0, rest.find('|'));
 			return true;
 		}
-		// "Games 3/10" -> "Games": a trailing " <i>/<N>" dropped; i and N set to its numbers when there is one
+		// a run of digits, 1 to 18 of them
+		inline bool digits(const std::string& s)
+		{
+			return !s.empty() && s.size() <= 18 && s.find_first_not_of("0123456789") == std::string::npos;
+		}
+		// "Games 3/10" -> "Games", "Downloading game 3 of 20" -> "Downloading game": a trailing " <i>/<N>" or
+		// " <i> of <N>" dropped; i and N set to its numbers when there is one
 		inline std::string stripCount(const std::string& what, long long* i = nullptr, long long* n = nullptr)
 		{
+			size_t of = what.rfind(" of ");
+			if (of != std::string::npos && of > 0)
+			{
+				size_t sp = what.rfind(' ', of - 1);
+				std::string a = sp == std::string::npos ? "" : what.substr(sp + 1, of - sp - 1), b = what.substr(of + 4);
+				if (digits(a) && digits(b))
+				{
+					if (i) *i = std::stoll(a);
+					if (n) *n = std::stoll(b);
+					return what.substr(0, sp);
+				}
+			}
 			size_t sp = what.rfind(' ');
 			if (sp == std::string::npos) return what;
 			std::string c = what.substr(sp + 1);
@@ -63,14 +82,20 @@ namespace banana::kiwami::synctimes
 		}
 	}
 
-	// a status line's phase: "running <a> <b> <what>|<item>" -> what, without a trailing " <i>/<N>" ("Games 3/10" is
-	// Games), "Starting" for an empty what (as Settings draws it); "" for a line that isn't running
+	// the games downloaded: banana-sync's "Downloading game <i> of <N>" for several, "Downloading" for one (its bar's
+	// <a> of <b> in MB), one phase whichever it is
+	constexpr const char* DOWNLOADING = "Downloading";
+
+	// a status line's phase: "running <a> <b> <what>|<item>" -> what, without a trailing " <i>/<N>" or " <i> of <N>"
+	// ("Games 3/10" is Games), Downloading for the games downloaded, "Starting" for an empty what (as Settings draws
+	// it); "" for a line that isn't running
 	inline std::string phaseOf(const std::string& status)
 	{
 		long long a, b;
 		std::string what;
 		if (!detail::fields(status, a, b, what)) return "";
 		what = detail::stripCount(what);
+		if (what == "Downloading game") return DOWNLOADING;
 		return what.empty() ? "Starting" : what;
 	}
 
@@ -107,6 +132,15 @@ namespace banana::kiwami::synctimes
 		inline std::string timesFile(const Tracker& t) { return t.run + "/sync.times"; }
 	}
 
+	// the last line status() wrote, whatever the setting (seen() keeps it): status() keeps its own in sync_core.cpp,
+	// out of the fork's reach, and RomM's listing writes its progress only over a sync's "running" line
+	// (sync_romm.cpp), so a run with none (Get games' refresh) writes no status
+	inline std::string& lastStatus()
+	{
+		static std::string s;
+		return s;
+	}
+
 	// doSync: a fresh tracker; the sync's clock starts. Writes nothing
 	inline void start(bool on, const std::string& run)
 	{
@@ -120,6 +154,7 @@ namespace banana::kiwami::synctimes
 	// status()'s hook: each line written. A new phase's start is in sync.times before the line is in the status file
 	inline void seen(const std::string& status)
 	{
+		lastStatus() = status;
 		Tracker& t = tracker();
 		if (!t.on || t.ended) return;
 		long long now = monoMs(), a, b;
@@ -152,7 +187,7 @@ namespace banana::kiwami::synctimes
 
 	// a step that writes no status of its own, at the top of its loop: the item in hand counted, and a status
 	// "running <n> <total> <phase>|<item>" written for the first and the last, and in between at most every TICK_MS.
-	// It goes through status() (sync.cpp's), so seen() takes the phase from it
+	// It goes through status() (sync_core.cpp's), so seen() takes the phase from it
 	inline void tick(void (*status)(const std::string&), const char* phase, size_t total, const std::string& item)
 	{
 		Tracker& t = tracker();
@@ -179,8 +214,11 @@ namespace banana::kiwami::synctimes
 			snprintf(b, sizeof b, "times: %s %.1f s", p.name.c_str(), p.ms / 1000.0);
 			std::string l = b;
 			long long i = 0, n = 0;
-			if (p.name == "Games" && detail::stripCount(p.what, &i, &n) != p.what)
-				l += ", " + std::to_string(p.a) + " of " + std::to_string(p.b) + " MB, " + std::to_string(i) + " of " + std::to_string(n) + " files";
+			if (p.name == DOWNLOADING)
+			{
+				l += ", " + std::to_string(p.a) + " of " + std::to_string(p.b) + " MB";
+				if (detail::stripCount(p.what, &i, &n) != p.what) l += ", " + std::to_string(i) + " of " + std::to_string(n) + " games";
+			}
 			else if (p.b > 0) l += ", " + std::to_string(p.a) + " of " + std::to_string(p.b);
 			out.push_back(l);
 		}
@@ -229,8 +267,8 @@ namespace banana::kiwami::synctimes
 	constexpr double ETA_AFTER_MS = 3000;	// no estimate before the phase has run this long
 
 	// the phase's time left in seconds, -1 for none: its elapsed time times (total - done) / done, once it has run
-	// ETA_AFTER_MS and done one. Listing games: the games read of the expected; Games: the larger of the MB (the bar's)
-	// and the files (Games i/N: i - 1 done of N); any other: the item in hand less one, of the total
+	// ETA_AFTER_MS and done one. Listing games: the games read of the expected; Downloading: the larger of the MB (the
+	// bar's) and the games (Downloading game i of N: i - 1 done of N); any other: the item in hand less one, of the total
 	inline double secondsLeft(const std::string& status, double phaseMs)
 	{
 		long long a, b;
@@ -244,7 +282,7 @@ namespace banana::kiwami::synctimes
 		};
 		double s;
 		if (phase == "Listing games") s = est(a, b);
-		else if (phase == "Games")
+		else if (phase == DOWNLOADING)
 		{
 			long long i = 0, n = 0;
 			detail::stripCount(what, &i, &n);

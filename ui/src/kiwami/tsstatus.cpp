@@ -1,7 +1,7 @@
 // banana-ui (kiwami): Tailscale's state from the helper's status output (tsstatus.h).
 #include "tsstatus.h"
 #include "json.h"
-#include "qrcodegen.hpp"
+#include "qr/qrcodegen.hpp"	// (Nayuki's, vendored by upstream for RomM's pairing: ui/src/qr/UPSTREAM)
 #include <algorithm>
 #include <cstdio>
 #include <ctime>

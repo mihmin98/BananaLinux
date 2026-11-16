@@ -101,8 +101,9 @@ namespace banana
 		}
 		else if (strcmp(group, "Home server") == 0)
 		{
-			// Show sync times (sync-times.cpp), right after Sync now: Home server isn't in build()'s ORDER, so its rows
-			// stay in the order they're added, and the hook's place is the row's
+			// Show sync times (sync-times.cpp), the page's last row: Home server isn't in build()'s ORDER, so its rows
+			// stay in the order they're added, and the hook's place (after Forget this server) is the row's. Not after
+			// Sync now: upstream's tests reach the rows below it by counting Downs
 			Item it;
 			it.section = group; it.icon = "phone"; it.label = "Show sync times"; it.key = "kiwami_sync_times";
 			it.help = "On: while a sync runs, the line under Sync now's bar shows how long the current step has taken, its "

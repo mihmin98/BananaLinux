@@ -29,7 +29,7 @@ echo "third_party: $(ls -d ui/src/kiwami/third_party/*/ | wc -l) vendored librar
 make -s -C ui kiwami-c
 T=$(mktemp -d)
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp \
-    ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp ui/src/kiwami/rahash.cpp \
+    ui/src/qr/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp ui/src/kiwami/rahash.cpp \
     ui/src/kiwami/ra7z.cpp ui/src/kiwami/rachd.cpp ui/src/zip.cpp ui/src/zipdir.cpp \
     $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -lz
 "$T/units" kiwami/tests/tailscale kiwami/tests/ra

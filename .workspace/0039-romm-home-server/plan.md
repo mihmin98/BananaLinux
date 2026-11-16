@@ -48,8 +48,8 @@ The rework and the re-ports:
   - both list the same games.
 - **A3**: With `kiwami_sync_times = on`, a full sync writes `sync.times` and statuses for each phase in a known order,
   and `sync.log` ends with each phase's time. A sync of one game (before or after it) never writes `sync.times`. With
-  the setting off, none of it happens. Show sync times sits right after Sync now on the Home server page, for both
-  RomM and Romhost.
+  the setting off, none of it happens. Show sync times is the Home server page's last row, for both RomM and Romhost
+  (*Deviations*, 2026-11-16).
 
 BIOS:
 
@@ -570,7 +570,7 @@ is `/data/banana/logs/` on the device):
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | Update to the build. Home server: Forget, then Server > Pair by QR, approved in RomM. Open Home server. | Paired. The rows are the rework's plus Show sync times after Sync now, Installs from RomM (Off) and BIOS. RomM's token page lists `firmware.read`. | `sync.log`, `banana-ui.log`, a photo of the page | A4, A8, A15 | not run |
+| M1 | rgds-plus | Update to the build. Home server: Forget, then Server > Pair by QR, approved in RomM. Open Home server. | Paired. The rows are the rework's plus Show sync times (last), Installs from RomM (Off) and BIOS. RomM's token page lists `firmware.read`. | `sync.log`, `banana-ui.log`, a photo of the page | A4, A8, A15 | not run |
 | M2 | rgds-plus | BIOS: open the page. Start with the missing files ticked. Then play a DS game under DraStic and under BananaDS, and a PS1 game. | The DS, GBA and PS1 files in `/data/bios`, and DraStic's three in `/data/drastic/system/`. Reopened, all "On the card". The games start. | `banana-ui.log`, `ls -l /data/bios /data/drastic/system` | A5, A6, A8 | not run |
 | M3 | rgds-plus | Installs from RomM On. On a phone, in RomM's web UI, install a GBA game and a PS1 game on this device. Switch Wi-Fi off and on, wait a minute. | Both games on the card (in their shelves). RomM shows them done. | `sync.log`, a photo of RomM's install status | A15, A16, A18 | not run |
 | M4 | rgds-plus | As M3, with Games go to: Second SD card and the card out. Sync now. Then put the card in and Sync now again. | The first time: waiting (RomM: taken). The second: on the second card, done. | `sync.log` both times | A17 | not run |
@@ -586,13 +586,51 @@ Notes from the runs (what the logs showed, what was fixed):
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
 
+- **2026-11-16, step 1: the QR library.** banana-ui didn't link after the merge: the fork's `ui/src/kiwami/qrcodegen.cpp`
+  (Tailscale's login QR) and the rework's `ui/src/qr/qrcodegen.cpp` (RomM's pairing QR) both define `qrcodegen::*`.
+  The investigation had called the two copies harmless. They are byte-identical (1.8.0, `720f62bd`), so the fork's
+  copy is deleted and `tsstatus.cpp` includes `qr/qrcodegen.hpp` (as upstream's `settings_homesrv.cpp` does: `ui-objects.sh` finds its includers by that path in the `.d` files). `kiwami/tests/ci.sh`'s units build,
+  `units.cpp`'s comment and `ui-objects.sh`'s watched header move to `ui/src/qr/`. `kiwami/DEPENDENCIES.md`'s row moves
+  to *Upstream's, that the fork depends on*. Agreed with the user.
+- **2026-11-16, step 1: Show sync times' download phase is "Downloading".** The rework's download status is "Downloading
+  game <i> of <N>", or "Downloading" for one game, where `main`'s was "Games i/N". `synctimes::phaseOf()` now strips a
+  trailing " <i> of <N>" too, and takes both forms as one phase, Downloading. Its report line is "times: Downloading
+  <s> s, <a> of <b> MB, <i> of <n> games", and its time left is the larger of the MB's and the games'. The plan's
+  "Games" in the phase lists is Downloading. The rework also brings the games before the saves, so a full Sync now's
+  phases are Starting, Listing games, Checking the card, Downloading, Gamelists, Saves, Reading states. Reading saves
+  comes once a slot has a head to read (the next sync). Agreed with the user.
+- **2026-11-16, step 1: the listing's progress reads `synctimes::lastStatus()`.** `statusLine` is in `sync_core.cpp`'s
+  anonymous namespace in the rework, out of `sync_romm.cpp`'s reach. `synctimes::seen()`, already hooked in `status()`,
+  keeps the last line whatever the setting, and the progress hook writes only over a "running" one. No extra hook
+  line.
+- **2026-11-16, step 1: Show sync times is the Home server page's last row**, not right after Sync now (A3 changed). The
+  rework's `ui/tests/sync.sh` reaches Get games, Manage saves, Save slot and Device name by counting Downs from Server,
+  and the fork's row after Sync now shifted them all: about 25 of its cases failed in `make test`. No upstream test
+  reaches the page's end, so the hook (`Kiwami::rows(*this, HS)`) is one line after Forget this server's `add`,
+  outside the RomM and Romhost branches, where the plan had one in each. `sync-times-ui.sh` reaches it Up from Server.
+  Steps 3 and 8 add their rows through the same hook, so Installs from RomM and BIOS follow it at the page's end (their
+  order among the fork's rows as planned). Agreed with the user.
+- **2026-11-16, step 1: the tests, beyond the plan's list** (agreed with the user).
+  - `romm-big.py` also answers the rework's RomM 5.4 save path: `POST /api/sync/negotiate` and the session's
+    `/complete`, and `/api/saves` filtered by `rom_ids` and `slot`. Its two saves are in the `autosave` slot at real
+    sizes (GBA 128 KiB, DS 512 KiB): the rework refuses others. The test cards carry a device id.
+  - `romm-list.sh` also runs one game's sync before it (A2 names it): the peak, the save in place, only GBA listed,
+    no `sync.times`. `--compare` takes a commit as well as a binary and builds that commit's `banana-sync` from
+    `git archive` (no worktree): `--compare cab127ba`.
+  - `sync-times.sh` runs against `ui/tests/fake-romm.py` alone: a full Sync now with two games on Get games' list
+    (the downloads answered 3 s late, for the Downloading phase), the next Sync now, a games-only one, and one game's
+    sync before it and after it (never timed). `--compare` leaves out the Listing games statuses and the `memory:`
+    line, which are 0022's and which the rework's own build doesn't have.
+  - `synctimes`' `tick()` lines also go back at the rework's places in `sync.cpp` (`want`, `gone`, the gamelists,
+    Romhost's saves), as on `main`.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. The rework taken in, with 0022 and 0024 re-ported | todo | |
+| 1. The rework taken in, with 0022 and 0024 re-ported | done | Merge upstream's Home server rework (cab127ba) into k/0039-romm-home-server |
 | 2. BIOS downloads in banana-sync | todo | |
 | 3. The BIOS page in Settings | todo | |
 | 4. A game's sync before it starts, without listing its system | todo | |

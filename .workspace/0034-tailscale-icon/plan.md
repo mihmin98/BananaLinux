@@ -4,8 +4,8 @@ Issue: #34 · Branch: `k/0034-tailscale-icon` · Investigation: [investigation.m
 
 ## Summary
 
-While the handheld is in its tailnet (`tailscale0` has an IPv4 address), the Dark and Light themes' status bar shows
-Tailscale's icon right after the Wi-Fi icon. It is drawn with the Wi-Fi icon's tint, so it dims when Wi-Fi is down,
+While the handheld is in its tailnet (`tailscale0` has an IPv4 address), the Dark and Light themes' status bar (and
+the colour themes made on them, such as the image's Ocean) shows Tailscale's icon right after the Wi-Fi icon. It is drawn with the Wi-Fi icon's tint, so it dims when Wi-Fi is down,
 and it rises with the bar after a move. The battery, the battery percentage, the brand plate, the version and the logo
 move right to make room; the date and the clock stay where they are. Nothing changes in any other state, theme or
 screen.
@@ -25,7 +25,8 @@ menu.
 
 - **A1**: given Tailscale off, or `tailscale0` with no address (logged out, an expired key, waiting for a login), when
   the menu draws, then the bar is upstream's, pixel for pixel, and no icon line is logged.
-- **A2**: given `tailscale0` with an IPv4 address, when the Dark or Light menu's top screen is drawn, then:
+- **A2**: given `tailscale0` with an IPv4 address, when the Dark or Light menu's top screen is drawn (or a colour
+  theme's, which is one of them in other colours), then:
   - Tailscale's icon is drawn one gap (8 px at 640x480, 13 px at 1024x768) after the Wi-Fi icon, top-aligned with it
     and with its tint;
   - every later draw of the bar's left part (battery, its level and bolt, the percentage, the brand plate, the stage
@@ -45,7 +46,7 @@ menu.
   be shown, then nothing is drawn or moved, and `kiwami: tailscale icon: no Wi-Fi icon in the bar` is logged once.
 - **A7**: the check runs only while the menu's top screen is drawn, at most every 2 s (an `ioctl`). No thread, timer or
   wake-up is added. The icon appears or goes at the menu's next redraw: a press, the clock's minute, or a resume.
-- **A8**: the layout themes, Carts, and Settings' screens are unchanged with the tailnet up. Neither are the host's
+- **A8**: the layout themes (those with `screens`), Carts, and Settings' screens are unchanged with the tailnet up. Neither are the host's
   overlays (the notices, the flight recorder's dot), which are drawn on the host's backend.
 - **A9**: headless runs (`make test`, the theme previews Settings renders) never show the icon unless
   `KIWAMI_TS_IFACE` names an interface, so they don't depend on the host's own Tailscale.
@@ -245,8 +246,9 @@ Each step is one commit, and leaves the tree building and `make test` passing.
     3. **Crowded**: `KIWAMI_TS_IFACE=lo`, Light, `battery = percent`, `clock = 12h` in `settings.conf`,
        `battery 100 charging` in the script, `KIWAMI_BRAND_NOTE="Alpha 0.5.3.4"`. The `shown` line, with
        `ends at` + `round(8 × scale)` ≤ `starts at` (A5).
-    4. **Other themes**: `KIWAMI_TS_IFACE=lo` with `theme = carts`, and with a layout theme (`theme = ocean`). No
-       `tailscale icon` line (A8).
+    4. **Other themes**: `KIWAMI_TS_IFACE=lo` with `theme = carts`, and with a layout theme (`theme = user:canvas`,
+       `BANANA_THEMES` the image's themes). No `tailscale icon` line (A8). A colour theme (`theme = user:ocean`): the
+       `shown` line, with room before the date (A2).
     5. **The shots** are checked for being there and not blank, as `tailscale-ui.sh` does. The `home-top` shots of
        runs 2 and 3 are left in `$OUT` for a look.
   - Pass at the end of the step: `make test` (no `KIWAMI_TS_IFACE`: unchanged), `kiwami/tests/ci.sh .buildroot`,
@@ -282,7 +284,7 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 | Off headless | `kiwami/tests/tailscale-icon-ui.sh` | no line, shots identical with no or a missing interface | A1, A9 |
 | On, the real engine | `kiwami/tests/tailscale-icon-ui.sh` | the line, the shift, the alpha as Wi-Fi's, regions right and below unchanged, at both sizes | A2, A3 |
 | Crowded bar | `kiwami/tests/tailscale-icon-ui.sh` | Light, percentage, charging, 12-hour clock, version note: room left before the date | A5 |
-| Other themes and Settings | `kiwami/tests/tailscale-icon-ui.sh` | Carts and a layout theme log nothing; Settings shots unchanged | A8 |
+| Other themes and Settings | `kiwami/tests/tailscale-icon-ui.sh` | Carts and a layout theme log nothing; a colour theme shows it; Settings shots unchanged | A2, A8 |
 | Upstream's tests | `make test` | unchanged with no `KIWAMI_TS_IFACE` | A1, A9 |
 
 ## Manual tests
@@ -299,7 +301,7 @@ Run `ip -4 addr show tailscale0` over SSH where asked.
 | M3 | rgds-plus | Settings > Network > Tailscale: switch off, back to the menu, press. Switch on, back, wait ~10 s, press. Then Log out, back, press. | Off: no icon, the bar as before. On: the icon back. Logged out (waiting for the login): no icon. | `banana-ui.log` (`hidden` / `shown` lines), `tailscale.log`, `ip -4 addr show tailscale0` after each | A1, A7, A10 | not run |
 | M4 | rgds-plus | Logged in, Settings > Network > Wi-Fi Off, back to the menu, press. Then Wi-Fi On, wait, press. | Wi-Fi off: the icon dimmed like the Wi-Fi icon. On: both in full. | `banana-ui.log` (alpha `0.35`, then `1.00`) | A3, A10 | not run |
 | M5 | rgds-plus | Logged in, close the lid (sleep) for a minute, open it. Look at once and after Wi-Fi reconnects (press). | The icon still there; dimmed while Wi-Fi reconnects if the Wi-Fi icon is, then full. | `banana-ui.log`, `tailscale.log`, `/run/banana/messages` (tailscaled reconnecting) | A3, A7, A10 | not run |
-| M6 | rgds-plus | Settings > Menu look > Theme Light, then a layout theme, then Carts; back to Dark. | Light: the icon in Light's ink. Layout theme and Carts: their own bars, no icon. | `banana-ui.log` | A8, A10 | not run |
+| M6 | rgds-plus | Settings > Menu look > Theme Light, then Ocean (a colour theme), then a layout theme (Canvas), then Carts; back to Dark. | Light and Ocean: the icon in their ink. Layout theme and Carts: their own bars, no icon. | `banana-ui.log` | A8, A10 | not run |
 | M7 | rgds-plus | Settings > Menu look: Battery as percentage, Clock 12h, at 100% on the charger. | Nothing overlaps; room left before the date. A photo. | `banana-ui.log` (`ends at` / `starts at`) | A5 | not run |
 | M8 | rgds-plus | If a key expiry or a device approval can be arranged (admin console: expire the key, or require approval and log in again). Optional. | Expired: no icon. Approval wait: noted whether the icon shows (accepted either way). | `banana-ui.log`, `tailscale.log`, `ip -4 addr show tailscale0` | A1, A10 | not run |
 
@@ -312,6 +314,11 @@ Where the implementation turned out different from this plan, why, and what chan
 - 2026-11-16, step 1: the log's "the left part ends at" is the furthest right edge of the moved draws, not the
   right edge of the last one. The engine draws the logo after the version text, and the logo ends before it; the
   step's own expected value (`ends at 320`, the version text's edge) was already the furthest. Step 1's wording fixed.
+- 2026-11-16, step 2: the colour themes (the image's Ocean, Sakura, Sunset and Terminal, and a user's own JSON with
+  colours and no `screens`) are the Dark or Light engine in other colours, drawn through the same `RndsMenu`, so the
+  icon shows on them too. The plan had taken Ocean for a layout theme. Agreed with the user: it shows there (the same
+  bar, the theme's ink). The test's layout theme is Canvas, and a run on Ocean checks the icon is shown; A2, A8, the
+  step's test 4, the tests table and M6 updated. No code change.
 
 ## Progress
 
@@ -320,5 +327,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. The backend that puts the icon after Wi-Fi | done | Tailscale icon: a backend that puts it after the Wi-Fi icon |
-| 2. The menu's bar through it | todo | |
+| 2. The menu's bar through it | done | Tailscale icon: the menu's status bar draws through it |
 | 3. Final check | todo | |

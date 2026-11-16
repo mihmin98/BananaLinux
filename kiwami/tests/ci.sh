@@ -233,6 +233,10 @@ if [ -x ui/banana-ui ]; then kiwami/tests/sync-times-ui.sh; else echo "sync-time
 # Tailscale in banana-ui's Settings, headless, when banana-ui is built (CI builds it before)
 if [ -x ui/banana-ui ]; then kiwami/tests/tailscale-ui.sh; else echo "tailscale-ui: skipped, no ui/banana-ui (make ui)"; fi
 
+# Tailscale's icon in the status bar, headless on the real engine, when banana-ui is built: off and on, the shift, room
+# before the date, the rest of both screens unchanged, the other themes
+if [ -x ui/banana-ui ]; then kiwami/tests/tailscale-icon-ui.sh; else echo "tailscale-icon-ui: skipped, no ui/banana-ui (make ui)"; fi
+
 # .7z games on the cartridge systems' shelves, headless, when banana-ui is built
 if [ -x ui/banana-ui ]; then kiwami/tests/7z-ui.sh; else echo "7z-ui: skipped, no ui/banana-ui (make ui)"; fi
 

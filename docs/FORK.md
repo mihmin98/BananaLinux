@@ -218,7 +218,8 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
        system/rootfs/etc/banana/retroarch.cfg \
        system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
        buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update ui/Makefile \
-       ui/src/nds/ ui/src/gba/ ui/src/pokemon.h ui/src/pokemon.cpp ui/src/settings_gamepanel.cpp
+       ui/src/nds/ ui/src/gba/ ui/src/pokemon.h ui/src/pokemon.cpp ui/src/settings_gamepanel.cpp \
+       ui/rnds/RndsUI.cpp
    ```
    (the systems list, whose N64 `ext` line `kiwami/post-build.sh` adds `7z` to (upstream lists it on the other six
    cartridge systems; the build stops if N64's line is gone; a new cartridge system without it may want it too), the defconfigs the fork adds to, the share script
@@ -330,7 +331,13 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    advice); a new use of `Gen` in the logic or the pages, which takes the Gen III/IV path for the fork's `GEN_I` and
    `GEN_II` unless a hook skips it; `pkmn::parseReply` or the request pacing reworked, which the fork's reader uses as
    upstream's GBA companion does. And upstream adding a Game Boy or Game Boy Color companion of its own: the fork's is
-   then retired at that merge, its hooks, rows and data files removed (`kiwami/GB-POKEMON.md`, *What it doesn't do*).
+   then retired at that merge, its hooks, rows and data files removed (`kiwami/GB-POKEMON.md`, *What it doesn't do*). And
+   the status bar's Tailscale icon: the fork's `kiwami::StatusBar` (`ui/src/kiwami/statusbar.h`, handed to `RndsMenu`
+   by `main.cpp`'s two hooks instead of the host's backend) relies on the order the engine's `drawStatus` draws the bar
+   in: the Wi-Fi sprite first at (18, 24), then the left part, which it moves right, then the clock, right-aligned,
+   the first draw reaching past x 560, which it leaves where it is. A re-import of ROCKNIXDS that changes `drawStatus`
+   merges without a conflict; `kiwami/tests/tailscale-icon-ui.sh` (in `ci.sh`) fails on it, and the backend draws
+   nothing when it can't find the Wi-Fi draw.
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

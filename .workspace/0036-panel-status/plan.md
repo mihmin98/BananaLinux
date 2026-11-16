@@ -346,6 +346,35 @@ Each step is one commit, and leaves the tree building, `make test` and `kiwami/t
 - An image built for `rgds-plus` with the branch, for the manual tests.
 - The manual tests below all passed, their outcomes in the table.
 - Every acceptance criterion is met: each is listed by at least one test below, and those passed.
+- **Commit**: `Status on the game panel: the final check`
+- **Results, the automated part** (2026-11-16, at `5ddee12f`):
+  - `make ui`, `make -C ui`, `make test` and `kiwami/tests/ci.sh .buildroot` passed at the end of step 3, on the code
+    committed as it was (nothing changed since): `panelstatus-units` 68 checks, `statusbar-units` 53,
+    `panel-status-ui`, `tailscale-icon-ui` and `gbpk-ui: all checks passed`, `ui-objects` byte for byte (94 objects),
+    `ci exit 0`. The warnings `make -C ui` prints are upstream's files' (`soft.cpp`, `settings_files.cpp`,
+    `nds/rom.cpp`, the trigraph in `settings.cpp`). `make -B -C system/bananad CFLAGS="-O2 -Werror"` builds.
+  - The hooks: `main...HEAD` changes 18 upstream files, the same 18 that have `kiwami:`. This feature's are the five
+    lines in `ui/src/settings_gamepanel.cpp` (the include, `gameOpen`'s, `gameUpdate`'s, the hint's `{` and `}`), and
+    nothing in `main.cpp`, `ui/rnds/` or `ui/assets/`.
+  - **The renders' baseline is `kiwami` before the feature (`81934a26`), not `main`**, as in 0030 and 0034: the fork
+    already differs from `main` on screen. `81934a26` from a `git archive` copy, `make ui`, and `ui/tests/run.sh` on
+    both sides at once, both passing. Of the 875 shots both have, 741 are identical, 38 have the same pixels in
+    other bytes (an encoding difference), and 96 differ, each in one of:
+    - the clock's minute: the menu's at the bar's right end (at rest, risen, under the low-battery warning, and the
+      icons' and `ux-*` shots), the layout themes' (`layout-*`, `badtheme`, `badrange`), the time zone page's
+      (`st-tz`), and the save states' times (`states-sel`, files each run makes);
+    - noise 0030 and 0034 recorded: Bshare's random PIN (`bs-options-pin`), the free space of the disk each copy is
+      on (`files-cards`), `bt-audio`, and the DS overlay's animation (`ndsoverlay-open`, `-drag`);
+    - `settings-page` (the Nintendo DS page caught with its highlight moving): Settings' motion follows the real
+      clock (`steady_clock`, `settings.cpp:2189`). Rendered three more times on both sides at once, each binary's
+      shots differ from its own at 1024x768, and match the other's in 4 of the 6 pairs: noise of the moment it's taken.
+
+    None is in the game panel: of upstream's 52 game panel shots (`gshot`), 50 are identical and the other two are
+    `states-sel`'s times. The 180 `sv-*` shots are the branch's alone: the baseline copy's Bshare tool doesn't build
+    with this machine's OpenSSL (as in 0030 and 0034).
+  - `kiwami/DEPENDENCIES.md` unchanged (no dependency). `docs/FORK.md` updated in step 3. `docs/ARCHITECTURE.md` and
+    `CLAUDE.md` unchanged: nothing structural.
+  - Left: the image for `rgds-plus` from the branch, which the user builds, and the manual tests M1-M10.
 
 ## Automated tests
 
@@ -403,6 +432,10 @@ Where the implementation turned out different from this plan, why, and what chan
     and the one string `Played`.
   - The crowded check's gap at 1024x768 is 13 device px, which is 8.125 in the trace's 640x480 units.
   - `kiwami/tests/ci.sh` changed too: its comment above `panel-status-ui.sh` says what the test now covers.
+- **2026-11-16, step 4: the renders compared with `kiwami` before the feature (`81934a26`), not `main`**, which the
+  fork already differs from on screen (as in 0030 and 0034). And `make test`, `make -C ui` and `ci.sh` are step 3's
+  runs, on the same code. The final check is committed in two parts, as in 0034: its automated part, then the
+  manual tests' outcomes with the final check done.
 
 ## Progress
 
@@ -413,4 +446,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 1. The strip's state, with no screen | done | Status on the game panel: the strip's state, with no screen |
 | 2. The Second screen row | done | Status on the game panel: the Second screen row |
 | 3. The strip drawn instead of the hint | done | Status on the game panel: the strip drawn instead of the hint |
-| 4. Final check | todo | |
+| 4. Final check | in progress: the automated part done | Status on the game panel: the final check's automated part |

@@ -24,10 +24,15 @@
 //   Sync now is selected, a line under its bar with the phase, its time, its time left and the sync's time
 //   (sync-times.cpp, from banana-sync's sync.times: synctimes.h), Settings waking each second for it.
 //   Other systems > Second screen > Status on the game panel (kiwami_panel_status in settings.conf, after Game panel
-//   idle time, Off by default): read at each game's start.
+//   idle time, Off by default): read at each game's start. On, the game panel's tiles view draws a strip where its
+//   hint line was (panel-status.cpp, its state in panelstatus.h): Wi-Fi and Tailscale's mark on the left, the time
+//   played this game in the centre, the battery, the date and the time on the right. settings_gamepanel.cpp calls it
+//   through four kiwami: lines (gameOpen, gameUpdate, the hint in gameFrame); the keyboard and the companions' pages
+//   are drawn before the hint and return, as without it.
 #include "../settings.h"
 #include <functional>
 #include "grid.h"
+#include "panelstatus.h"
 #include "synctimes.h"
 #include "tsstatus.h"
 
@@ -58,6 +63,9 @@ namespace banana
 		std::string entryHelp() const;				// the keyboard's help, typing for the fork's pages
 		Result entered(std::string& text);			// the keyboard's Done, for the fork's pages
 		void syncTimes(float x, float y, float w);	// syncBar(): the line under Sync now's bar
+		void panelOpened();							// gameOpen(): the status strip's setting read, and its game started
+		bool panelUpdate(double t);					// gameUpdate(): true when the strip has something new to draw
+		bool panelStatus();							// gameFrame(): the strip drawn (true), or upstream's hint to draw
 
 	private:
 		Settings& st;
@@ -78,6 +86,14 @@ namespace banana
 		kiwami::synctimes::Times times;
 		bool timesValid = false;					// the file's pid is sync.pid's
 		std::string timesText, timesShape;			// the line, and its shape last logged
+
+		// Status on the game panel's strip (panel-status.cpp): its state, made at the first game with the setting on
+		bool panelOn = false;						// kiwami_panel_status = on at this game's start
+		std::unique_ptr<kiwami::PanelStatus> panel;
+		std::string panelTrace;						// KIWAMI_PANEL_TRACE's last line (the parts' places)
+		rnds::TexPtr panelSprite(const std::string& name, bool big);	// wifi, battery (@1x or @1.6x) or the mark (tsmark)
+		void panelBattery(float bx, float by, const kiwami::PanelReadings& r, const rnds::Color& level, const rnds::Color& ink,
+			const rnds::Color& edge);				// the battery sprite's level and bolt, as the engine's status bar draws them
 
 		// Tailscale's part of the hooks (kiwami.cpp: the row's value, asked in the background)
 		void tsOpened();

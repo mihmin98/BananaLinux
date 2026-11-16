@@ -255,7 +255,9 @@ if [ -x ui/banana-ui ]; then kiwami/tests/ra-ui.sh; else echo "ra-ui: skipped, n
 # pages for Crystal fed PokeDaisy's captures, a ROM it doesn't know, upstream's panel after it
 if [ -x ui/banana-ui ]; then kiwami/tests/gbpk-ui.sh; else echo "gbpk-ui: skipped, no ui/banana-ui (make ui)"; fi
 
-# Status on the game panel in banana-ui, headless, when banana-ui is built: its Second screen row
+# Status on the game panel in banana-ui, headless, when banana-ui is built: its Second screen row, the strip on the
+# tiles view (the minute, the battery and network read every 10 s, the most crowded strip, Light, six tiles), and the
+# keyboard and the companion's pages as with it off
 if [ -x ui/banana-ui ]; then kiwami/tests/panel-status-ui.sh; else echo "panel-status-ui: skipped, no ui/banana-ui (make ui)"; fi
 
 # post-build.sh vetoes tailscaled's state and RetroArch master's credentials file in upstream's share script, each

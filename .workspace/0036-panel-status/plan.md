@@ -394,6 +394,15 @@ Where the implementation turned out different from this plan, why, and what chan
   3 minutes usually leaves the battery's percentage, Wi-Fi and Tailscale as they were: M5 would find no line. Agreed
   with the user: the first update after a sleep always logs one line, marked, whether its readings changed or not
   (one line per sleep). Changed: the Summary's *Logging*, A12, step 1's `logLine()` and its sleep test.
+- **2026-11-16, step 3: small changes while drawing the strip.**
+  - The palette is Settings' `pal(st.light)` (`settings_draw.h`), not `Kiwami::colours()`: the bolt's dark edge is
+    the palette's `blackish`, which `Colours` doesn't carry, and widening it would touch `colours()`'s `kiwami:` line
+    in `settings.cpp`. The colours are the same ones.
+  - The percentage is drawn in ink (the plan didn't say), red when low, as the engine's status bar draws it in ink.
+  - The strip's texts are drawn as they are (`AsNamed`), not through the menu's language: they are numbers, the date
+    and the one string `Played`.
+  - The crowded check's gap at 1024x768 is 13 device px, which is 8.125 in the trace's 640x480 units.
+  - `kiwami/tests/ci.sh` changed too: its comment above `panel-status-ui.sh` says what the test now covers.
 
 ## Progress
 
@@ -403,5 +412,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. The strip's state, with no screen | done | Status on the game panel: the strip's state, with no screen |
 | 2. The Second screen row | done | Status on the game panel: the Second screen row |
-| 3. The strip drawn instead of the hint | todo | |
+| 3. The strip drawn instead of the hint | done | Status on the game panel: the strip drawn instead of the hint |
 | 4. Final check | todo | |

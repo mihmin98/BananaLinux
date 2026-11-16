@@ -337,7 +337,18 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    in: the Wi-Fi sprite first at (18, 24), then the left part, which it moves right, then the clock, right-aligned,
    the first draw reaching past x 560, which it leaves where it is. A re-import of ROCKNIXDS that changes `drawStatus`
    merges without a conflict; `kiwami/tests/tailscale-icon-ui.sh` (in `ci.sh`) fails on it, and the backend draws
-   nothing when it can't find the Wi-Fi draw.
+   nothing when it can't find the Wi-Fi draw. And the game panel's status strip (Second screen > Status on the game
+   panel, `ui/src/kiwami/panel-status.cpp`): four `kiwami:` lines in `ui/src/settings_gamepanel.cpp`, the include
+   after `nds/overlay.h`, `panelOpened()` as the last line of `gameOpen`, `panelUpdate(t)` before `gameUpdate`'s
+   flash check, and `if (!kw || !kw->panelStatus()) {` with its `}` around `gameFrame`'s three hint lines (not
+   re-indented). A rework of the panel's bottom line or of `gameUpdate` moves them, visibly; the strip is drawn only
+   where the hint was, so a new view upstream draws before the hint and returns from (as the keyboard and the
+   companions' pages do) shows no strip, and one drawn below the tiles shows it. Its row is inserted after Second
+   screen's `bottom_idle_seconds` row; if upstream drops that key the row falls to the end of the page. The strip
+   formats its time and date with `Library::clockText`/`dateText`'s `strftime` strings (`%H:%M`, `%I:%M %p`,
+   `%m/%d`), copied into `PanelStatus` so the tests can give it a clock: a change upstream makes to the menu's formats
+   is followed there. `kiwami/tests/panel-status-ui.sh` (in `ci.sh`) catches each of these: the row's place, the
+   strip's lines and its shots against the panel with the setting off.
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
    (rendered from a second checkout, `git worktree add ../banana-main main`).
 

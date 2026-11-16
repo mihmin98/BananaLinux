@@ -13,6 +13,7 @@
 #include "gba/host.h"
 #include "nds/pages.h"
 #include "nds/overlay.h"
+#include "kiwami/kiwami.h"	// kiwami: the game panel's status strip
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -376,6 +377,7 @@ namespace banana
 		// and the panel showed no achievements
 		if (raw->token.empty() && !raw->user.empty() && account("ra_user") == raw->user) raw->token = account("ra_retroarch_token");
 		if (cfgValue(cfg, "cheevos_enable") != "true" || raw->user.empty()) raw->state = 4;
+		if (kw) kw->panelOpened();	// kiwami: the status strip's setting and start, per game
 	}
 
 	void Settings::gameRom(const std::string& rom, const std::string& stateDir)
@@ -615,6 +617,7 @@ namespace banana
 				gameComp->want(gcView == GC_GAME ? -1 : gcView, gcList);
 			}
 		}
+		if (kw && kw->panelUpdate(t)) changed = true;	// kiwami: the status strip (the minute, battery, network)
 		if (gFlash >= 0 && t >= gFlashUntil && gDown < 0) { gFlash = -1; changed = true; }
 		return changed;
 	}
@@ -970,9 +973,11 @@ namespace banana
 			float kw = text(kk, false, 14, 0, 0, p.muted, false, 0, true);
 			text(kk, false, 14, x + tw / 2 - kw / 2, y + 90, on ? p.onPickAccent : p.muted);
 		}
+		if (!kw || !kw->panelStatus()) {	// kiwami: the status strip instead of the hint
 		std::string hint = gTouch ? "Tap a tile, or hold F with the button under it" : "Hold F with the button under each tile";
 		float hw = text(hint, false, 15, 0, 0, p.muted, false, 0, true);
 		text(hint, false, 15, 320 - hw / 2, 438, p.muted);
+		}	// kiwami:
 		if (compOn()) compIcon();
 		be->endScreen();
 	}

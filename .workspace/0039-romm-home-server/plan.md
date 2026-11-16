@@ -626,6 +626,10 @@ Where the implementation turned out different from this plan, why, and what chan
 - **2026-11-16, step 2: the pairing's scopes are read from the fork's stand-in.** Upstream's `fake-romm.py` logs no
   request bodies (`/test/log` holds the method and path), so `romm-kiwami.py` writes the device pairing's
   `requested_scopes` to its own log ("init scopes: ..."), which `romm-bios.sh` checks for A4.
+- **2026-11-16, step 3: `sync-times-ui.sh` and `docs/FORK.md` change too.** BIOS is the page's last row for a paired
+  RomM, after Show sync times, so `sync-times-ui.sh` reaches Show sync times with two Ups from Server for RomM (one
+  for Romhost), and `docs/FORK.md`'s note on the row's place names the fork's rows after Forget and the BIOS row's
+  test. Step 8's Installs from RomM row (between them) adds one more Up for RomM. Agreed with the user.
 
 ## Progress
 
@@ -635,7 +639,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. The rework taken in, with 0022 and 0024 re-ported | done | Merge upstream's Home server rework (cab127ba) into k/0039-romm-home-server |
 | 2. BIOS downloads in banana-sync | done | RomM home server: BIOS downloads from RomM into /data/bios and DraStic's folder |
-| 3. The BIOS page in Settings | todo | |
+| 3. The BIOS page in Settings | done | RomM home server: a BIOS page on Home server |
 | 4. A game's sync before it starts, without listing its system | todo | |
 | 5. ROMs found by their hash in Sync now | todo | |
 | 6. The game list kept on the card and brought up to date | todo | |

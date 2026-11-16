@@ -1,6 +1,6 @@
 // banana-ui (kiwami): the fork's rows and pages in Settings (kiwami.h): the rows and the hooks' plumbing, each page
 // hook going to the page that is open, and the groups' grid; the pages are in their own files (tailscale.cpp,
-// ra-account.cpp, ra-stats.cpp, ra-games.cpp, ra-game.cpp), and Show sync times' line in sync-times.cpp.
+// ra-account.cpp, ra-stats.cpp, ra-games.cpp, ra-game.cpp, romm-bios.cpp), and Show sync times' line in sync-times.cpp.
 #include "ra.h"
 #include <algorithm>
 #include <cstdio>
@@ -101,9 +101,9 @@ namespace banana
 		}
 		else if (strcmp(group, "Home server") == 0)
 		{
-			// Show sync times (sync-times.cpp), the page's last row: Home server isn't in build()'s ORDER, so its rows
-			// stay in the order they're added, and the hook's place (after Forget this server) is the row's. Not after
-			// Sync now: upstream's tests reach the rows below it by counting Downs
+			// Show sync times (sync-times.cpp), the first of the fork's rows at the page's end: Home server isn't in
+			// build()'s ORDER, so its rows stay in the order they're added, and the hook's place (after Forget this server)
+			// is theirs. Not after Sync now: upstream's tests reach the rows below it by counting Downs
 			Item it;
 			it.section = group; it.icon = "phone"; it.label = "Show sync times"; it.key = "kiwami_sync_times";
 			it.help = "On: while a sync runs, the line under Sync now's bar shows how long the current step has taken, its "
@@ -113,6 +113,15 @@ namespace banana
 			it.names = { "Off", "On" }; it.values = { "off", "on" };
 			s.items.push_back(it);
 			keys = it.key;
+			// BIOS (romm-bios.cpp), a paired RomM's: RomM serves its firmware files (Romhost has none to give)
+			if (s.hsRowsFor == "romm")
+			{
+				Item b;
+				b.section = group; b.icon = "phone"; b.label = "BIOS"; b.key = "kiwami.romm.bios"; b.kind = Item::PAGE;
+				b.help = "BIOS files from RomM for the DS, the Game Boy Advance and the PlayStation, into the card's bios folder.";
+				s.items.push_back(b);
+				keys += " " + b.key;
+			}
 		}
 		else if (strcmp(group, "Second screen") == 0)
 		{
@@ -185,6 +194,7 @@ namespace banana
 		if (key == "kiwami.ra.account") { pageOpen = Page::RA_ACCOUNT; return raOpen(); }
 		if (key == "kiwami.ra.stats") { pageOpen = Page::RA_STATS; return raStatsOpen(); }
 		if (key == "kiwami.ra.games") { pageOpen = Page::RA_GAMES; return raGamesOpen(); }
+		if (key == "kiwami.romm.bios") { pageOpen = Page::ROMM_BIOS; return biosOpen(); }
 		return NONE;
 	}
 
@@ -192,14 +202,14 @@ namespace banana
 	{
 		return pageOpen == Page::TAILSCALE ? tsPress(k) : pageOpen == Page::RA_ACCOUNT ? raPress(k)
 			: pageOpen == Page::RA_STATS ? raStatsPress(k) : pageOpen == Page::RA_GAMES ? raGamesPress(k)
-			: pageOpen == Page::RA_GAME ? raGamePress(k) : NONE;
+			: pageOpen == Page::RA_GAME ? raGamePress(k) : pageOpen == Page::ROMM_BIOS ? biosPress(k) : NONE;
 	}
 
 	Settings::Result Settings::Kiwami::touch(float cx, float cy)
 	{
 		return pageOpen == Page::TAILSCALE ? tsTouch(cx, cy) : pageOpen == Page::RA_ACCOUNT ? raTouch(cx, cy)
 			: pageOpen == Page::RA_STATS ? raStatsTouch(cx, cy) : pageOpen == Page::RA_GAMES ? raGamesTouch(cx, cy)
-			: pageOpen == Page::RA_GAME ? raGameTouch(cx, cy) : NONE;
+			: pageOpen == Page::RA_GAME ? raGameTouch(cx, cy) : pageOpen == Page::ROMM_BIOS ? biosTouch(cx, cy) : NONE;
 	}
 
 	void Settings::Kiwami::render()
@@ -209,6 +219,7 @@ namespace banana
 		else if (pageOpen == Page::RA_STATS) raStatsRender();
 		else if (pageOpen == Page::RA_GAMES) raGamesRender();
 		else if (pageOpen == Page::RA_GAME) raGameRender();
+		else if (pageOpen == Page::ROMM_BIOS) biosRender();
 	}
 
 	std::string Settings::Kiwami::entryHelp() const
@@ -223,14 +234,15 @@ namespace banana
 
 	bool Settings::Kiwami::update(double t)
 	{
-		bool mode = syncMode(), ra = raUpdate(), times = timesUpdate(t);
-		return tsUpdate(t) || mode || ra || times;
+		bool mode = syncMode(), ra = raUpdate(), times = timesUpdate(t), b = biosUpdate();
+		return tsUpdate(t) || mode || ra || times || b;
 	}
 
 	int Settings::Kiwami::wake(double t, bool shown) const
 	{
 		int w = tsWake(t, shown && pageOpen == Page::TAILSCALE), r = raWake(), s = timesWake(t);
 		w = w < 0 ? r : r < 0 ? w : std::min(w, r);
+		if (biosJob.running()) w = w < 0 ? 100 : std::min(w, 100);	// (BIOS's banana-sync, its answer taken in)
 		return w < 0 ? s : s < 0 ? w : std::min(w, s);
 	}
 

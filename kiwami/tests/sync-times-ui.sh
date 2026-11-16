@@ -2,8 +2,9 @@
 # Network > Home server > Show sync times in banana-ui's Settings, headless at both panel sizes (sync-times.cpp): the
 # line under Sync now's bar while a sync runs (its text, logged once a shape), its clocks moving between two shots, its
 # time left only once the phase has run 3 s, nothing for a times file of another sync (its pid) or another phase, with
-# the row Off, or on another row; and the row itself, the page's last (Up from Server, round the end), writing
-# kiwami_sync_times, for a RomM and for a Romhost (the Home server page shows Sync now only when paired: the fixture holds a pairing). The sync is a
+# the row Off, or on another row; and the row itself, after Forget this server at the page's end (Up from Server, round
+# the end: once for a Romhost, twice for a RomM, whose BIOS row follows it), writing kiwami_sync_times, for a RomM and
+# for a Romhost (the Home server page shows Sync now only when paired: the fixture holds a pairing). The sync is a
 # stand-in: KIWAMI_SYNC_RUN names a folder with sync.status, sync.pid and sync.times as banana-sync writes them, and the
 # headless clock is at 102401 ms on Sync now. Needs ui/banana-ui (make ui) and ImageMagick (the test library's art).
 # Run by kiwami/tests/ci.sh when banana-ui is built, or by hand:
@@ -85,10 +86,12 @@ for size in 640x480 1024x768; do
     # another row (Server): nothing
     st $size other-row "$ON" "$GAMES" "4242 2001 92001 Downloading" "$TO_SERVER; wait 1; shot other"
     none
-    # the row: the page's last, for RomM and for Romhost (Up from Server), and A on it writes the setting
+    # the row, for RomM and for Romhost (Up from Server: RomM's BIOS row is the page's last, below it), and A on it
+    # writes the setting
     for b in romm romhost; do
         paired $b
-        st $size row-$b "wifi = on" "$GAMES" "4242 2001 92001 Downloading" "$TO_SERVER; press up; wait 1; press a; wait 1; shot row-$b"
+        up="press up"; [ $b = romm ] && up="press up; press up"
+        st $size row-$b "wifi = on" "$GAMES" "4242 2001 92001 Downloading" "$TO_SERVER; $up; wait 1; press a; wait 1; shot row-$b"
         logged "banana-ui: kiwami: rows in Home server: kiwami_sync_times"
         grep -qx 'kiwami_sync_times *= *"*on"*' "$CONF" || { echo "FAIL $size $name: settings.conf has no kiwami_sync_times = on: $(grep kiwami_sync "$CONF")"; fail=1; }
     done

@@ -281,11 +281,12 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    `tailscale-ui.sh` catch. Upstream's own tests reach Network's rows from both ends (two Downs to Bluetooth, Up to
    File sharing, two Ups to Home server), which is why Tailscale sits between Bluetooth and Home server. Home server's
    Show sync times is placed by its hook's position, the line after the Forget this server row's `add`, because Home
-   server isn't in `ORDER`: the page's last row, for RomM and Romhost alike. Not after Sync now, where it was before
+   server isn't in `ORDER`: after Forget, for RomM and Romhost alike, and the fork's other rows after it (a paired
+   RomM's BIOS, `ui/src/kiwami/romm-bios.cpp`, the page's last). Not after Sync now, where it was before
    the Home server rework: the rework's `ui/tests/sync.sh` reaches Get games, Manage saves, Save slot and Device name
    by counting Downs from Server, and no upstream test reaches the page's end (none goes Up in it). A row upstream adds
-   after Forget, or a test of its that goes Up from Server, needs the hook moved; `sync-times-ui.sh`'s row check (Up
-   from Server) and `make test` catch it. If upstream adds the page to `ORDER`, the row needs a place in
+   after Forget, or a test of its that goes Up from Server, needs the hook moved; `sync-times-ui.sh`'s and
+   `romm-bios-ui.sh`'s row checks (Up from Server) and `make test` catch it. If upstream adds the page to `ORDER`, the row needs a place in
    `Kiwami::place`'s `FOLLOWS`. And RomM's
    game list in banana-sync: `ui/src/sync_romm.cpp`'s `Romm::list()` asks for 200 games a page, keeps each as
    `syncmem::slim()`'s copy (`ui/src/kiwami/syncmem.h`) and, in a sync, says after each page how far it got in the

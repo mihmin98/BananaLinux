@@ -232,6 +232,9 @@ kiwami/tests/romm-list.sh
 # Home server > Show sync times: banana-sync's phases, its times file and the report's times
 kiwami/tests/sync-times.sh
 
+# RomM's BIOS files in banana-sync: the pairing's scopes, the list, the downloads into bios/ and DraStic's folder
+kiwami/tests/romm-bios.sh
+
 # Show sync times in banana-ui's Settings, headless, when banana-ui is built: the line under Sync now's bar and the row
 if [ -x ui/banana-ui ]; then kiwami/tests/sync-times-ui.sh; else echo "sync-times-ui: skipped, no ui/banana-ui (make ui)"; fi
 

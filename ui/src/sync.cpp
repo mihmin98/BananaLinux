@@ -73,6 +73,7 @@
 #include "sync_util.h"
 #include "kiwami/syncmem.h"	// kiwami: RomM's game list kept small (banana-sync's memory)
 #include "kiwami/synctimes.h"	// kiwami: each phase's time (Home server > Show sync times)
+#include "kiwami/romm/romm.h"	// kiwami: the fork's RomM additions (the kiwami verb)
 #include <arpa/inet.h>
 #include <cerrno>
 #include <dirent.h>
@@ -402,6 +403,7 @@ namespace
 		unlink(gamesCacheFile().c_str());
 		unlink(getFile().c_str());
 		unlink(getFailedFile().c_str());
+		banana::kiwami::romm::dropState();	// kiwami: the fork's state of that server
 	}
 	void writeGamesCache(const Conf& c, const Manifest& m)
 	{
@@ -1043,7 +1045,7 @@ namespace
 			// RomM's device pairing: a code shown here, typed (approved) in RomM's web UI at /pair/device
 			// (as the device it then registers: RomM makes the device from this when the code is approved)
 			std::string b = "{\"client_device_identifier\": " + jsonStr("bananaos-" + cardId()) + ", " + deviceFields(n) + ", "
-				"\"requested_scopes\": [\"me.read\", \"roms.read\", \"platforms.read\", \"assets.read\", \"assets.write\", \"devices.read\", \"devices.write\"]}";
+				"\"requested_scopes\": [\"me.read\", \"roms.read\", \"platforms.read\", \"assets.read\", \"assets.write\", \"devices.read\", \"devices.write\"" + banana::kiwami::romm::SCOPES + "]}";	// kiwami: the fork's scopes too
 			Req q; q.method = "POST"; q.url = url + "/api/auth/device/init"; q.body = &b; q.headers = { "Content-Type: application/json" }; q.follow = false;
 			Resp r = http(q);
 			JPtr j = (r.code == 200 || r.code == 201) ? r.json() : nullptr;
@@ -1615,6 +1617,7 @@ int main(int argc, char** argv)
 		return 0;
 	}
 	if (!cu.load()) { status("error libcurl is missing"); fprintf(stderr, "banana-sync: libcurl is missing\n"); return 1; }
+	if (cmd == "kiwami") return banana::kiwami::romm::command(args);	// kiwami: the fork's verbs (BIOS)
 	if (cmd == "discover")
 	{
 		for (auto& s : discover(2.0)) printf("ROMHOST\t%s\t%s\n", s.first.c_str(), s.second.c_str());

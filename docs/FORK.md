@@ -302,7 +302,17 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    and its old saves' and states' listing, `sync()`). `doSync`'s `start()` line times no sync of one game (`onlyRom`).
    `phaseOf()` takes the downloads' "Downloading game <i> of <N>" and "Downloading" as one phase, Downloading. A title
    upstream rewords, or a new step that writes no status, shows in `kiwami/tests/sync-times.sh`'s phase lists, which
-   then need the new name. And banana-ui's rule in
+   then need the new name. And the fork's RomM additions in banana-sync (`ui/src/kiwami/romm/`, header-only, the
+   `kiwami` verb: BIOS from RomM's firmware so far): `sync.cpp` includes `kiwami/romm/romm.h`, the device pairing's
+   `requested_scopes` line ends with the fork's `SCOPES` (`firmware.read`, `collections.read`), `main()` hands
+   `kiwami` to `romm::command()` right after libcurl is loaded (the settings, the certificates and the paths are read
+   by then), and `dropServerLists()` (Forget, and a pairing with another server) drops the fork's
+   `banana/kiwami-romm.json` too. `sync_romm.cpp` exports its platforms' mapping as `bsync::kiwamiFolder()`, one line
+   after its anonymous namespace that copies `list()`'s own (`ROMM_SLUGS`, then `BANANA_FOLDERS` by `fs_slug`): if
+   upstream changes that mapping, the line follows it. A scope upstream adds to its own list goes before the fork's;
+   if upstream starts asking for `firmware.read` itself, the fork's `SCOPES` drops it. The fork's verbs reach RomM
+   through upstream's `newRomm()`, `Backend::call()` and `fetchTo()`, so a change to those shows in
+   `kiwami/tests/romm-bios.sh`. And banana-ui's rule in
    `ui/Makefile`: `kiwami.mk` compiles its `SRC` one file per call with the rule's command, so a change to that command
    (a flag, a variable, how it reads `SRC`) is followed in `kiwami.mk`'s object rules. `kiwami/tests/ui-objects.sh`
    (in `ci.sh`) fails when the two no longer make the same binary. A source upstream adds to `SRC` is compiled as an

@@ -1642,6 +1642,7 @@ namespace bsync
 		}
 	};
 	}
+	std::string kiwamiFolder(const JVal& p) { auto it = ROMM_SLUGS.find(p.str("slug")); return it != ROMM_SLUGS.end() ? it->second : BANANA_FOLDERS.count(p.str("fs_slug")) ? p.str("fs_slug") : ""; }	// kiwami: list()'s mapping, for the fork's romm.h
 
 	std::unique_ptr<Backend> newRomm(Conf& c) { return std::unique_ptr<Backend>(new Romm(c)); }
 }

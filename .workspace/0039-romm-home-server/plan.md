@@ -623,6 +623,9 @@ Where the implementation turned out different from this plan, why, and what chan
     line, which are 0022's and which the rework's own build doesn't have.
   - `synctimes`' `tick()` lines also go back at the rework's places in `sync.cpp` (`want`, `gone`, the gamelists,
     Romhost's saves), as on `main`.
+- **2026-11-16, step 2: the pairing's scopes are read from the fork's stand-in.** Upstream's `fake-romm.py` logs no
+  request bodies (`/test/log` holds the method and path), so `romm-kiwami.py` writes the device pairing's
+  `requested_scopes` to its own log ("init scopes: ..."), which `romm-bios.sh` checks for A4.
 
 ## Progress
 
@@ -631,7 +634,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. The rework taken in, with 0022 and 0024 re-ported | done | Merge upstream's Home server rework (cab127ba) into k/0039-romm-home-server |
-| 2. BIOS downloads in banana-sync | todo | |
+| 2. BIOS downloads in banana-sync | done | RomM home server: BIOS downloads from RomM into /data/bios and DraStic's folder |
 | 3. The BIOS page in Settings | todo | |
 | 4. A game's sync before it starts, without listing its system | todo | |
 | 5. ROMs found by their hash in Sync now | todo | |

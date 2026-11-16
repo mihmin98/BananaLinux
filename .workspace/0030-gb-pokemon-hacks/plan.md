@@ -1118,15 +1118,25 @@ from the branch at the step named.
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | After step 5. Crystal Legacy from Game Boy Color: Party, the bag, Dex, Map against the game's screens; a wild battle with balls, a trainer battle; the Guide page. | The hack's title in the log; the party, the 84-slot bag and the place match; damage ranges and a Ghost move's category hold; the guide's next milestone is the save's. | `banana-ui.log`: `gb companion: Crystal (or Crystal Legacy...)`, `Crystal Legacy (v1.3.1) read in N ms`, `guide: N milestones` | A1, A4, A9, A12 | not run |
-| M2 | rgds-plus | After step 7. Yellow Legacy: as M1, and Pikachu's summary. | As M1; Pikachu's friendship shown; the 59-slot bag. | `banana-ui.log` | A1, A5, A12 | not run |
-| M3 | rgds-plus | After step 11. PureRed v2.7.7 and PureGreen v2.7.6, each from Game Boy (`.gb`) and from Game Boy Color: Party, a battle against a Pokémon of one of its types (a Floating Weezing or a Hardened Onix if the save has one; Tri Attack otherwise), the type NPC switching a species back, the battle options' four matchups switched, a signature move, a Hyper Ball throw, the Guide page. | Chips name and colour the hack's types; the matchups and damage follow the options; the switched species shows its original types after the NPC; the signature move's power; the guide's levels are the ROM's. | `banana-ui.log`: `PureRGB: N species with their original types, matchups 0x...` after each switch | A1, A6, A10, A11, A12, A14 | not run |
-| M4 | rgds-plus | After step 14. Crystal Clear v2.6.0 and v2.5.11 (one Color Filter build and one SGB Mode build among them): Party, Map (a landmark past the Fast Ship), a move description, a Dex page, a battle, the Guide page. | Text reads whole (no stray characters); the landmark placed on its region; the guide by region. | `banana-ui.log`: no `text: unknown routine` line | A1, A7, A8, A12 | not run |
-| M5 | rgds-plus | A version of a hack that isn't listed (an older Crystal Legacy or PureRGB, if the user has one), then retail Crystal and Red. | "Not supported" alone for the first; retail as before. | `banana-ui.log`: `not a release the companion knows` | A2, A3 | not run |
-| M6 | rgds-plus | PureRed with its COLORS option on, Crystal Legacy and Crystal Clear: Frontend on Auto (BananaFront) and on RetroArch, the Game Boy Color core gambatte then SameBoy; a battle's start in each. | The pages follow the game in all; PureRed's party stays right through the battle's palette fade. | `banana-ui.log` | A15 | not run |
-| M7 | rgds-plus | One hack mid-battle: close the lid a minute, open it, fight on. A minute of walking with RetroArch's frame counter, row Off then On. | The pages resume and follow; the same frame rate both ways. | `banana-ui.log`, `/data/banana/logs/bananad.log` around the sleep | A15, A16 | not run |
+| M1 | rgds-plus | After step 5. Crystal Legacy from Game Boy Color: Party, the bag, Dex, Map against the game's screens; a wild battle with balls, a trainer battle; the Guide page. | The hack's title in the log; the party and the place match; a wild battle's catch chance lists each ball in the bag (no page shows the bag itself); damage ranges and a Ghost move's category hold; the guide's next milestone is the save's. | `banana-ui.log`: `gb companion: Crystal (or Crystal Legacy...)`, `Crystal Legacy (v1.3.1) read in N ms`, `guide: N milestones` | A1, A4, A9, A12 | passed, a quick check (2026-11-16) |
+| M2 | rgds-plus | After step 7. Yellow Legacy: as M1, and Pikachu's summary. | As M1; Pikachu's friendship shown. | `banana-ui.log` | A1, A5, A12 | passed, a quick check (2026-11-16) |
+| M3 | rgds-plus | After step 11. PureRed v2.7.7 and PureGreen v2.7.6, each from Game Boy (`.gb`) and from Game Boy Color: Party, a battle against a Pokémon of one of its types (a Floating Weezing or a Hardened Onix if the save has one; Tri Attack otherwise), the type NPC switching a species back, the battle options' four matchups switched, a signature move, a Hyper Ball throw, the Guide page. | Chips name and colour the hack's types; the matchups and damage follow the options; the switched species shows its original types after the NPC; the signature move's power; the guide's levels are the ROM's. | `banana-ui.log`: `PureRGB: N species with their original types, matchups 0x...` after each switch | A1, A6, A10, A11, A12, A14 | passed, a quick check (2026-11-16) |
+| M4 | rgds-plus | After step 14. Crystal Clear v2.6.0 and v2.5.11 (one Color Filter build and one SGB Mode build among them): Party, Map (a landmark past the Fast Ship), a move description, a Dex page, a battle, the Guide page. | Text reads whole (no stray characters); the landmark placed on its region; the guide by region. | `banana-ui.log`: no `text: unknown routine` line | A1, A7, A8, A12 | passed, a quick check (2026-11-16) |
+| M5 | rgds-plus | A version of a hack that isn't listed (an older Crystal Legacy or PureRGB, if the user has one), then retail Crystal and Red. | "Not supported" alone for the first; retail as before. | `banana-ui.log`: `not a release the companion knows` | A2, A3 | passed, a quick check (2026-11-16) |
+| M6 | rgds-plus | PureRed with its COLORS option on, Crystal Legacy and Crystal Clear: Frontend on Auto (BananaFront) and on RetroArch, the Game Boy Color core gambatte then SameBoy; a battle's start in each. | The pages follow the game in all; PureRed's party stays right through the battle's palette fade. | `banana-ui.log` | A15 | passed, a quick check (2026-11-16) |
+| M7 | rgds-plus | One hack mid-battle: close the lid a minute, open it, fight on. A minute of walking with RetroArch's frame counter, row Off then On. | The pages resume and follow; the same frame rate both ways. | `banana-ui.log`, `/data/banana/logs/bananad.log` around the sleep | A15, A16 | passed, a quick check (2026-11-16) |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- **2026-11-16**: the user ran M1 to M7 on the RG DS Plus with an image of the branch and approved them all, from what
+  the pages showed; no logs were passed back for analysis. **The runs were quick, not thorough**: each feature was
+  tried once or so, to see that it works, not through the steps' every case. A test marked passed here is no evidence
+  that the feature always worked: a later bug in what this feature added is investigated from the code and the
+  device, not ruled out by these runs. The bag has no page of its own (upstream's companion has
+  none): it shows as a wild battle's *Catch chance*, a row per ball in the bag, as the Team page's *TMs to use* and in
+  what *Catch now* can reach (rods, Surf, Rock Smash). The user saw each hack's balls listed there, so M1's and M2's
+  "84-slot" and "59-slot" bag, which nothing on screen shows, are reworded to that; the capacities stay covered by the
+  captures in `gbpk-units` (A4, A5).
 
 ## Deviations
 
@@ -1452,4 +1462,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 13. Crystal Clear | done | GB Pokémon hacks: Crystal Clear, its packed text, its memory and its ROM |
 | 14. Crystal Clear's guide | done | GB Pokémon hacks: Crystal Clear's guide, built from its ROM by region |
 | 15. The documentation and the weight | done | GB Pokémon hacks: the documentation, and what the hacks weigh |
-| 16. Final check | automated part passed (2026-11-16); waiting on M1 to M7 | |
+| 16. Final check | done | GB Pokémon hacks: the manual tests, all passed |

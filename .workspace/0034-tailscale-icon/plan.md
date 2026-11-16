@@ -294,7 +294,9 @@ Each step is one commit, and leaves the tree building and `make test` passing.
     frames vary both ways; nothing over 12 ms (A7).
   - `kiwami/DEPENDENCIES.md` unchanged (no dependency). `docs/FORK.md` updated in step 2. `docs/ARCHITECTURE.md` and
     `CLAUDE.md` describe nothing this changes (the one "status bar" is the low-battery warning).
-  - Left: the `rgds-plus` image and the manual tests M1-M8.
+  - The manual tests: M1-M8 passed on the RG DS Plus (image 0.5.3.4 from `0bea5d14`), as the user reported them,
+    no logs analysed (*Manual tests*). Every criterion A1-A10 is covered by an automated or a manual test, and they
+    passed.
 
 ## Automated tests
 
@@ -321,16 +323,20 @@ Run `ip -4 addr show tailscale0` over SSH where asked.
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | Tailscale on and logged in, Wi-Fi on. Restart; wait for the menu; press a direction after ~10 s. | The icon after Wi-Fi, battery and brand moved right, date and clock where they were; nothing overlaps. A photo of the top screen. | `banana-ui.log` (`kiwami: tailscale icon: shown …`), `tailscale.log`, `ip -4 addr show tailscale0` | A2, A5, A10 | not run |
-| M2 | rgds-plus | Move left and right on the home screen and in a game list. | The icon rises with the bar every time, never apart from Wi-Fi. | — | A4, A10 | not run |
-| M3 | rgds-plus | Settings > Network > Tailscale: switch off, back to the menu, press. Switch on, back, wait ~10 s, press. Then Log out, back, press. | Off: no icon, the bar as before. On: the icon back. Logged out (waiting for the login): no icon. | `banana-ui.log` (`hidden` / `shown` lines), `tailscale.log`, `ip -4 addr show tailscale0` after each | A1, A7, A10 | not run |
-| M4 | rgds-plus | Logged in, Settings > Network > Wi-Fi Off, back to the menu, press. Then Wi-Fi On, wait, press. | Wi-Fi off: the icon dimmed like the Wi-Fi icon. On: both in full. | `banana-ui.log` (alpha `0.35`, then `1.00`) | A3, A10 | not run |
-| M5 | rgds-plus | Logged in, close the lid (sleep) for a minute, open it. Look at once and after Wi-Fi reconnects (press). | The icon still there; dimmed while Wi-Fi reconnects if the Wi-Fi icon is, then full. | `banana-ui.log`, `tailscale.log`, `/run/banana/messages` (tailscaled reconnecting) | A3, A7, A10 | not run |
-| M6 | rgds-plus | Settings > Menu look > Theme Light, then Ocean (a colour theme), then a layout theme (Canvas), then Carts; back to Dark. | Light and Ocean: the icon in their ink. Layout theme and Carts: their own bars, no icon. | `banana-ui.log` | A8, A10 | not run |
-| M7 | rgds-plus | Settings > Menu look: Battery as percentage, Clock 12h, at 100% on the charger. | Nothing overlaps; room left before the date. A photo. | `banana-ui.log` (`ends at` / `starts at`) | A5 | not run |
-| M8 | rgds-plus | If a key expiry or a device approval can be arranged (admin console: expire the key, or require approval and log in again). Optional. | Expired: no icon. Approval wait: noted whether the icon shows (accepted either way). | `banana-ui.log`, `tailscale.log`, `ip -4 addr show tailscale0` | A1, A10 | not run |
+| M1 | rgds-plus | Tailscale on and logged in, Wi-Fi on. Restart; wait for the menu; press a direction after ~10 s. | The icon after Wi-Fi, battery and brand moved right, date and clock where they were; nothing overlaps. A photo of the top screen. | `banana-ui.log` (`kiwami: tailscale icon: shown …`), `tailscale.log`, `ip -4 addr show tailscale0` | A2, A5, A10 | passed |
+| M2 | rgds-plus | Move left and right on the home screen and in a game list. | The icon rises with the bar every time, never apart from Wi-Fi. | — | A4, A10 | passed |
+| M3 | rgds-plus | Settings > Network > Tailscale: switch off, back to the menu, press. Switch on, back, wait ~10 s, press. Then Log out, back, press. | Off: no icon, the bar as before. On: the icon back. Logged out (waiting for the login): no icon. | `banana-ui.log` (`hidden` / `shown` lines), `tailscale.log`, `ip -4 addr show tailscale0` after each | A1, A7, A10 | passed |
+| M4 | rgds-plus | Logged in, Settings > Network > Wi-Fi Off, back to the menu, press. Then Wi-Fi On, wait, press. | Wi-Fi off: the icon dimmed like the Wi-Fi icon. On: both in full. | `banana-ui.log` (alpha `0.35`, then `1.00`) | A3, A10 | passed |
+| M5 | rgds-plus | Logged in, close the lid (sleep) for a minute, open it. Look at once and after Wi-Fi reconnects (press). | The icon still there; dimmed while Wi-Fi reconnects if the Wi-Fi icon is, then full. | `banana-ui.log`, `tailscale.log`, `/run/banana/messages` (tailscaled reconnecting) | A3, A7, A10 | passed |
+| M6 | rgds-plus | Settings > Menu look > Theme Light, then Ocean (a colour theme), then a layout theme (Canvas), then Carts; back to Dark. | Light and Ocean: the icon in their ink. Layout theme and Carts: their own bars, no icon. | `banana-ui.log` | A8, A10 | passed |
+| M7 | rgds-plus | Settings > Menu look: Battery as percentage, Clock 12h, at 100% on the charger. | Nothing overlaps; room left before the date. A photo. | `banana-ui.log` (`ends at` / `starts at`) | A5 | passed |
+| M8 | rgds-plus | If a key expiry or a device approval can be arranged (admin console: expire the key, or require approval and log in again). Optional. | Expired: no icon. Approval wait: noted whether the icon shows (accepted either way). | `banana-ui.log`, `tailscale.log`, `ip -4 addr show tailscale0` | A1, A10 | passed |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- 2026-11-16, on the RG DS Plus, image 0.5.3.4 built from `0bea5d14` (`make banana-ui-rebuild-rgds-plus`, then
+  `make rgds-plus`): M1-M8 passed, as the user reported them. No logs or photos were passed back, so none were
+  analysed here: the automated tests (`statusbar-units`, `tailscale-icon-ui.sh`) are the detailed evidence.
 
 ## Deviations
 
@@ -356,4 +362,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. The backend that puts the icon after Wi-Fi | done | Tailscale icon: a backend that puts it after the Wi-Fi icon |
 | 2. The menu's bar through it | done | Tailscale icon: the menu's status bar draws through it |
-| 3. Final check | automated part done; the manual tests left | Tailscale icon: the final check's automated part |
+| 3. Final check | done | Tailscale icon: the final check's automated part; Tailscale icon: the final check |

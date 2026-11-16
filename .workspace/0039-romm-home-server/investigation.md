@@ -27,8 +27,9 @@ Decided with the user:
   2. the fork's two `banana-sync` patches re-ported onto it: 0022's memory fix and 0024's Show sync times;
   3. lighter per-game lookups;
   4. installs from RomM's web page;
-  5. BIOS downloads;
-  6. the Quick resume guard.
+  5. BIOS downloads.
+
+  (The Quick resume guard was dropped while planning: the rework has it, *Oversights*, 9.)
 
   Two follow-up issues are written out below (*Suggestions*, *Follow-ups*).
 - **Save interop matters**: the user's saves have to work with Argosy (Android), Grout (another handheld) and RomM's
@@ -79,7 +80,7 @@ What each client has, against upstream `main` (the fork's `kiwami` is the same h
 | Play sessions sent to RomM | no | yes | no | no | follow-up C |
 | Incremental list (`updated_after`) | yes, local cache | measured, not done | no | list cached, full refresh | **this issue (3)** |
 | ROM lookup by hash (`/api/roms/by-hash`) | yes | no | no | no | **this issue (3)** |
-| Quick resume / autoload guard | warns in its docs | yes | no | DS only | **this issue (6)** |
+| Quick resume / autoload guard | warns in its docs | yes | no | yes, resume states removed | taken in |
 | Screenshot upload | scope only | yes | no | no | left out |
 | Favourites, ratings and status to RomM | no | yes | no | no | left out |
 | "Now playing" heartbeat | no | yes | no | no | left out (network during games) |
@@ -170,11 +171,13 @@ Sources: Grout `docs/usage/{guide,save-sync,settings}.md`, `romm/endpoints.go:4-
    reported.
 
 9. **Quick resume hides a pulled save.** With Quick resume on, `run-retroarch` makes RetroArch load the automatic
-   state (`cab127ba:system/rootfs/usr/libexec/banana/run-retroarch:191-193`), so a newer save the sync before a game
-   pulls is played under the old state. The rework guards only the DS (its `nds-saves --played` record). Grout only
-   warns about it (`docs/usage/save-sync.md`, "Syncs can be obscured by autoload"). *Decided*: 0008's guard. When the
-   sync before a game replaces a save, that game's `<stem>.state.auto` (in `/data/states`, flat as the saves are) is
-   renamed to `.bak`, kept and never deleted.
+   state (`cab127ba:system/rootfs/usr/libexec/banana/run-retroarch:191-193`). Grout only warns about it
+   (`docs/usage/save-sync.md`, "Syncs can be obscured by autoload"). *Corrected while planning (16 Nov)*: the rework
+   already deals with it. When it puts a pulled save in place, `dropResumeStates`
+   (`cab127ba:ui/src/save_vault.cpp:148-173`) removes that game's `.state.auto` in every core's folder under `states/`
+   (and in `states/` itself), and the DS's resume state. The investigation had said it guarded only the DS. It deletes
+   them, where 0008's guard renamed them to `.bak`. *Decided*: the rework's way. The replaced save is in the vault, so
+   no fork code is needed and the guard is dropped from this feature.
 
 10. **The rework changes upstream's defaults and behaviour, beyond RomM.** Taken in, these come before upstream ships
     them:
@@ -226,7 +229,7 @@ Sources: Grout `docs/usage/{guide,save-sync,settings}.md`, `romm/endpoints.go:4-
      what's there.
    - Download into `/data/bios` (and DraStic's copy, *Oversights*, 8), each file through `.part` and checked against
      RomM's MD5 or SHA-1.
-4. **The Quick resume guard** (*decided*, this issue): *Oversights*, 9.
+4. **The Quick resume guard**: dropped while planning, the rework has it (*Oversights*, 9).
 5. **Follow-up B: Get games for a big library** (*decided* as a follow-up). Its issue text is under *Follow-ups*.
    - A search through the keyboard, filtering the cached list on the card (instant, no server).
    - The selected game's cover, summary, year, genre and size on the top screen. The cover is fetched only after the
@@ -362,11 +365,9 @@ The step-by-step detail is for the plan. In order:
    - The setting is `kiwami_romm_installs = off`, a row on the Home server page (RomM only, 5.4 and newer).
 6. **BIOS downloads**: `ui/src/kiwami/romm/bios.{h,cpp}` (a `banana-sync bios [--list]` verb), and a BIOS page from a
    Home server row (`Kiwami::rows`, `ui/src/kiwami/`). Plus the scope hook in `sync.cpp`'s pairing.
-7. **The Quick resume guard**: a hook where the sync before a game installs a pulled save (the rework's install
-   through the vault) calls `kiwami::romm::resumeGuard(rel)`.
-8. **Docs**: `docs/FORK.md` (the rework pinned, every new hook), and `kiwami/DEPENDENCIES.md` (RomM's API: 5.4.1 is the
+7. **Docs**: `docs/FORK.md` (the rework pinned, every new hook), and `kiwami/DEPENDENCIES.md` (RomM's API: 5.4.1 is the
    version written against; the rework, pinned at `cab127ba`, as upstream code carried early).
-9. **The final check**, including the `with_rom_id_index` measurement (*Suggestions*, 9).
+8. **The final check**, including the `with_rom_id_index` measurement (*Suggestions*, 9).
 
 Settings, all in `settings.conf`, with upstream's (the rework's) behaviour as the default: `kiwami_romm_installs = off`.
 BIOS and lookups have no setting: BIOS is an action, and the lookups change only requests (as 0022 did).
@@ -406,7 +407,7 @@ No new external dependency: libcurl, OpenSSL and the JSON reader are already use
   Argosy already follows. A RomM before 5.4 gets no installs: the row hides itself (the rework reads the server's
   version at each sync).
 - **Saves.** The rework's slot logic, vault and journal are its author's, tested by its own suites (66 QEMU cases, an
-  interop test with Grout's real sync code). The fork adds the Quick resume guard, which only renames.
+  interop test with Grout's real sync code). The fork changes no save logic.
 - **Hardware and boards.** Nothing board-specific. "Games go to" the second card exists only on the RG DS Plus, the
   only device at hand. Pages are drawn at 640x480 and 1024x768.
 - **BIOS legality** is the user's business: the files come from the user's own server.
@@ -428,7 +429,6 @@ No new external dependency: libcurl, OpenSSL and the JSON reader are already use
     `already_installed`, or `failed` with its reason. A request for the second card while it's out stays `taken`.
   - **BIOS**: the missing files listed, downloaded and checked; the same hash skipped; a different file not
     overwritten; DraStic's copy; a 403 telling the user to pair again.
-  - **The Quick resume guard**: `.state.auto` renamed only when the pull replaced the save.
   - **0022 and 0024** re-ported: `romm-list.sh` and `sync-times.sh` rewritten against the rework, with their unit
     tests.
   - **banana-ui headless**: the BIOS page and the installs row at both sizes, with the log lines checked.
@@ -463,9 +463,17 @@ No new external dependency: libcurl, OpenSSL and the JSON reader are already use
 11. **The `firmware.read` scope?** *Answered*: hooked into the pairing, and the user pairs again.
 12. **The lookup for a game never synced?** *Answered*: a name search before the game, the hash in Sync now.
 13. **Where does BIOS go?** *Answered*: `/data/bios` plus DraStic's copy.
-14. **The Quick resume guard?** *Answered*: in this issue.
+14. **The Quick resume guard?** *Answered*: in this issue; then dropped while planning (18).
 15. **`with_rom_id_index`?** *Answered*: measured on the user's server, then decided.
-16. **DraStic's BIOS folder and file names.** *Unanswered*: a fact to check in the plan, not a choice.
+16. **DraStic's BIOS folder and file names.** *Answered while planning*, from DraStic's binary (`strings`) and
+    `run-drastic:8-17`: `nds_bios_arm7.bin`, `nds_bios_arm9.bin` and `nds_firmware.bin` in `/data/drastic/system/`.
 17. **The proposals not asked about at first**: accepting the rework's behaviour changes (*Oversights*, 10), what
     to do if the rework changes upstream (*Oversights*, 11), how installs are handled (*Oversights*, 5 and 6), and
     the lookups' cache file (*What has to change*, 4). *Answered*: all four accepted as proposed.
+18. **Quick resume, now that the rework removes resume states** (planning). *Answered*: the rework's way; the fork's
+    guard is dropped (*Oversights*, 9).
+19. **How the merge step is cut** (planning). *Answered*: one merge commit with both re-ports and their tests.
+20. **The list cache's footprint** (planning: 10-15 MB on the card for 10,000 games). *Answered*: kept on the card,
+    as JSON lines.
+21. **What runs on Wi-Fi with installs on and Auto sync not syncing then** (planning). *Answered*: a run of the games
+    only.

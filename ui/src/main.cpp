@@ -43,6 +43,7 @@
 #include "nas.h"
 #include "kiwami/library.h"	// kiwami: the library, for Settings' RetroAchievements pages
 #include "kiwami/gbpk/game.h"	// kiwami: the GB Pokémon companion
+#include "kiwami/statusbar.h"	// kiwami: Tailscale's icon in the status bar
 
 #include <algorithm>
 #include <atomic>
@@ -854,7 +855,7 @@ static int runHeadless(const Options& o, Host& lib, const std::string& variant, 
 	std::string layout = themePath(theme);
 	std::unique_ptr<Menu> uiPtr(theme == "carts" ? (Menu*)new CartMenu(&lib, &be, o.banana + "/fonts", o.h / 480.0f)
 		: isLayoutTheme(layout) ? (Menu*)new LayoutMenu(&lib, &be, layout, o.h / 480.0f, o.assets + "/fonts", o.banana + "/fonts")
-		: new RndsMenu(&lib, &be, o.assets, o.h / 480.0f, variant));
+		: new RndsMenu(&lib, kiwami::statusBar(&be, o.h / 480.0f, true), o.assets, o.h / 480.0f, variant));	// kiwami: Tailscale's icon in the status bar
 	Menu& ui = *uiPtr;
 	double now = 100000;
 	std::stringstream ss(o.script);
@@ -2179,7 +2180,7 @@ int main(int argc, char** argv)
 		if (theme == "carts") return new CartMenu(&lib, &be, o.banana + "/fonts", sc);
 		std::string layout = themePath(theme);
 		if (isLayoutTheme(layout)) { applyTheme(theme, settings["accent"]); return new LayoutMenu(&lib, &be, layout, sc, o.assets + "/fonts", o.banana + "/fonts"); }
-		return new RndsMenu(&lib, &be, o.assets, sc, applyTheme(theme, settings["accent"]) == "light" ? "light" : "dark");
+		return new RndsMenu(&lib, kiwami::statusBar(&be, sc, false), o.assets, sc, applyTheme(theme, settings["accent"]) == "light" ? "light" : "dark");	// kiwami: Tailscale's icon in the status bar
 	};
 	std::atomic<bool> ready{ false };
 	const std::vector<std::string> bootRoots = lib.roots();	// kiwami: the second card's folder as the loader's read sees it

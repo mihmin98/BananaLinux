@@ -33,6 +33,11 @@ ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.
     ui/src/kiwami/ra7z.cpp ui/src/kiwami/rachd.cpp ui/src/zip.cpp ui/src/zipdir.cpp \
     $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -lz
 "$T/units" kiwami/tests/tailscale kiwami/tests/ra
+# the status bar's backend (Tailscale's icon after the Wi-Fi icon) against a recording one, frames drawn as the
+# engine's drawStatus draws them, and its interface check on lo
+${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/statusbar-units" kiwami/tests/statusbar-units.cpp \
+    ui/src/kiwami/statusbar.cpp
+"$T/statusbar-units"
 # the Game Boy Pokémon companion's (ui/src/kiwami/gbpk/, GPL-3.0: kiwami/GB-POKEMON.md), its own binary: which game a
 # ROM is (the made-up ones in kiwami/tests/gbpk/made-up/, plain and in archives), its data files and the list of ROMs
 # its ROM tests expect (kiwami/tests/gbpk/roms.sha1), its text, its ROM reader on a made-up ROM, its memory reader
@@ -227,6 +232,10 @@ if [ -x ui/banana-ui ]; then kiwami/tests/sync-times-ui.sh; else echo "sync-time
 
 # Tailscale in banana-ui's Settings, headless, when banana-ui is built (CI builds it before)
 if [ -x ui/banana-ui ]; then kiwami/tests/tailscale-ui.sh; else echo "tailscale-ui: skipped, no ui/banana-ui (make ui)"; fi
+
+# Tailscale's icon in the status bar, headless on the real engine, when banana-ui is built: off and on, the shift, room
+# before the date, the rest of both screens unchanged, the other themes
+if [ -x ui/banana-ui ]; then kiwami/tests/tailscale-icon-ui.sh; else echo "tailscale-icon-ui: skipped, no ui/banana-ui (make ui)"; fi
 
 # .7z games on the cartridge systems' shelves, headless, when banana-ui is built
 if [ -x ui/banana-ui ]; then kiwami/tests/7z-ui.sh; else echo "7z-ui: skipped, no ui/banana-ui (make ui)"; fi

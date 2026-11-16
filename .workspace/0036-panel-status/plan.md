@@ -21,7 +21,7 @@ Decided while planning:
 - **Charging wins**: on the charger, the level is drawn in the accent colour with the bolt, at any level, as the
   menu's bar does. Red only when the battery is at 10% or under and not charging.
 - **Logging**: one line when a game starts with the setting on, then one per change of the battery's percentage,
-  charging, Wi-Fi or Tailscale, marked when it follows a sleep. The minute's tick isn't logged.
+  charging, Wi-Fi or Tailscale, and one after every sleep, marked. The minute's tick isn't logged.
 
 A correction to the investigation (oversight 10): `kiwami::library` is set at `main.cpp:2118`, and
 `lib.twelveHour` at `:2121`, both before `main` hands over to `runHeadless` (`:2131`). Headless runs already see the
@@ -71,8 +71,8 @@ fork's code:
 - **A12**: The log (`/data/banana/logs/banana-ui.log`) gets `banana-ui: kiwami: panel status: <time> <date>,
   battery <n>%[, charging], wifi up|down, tailscale up|down, played <h:mm>`:
   - once when a game starts with the setting on;
-  - once per change of the battery's percentage, charging, Wi-Fi or Tailscale, prefixed `after a sleep: ` when it
-    follows one;
+  - once per change of the battery's percentage, charging, Wi-Fi or Tailscale;
+  - once after every sleep, readings changed or not, prefixed `after a sleep: `;
   - never for the minute alone.
 - **A13**: With the setting on, the strip reads the battery and network at most once per 10 s of the panel's time
   (plus once after each sleep), runs no thread, and redraws only when its text or readings change. Off, it reads
@@ -158,8 +158,8 @@ Each step is one commit, and leaves the tree building, `make test` and `kiwami/t
   `logLine()`:
   - `panel status: 14:32 11/16, battery 78%, charging, wifi up, tailscale down, played 0:00`;
   - `battery none` when the percent is -1; `, charging` only while charging;
-  - after the first `update()`, and after an update whose readings differ from the last logged ones, prefixed
-    `after a sleep: ` when that update followed a sleep;
+  - after the first `update()`, after an update whose readings differ from the last logged ones, and after every
+    update that followed a sleep (readings changed or not), prefixed `after a sleep: ` then;
   - `""` when only the clock, date or time played changed.
 
   No Settings, no Library, no I/O: the glue in step 3 gives it its sources. Built into banana-ui by the Makefile's
@@ -177,8 +177,9 @@ Each step is one commit, and leaves the tree building, `make test` and `kiwami/t
   - A reading change (the stand-in's percent 78 → 77) at the next 10 s: true, `logLine()` with `battery 77%`.
     Charging on: `, charging`. Wi-Fi and Tailscale each: their word changes.
   - The same readings again: `update` false, `logLine()` `""`.
-  - `asleep()` grows by 5000 between two updates 100 ms apart: a read at once, `after a sleep: ` on the line when
-    readings changed. Time played is unchanged by the sleep, since it follows `t`.
+  - `asleep()` grows by 5000 between two updates 100 ms apart: a read at once, a line with `after a sleep: `, with
+    the readings changed and with them the same. Time played is unchanged by the sleep, since it follows `t`. A growth
+    under a second isn't a sleep.
   - `open()` again: `ready()` false until the next update; that update starts at `played 0:00` with a full line.
   - `percent -1`: `battery none`.
   - Commands at the end of the step: `make ui`, `kiwami/tests/ci.sh .buildroot`, `make test`.
@@ -388,13 +389,19 @@ Notes from the runs (what the logs showed, what was fixed):
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
 
+- **2026-11-16, step 1: a line after every sleep.** The plan logged `after a sleep: ` only when a reading had
+  changed across the sleep, but A9 and M5 expect that line after every wake, and on the RG DS Plus a lid closed for
+  3 minutes usually leaves the battery's percentage, Wi-Fi and Tailscale as they were: M5 would find no line. Agreed
+  with the user: the first update after a sleep always logs one line, marked, whether its readings changed or not
+  (one line per sleep). Changed: the Summary's *Logging*, A12, step 1's `logLine()` and its sleep test.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. The strip's state, with no screen | todo | |
+| 1. The strip's state, with no screen | done | Status on the game panel: the strip's state, with no screen |
 | 2. The Second screen row | todo | |
 | 3. The strip drawn instead of the hint | todo | |
 | 4. Final check | todo | |

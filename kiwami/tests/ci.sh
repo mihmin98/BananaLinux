@@ -38,6 +38,11 @@ ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/statusbar-units" kiwami/tests/statusbar-units.cpp \
     ui/src/kiwami/statusbar.cpp
 "$T/statusbar-units"
+# the game panel's status strip's state (the time, the battery and network read every 10 s and after a sleep, the
+# time played, the log's lines) with stand-in sources, in UTC
+${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/panelstatus-units" kiwami/tests/panelstatus-units.cpp \
+    ui/src/kiwami/panelstatus.cpp
+TZ=UTC "$T/panelstatus-units"
 # the Game Boy Pokémon companion's (ui/src/kiwami/gbpk/, GPL-3.0: kiwami/GB-POKEMON.md), its own binary: which game a
 # ROM is (the made-up ones in kiwami/tests/gbpk/made-up/, plain and in archives), its data files and the list of ROMs
 # its ROM tests expect (kiwami/tests/gbpk/roms.sha1), its text, its ROM reader on a made-up ROM, its memory reader

@@ -1,5 +1,6 @@
 // banana-ui (kiwami): Tailscale's icon after the Wi-Fi icon in the Dark and Light themes' status bar (statusbar.h).
 #include "statusbar.h"
+#include "tsmark.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -15,58 +16,6 @@
 
 namespace banana::kiwami
 {
-	// Tailscale's mark: nine dots in a 3x3 grid, the T (the middle row and the bottom centre) solid, the other five
-	// faded. '#' solid, '+' faded (35%), '.' none; drawn in the Wi-Fi icon's tint. At 1x beside the 18x16 Wi-Fi icon:
-	// 4x4 dots, 2 px apart
-	static const char* MARK16[16] = {
-		"++++..++++..++++",
-		"++++..++++..++++",
-		"++++..++++..++++",
-		"++++..++++..++++",
-		"................",
-		"................",
-		"####..####..####",
-		"####..####..####",
-		"####..####..####",
-		"####..####..####",
-		"................",
-		"................",
-		"++++..####..++++",
-		"++++..####..++++",
-		"++++..####..++++",
-		"++++..####..++++",
-	};
-
-	// at 1.6x beside the 29x26 Wi-Fi icon: 6x6 dots with their corners cut, 4 px apart
-	static const char* MARK26[26] = {
-		".++++......++++......++++.",
-		"++++++....++++++....++++++",
-		"++++++....++++++....++++++",
-		"++++++....++++++....++++++",
-		"++++++....++++++....++++++",
-		".++++......++++......++++.",
-		"..........................",
-		"..........................",
-		"..........................",
-		"..........................",
-		".####......####......####.",
-		"######....######....######",
-		"######....######....######",
-		"######....######....######",
-		"######....######....######",
-		".####......####......####.",
-		"..........................",
-		"..........................",
-		"..........................",
-		"..........................",
-		".++++......####......++++.",
-		"++++++....######....++++++",
-		"++++++....######....++++++",
-		"++++++....######....++++++",
-		"++++++....######....++++++",
-		".++++......####......++++.",
-	};
-
 	StatusBar::StatusBar(rnds::Backend* real_, float scale_, std::function<bool()> up_, std::function<double()> now_)
 		: real(real_), scale(scale_), up(std::move(up_)), now(std::move(now_))
 	{
@@ -88,17 +37,9 @@ namespace banana::kiwami
 		int i = scale > 1.3f ? 1 : 0;	// the engine's pick of its @1x / @1.6x art
 		if (!tex[i])
 		{
-			const char* const* map = i ? MARK26 : MARK16;
-			int n = i ? 26 : 16;
-			rnds::Bitmap b;
-			b.w = b.h = n;
-			b.alpha = true;
-			b.px.assign(n * n, 0);
-			for (int y = 0; y < n; y++)
-				for (int x = 0; x < n; x++)
-					b.px[y * n + x] = map[y][x] == '#' ? 255 : map[y][x] == '+' ? 89 : 0;	// 89: 35% of 255
+			rnds::Bitmap b = tsMark(i == 1);
 			tex[i] = real->upload(b, false);
-			texW[i] = n;
+			texW[i] = b.w;
 		}
 		return tex[i];
 	}

@@ -38,6 +38,11 @@ ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/statusbar-units" kiwami/tests/statusbar-units.cpp \
     ui/src/kiwami/statusbar.cpp
 "$T/statusbar-units"
+# the game panel's status strip's state (the time, the battery and network read every 10 s and after a sleep, the
+# time played, the log's lines) with stand-in sources, in UTC
+${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/panelstatus-units" kiwami/tests/panelstatus-units.cpp \
+    ui/src/kiwami/panelstatus.cpp
+TZ=UTC "$T/panelstatus-units"
 # the Game Boy Pokémon companion's (ui/src/kiwami/gbpk/, GPL-3.0: kiwami/GB-POKEMON.md), its own binary: which game a
 # ROM is (the made-up ones in kiwami/tests/gbpk/made-up/, plain and in archives), its data files and the list of ROMs
 # its ROM tests expect (kiwami/tests/gbpk/roms.sha1), its text, its ROM reader on a made-up ROM, its memory reader
@@ -249,6 +254,11 @@ if [ -x ui/banana-ui ]; then kiwami/tests/ra-ui.sh; else echo "ra-ui: skipped, n
 # the Game Boy Pokémon companion in banana-ui, headless, when banana-ui is built: its Settings rows, the game panel's
 # pages for Crystal fed PokeDaisy's captures, a ROM it doesn't know, upstream's panel after it
 if [ -x ui/banana-ui ]; then kiwami/tests/gbpk-ui.sh; else echo "gbpk-ui: skipped, no ui/banana-ui (make ui)"; fi
+
+# Status on the game panel in banana-ui, headless, when banana-ui is built: its Second screen row, the strip on the
+# tiles view (the minute, the battery and network read every 10 s, the most crowded strip, Light, six tiles), and the
+# keyboard and the companion's pages as with it off
+if [ -x ui/banana-ui ]; then kiwami/tests/panel-status-ui.sh; else echo "panel-status-ui: skipped, no ui/banana-ui (make ui)"; fi
 
 # post-build.sh vetoes tailscaled's state and RetroArch master's credentials file in upstream's share script, each
 # once and the same on a second run, and stops the build when the line isn't there

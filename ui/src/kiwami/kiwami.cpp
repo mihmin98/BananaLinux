@@ -133,6 +133,21 @@ namespace banana
 				s.items.push_back(it);
 				keys += (keys.empty() ? "" : " ") + it.key;
 			}
+			// Status on the game panel (panel-status.cpp), right after upstream's Game panel idle time (else last), read
+			// at each game's start
+			Item it;
+			it.section = group; it.icon = "picture";
+			it.label = "Status on the game panel";
+			it.key = "kiwami_panel_status";
+			it.help = "The time and date, the battery, Wi-Fi and Tailscale, and how long the game has been played, along the "
+				"bottom of the game panel while a game plays.";
+			it.file = s.data + "/settings.conf";
+			it.names = { "Off", "On" }; it.values = { "off", "on" };
+			it.hints = { "The game panel's hint line, as before.", "A status strip instead of the hint line." };
+			auto at = std::find_if(s.items.begin(), s.items.end(),
+				[&](const Item& i) { return i.section == group && i.key == "bottom_idle_seconds"; });
+			s.items.insert(at == s.items.end() ? at : at + 1, it);
+			keys += (keys.empty() ? "" : " ") + it.key;
 		}
 		// (the tests read it)
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());

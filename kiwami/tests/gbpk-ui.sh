@@ -64,11 +64,11 @@ differ() { cmp -s "$OUT/$size-$name-$1-bot.png" "$OUT/$size-$name-$2-bot.png" &&
 
 for size in 640x480 1024x768; do
     # the rows: Settings opens on its tiles, R is Other systems, A its list, Down four times Second screen, A its page;
-    # Down four more is the first of the two rows (after Pokémon companion), A sets it On
+    # Down five more is the first of the two rows (after Status on the game panel and Pokémon companion), A sets it On
     printf 'wifi = on\n' > "$CONF"
     run $size rows "home 0; wait 2400; press start; press r; press a; press down; press down; press down; press down; press a; \
-press down; press down; press down; press down; wait 1; shot off; press a; wait 1; shot on"
-    logged "banana-ui: kiwami: rows in Second screen: kiwami_pokemon_companion_gb kiwami_pokemon_companion_gbc$"
+press down; press down; press down; press down; press down; wait 1; shot off; press a; wait 1; shot on"
+    logged "banana-ui: kiwami: rows in Second screen: kiwami_pokemon_companion_gb kiwami_pokemon_companion_gbc kiwami_panel_status$"
     grep -qx 'kiwami_pokemon_companion_gb *= *"*on"*' "$CONF" || { echo "FAIL $size rows: no kiwami_pokemon_companion_gb = on: $(grep kiwami_pokemon "$CONF")"; fail=1; }
     ! grep -q 'kiwami_pokemon_companion_gbc' "$CONF" || { echo "FAIL $size rows: the Game Boy Color row written too"; fail=1; }
     shown off; differ off on

@@ -255,6 +255,9 @@ if [ -x ui/banana-ui ]; then kiwami/tests/ra-ui.sh; else echo "ra-ui: skipped, n
 # pages for Crystal fed PokeDaisy's captures, a ROM it doesn't know, upstream's panel after it
 if [ -x ui/banana-ui ]; then kiwami/tests/gbpk-ui.sh; else echo "gbpk-ui: skipped, no ui/banana-ui (make ui)"; fi
 
+# Status on the game panel in banana-ui, headless, when banana-ui is built: its Second screen row
+if [ -x ui/banana-ui ]; then kiwami/tests/panel-status-ui.sh; else echo "panel-status-ui: skipped, no ui/banana-ui (make ui)"; fi
+
 # post-build.sh vetoes tailscaled's state and RetroArch master's credentials file in upstream's share script, each
 # once and the same on a second run, and stops the build when the line isn't there
 T=$(mktemp -d)

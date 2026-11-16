@@ -402,6 +402,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. The strip's state, with no screen | done | Status on the game panel: the strip's state, with no screen |
-| 2. The Second screen row | todo | |
+| 2. The Second screen row | done | Status on the game panel: the Second screen row |
 | 3. The strip drawn instead of the hint | todo | |
 | 4. Final check | todo | |

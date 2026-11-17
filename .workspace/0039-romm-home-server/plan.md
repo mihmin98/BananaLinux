@@ -84,7 +84,8 @@ Lookups:
 - **A11**: Given a recorded id that no longer names that file (renamed or deleted on the server), or a search with no
   exact match, the sync falls back to the rework's listing of the system, with the same outcome as the rework's.
 - **A12**: Given a ROM on the card that no server game matches by name, Sync now hashes it (MD5, archives skipped)
-  and asks `GET /api/roms/by-hash`. If RomM has it on the same system, with no card file of its own name:
+  when a server game of one file on its system has its size, and compares the MD5 with the listing's (*Deviations*,
+  2026-11-17: no `GET /api/roms/by-hash`). If one such game has it, with no card file of its own name:
   - its save syncs in that game's slot;
   - the hash is remembered by size and modification time, so the next Sync now doesn't hash it again;
   - two card files with the same hash, or a server game that already has a card file of its name, get no alias, and
@@ -378,24 +379,26 @@ kept to what the step touches; `make test` runs once per step that changes banan
 
 ### 5. ROMs found by their hash in Sync now
 
-- **Files**:
-  - `ui/src/kiwami/romm/hashes.h` (new). `byHash(Romm-like&)`, after a full listing:
+- **Files** (*Deviations*, 2026-11-17):
+  - `ui/src/kiwami/romm/hashes.h` (new). `byHash(Romm-like&)`, after a full listing in a sync (its "running" status):
     - the card's files under each mapped system's folder (both cards, skipping archives: `zip`, `7z` and the rework's
-      `packedName()` list) that no listed game matches by name;
-    - their MD5s from `kiwami-romm.json`'s `hashes` (keyed by path, size and mtime), else hashed, with a
-      `synctimes::tick` "Matching by hash" status;
-    - `GET /api/roms/by-hash?md5_hash=`;
-    - a game on the same platform with no card file of its own name, and only one card file with that hash, gets an
-      alias, kept in `aliases` (server id to card path).
+      `packedName()` list, and `.m3u`) that no listed game matches by name, and of the size of a listed game of one
+      file (not an archive) on that system (`romJson`'s `files[]` `file_size_bytes`);
+    - their MD5s from `kiwami-romm.json`'s `hashes` (keyed by path, size and mtime), else hashed (`  by hash: reading
+      <path>`), with a `synctimes::tick` "Matching by hash" status;
+    - compared with those games' MD5s from the listing, no request;
+    - a game on the same platform with no card file of its own name, the only server game with that MD5, and only one
+      card file with it, gets an alias, kept in `aliases` (server id to card path).
 
     Each decision is written to `sync.log`: `  by hash: <path> is <server name>`, or `... not matched: <why>`.
+  - `ui/src/kiwami/romm/romm.h` (changed): `State`'s `hashes` and `aliases`; `aliases()`, read once a run, and
+    `aliasOf()`; includes `hashes.h`.
+  - `ui/src/kiwami/romm/lookup.h` (changed): `Pages`' `exact()` also takes a game whose alias is the card file.
   - `ui/src/sync_romm.cpp` (hook):
     - first line of `onCard()`:
-      `{ std::string a = banana::kiwami::romm::aliasOf(r.id); if (!a.empty()) return a; }	// kiwami: a ROM found by its hash, under another name on the card`.
+      `{ std::string a = banana::kiwami::romm::aliasOf(r.id); if (!a.empty()) return a; }	// kiwami: a ROM found by its contents, under another name on the card`.
       `aliasOf` checks the file still exists.
-    - `banana::kiwami::romm::byHash(*this);	// kiwami:` after the `record` hook, for a full listing only.
-  - `kiwami/tests/romm-kiwami.py` (changed): `GET /api/roms/by-hash` (`roms/__init__.py:1201-1223`), from each file's
-    MD5 in the stand-in's listing.
+    - `banana::kiwami::romm::byHash(*this);	// kiwami:` before the `record` hook, so the alias's id is remembered.
   - `kiwami/tests/romm-hash.sh` (new): A12.
     - A renamed card copy of a server game, with a save, found by hash.
     - Its save uploaded into that game's `autosave` slot (`/test/state`).
@@ -403,9 +406,13 @@ kept to what the step touches; `make test` runs once per step that changes banan
     - Touching the file's mtime hashes it again.
     - Two card copies with one hash: no alias.
     - A server game with its own-name card file: no alias for the renamed copy.
-    - A `.zip`: not hashed.
+    - Two server games with one hash, and a card file of a server game's size with other bytes: no alias.
+    - A `.zip`, and a file of no server game's size: not hashed.
+    - The sync before the renamed game: one `GET /api/roms/<id>`, no listing, the slot's newer save brought.
+    - The renamed file removed: its alias and MD5 dropped.
   - `kiwami/tests/ci.sh`, `docs/FORK.md` (changed).
-- **Tests**: `romm-hash.sh`, `romm-lookup.sh`, `ui/tests/sync-slots.sh`.
+- **Tests**: `romm-hash.sh`, `romm-lookup.sh`, `ui/tests/sync-slots.sh` (plus `romm-list.sh`, `sync-times.sh` and
+  `romm-bios.sh`, whose runs go through `list()`).
 - **Commit**: `RomM home server: ROMs under another name found by their hash`
 
 ### 6. The game list kept on the card and brought up to date
@@ -551,7 +558,7 @@ kept to what the step touches; `make test` runs once per step that changes banan
 | romm-bios | `kiwami/tests/romm-bios.sh`, `romm-kiwami.py` | Scopes; list; get; DraStic's copies; kept and skipped files; faults; no scope | A4-A7 |
 | romm-bios-ui | `kiwami/tests/romm-bios-ui.sh`, `fake-romm-sync.sh` | The BIOS row and page at both sizes, keys and touch | A7, A8 |
 | romm-lookup | `kiwami/tests/romm-lookup.sh` | Recorded id, search, fallback, outcome same as the rework's | A9-A11 |
-| romm-hash | `kiwami/tests/romm-hash.sh` | By hash, alias, cache, ambiguous cases, archives | A12 |
+| romm-hash | `kiwami/tests/romm-hash.sh` | By hash, alias, cache, ambiguous cases, archives, the sync before a renamed game | A12 |
 | romm-incremental | `kiwami/tests/romm-incremental.sh` | `updated_after` pages, identifiers, changes, deletes, full listings | A13, A14 |
 | romm-installs | `kiwami/tests/romm-installs.sh` | Capability, claim, report, already there, failed, second card, expiry, Wi-Fi runs, off | A15-A18 |
 | romm-installs-ui | `kiwami/tests/romm-installs-ui.sh` | The row, its setting and call, hidden for old RomM and Romhost | A15 |
@@ -649,6 +656,19 @@ Where the implementation turned out different from this plan, why, and what chan
     so without it a game Get games downloads later in the same Sync now would be missing when the saves look.
   - `romm-lookup.sh` builds the rework's own `banana-sync` from `git archive cab127ba` at `-O0` (5 s), when the
     repository has that commit (CI's checkout has the whole history), and says it skipped the comparison otherwise.
+- **2026-11-17, step 5: matched from the listing, not by `GET /api/roms/by-hash`; a renamed game's id remembered.**
+  - Sync now already holds every mapped system's games with each file's size and MD5 (`with_files=true`, kept by
+    `slim()`), so `byHash()` asks RomM nothing. It reads a card file only when a server game of one file on its system
+    (no archive) has its very size, and compares the MD5 with the listing's. A card full of the user's own games, not on
+    the server, is never read, where hashing every unmatched file for `by-hash` would read them all once (gigabytes of
+    DS ROMs on the first Sync now). The MD5s are still kept in `kiwami-romm.json`'s `hashes`, for a file of a server
+    game's size that isn't its copy. `romm-kiwami.py` doesn't change. Two server games with the same MD5 also get no
+    alias (said). Agreed with the user.
+  - `byHash()` runs before `record()`, not after it, so the alias's path gets its RomM id, and `Pages`' `exact()` takes a
+    game whose alias is the card file: the sync before a renamed game is one `GET /api/roms/<id>`, not a listing of its
+    system. `romm-hash.sh` checks it. Agreed with the user.
+  - `byHash()` runs only under a sync's "running" status, as the listing's progress does, so Get games' refresh (`banana-sync
+    games`) reads no file; its runs use the aliases the last Sync now found.
 
 ## Progress
 
@@ -660,7 +680,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 2. BIOS downloads in banana-sync | done | RomM home server: BIOS downloads from RomM into /data/bios and DraStic's folder |
 | 3. The BIOS page in Settings | done | RomM home server: a BIOS page on Home server |
 | 4. A game's sync before it starts, without listing its system | done | RomM home server: a game's save synced before it without listing its system |
-| 5. ROMs found by their hash in Sync now | todo | |
+| 5. ROMs found by their hash in Sync now | done | RomM home server: ROMs under another name found by their hash |
 | 6. The game list kept on the card and brought up to date | todo | |
 | 7. Installs from RomM's web page, in banana-sync | todo | |
 | 8. The installs row in Settings | todo | |

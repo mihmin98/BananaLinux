@@ -4,15 +4,17 @@
 // ROM: on a system of 1000+ games, all of their JSON, up to the 20 s cap before a game. Its page loop takes its pages
 // from Pages (sync_romm.cpp's kiwami: hook), which for such a run first asks RomM for the game alone:
 //   - by its RomM id, remembered (State's ids, by the card file's roms-relative path, as --rom names it):
-//     GET /api/roms/<id>, taken when the game is still on that platform under the card file's name;
+//     GET /api/roms/<id>, taken when the game is still on that platform under the card file's name (or the card file
+//     is still its alias, a game of its contents under another name, hashes.h);
 //   - else by RomM's name search on the platform, GET /api/roms?search_term=<the card file's stem> (RomM 5.4.1's
 //     backend/handler/database/roms_handler.py, _filter_by_search_term(): each word of it in the game's name, its
 //     file name or its other titles, case aside), taken when it holds a game of the card file's name.
 // Either answer goes to the loop as a page of its own ({"items": [...], "total": n}), so the rework's own matching (by
 // name, then by content) runs on it as on a listed page. With neither, the system is listed in pages as 0022 has it,
 // and the outcome is the rework's: a game renamed or deleted on the server, a name RomM's search doesn't find.
-// record() (list()'s hook before listed = true) keeps the ids: after a listing of every system, those of the games on
-// either card; after one game's, that game's, or none when the server no longer has it.
+// record() (list()'s hook before listed = true, after byHash()'s) keeps the ids: after a listing of every system, those
+// of the games on either card (by name, or by contents under another name); after one game's, that game's, or none
+// when the server no longer has it.
 // KIWAMI_ROMM_ROM_ID_INDEX=1 in the environment leaves with_rom_id_index=false out of the queries (to measure RomM's
 // paging with its id index on a large library).
 #include "romm.h"
@@ -71,10 +73,12 @@ namespace banana::kiwami::romm
 		}
 
 	private:
-		// a game of this platform under the card file's name
+		// a game of this platform under the card file's name, or whose contents the card file is under another name
+		// (an alias the last Sync now found, hashes.h)
 		bool exact(const JVal& it) const
 		{
-			return it.isObj() && (long long)it.num("platform_id") == pid && entryOf(it, folder) == bsync::baseOf(onlyRom);
+			return it.isObj() && (long long)it.num("platform_id") == pid &&
+				(entryOf(it, folder) == bsync::baseOf(onlyRom) || aliasOf((long long)it.num("id")) == onlyRom);
 		}
 		bool byId(bsync::Resp& out)
 		{

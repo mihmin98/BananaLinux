@@ -2,7 +2,8 @@
 // banana-sync (kiwami): the fork's RomM additions (0039, .workspace/0039-romm-home-server/), header-only so
 // banana-sync's build recipe stays upstream's (ui/Makefile's kiwami: line names these headers as dependencies). Its
 // hooks are in upstream's sync.cpp (the pairing's scopes, the kiwami verb, dropServerLists()) and sync_romm.cpp
-// (kiwamiFolder(), the platforms' mapping exported; Romm::list()'s pages and the ids it records, lookup.h):
+// (kiwamiFolder(), the platforms' mapping exported; Romm::list()'s pages and the ids it records, lookup.h; the card's
+// ROMs under another name found by their contents, and onCard()'s first line for them, hashes.h):
 //   banana-sync kiwami bios list           BIOS files of RomM's for the systems Banana has (bios.h)
 //   banana-sync kiwami bios get <id>...    those downloaded into /data/bios (and the DS's into DraStic's folder)
 // Each prints its lines on stdout, the last one the result ("ok ..." or "error <why>"), for Settings' pages to read.
@@ -12,6 +13,7 @@
 #include "../../sync_romm.h"
 #include "../../sync_util.h"
 #include <cstdio>
+#include <cstdlib>
 #include <map>
 #include <string>
 #include <vector>
@@ -37,7 +39,16 @@ namespace banana::kiwami::romm
 	// it, unlike the pairing. A run reads it again just before it writes, so another run's change in between is kept
 	struct State
 	{
+		// a card file's MD5 as hashes.h read it, kept while its size and time are the same
+		struct Hash
+		{
+			long long size = 0, mtime = 0;
+			std::string md5;
+			bool operator==(const Hash& o) const { return size == o.size && mtime == o.mtime && md5 == o.md5; }
+		};
 		std::map<std::string, long long> ids;	// a game on either card (roms-relative, as sync --rom names it) -> its RomM id
+		std::map<std::string, Hash> hashes;		// a card file (roms-relative) -> its MD5 (hashes.h)
+		std::map<long long, std::string> aliases;	// a RomM id -> the card file of its contents under another name (hashes.h)
 		static State load()
 		{
 			State s;
@@ -45,6 +56,15 @@ namespace banana::kiwami::romm
 			const JVal* ids = j && j->isObj() ? j->get("ids") : nullptr;
 			if (ids && ids->isObj())
 				for (auto& kv : ids->obj) if (kv.second && kv.second->isNum() && kv.second->n > 0) s.ids[kv.first] = (long long)kv.second->n;
+			const JVal* hs = j && j->isObj() ? j->get("hashes") : nullptr;
+			if (hs && hs->isObj())
+				for (auto& kv : hs->obj)
+					if (kv.second && kv.second->isObj() && !kv.second->str("md5").empty())
+						s.hashes[kv.first] = { (long long)kv.second->num("size", -1), (long long)kv.second->num("mtime", -1), kv.second->str("md5") };
+			const JVal* al = j && j->isObj() ? j->get("aliases") : nullptr;
+			if (al && al->isObj())
+				for (auto& kv : al->obj)
+					if (kv.second && kv.second->isStr() && !kv.second->s.empty() && atoll(kv.first.c_str()) > 0) s.aliases[atoll(kv.first.c_str())] = kv.second->s;
 			return s;
 		}
 		bool save() const
@@ -52,9 +72,38 @@ namespace banana::kiwami::romm
 			std::string o = "{\n \"version\": 1,\n \"ids\": {";
 			bool first = true;
 			for (auto& kv : ids) { o += std::string(first ? "\n  " : ",\n  ") + bsync::jsonStr(kv.first) + ": " + std::to_string(kv.second); first = false; }
+			o += "},\n \"hashes\": {";
+			first = true;
+			for (auto& kv : hashes)
+			{
+				o += std::string(first ? "\n  " : ",\n  ") + bsync::jsonStr(kv.first) + ": {\"size\": " + std::to_string(kv.second.size) +
+					", \"mtime\": " + std::to_string(kv.second.mtime) + ", \"md5\": " + bsync::jsonStr(kv.second.md5) + "}";
+				first = false;
+			}
+			o += "},\n \"aliases\": {";
+			first = true;
+			for (auto& kv : aliases) { o += std::string(first ? "\n  " : ",\n  ") + "\"" + std::to_string(kv.first) + "\": " + bsync::jsonStr(kv.second); first = false; }
 			return bsync::writeAtomic(stateFile(), o + "}\n}\n");
 		}
 	};
+
+	// State's aliases as this run has them: read once, as onCard() asks for every game, and replaced by byHash()
+	inline std::map<long long, std::string>& aliases()
+	{
+		static bool read = false;
+		static std::map<long long, std::string> m;
+		if (!read) { read = true; m = State::load().aliases; }
+		return m;
+	}
+	// the card file (roms-relative) of a server game's contents under another name than the game's, while it is there;
+	// "" for none (sync_romm.cpp's onCard() then looks by name, as the rework does)
+	inline std::string aliasOf(long long id)
+	{
+		auto& m = aliases();
+		if (m.empty()) return "";
+		auto at = m.find(id);
+		return at == m.end() || !bsync::exists(bsync::romPath(at->second)) ? "" : at->second;
+	}
 
 	// the paired RomM, for a command: its pairing read (c) and a backend to ask it through; "" when ready, else why not
 	struct Paired
@@ -114,4 +163,5 @@ namespace banana::kiwami::romm
 }
 
 #include "bios.h"
+#include "hashes.h"
 #include "lookup.h"

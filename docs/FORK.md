@@ -323,7 +323,16 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    `cardIndex`, and `Pages` copies `list()`'s rule for a game's file on the card (`entryOf()`: a disc set's `.m3u`, none
    for another game of several files). A change to those, or to how `list()` pages, shows in
    `kiwami/tests/romm-lookup.sh` (the requests a sync before a game makes, and the outcome of a renamed game against
-   the rework's own build) and in `romm-list.sh`. And banana-ui's rule in
+   the rework's own build) and in `romm-list.sh`. A card's ROM under another name than the server's is found by its
+   contents (`ui/src/kiwami/romm/hashes.h`): `romm::byHash(*this)`, the line before `record`'s, in a sync's listing of
+   every system pairs the card files no server game is named after with the server games of one file that have no
+   card file of their name, by size and then by the listing's MD5 (no request of its own; archives, whose MD5 RomM
+   takes of what's inside, copied from `packedName()`, left out), and keeps each pair as an alias in
+   `kiwami-romm.json`, with the MD5s it read. `onCard()`'s first line returns a game's alias (`romm::aliasOf()`) before
+   its own lookup by name, so the save of a game renamed on the card syncs in that game's slot, and `Pages` takes a
+   game remembered under its alias. It reads `Romm`'s `romJson` (`files[]`' `file_size_bytes` and MD5s) besides the
+   above; `onCard()`'s callers all see the alias. A change to how `onCard()` matches, or to `packedName()`, shows in
+   `kiwami/tests/romm-hash.sh`. And banana-ui's rule in
    `ui/Makefile`: `kiwami.mk` compiles its `SRC` one file per call with the rule's command, so a change to that command
    (a flag, a variable, how it reads `SRC`) is followed in `kiwami.mk`'s object rules. `kiwami/tests/ui-objects.sh`
    (in `ci.sh`) fails when the two no longer make the same binary. A source upstream adds to `SRC` is compiled as an

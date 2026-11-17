@@ -239,6 +239,10 @@ kiwami/tests/romm-bios.sh
 # listing (with the Home server rework's own outcome)
 kiwami/tests/romm-lookup.sh
 
+# Sync now in banana-sync finding the card's ROMs under another name by their contents (sizes, then MD5s, read once):
+# the alias, its save in the game's slot, the ambiguous cases left alone, the sync before it by its remembered id
+kiwami/tests/romm-hash.sh
+
 # Show sync times in banana-ui's Settings, headless, when banana-ui is built: the line under Sync now's bar and the row
 if [ -x ui/banana-ui ]; then kiwami/tests/sync-times-ui.sh; else echo "sync-times-ui: skipped, no ui/banana-ui (make ui)"; fi
 

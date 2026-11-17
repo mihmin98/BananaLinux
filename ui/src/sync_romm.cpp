@@ -5,7 +5,7 @@
 #include "save_vault.h"
 #include "kiwami/syncmem.h"	// kiwami: RomM's game list kept small (banana-sync's memory)
 #include "kiwami/synctimes.h"	// kiwami: each phase's time (Home server > Show sync times)
-#include "kiwami/romm/romm.h"	// kiwami: one game's sync without listing its system (lookup.h)
+#include "kiwami/romm/romm.h"	// kiwami: one game's sync without listing its system (lookup.h), ROMs found by their contents (hashes.h)
 #include <algorithm>
 #include <ctime>
 #include <dirent.h>
@@ -155,6 +155,7 @@ namespace bsync
 					if (page->isArr() || items->arr.size() < banana::kiwami::syncmem::PAGE || (total >= 0 && off + banana::kiwami::syncmem::PAGE >= total)) break;	// kiwami: syncmem::PAGE a page
 				}
 			}
+			banana::kiwami::romm::byHash(*this);	// kiwami: the card's ROMs under another name, found by their contents
 			banana::kiwami::romm::record(*this);	// kiwami: the games' RomM ids, for the sync before a game
 			listed = true;
 			allPlatforms = platforms; allRoms = roms; allJson = romJson;
@@ -323,6 +324,7 @@ namespace bsync
 		// the card's copy of a server ROM, by name only (roms-relative; "" when it has none)
 		std::string onCard(const RommRom& r)
 		{
+			{ std::string a = banana::kiwami::romm::aliasOf(r.id); if (!a.empty()) return a; }	// kiwami: a ROM found by its contents, under another name on the card
 			if (r.entry.empty()) return "";
 			if (!cardIndex.count(r.folder))
 			{

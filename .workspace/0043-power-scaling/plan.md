@@ -473,6 +473,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. The governor and its unit tests | done | Power scaling: a frame-driven clock governor for RetroArch, and its unit tests |
 | 2. RetroArch calls the governor | done | Power scaling: RetroArch runs the governor when KIWAMI_CLOCKS=1 |
-| 3. The setting: the launch script, run-retroarch's hook and the row | todo | |
+| 3. The setting: the launch script, run-retroarch's hook and the row | done | Power scaling: the setting, which turns on RetroArch's and BananaFront's governors |
 | 4. The strip: the mode and the CPU clock | todo | |
 | 5. Final check | todo | |

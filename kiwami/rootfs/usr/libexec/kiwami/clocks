@@ -1,0 +1,33 @@
+#!/bin/sh
+# Power scaling (Settings > Other systems > Power scaling, settings.conf's kiwami_power_scaling, off by default):
+# sourced by run-retroarch (a kiwami: hook) right after its setting(), before BananaFront's systems are handed on, so
+# RetroArch's games and BananaFront's both get it. On, for every system but the N64 (GLideN64 draws on its own thread
+# and the GPU sets its pace: it keeps its performance profile):
+# - RetroArch's governor (kiwami/patches/retroarch/0101, 0102) and BananaFront's own (--cpugov) through the
+#   environment: the lowest CPU clock that keeps the game at its speed, instead of the system's banana-perf profile;
+# - the GPU on demand from its lowest floor, which RetroArch's governor raises on a frame the GPU made late (and a
+#   floor a crashed RetroArch left raised is cleared);
+# - a fresh log for this game, the last one kept as kiwami-clocks.1.log;
+# - the mode for the game panel's status strip (/run/banana/kiwami-clocks: auto).
+# Off, nothing, and nothing said. Its variables are kc_*, so run-retroarch's own are left alone.
+# KIWAMI_DEVFREQ_ROOT, KIWAMI_CLOCKS_MODE and KIWAMI_CLOCKS_LOGS move the GPU's sysfs, the mode file and the logs'
+# folder, for the tests only.
+if [ "$(setting kiwami_power_scaling)" = on ] && [ "$BANANA_SYSTEM" != n64 ]; then
+    kc_logs=${KIWAMI_CLOCKS_LOGS:-/data/banana/logs}
+    export KIWAMI_CLOCKS=1 BANANAFRONT_CPUGOV=1 KIWAMI_CLOCKS_DATA=/data/banana/kiwami-clocks \
+        KIWAMI_CLOCKS_LOG=$kc_logs/kiwami-clocks.log
+    mkdir -p "$kc_logs" 2>/dev/null
+    [ -f "$KIWAMI_CLOCKS_LOG" ] && mv -f "$KIWAMI_CLOCKS_LOG" "$kc_logs/kiwami-clocks.1.log"
+    for kc_gpu in "${KIWAMI_DEVFREQ_ROOT:-/sys/class/devfreq}"/*.gpu; do
+        [ -f "$kc_gpu/available_frequencies" ] || continue
+        echo simple_ondemand > "$kc_gpu/governor" 2>/dev/null
+        kc_low=$(tr ' ' '\n' < "$kc_gpu/available_frequencies" | grep -x '[0-9][0-9]*' | sort -n | head -n 1)
+        [ -n "$kc_low" ] && echo "$kc_low" > "$kc_gpu/min_freq" 2>/dev/null
+        break
+    done
+    kc_mode=${KIWAMI_CLOCKS_MODE:-/run/banana/kiwami-clocks}
+    mkdir -p "${kc_mode%/*}" 2>/dev/null
+    echo auto > "$kc_mode" 2>/dev/null
+    echo "kiwami: clocks: on ($BANANA_SYSTEM)" >&2
+    unset kc_logs kc_gpu kc_low kc_mode
+fi

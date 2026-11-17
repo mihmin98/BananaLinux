@@ -19,6 +19,10 @@ kiwami/tests/core-overrides.sh
 # RetroArch master's credentials file folded back into retroarch.cfg, on a made-up card, and ra-secrets' hook
 kiwami/tests/ra-keychain.sh
 
+# Power scaling's launch script, sourced with a made-up settings.conf and devfreq (off, on, N64, no GPU), and
+# run-retroarch's hook
+kiwami/tests/clocks.sh
+
 # the vendored C libraries are each their pinned version's files, unchanged
 for d in ui/src/kiwami/third_party/*/; do (cd "$d" && sha256sum -c --quiet SHA256SUMS) || { echo "third_party: $d differs from its SHA256SUMS" >&2; exit 1; }; done
 echo "third_party: $(ls -d ui/src/kiwami/third_party/*/ | wc -l) vendored libraries checked"
@@ -294,6 +298,9 @@ if [ -x ui/banana-ui ]; then kiwami/tests/ra-ui.sh; else echo "ra-ui: skipped, n
 # the Game Boy Pokémon companion in banana-ui, headless, when banana-ui is built: its Settings rows, the game panel's
 # pages for Crystal fed PokeDaisy's captures, a ROM it doesn't know, upstream's panel after it
 if [ -x ui/banana-ui ]; then kiwami/tests/gbpk-ui.sh; else echo "gbpk-ui: skipped, no ui/banana-ui (make ui)"; fi
+
+# Power scaling's row in Settings > Other systems, headless, when banana-ui is built: after Frontend, Off, A writes it
+if [ -x ui/banana-ui ]; then kiwami/tests/power-scaling-ui.sh; else echo "power-scaling-ui: skipped, no ui/banana-ui (make ui)"; fi
 
 # Status on the game panel in banana-ui, headless, when banana-ui is built: its Second screen row, the strip on the
 # tiles view (the minute, the battery and network read every 10 s, the most crowded strip, Light, six tiles), and the

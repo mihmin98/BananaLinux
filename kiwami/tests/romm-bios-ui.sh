@@ -3,7 +3,7 @@
 # paired RomM's only, the page's last (none for a Romhost or unpaired); its page, banana-sync's kiwami bios list
 # shown with the missing files ticked, A unticking one, Start asking kiwami bios get for the ticked ones' ids and the
 # list asked again after it; nothing ticked; RomM's answers "error scope" and a failed download; Wi-Fi off; and by
-# touch, a row ticked and the Download button. banana-sync is kiwami/tests/fake-romm-sync.sh (BANANA_SYNC), which
+# touch, a row ticked and the Download button; a download's progress, file by file. banana-sync is kiwami/tests/fake-romm-sync.sh (BANANA_SYNC), which
 # logs each call. Needs ui/banana-ui (make ui) and ImageMagick (the test library's art).
 # Run by kiwami/tests/ci.sh when banana-ui is built, or by hand:
 #   kiwami/tests/romm-bios-ui.sh       (the shots in $OUT, /tmp/kiwami-romm-bios by default)
@@ -78,6 +78,24 @@ for size in 640x480 1024x768; do
     logged "banana-ui: kiwami: romm bios: got: ok 3 0 0"
     called 2 "kiwami bios list"
     shown list; shown scrolled; shown untick; shown got
+
+    # A8: a download's progress, the job in the background (KIWAMI_BIOS_ASYNC) and banana-sync's status a second a
+    # file (FAKE_BIOS_PACE): the four missing files, the first and the second coming, then the answer and the list
+    # again (sleep: real time, the page updated)
+    # (the run folder the test's own: banana-sync's status file goes there, BANANA_RUN; the list taken in first)
+    mkdir -p "$OUT/run"
+    BANANA_RUN=$OUT/run KIWAMI_BIOS_ASYNC=1 FAKE_BIOS_PACE=1 \
+        ui $size progress "wifi = on" "$PAGE; sleep 500; press start; sleep 300; shot getting1; sleep 1000; shot getting2; sleep 1000; sleep 1000; sleep 1200; sleep 600; shot gotall"
+    logged "banana-ui: kiwami: romm bios: get 11 21 31 33"
+    logged "banana-ui: kiwami: romm bios: getting 1 of 4 bios7.bin"
+    logged "banana-ui: kiwami: romm bios: getting 2 of 4 gba_bios.bin"
+    logged "banana-ui: kiwami: romm bios: getting 3 of 4 scph5501.bin"
+    logged "banana-ui: kiwami: romm bios: getting 4 of 4 scph7001.bin"
+    logged "banana-ui: kiwami: romm bios: got: ok 4 0 0"
+    called 2 "kiwami bios list"
+    shown getting1; shown getting2; shown gotall
+    differ list getting1 bot; differ getting1 getting2 bot; differ getting1 getting2 top; differ getting2 gotall bot
+    [ ! -e "$OUT/run/kiwami-bios.status" ] || { echo "FAIL $size progress: kiwami-bios.status left"; fail=1; }
     differ list scrolled bot; differ list untick bot; differ untick got top
     # nothing ticked: no download
     ui $size none-ticked "wifi = on" "$PAGE; press a; press down; press down; press down; press a; press down; press a; press down; press down; press a; wait 1; press start; wait 1; shot none"

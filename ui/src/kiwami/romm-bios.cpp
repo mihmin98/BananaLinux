@@ -4,11 +4,14 @@
 // move, L and R a page, Start downloads the ticked ones (kiwami bios get <ids>) and then lists them again, B goes
 // back. A tap on a file ticks it, the buttons at the bottom are B, Start and A. The top panel shows the selected file's
 // system, size and state (the DS's three that DraStic reads say so), and the last download's result. Each answer is logged ("kiwami: romm bios: ..."), for the
-// tests.
+// tests. While a download runs, the page reads banana-sync's kiwami-bios.status and shows the file coming and a bar of
+// the bytes in place of Start and A, the ticked rows saying Done, Getting or Waiting.
 #include "kiwami.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdlib>
+#include <fstream>
 #include <sstream>
 
 namespace banana
@@ -58,7 +61,27 @@ namespace banana
 	void Settings::Kiwami::biosRun(BiosAsk what, const std::string& args)
 	{
 		biosAsk = what;
-		biosJob.start(st.syncCmd(args) + " 2>/dev/null", st.sync);
+		// (KIWAMI_BIOS_ASYNC: in the background in the headless test too, for its shots of a download's progress, as
+		// upstream's BANANA_FILES_ASYNC does for Files)
+		biosJob.start(st.syncCmd(args) + " 2>/dev/null", st.sync && !getenv("KIWAMI_BIOS_ASYNC"));
+	}
+
+	// banana-sync's "getting <i> <n> <bytes done> <bytes in all> <name>" (romm/bios.h), read while a download runs; each
+	// file's start logged ("kiwami: romm bios: getting 2 of 5 bios9.bin"), for the tests
+	bool Settings::Kiwami::biosProgress()
+	{
+		if (biosAsk != BiosAsk::GET) return false;
+		std::ifstream f(st.runDir + "/kiwami-bios.status");
+		std::string line, word;
+		if (!f || !std::getline(f, line)) return false;
+		std::istringstream in(line);
+		BiosProgress g;
+		if (!(in >> word >> g.at >> g.of >> g.done >> g.all) || word != "getting" || g.at < 1) return false;
+		std::getline(in >> std::ws, g.name);
+		if (g.at == biosProg.at && g.name == biosProg.name) return false;
+		biosProg = g;
+		fprintf(stderr, "banana-ui: kiwami: romm bios: getting %d of %d %s\n", g.at, g.of, g.name.c_str());
+		return true;
 	}
 
 	Settings::Result Settings::Kiwami::biosOpen()
@@ -125,13 +148,15 @@ namespace banana
 
 	bool Settings::Kiwami::biosUpdate()
 	{
-		bool changed = false;
+		bool changed = biosJob.running() && biosProgress();
 		std::string out;
 		// (a download's answer starts the list again: in the headless test it's done at once, and taken here too)
 		while (biosJob.take(out))
 		{
 			BiosAsk was = biosAsk;
 			biosAsk = BiosAsk::NONE;
+			biosProg = BiosProgress();
+			biosAsked.clear();
 			changed = true;
 			if (was == BiosAsk::LIST) { biosListed(out); continue; }
 			std::string last = lastLine(out);
@@ -201,10 +226,13 @@ namespace banana
 		{
 			if (biosJob.running() || !n) return NONE;
 			std::string ids;
-			for (auto& b : bios) if (b.on) ids += " " + b.id;
+			std::vector<std::string> asked;
+			for (auto& b : bios) if (b.on) { ids += " " + b.id; asked.push_back(b.id); }
 			if (ids.empty()) { biosDone = "Nothing ticked: A ticks a file."; return MOVED; }
 			if (!st.wifiOn()) { biosDone = "Wi-Fi is off: switch it on in Network first."; return MOVED; }
 			biosDone.clear();
+			biosAsked = asked;
+			biosProg = BiosProgress();
 			fprintf(stderr, "banana-ui: kiwami: romm bios: get%s\n", ids.c_str());
 			biosRun(BiosAsk::GET, "kiwami bios get" + ids);
 			return MOVED;
@@ -258,7 +286,8 @@ namespace banana
 		st.icon("phone", 50, 56, 3);
 		st.text("Home server", true, 17, 170, 62, p.muted, true, 1.4f);
 		st.text("BIOS", true, 30, 170, 88, p.ink);
-		std::string accent = biosAsk == BiosAsk::GET ? "Downloading..." : biosAsk == BiosAsk::LIST ? "Asking RomM..."
+		std::string accent = biosAsk == BiosAsk::GET ? (biosProg.at ? "Downloading " + std::to_string(biosProg.at) + " of " +
+			std::to_string(biosProg.of) + "..." : std::string("Downloading...")) : biosAsk == BiosAsk::LIST ? "Asking RomM..."
 			: n ? std::to_string(n) + (n == 1 ? " file, " : " files, ") + std::to_string(ticked) + " ticked" : "";
 		if (!accent.empty()) st.text(st.fit(accent, true, 22, 420), true, 22, 170, 130, p.accent);
 		float y = 196;
@@ -312,14 +341,31 @@ namespace banana
 			st.box(sel ? "pick" : "slot", sel, 18, ry, 604, 37);
 			Color c = sel ? p.onPick : p.ink;
 			std::string tag = b.state == "missing" ? "Missing" : b.state == "same" ? "On card" : "Different";
+			// (a ticked file while they download: its place among those asked for against the file coming now)
+			bool getting = false;
+			if (biosAsk == BiosAsk::GET && b.on)
+			{
+				int at = (int)(std::find(biosAsked.begin(), biosAsked.end(), b.id) - biosAsked.begin()) + 1;
+				getting = at == biosProg.at;
+				tag = at < biosProg.at ? "Done" : getting ? "Getting" : "Waiting";
+			}
 			float tw = st.text(tag, true, 17, 0, 0, c, false, 0, true);
 			st.text(b.on ? "[x]" : "[ ]", true, 18, 34, ry + 9, b.on ? (sel ? p.onPickAccent : p.accent) : c);
 			st.text(st.fit(b.name, true, 18, 520 - tw - 24), true, 18, 74, ry + 9, c);
-			st.text(tag, true, 17, 606 - tw, ry + 10, sel ? p.onPick : b.state == "missing" ? p.accent : p.muted);
+			st.text(tag, true, 17, 606 - tw, ry + 10, sel ? p.onPick : getting || (biosAsk != BiosAsk::GET && b.state == "missing") ? p.accent : p.muted);
 		}
 		float bw = st.faceWidth("B", "Back");
 		st.face("B", "Back", 18, bw);
-		if (n && biosAsk != BiosAsk::GET)
+		if (biosAsk == BiosAsk::GET)
+		{
+			// (the download where its buttons were: the file coming, and a bar of the bytes before it)
+			float x = 18 + bw + 16, w = 622 - x;
+			std::string what = biosProg.at ? "Downloading " + std::to_string(biosProg.at) + " of " + std::to_string(biosProg.of) + ": " + biosProg.name
+				: "Downloading...";
+			st.text(st.fit(what, true, 17, w), true, 17, x, 423, p.ink);
+			st.meter(x, 447, w, biosProg.all > 0 ? (double)biosProg.done / biosProg.all : biosProg.of > 0 ? (biosProg.at - 1.0) / biosProg.of : 0);
+		}
+		else if (n)
 		{
 			float sw = st.faceWidth("START", "Download");
 			st.face("START", "Download", 320 - sw / 2, sw);

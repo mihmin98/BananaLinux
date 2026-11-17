@@ -813,6 +813,13 @@ Where the implementation turned out different from this plan, why, and what chan
   buttons, with each ticked row's tag. A8 gains the progress, and M10 checks it on the device. M7 wasn't measured, so
   `with_rom_id_index=false` stays. Agreed with the user.
 
+- **2026-11-17, step 9: the tests' details, and two docs.** `romm-bios.sh` checks the progress on its first `bios get`,
+  of all five files, rather than a run of three. `romm-bios-ui.sh`'s progress case runs with `BANANA_RUN` (the page
+  reads the status file in the run folder, `/run/banana` otherwise), waits for the opening list before Start (with
+  the job in the background it comes later), and lets real time pass a second at a time (`sleep`), since the page
+  reads the file at each update. `docs/FORK.md` (the fork's verbs) and `kiwami/DEPENDENCIES.md` (the rework's row) name
+  upstream's `status()`, `STATUS` and `RUN`, which the progress goes through; the step's files hadn't listed them.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -827,5 +834,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 6. The game list kept on the card and brought up to date | done | RomM home server: the game list kept on the card, brought up to date with what changed |
 | 7. Installs from RomM's web page, in banana-sync | done | RomM home server: games sent from RomM's web page downloaded at the next sync |
 | 8. The installs row in Settings | done | RomM home server: Installs from RomM, a row on Home server |
-| 9. The BIOS page's download progress | todo | |
+| 9. The BIOS page's download progress | done | RomM home server: the BIOS page shows each file's download as it comes |
 | 10. Final check | todo | |

@@ -315,8 +315,10 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    after its anonymous namespace that copies `list()`'s own (`ROMM_SLUGS`, then `BANANA_FOLDERS` by `fs_slug`): if
    upstream changes that mapping, the line follows it. A scope upstream adds to its own list goes before the fork's;
    if upstream starts asking for `firmware.read` itself, the fork's `SCOPES` drops it. The fork's verbs reach RomM
-   through upstream's `newRomm()`, `Backend::call()` and `fetchTo()`, so a change to those shows in
-   `kiwami/tests/romm-bios.sh`. One game's sync (before or after it) doesn't list the game's system
+   through upstream's `newRomm()`, `Backend::call()` and `fetchTo()`, and `bios get` says how far it got through
+   upstream's `status()`, with `STATUS` pointed at its own `kiwami-bios.status` under `--run` (never Sync now's
+   `sync.status`), which the BIOS page reads while it waits, so a change to those shows in
+   `kiwami/tests/romm-bios.sh` and `romm-bios-ui.sh`. One game's sync (before or after it) doesn't list the game's system
    (`ui/src/kiwami/romm/lookup.h`): `sync_romm.cpp` includes `kiwami/romm/romm.h`. In `Romm::list()`, each platform's
    page loop takes its pages from a `romm::Pages` made before it, whose `fetch(off)` replaces the loop's query and
    `call()` (0022's query moved into it, `romsQuery()` in `romm.h`). For one game's run it first asks for the game alone: its

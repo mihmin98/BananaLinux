@@ -14,6 +14,9 @@
 //     "ok <n>". missing: a place it goes to has nothing; different: a different file is in one (kept); same: all hold it.
 //   kiwami bios get <id>...: "<id> TAB <path under /data> TAB got|same|kept|failed <why>" a place, then
 //     "ok <files got> <files all there already> <files with a different one kept>", or "error <why>" when one failed.
+//     While it runs, <run>/kiwami-bios.status says how far it got, for the BIOS page: "getting <i> <n> <bytes done>
+//     <bytes in all> <file name>" before each file (i from 1, in the order of the ids; the bytes by RomM's sizes). It is
+//     its own file, never the --status Settings passes (sync.status is Sync now's), and is removed when get() ends.
 #include "romm.h"
 
 namespace banana::kiwami::romm::bios
@@ -105,8 +108,14 @@ namespace banana::kiwami::romm::bios
 		return answer("", "ok " + std::to_string(files.size()));
 	}
 
+	// the BIOS page's status file, under the menu's run folder (--run)
+	inline std::string progressFile() { return bsync::RUN + "/kiwami-bios.status"; }
+
 	inline int get(const std::vector<std::string>& ids)
 	{
+		// (upstream's status() writes the progress, to the page's own file: removed however get() ends)
+		bsync::STATUS = progressFile();
+		struct Gone { ~Gone() { unlink(bsync::STATUS.c_str()); } } gone;
 		Paired p;
 		std::string e = p.open();
 		if (!e.empty()) return answer(e);
@@ -128,8 +137,14 @@ namespace banana::kiwami::romm::bios
 		}
 		int got = 0, same = 0, kept = 0;
 		std::string failed;
-		for (auto& f : files)
+		long long all = 0, done = 0;
+		for (auto& f : files) all += std::max(0ll, f.size);
+		for (size_t i = 0; i < files.size(); i++)
 		{
+			const Fw& f = files[i];
+			bsync::status("getting " + std::to_string(i + 1) + " " + std::to_string(files.size()) + " " + std::to_string(done) + " " +
+				std::to_string(all) + " " + f.name);
+			done += std::max(0ll, f.size);
 			std::string url = p.c.server + "/api/firmware/" + std::to_string(f.id) + "/content/" + bsync::urlEsc(f.name);
 			std::string algo = !f.md5.empty() ? "md5" : !f.sha1.empty() ? "sha1" : "", want = !f.md5.empty() ? f.md5 : f.sha1;
 			std::string from;	// (a place holding RomM's file already, or downloaded to: the rest copied from it)

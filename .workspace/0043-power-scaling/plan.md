@@ -390,7 +390,17 @@ Each step is one commit, and leaves the tree building and `make test` passing.
   - `make ui`, `make test`, `kiwami/tests/ci.sh .buildroot`.
 - **Commit**: `Power scaling: the game panel's status shows the clocks' mode and the CPU clock`
 
-### 5. Final check
+### 5. The docs
+
+- **Files**: `docs/FORK.md` (changed).
+- **Change**: *Taking in upstream*'s list of what the fork shadows gains Power scaling: the `run-retroarch` hook's
+  place and its use of `setting()` (`clocks.sh`), the row's `FOLLOWS` after Frontend from the Second screen hook
+  (`power-scaling-ui.sh`), BananaFront's `BANANAFRONT_CPUGOV` to re-read at each bump of its pin, and RetroArch's
+  `0101`/`0102`. `buildroot/package/bananafront/bananafront.mk` joins the `git diff` of files read by hand.
+- **Tests**: none (documentation).
+- **Commit**: `Power scaling: what a merge of upstream re-reads for it`
+
+### 6. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
 - The fork's tests in `kiwami/tests/`, among them `clocks-units`, `clocks.sh`, `power-scaling-ui.sh` and
@@ -409,7 +419,7 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 | Test | Where | What it checks | Criteria |
 |---|---|---|---|
 | clocks-units | `kiwami/tests/clocks-units.c` (from `ci.sh`) | `0101` applies to an empty folder; the governor in C89 against made-up cpufreq/devfreq: start and memory, CPU up/down/ban, 50 Hz pacing, GPU attribution, fast-forward with and without a limit, holds and stalls, stop and its files, no cpufreq | A4, A5, A6, A7, A8, A9, A10 |
-| retroarch build | `make retroarch-dirclean-rgds-plus`, `make retroarch-rgds-plus` (steps 2, 5) | both patches apply without fuzz; RetroArch builds | A4 |
+| retroarch build | `make retroarch-dirclean-rgds-plus`, `make retroarch-rgds-plus` (steps 2, 6) | both patches apply without fuzz; RetroArch builds | A4 |
 | retroarch-pin | `kiwami/tests/retroarch-pin.sh` (from `ci.sh`) | the patch step's folder is still the fork's | A4 |
 | clocks | `kiwami/tests/clocks.sh` (from `ci.sh`) | the launch script off, on, N64, no devfreq; the hook's place in `run-retroarch` | A2, A3 |
 | power-scaling-ui | `kiwami/tests/power-scaling-ui.sh` (from `ci.sh`) | the row after Frontend, Off, A writes on, at both sizes | A1 |
@@ -464,6 +474,10 @@ Where the implementation turned out different from this plan, why, and what chan
   The first rebuild warned in `kiwami_clocks.c` (`-Wformat-truncation`: at Buildroot's `-O2 -D_FORTIFY_SOURCE=1` the
   game's `.clocks` path could take 903 bytes of a 900-byte buffer), so step 2's commit also enlarges that buffer and
   its temporary's in 0101, and `ci.sh` builds the governor with those flags so it catches this on the host.
+- **2026-11-17, final check: a docs step before it.** `docs/FORK.md`'s list of what a merge re-reads by hand didn't
+  cover Power scaling's hook, row placement and BananaFront's variable; the final check changes no code, so a new step
+  5 adds them and the final check becomes step 6. Agreed with the user. The renders are compared with `kiwami` before
+  this feature (`2c650844`), not `main`: `kiwami` carries the Home server rework ahead of `main`. Agreed with the user.
 - **2026-11-17, step 4: the crowded strip's `Performance` from a copy of `systems.conf`, not an SNES ROM.** The headless
   `gamepanel` verb always opens the panel as the Game Boy Advance (`main.cpp`, upstream's), so `panel-status-ui.sh`
   writes a copy of `systems.conf` in `$OUT` with the Game Boy Advance's `perf` set to `performance` and passes it with
@@ -481,4 +495,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 2. RetroArch calls the governor | done | Power scaling: RetroArch runs the governor when KIWAMI_CLOCKS=1 |
 | 3. The setting: the launch script, run-retroarch's hook and the row | done | Power scaling: the setting, which turns on RetroArch's and BananaFront's governors |
 | 4. The strip: the mode and the CPU clock | done | Power scaling: the game panel's status shows the clocks' mode and the CPU clock |
-| 5. Final check | todo | |
+| 5. The docs | done | Power scaling: what a merge of upstream re-reads for it |
+| 6. Final check | todo | |

@@ -243,7 +243,7 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
        system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
        buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update ui/Makefile \
        ui/src/nds/ ui/src/gba/ ui/src/pokemon.h ui/src/pokemon.cpp ui/src/settings_gamepanel.cpp \
-       ui/rnds/RndsUI.cpp
+       ui/rnds/RndsUI.cpp buildroot/package/bananafront/bananafront.mk
    ```
    (the systems list, whose N64 `ext` line `kiwami/post-build.sh` adds `7z` to (upstream lists it on the other six
    cartridge systems; the build stops if N64's line is gone; a new cartridge system without it may want it too), the defconfigs the fork adds to, the share script
@@ -270,7 +270,17 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    reaches the image. `kiwami/tests/ci.sh` stops when upstream's `RETROARCH_VERSION`, `RETROARCH_JOYPADS_VERSION` or
    patches differ from what the fork last checked, and what to do is in the comment above the stamps in
    `kiwami/tests/retroarch-pin.sh`; a download upstream adds to `RETROARCH_EXTRA_DOWNLOADS` needs its hash in the
-   fork's `kiwami/patches/retroarch/retroarch.hash`, or the download stops. And the update script: with
+   fork's `kiwami/patches/retroarch/retroarch.hash`, or the download stops. And Power scaling (0043): its hook is the
+   line in `run-retroarch` right after `setting()`'s block and before the Frontend's dispatch, so BananaFront's games
+   get it too, and the script it sources (`/usr/libexec/kiwami/clocks`) uses that `setting()`;
+   `kiwami/tests/clocks.sh` stops if the line moves or `setting()` goes. Its row follows Frontend on Other systems
+   (`Kiwami::place`'s `FOLLOWS`, added from the Second screen hook, which upstream's Other systems block holds), so a
+   renamed or moved Frontend row, or that hook moved out of the block, moves it, which `power-scaling-ui.sh` catches.
+   BananaFront's full-range governor is upstream's own, turned on by `BANANAFRONT_CPUGOV=1` (`main.c` at
+   `bananafront.mk`'s pin): a bump of BananaFront re-reads that it still takes the variable and still logs `cpugov:
+   on`, since a renamed one would quietly fall back to its floor. RetroArch's side is the fork's patches `0101` and
+   `0102` (`kiwami/DEPENDENCIES.md`'s RetroArch row), which a bump of the fork's RetroArch pin must still apply. And
+   the update script: with
    `BR2_PACKAGE_KIWAMI_OTA_OFF` on, `kiwami/post-build.sh` puts a first case arm after its `case $1 in` line that sends
    `check`, `download` and `beta-login` to `/usr/libexec/kiwami/ota-off` (the build stops if that line changes shape);
    a new command of upstream's that fetches from its releases wants the same). And Settings' order: `build()` sorts the

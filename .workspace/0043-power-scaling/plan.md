@@ -83,8 +83,8 @@ Decided while planning:
   - **up at once** when the game ran slow (RetroArch's period over the core's by 3% for a second) with its CPU work
     over 80%, two steps for two in a second; the clock that failed is banned for 30 s, doubled each time it fails
     again;
-  - **down one step** after 5 s with no up and no late frame, when the p99 scaled to the lower clock fits 65% of the
-    period.
+  - **down one step** after 5 s with no step (up or down) and no late frame, when the p99 scaled to the lower clock
+    fits 65% of the period.
 
   The period is `1/fps`, so a 50 Hz game paced by its audio isn't judged late.
 - **A6**: Given a running game, when a flip comes later than the content's own spacing allows (more than
@@ -103,7 +103,7 @@ Decided while planning:
 - **A9**: Given RetroArch quitting normally (F + Start, the panel's Quit, `SIGTERM`), then:
   - the CPU's governor, `scaling_min_freq` and `scaling_max_freq` are put back as they were found, and the GPU's
     `min_freq` goes to its lowest;
-  - the game's clocks (CPU, the clock it held longest; GPU, its floor) are written to
+  - the game's clocks (CPU, the clock it held longest; GPU, the floor it held longest) are written to
     `/data/banana/kiwami-clocks/<core>/<game>.clocks`;
   - the log gets the steps (kept in memory, up to the last 256) and a summary: time at each CPU clock and GPU floor,
     late frames by cause, fast-forward time.
@@ -447,13 +447,19 @@ Notes from the runs (what the logs showed, what was fixed):
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
 
+- **2026-11-17, step 1: two readings of the plan settled with the user.**
+  - *The CPU's step down* waits 5 s after any step, up or down, as BananaFront's `cpugov.c` does, not only after a step
+    up: successive steps down are 5 s apart (1992 to 816 MHz takes some 20 s on a game with no memory). A5 reworded.
+  - *The GPU's line in the game's memory* is the floor held longest (at normal speed), as the CPU's is the clock held
+    longest, not the floor in force at the exit. A9 reworded.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. The governor and its unit tests | todo | |
+| 1. The governor and its unit tests | done | Power scaling: a frame-driven clock governor for RetroArch, and its unit tests |
 | 2. RetroArch calls the governor | todo | |
 | 3. The setting: the launch script, run-retroarch's hook and the row | todo | |
 | 4. The strip: the mode and the CPU clock | todo | |

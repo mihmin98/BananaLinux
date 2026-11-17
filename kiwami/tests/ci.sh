@@ -43,6 +43,16 @@ ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/statusbar-units" kiwami/te
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/panelstatus-units" kiwami/tests/panelstatus-units.cpp \
     ui/src/kiwami/panelstatus.cpp
 TZ=UTC "$T/panelstatus-units"
+# Power scaling's governor for RetroArch: its patch (the governor's files alone) applied to an empty folder, the
+# governor built with RetroArch's C89 flags (its Makefile's C89_BUILD lane, and the -D_GNU_SOURCE it builds every file
+# with), and run against made-up cpufreq and devfreq folders fed made-up frames
+mkdir "$T/ra"
+patch -s -p1 -d "$T/ra" < kiwami/patches/retroarch/0101-gfx-drm-kiwami-clocks-a-frame-driven-clock-governor.patch
+${CC:-cc} -std=c89 -ansi -pedantic -Werror=pedantic -Wno-long-long -Werror=declaration-after-statement -Wall -Werror \
+    -D_GNU_SOURCE -c -o "$T/kiwami_clocks.o" "$T/ra/gfx/drivers_context/kiwami_clocks.c"
+${CC:-cc} -std=c99 -Wall -Werror -D_GNU_SOURCE -I "$T/ra/gfx/drivers_context" -o "$T/clocks-units" \
+    kiwami/tests/clocks-units.c "$T/kiwami_clocks.o"
+"$T/clocks-units"
 # the Game Boy Pokémon companion's (ui/src/kiwami/gbpk/, GPL-3.0: kiwami/GB-POKEMON.md), its own binary: which game a
 # ROM is (the made-up ones in kiwami/tests/gbpk/made-up/, plain and in archives), its data files and the list of ROMs
 # its ROM tests expect (kiwami/tests/gbpk/roms.sha1), its text, its ROM reader on a made-up ROM, its memory reader

@@ -597,7 +597,7 @@ is `/data/banana/logs/` on the device):
 |---|---|---|---|---|---|---|
 | M1 | rgds-plus | Update to the build. Home server: Forget, then Server > Pair by QR, approved in RomM. Open Home server. | Paired. The rows are the rework's plus Show sync times (last), Installs from RomM (Off) and BIOS. RomM's token page lists `firmware.read`. | `sync.log`, `banana-ui.log`, a photo of the page | A4, A8, A15 | not run |
 | M2 | rgds-plus | BIOS: open the page. Start with the missing files ticked. Then play a DS game under DraStic and under BananaDS, and a PS1 game. | The DS, GBA and PS1 files in `/data/bios`, and DraStic's three in `/data/drastic/system/`. Reopened, all "On the card". The games start. | `banana-ui.log`, `ls -l /data/bios /data/drastic/system` | A5, A6, A8 | not run |
-| M3 | rgds-plus | Installs from RomM On. On a phone, in RomM's web UI, install a GBA game and a PS1 game on this device. Switch Wi-Fi off and on, wait a minute. | Both games on the card (in their shelves). RomM shows them done. | `sync.log`, a photo of RomM's install status | A15, A16, A18 | not run |
+| M3 | rgds-plus | Installs from RomM On. On a phone, in RomM's web UI, install a GBA game and a PS1 game on this device. Switch Wi-Fi off and on, wait a minute. | Turning the row On shows the pop-up "Installs from RomM". Both games on the card (in their shelves). RomM shows them done. | `sync.log`, a photo of RomM's install status | A15, A16, A18 | not run |
 | M4 | rgds-plus | As M3, with Games go to: Second SD card and the card out. Sync now. Then put the card in and Sync now again. | The first time: waiting (RomM: taken). The second: on the second card, done. | `sync.log` both times | A17 | not run |
 | M5 | rgds-plus | Sync before playing On. Start a game of a system with 1000+ games, twice. Then a game renamed on the card, after a Sync now. | The first start does a search, the second a single lookup, each with the wait under 5 s. The renamed game's save syncs (`by hash:` line). | `sync.log`, `/run/banana/launch.status`, `banana-ui.log` (the wait's times) | A9, A10, A12, A20 | not run |
 | M6 | rgds-plus | Sync now twice, with Show sync times On. Then rename a game in RomM and Sync now. | The second sync's Listing games is much shorter, and its peak under 100 MB. The rename shows in Get games. | `sync.log` and `sync.log.1` (`memory:`, `times:`) | A13, A14, A20 | not run |
@@ -737,6 +737,22 @@ Where the implementation turned out different from this plan, why, and what chan
     the device's own, a failed download that comes at the next sync, a game taken back, and Wi-Fi with Auto sync off and
     nothing sent (one look at the requests, nothing else).
 
+- **2026-11-17, step 8: the row's change seen by the fork's `update()`, a failed Off kept, and the pop-up.**
+  - Upstream's Settings writes the row to `settings.conf` as for any row of its kind, and has no hook for a change.
+    `Kiwami::update()` sees the row's value change, as it does for Mode's two rows, and runs `kiwami installs on|off`
+    as a `wifi::Job`. No line in upstream's `settings.cpp`. `kiwami.h` changes too (the job and the value last seen),
+    which the step's files didn't list.
+  - A failed On is put back to Off. A failed Off is kept: banana-sync stops claiming whatever RomM says, and the next
+    On sends the capability again. Agreed with the user.
+  - With Wi-Fi off, banana-sync isn't asked, and On is put back.
+  - The outcome is shown in Settings' pop-up (`toast()`, as the RetroAchievements sign-in shows its own): "RomM didn't
+    take it: <why>" for On, "RomM couldn't be told" for Off, and a short confirmation when RomM took it. The rework
+    draws `message` on the list only under its own rows. The pop-up doesn't show in the headless shots, so
+    `romm-installs-ui.sh` checks the log lines and `settings.conf`, and M3 looks at the pop-up on the device.
+  - `romm-bios-ui.sh`'s expected row list gains `kiwami_romm_installs`, and `sync-times-ui.sh` takes three Ups from
+    Server for RomM. `romm-installs-ui.sh` also checks unpaired, and not touch (the row is upstream's kind, whose
+    touch is upstream's).
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -750,5 +766,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 5. ROMs found by their hash in Sync now | done | RomM home server: ROMs under another name found by their hash |
 | 6. The game list kept on the card and brought up to date | done | RomM home server: the game list kept on the card, brought up to date with what changed |
 | 7. Installs from RomM's web page, in banana-sync | done | RomM home server: games sent from RomM's web page downloaded at the next sync |
-| 8. The installs row in Settings | todo | |
+| 8. The installs row in Settings | done | RomM home server: Installs from RomM, a row on Home server |
 | 9. Final check | todo | |

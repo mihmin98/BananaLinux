@@ -86,11 +86,11 @@ for size in 640x480 1024x768; do
     # another row (Server): nothing
     st $size other-row "$ON" "$GAMES" "4242 2001 92001 Downloading" "$TO_SERVER; wait 1; shot other"
     none
-    # the row, for RomM and for Romhost (Up from Server: RomM's BIOS row is the page's last, below it), and A on it
-    # writes the setting
+    # the row, for RomM and for Romhost (Up from Server: RomM's Installs from RomM and BIOS rows are the page's last,
+    # below it), and A on it writes the setting
     for b in romm romhost; do
         paired $b
-        up="press up"; [ $b = romm ] && up="press up; press up"
+        up="press up"; [ $b = romm ] && up="press up; press up; press up"
         st $size row-$b "wifi = on" "$GAMES" "4242 2001 92001 Downloading" "$TO_SERVER; $up; wait 1; press a; wait 1; shot row-$b"
         logged "banana-ui: kiwami: rows in Home server: kiwami_sync_times"
         grep -qx 'kiwami_sync_times *= *"*on"*' "$CONF" || { echo "FAIL $size $name: settings.conf has no kiwami_sync_times = on: $(grep kiwami_sync "$CONF")"; fail=1; }

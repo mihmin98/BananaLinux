@@ -259,6 +259,10 @@ if [ -x ui/banana-ui ]; then kiwami/tests/sync-times-ui.sh; else echo "sync-time
 # ticks, the download asked for, RomM's errors, Wi-Fi off, touch
 if [ -x ui/banana-ui ]; then kiwami/tests/romm-bios-ui.sh; else echo "romm-bios-ui: skipped, no ui/banana-ui (make ui)"; fi
 
+# Home server > Installs from RomM in banana-ui's Settings, headless, when banana-ui is built: the row (a paired RomM
+# 5.4's), its setting and banana-sync's kiwami installs on|off, a refused On put back, a failed Off kept, Wi-Fi off
+if [ -x ui/banana-ui ]; then kiwami/tests/romm-installs-ui.sh; else echo "romm-installs-ui: skipped, no ui/banana-ui (make ui)"; fi
+
 # Tailscale in banana-ui's Settings, headless, when banana-ui is built (CI builds it before)
 if [ -x ui/banana-ui ]; then kiwami/tests/tailscale-ui.sh; else echo "tailscale-ui: skipped, no ui/banana-ui (make ui)"; fi
 

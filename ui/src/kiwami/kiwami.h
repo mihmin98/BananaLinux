@@ -23,7 +23,11 @@
 //   Network > Home server > Show sync times (kiwami_sync_times in settings.conf, after Forget this server): while a sync runs and
 //   Sync now is selected, a line under its bar with the phase, its time, its time left and the sync's time
 //   (sync-times.cpp, from banana-sync's sync.times: synctimes.h), Settings waking each second for it.
-//   Network > Home server > BIOS (kiwami.romm.bios, a paired RomM's, after Show sync times): RomM's BIOS files for
+//   Network > Home server > Installs from RomM (kiwami_romm_installs in settings.conf, a paired RomM 5.4 or newer's,
+//   after Show sync times, Off by default): games sent to this handheld from RomM's web page come at the next sync
+//   (banana-sync's romm/installs.h). A change to it is told to RomM (kiwami installs on|off) in the background; a
+//   failed On is put back, a failed Off kept (banana-sync stops claiming whatever RomM says).
+//   Network > Home server > BIOS (kiwami.romm.bios, a paired RomM's, after Installs from RomM): RomM's BIOS files for
 //   Banana's systems, ticked to download into the card's bios folder (romm-bios.cpp, through banana-sync's kiwami bios
 //   verbs: romm/bios.h).
 //   Other systems > Second screen > Status on the game panel (kiwami_panel_status in settings.conf, after Game panel
@@ -109,6 +113,14 @@ namespace banana
 		void biosListed(const std::string& out);	// a list's answer taken in, the selection kept on its file
 		std::vector<int> biosRows() const;			// the bottom panel's rows: a file's index, or -1 - the index of its system's first file
 		void biosScroll();							// btop kept so that the selected file (and its system's head) shows
+
+		// Home server > Installs from RomM (kiwami_romm_installs, kiwami.cpp): a change to the row, which upstream's
+		// Settings writes to settings.conf, told to RomM by banana-sync's kiwami installs on|off; a failed On put back
+		wifi::Job installsJob;
+		int installsAt = -1;						// the row's value as last seen (-1: not yet)
+		bool installsOn = false;					// what installsJob asks for
+		bool installsUpdate();
+		void installsFailed(const std::string& why);	// said, and an On put back
 
 		// Status on the game panel's strip (panel-status.cpp): its state, made at the first game with the setting on
 		bool panelOn = false;						// kiwami_panel_status = on at this game's start

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Network > Home server > BIOS in banana-ui's Settings, headless at both panel sizes (romm-bios.cpp): the row, a
-# paired RomM's only, after Show sync times (none for a Romhost or unpaired); its page, banana-sync's kiwami bios list
+# paired RomM's only, the page's last (none for a Romhost or unpaired); its page, banana-sync's kiwami bios list
 # shown with the missing files ticked, A unticking one, Start asking kiwami bios get for the ticked ones' ids and the
 # list asked again after it; nothing ticked; RomM's answers "error scope" and a failed download; Wi-Fi off; and by
 # touch, a row ticked and the Download button. banana-sync is kiwami/tests/fake-romm-sync.sh (BANANA_SYNC), which
@@ -59,10 +59,11 @@ differ() { cmp -s "$OUT/$size-$1-$3.png" "$OUT/$size-$2-$3.png" && { echo "FAIL 
 for size in 640x480 1024x768; do
     export FAKE_BIOS="$LIST"
     unset FAKE_BIOS_GET
-    # A8: a paired RomM: the row after Show sync times, the page's last; the list, the missing files ticked
+    # A8: a paired RomM: the row after Show sync times and Installs from RomM, the page's last; the list, the missing
+    # files ticked
     paired romm
     ui $size keys "wifi = on" "$PAGE; shot list; press down; press down; press down; press down; press down; press down; wait 1; shot scrolled; press up; press up; press up; press up; press up; press up; press a; wait 1; shot untick; press start; wait 1; shot got"
-    logged "banana-ui: kiwami: rows in Home server: kiwami_sync_times kiwami.romm.bios"
+    logged "banana-ui: kiwami: rows in Home server: kiwami_sync_times kiwami_romm_installs kiwami.romm.bios"
     logged "banana-ui: kiwami: romm bios: 7 listed"
     logged "banana-ui: kiwami: romm bios: file 11 nds/bios7.bin missing, ticked"
     logged "banana-ui: kiwami: romm bios: file 12 nds/BIOS9.BIN same"

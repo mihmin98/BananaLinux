@@ -56,6 +56,7 @@ namespace banana
 
 	// RetroAchievements > Mode's key: upstream's Other systems > RetroAchievements row's, in retroarch.cfg
 	static const char* const MODE = "cheevos_hardcore_mode_enable";
+	static const char* const INSTALLS = "kiwami_romm_installs";
 
 	void Settings::Kiwami::rows(Settings& s, const char* group)
 	{
@@ -113,6 +114,20 @@ namespace banana
 			it.names = { "Off", "On" }; it.values = { "off", "on" };
 			s.items.push_back(it);
 			keys = it.key;
+			// Installs from RomM, a paired RomM 5.4 or newer's (the version the rework's save slots need, the same one
+			// that has installs): banana-sync claims the games sent from RomM's page (romm/installs.h); a change is told
+			// to RomM by installsUpdate()
+			if (s.hsRowsFor == "romm" && s.hsSlotsKept())
+			{
+				Item in;
+				in.section = group; in.icon = "phone"; in.label = "Installs from RomM"; in.key = INSTALLS;
+				in.help = "Games you send to this handheld from RomM's web page come at the next Sync now, or when Wi-Fi "
+					"connects. RomM keeps a request two days.";
+				in.file = s.data + "/settings.conf";
+				in.names = { "Off", "On" }; in.values = { "off", "on" };
+				s.items.push_back(in);
+				keys += " " + in.key;
+			}
 			// BIOS (romm-bios.cpp), a paired RomM's: RomM serves its firmware files (Romhost has none to give)
 			if (s.hsRowsFor == "romm")
 			{
@@ -184,6 +199,7 @@ namespace banana
 	{
 		modeAt = -1;
 		for (auto& it : st.items) if (it.key == MODE) modeAt = it.at;	// (both rows as just read, from the one file)
+		if (!installsJob.running()) installsAt = -1;	// (the installs row's value taken as it is at the next update)
 		tsOpened();
 		raOpened();
 	}
@@ -234,15 +250,15 @@ namespace banana
 
 	bool Settings::Kiwami::update(double t)
 	{
-		bool mode = syncMode(), ra = raUpdate(), times = timesUpdate(t), b = biosUpdate();
-		return tsUpdate(t) || mode || ra || times || b;
+		bool mode = syncMode(), ra = raUpdate(), times = timesUpdate(t), b = biosUpdate(), in = installsUpdate();
+		return tsUpdate(t) || mode || ra || times || b || in;
 	}
 
 	int Settings::Kiwami::wake(double t, bool shown) const
 	{
 		int w = tsWake(t, shown && pageOpen == Page::TAILSCALE), r = raWake(), s = timesWake(t);
 		w = w < 0 ? r : r < 0 ? w : std::min(w, r);
-		if (biosJob.running()) w = w < 0 ? 100 : std::min(w, 100);	// (BIOS's banana-sync, its answer taken in)
+		if (biosJob.running() || installsJob.running()) w = w < 0 ? 100 : std::min(w, 100);	// (BIOS's banana-sync and the installs row's, their answers taken in)
 		return w < 0 ? s : s < 0 ? w : std::min(w, s);
 	}
 
@@ -253,6 +269,57 @@ namespace banana
 		if (r != row0) fprintf(stderr, "banana-ui: kiwami: groups from row %d\n", r);
 		row0 = r;
 		return r;
+	}
+
+	// Home server > Installs from RomM: upstream's Settings writes the row to settings.conf as for any other; a change
+	// seen here is told to RomM (banana-sync's kiwami installs on|off: the device's remote_install capability, and with
+	// on a check that the pairing can take installs). A failed On is put back to Off, so the row never says On for a
+	// handheld RomM won't send to; a failed Off is kept (banana-sync stops claiming whatever RomM says, and RomM is told
+	// at the next On). Each step is logged ("kiwami: romm installs: ..."), for the tests
+	bool Settings::Kiwami::installsUpdate()
+	{
+		bool changed = false;
+		std::string out;
+		if (installsJob.take(out))
+		{
+			while (!out.empty() && (out.back() == '\n' || out.back() == '\r')) out.pop_back();
+			std::string last = out.substr(out.rfind('\n') == std::string::npos ? 0 : out.rfind('\n') + 1);
+			if (last == "ok")
+			{
+				fprintf(stderr, "banana-ui: kiwami: romm installs: %s: ok\n", installsOn ? "on" : "off");
+				st.toast("Installs from RomM", installsOn ? "Games sent from RomM's page come at the next sync." : "RomM no longer offers this handheld.", 0x6ad07a, 1, 4000);
+			}
+			else installsFailed(last.compare(0, 6, "error ") == 0 ? last.substr(6) : "banana-sync didn't answer");
+			changed = true;
+		}
+		if (installsJob.running()) return changed;
+		const Item* it = st.itemByKey(INSTALLS);
+		if (!it || it->at < 0 || it->at >= (int)it->values.size()) return changed;
+		if (installsAt < 0 || it->at == installsAt) { installsAt = it->at; return changed; }
+		installsAt = it->at;
+		installsOn = it->values[it->at] == "on";
+		if (!st.wifiOn()) { installsFailed("Wi-Fi is off"); return true; }
+		fprintf(stderr, "banana-ui: kiwami: romm installs: %s asked\n", installsOn ? "on" : "off");
+		installsJob.start(st.syncCmd(std::string("kiwami installs ") + (installsOn ? "on" : "off")) + " 2>/dev/null", st.sync);
+		return changed;
+	}
+
+	void Settings::Kiwami::installsFailed(const std::string& why)
+	{
+		fprintf(stderr, "banana-ui: kiwami: romm installs: %s: %s%s\n", installsOn ? "on" : "off", why.c_str(), installsOn ? ", put back" : "");
+		if (!installsOn)
+		{
+			st.toast("RomM couldn't be told", why + ". Its page may still offer this handheld; nothing sent is taken.", 0xf2c94c, 0, 7000);
+			return;
+		}
+		for (auto& it : st.items)
+			if (it.key == INSTALLS)
+			{
+				it.at = 0;
+				st.save(it);
+				installsAt = it.at;
+			}
+		st.toast("RomM didn't take it", why + ".", 0xff7a4a, 2, 7000);
 	}
 
 	// Mode and upstream's Other systems > RetroAchievements are two rows of one setting, each read when Settings opens:

@@ -639,7 +639,7 @@ is `/data/banana/logs/` on the device):
 | M7 | rgds-plus | Over SSH: `time banana-sync games > /dev/null`, then the same with `KIWAMI_ROMM_ROM_ID_INDEX=1` (the fork's switch that leaves `with_rom_id_index=false` out), three times each. | The two medians recorded. The final check keeps or drops the parameter by them. | the shell output | (final check) | skipped (2026-11-17, 0.5.3.4 built from `6112a92d` (the code of `b7d2a241`)): not measured; `with_rom_id_index=false` stays as the code and the rework have it (the user's choice) |
 | M8 | rgds-plus | A save made in Grout or Argosy (or RomM's player) for a GBA game on the card, with Quick resume On. Start the game on Banana. | The newer save is loaded, not the old resume state. | `sync.log`, `/run/banana/launch.status` | A20 | passed, quick check (2026-11-17, 0.5.3.4 built from `6112a92d` (the code of `b7d2a241`)): as M5 |
 | M9 | rgds-plus | Close the lid during M3's download, then open it after a minute. | The download goes on, or the next sync finishes it. Nothing half-written in `roms/`. | `sync.log`, `ls` of the folder | A16 | passed, quick check (2026-11-17, 0.5.3.4 built from `6112a92d` (the code of `b7d2a241`)): as M5 |
-| M10 | rgds-plus | On the image with step 9: BIOS, tick two or more files (a missing one, or delete one from `/data/bios` first), Start. | While they download, the bottom panel shows "Downloading <i> of <n>: <name>" and a bar where the buttons were, and the ticked rows' tags go Waiting, Getting, Done; the top says "Downloading <i> of <n>...". At the end, the result and the files' states as before. | `banana-ui.log` (its `kiwami: romm bios: getting` lines), a photo or video during the download | A8 | not run |
+| M10 | rgds-plus | On the image with step 9: BIOS, tick two or more files (a missing one, or delete one from `/data/bios` first), Start. | While they download, the bottom panel shows "Downloading <i> of <n>: <name>" and a bar where the buttons were, and the ticked rows' tags go Waiting, Getting, Done; the top says "Downloading <i> of <n>...". At the end, the result and the files' states as before. | `banana-ui.log` (its `kiwami: romm bios: getting` lines), a photo or video during the download | A8 | not run (2026-11-17): the user's choice, to open the pull request; the image with step 9 (0.5.3.4 from `3ee5de09`) was built but not tried. The progress is covered by `romm-bios-ui.sh`'s shots and `romm-bios.sh` |
 
 Notes from the runs (what the logs showed, what was fixed):
 
@@ -649,6 +649,35 @@ Notes from the runs (what the logs showed, what was fixed):
   logs were sent or analysed. M7 wasn't measured. The image came from an output built before step 1: its build tree
   still held the fork's old `src/kiwami/qrcodegen.cpp`, which Buildroot's rsync of a local package never deletes, so
   `banana-ui-rebuild` failed to link (`qrcodegen::*` twice) until `banana-ui-dirclean`. A fresh output doesn't have it.
+
+- **2026-11-17, the final check.** Run at `b7d2a241` (step 8), with step 9's changes checked again at `3ee5de09`:
+  - `make test` passed (at both commits). `make -C ui` built, with upstream's four warnings only
+    (`settings.cpp:5670`, `soft.cpp:33`, `settings_files.cpp:1163`, `nds/rom.cpp:100`); none in the fork's code or
+    `banana-sync`. bananad built with `-O2 -Werror` (`make -B`), no warnings.
+  - `kiwami/tests/ci.sh .buildroot` passed at `b7d2a241`: every RomM suite, the UI suites and every board's
+    configuration. Step 9's own suites (`romm-bios.sh`, `romm-bios-ui.sh`) and the UI suites its header reaches
+    (`sync-times-ui.sh`, `romm-installs-ui.sh`, `ui-objects.sh`) passed again at `3ee5de09`.
+  - `system/tests/launchers-test.sh`: 119 passed, 2 failed, the zipped DSi cases: this computer has no `zip`, so the
+    test can't make its zips. The rework's own tree at `cab127ba` fails the same two; 0039 doesn't touch `run-nds`.
+  - `sleep-test.sh`: **not run** (the user's choice). It needs root, and a run leaves `/data` and `/etc/banana` on the
+    computer. 0039 doesn't change bananad; sleep was used on the device with this build.
+  - A2: `romm-list.sh --compare cab127ba`: the rework's own `banana-sync` peaked at 404 MB listing the games; the
+    fork's 70 MB (`games` and a games-only sync), 14 MB before a game and 36 MB through the kept list (22 KB read
+    against 60 MB), with the same games, card and saves.
+  - The hooks: every upstream file that differs from `cab127ba` has a `kiwami:` line, none has a mark without a
+    change, and `docs/FORK.md` describes them; step 9 changed no upstream file.
+  - A19: 875 renders compared with `cab127ba`'s (from `git archive`). 99 differ: 85 in the clock, the rest the card's
+    free space, Bshare's random PIN, the marquee's scroll, the DS overlay's frame and one pixel of `badtheme`, plus
+    Network's Tailscale row (0034's, 3 renders). None is this feature's. Files' server pages (`sv-*`, 180) weren't
+    compared: the baseline didn't build `banana-fetch` (`banana-bshare` didn't build against this computer's OpenSSL).
+  - Docs: `kiwami/DEPENDENCIES.md` and `CLAUDE.md` brought up to date in their own commit, `docs/FORK.md` with each
+    step.
+  - The manual tests: M1, M3, M4 passed; M2 passed with the feedback gap step 9 fixed; M5, M6, M8, M9 passed on a
+    quick check with no logs analysed; M7 and M10 not run. So A20's measured points (the 5 s wait, the tenth of the
+    bytes) rest on the automated tests, not the device. Every other criterion is met by a test that passed: A1-A3
+    (`make test`, `ci.sh`, `romm-list`, `sync-times`), A4-A8 (`romm-bios`, `romm-bios-ui`, M1, M2), A9-A12
+    (`romm-lookup`, `romm-hash`), A13-A14 (`romm-incremental`, `romm-list`), A15-A18 (`romm-installs`,
+    `romm-installs-ui`, M3, M4), A19 (above).
 
 ## Deviations
 
@@ -835,4 +864,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 7. Installs from RomM's web page, in banana-sync | done | RomM home server: games sent from RomM's web page downloaded at the next sync |
 | 8. The installs row in Settings | done | RomM home server: Installs from RomM, a row on Home server |
 | 9. The BIOS page's download progress | done | RomM home server: the BIOS page shows each file's download as it comes |
-| 10. Final check | todo | |
+| 10. Final check | done | RomM home server: the final check done |

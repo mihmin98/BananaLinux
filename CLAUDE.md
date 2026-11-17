@@ -156,7 +156,18 @@ manual dispatch.
   CLI, headless script), `soft.cpp` (the Backend: diffing draw lists per screen, run-length textures), `kms.cpp`,
   `library.cpp` (the Source: systems, games, gamelist.xml/media art, play stats), `settings.cpp` (settings and
   first-time setup), `wifi.cpp`, `splash.cpp` (boot animation), `carts*.cpp` (Carts theme). Also builds
-  `banana-scrape` and `banana-leaseshim.so` (DRM lease preloaded into RetroArch).
+  `banana-scrape` and `banana-leaseshim.so` (DRM lease preloaded into RetroArch), and `banana-sync` (Settings >
+  Network > Home server: Romhost and RomM, games, box art and saves; `sync.cpp` its CLI and `doSync`, `sync_core.cpp`
+  the shared layer, `sync_romm.cpp` RomM's backend, `save_*.cpp` the save vault; Settings' page is
+  `settings_homesrv.cpp`). Upstream's Home server rework, which brought that split, is merged at `cab127ba` ahead of
+  `main` (`docs/FORK.md`, *Taking in upstream*).
+- `ui/src/kiwami/romm/` — the fork's RomM additions to `banana-sync`, header-only, hooked into the rework's files:
+  BIOS downloads (`bios.h`, the `kiwami` verb), a game's sync before it without listing its system (`lookup.h`),
+  ROMs under another name found by their hash (`hashes.h`), the game list kept on the card (`listcache.h`) and
+  installs from RomM's web page (`installs.h`). Their state is `/data/banana/kiwami-romm.json` and
+  `kiwami-romm-list.jsonl`; their tests are `kiwami/tests/romm-*.sh` against `kiwami/tests/romm-kiwami.py`, a stand-in
+  in front of upstream's `ui/tests/fake-romm.py`. Settings' rows and BIOS page are in `ui/src/kiwami/kiwami.cpp` and
+  `romm-bios.cpp`.
 - `ui/rnds/` — ROCKNIXDS Pixel's engine, **imported** from ROCKNIXDS by `tools/import-rnds.sh`. Treat as vendored:
   `ui/rnds/UPSTREAM` lists the local changes that must be carried into ROCKNIXDS before re-importing (re-import
   overwrites them). `ui/assets/overrides/` is copied over the imported assets.

@@ -86,8 +86,17 @@ grep -qE '	nds	bios7.bin	16384	different$' "$T/list2" || err "bios list: DraStic
 
 # A6: everything asked for: each file checked in /data/bios, the DS's in DraStic's folder under its names, the
 # card's own left alone and said
-bs "$C" kiwami bios get $(ids "$T/list2") > "$T/get1" || err "bios get failed: $(cat "$T/get1")"
+echo "done 1 0|Sync now's line" > "$C/run/sync.status"
+bs "$C" -v kiwami bios get $(ids "$T/list2") > "$T/get1" 2> "$T/get1.err" || err "bios get failed: $(cat "$T/get1")"
 [ "$(lastline "$T/get1")" = "ok 4 0 2" ] || err "bios get's last line: $(lastline "$T/get1") (not ok 4 0 2)"
+# its progress, for the BIOS page: a line before each file in the order asked, the bytes before it of them all, in
+# its own status file (-v says each line), never in Sync now's, and gone when it ends
+all=$(grep -E '^[0-9]+	' "$T/list2" | awk -F'\t' '{ s += $4 } END { print s }')
+grep -E '^[0-9]+	' "$T/list2" | awk -F'\t' -v all="$all" '{ printf "status: getting %d 5 %d %d %s\n", NR, done, all, $3; done += $4 }' > "$T/progress.want"
+grep '^status: ' "$T/get1.err" > "$T/progress.got"
+cmp -s "$T/progress.want" "$T/progress.got" || err "bios get's progress: $(diff "$T/progress.want" "$T/progress.got" | tr '\n' ' ')"
+[ "$(cat "$C/run/sync.status")" = "done 1 0|Sync now's line" ] || err "bios get wrote Sync now's sync.status: $(cat "$C/run/sync.status")"
+[ ! -e "$C/run/kiwami-bios.status" ] || err "bios get left kiwami-bios.status: $(cat "$C/run/kiwami-bios.status")"
 for f in nds/bios7.bin nds/BIOS9.BIN nds/firmware.bin psx/scph5501.bin; do
     cmp -s "$FW/$f" "$C/bios/${f#*/}" || err "bios get: bios/${f#*/} isn't RomM's"
 done

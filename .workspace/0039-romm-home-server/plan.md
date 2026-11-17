@@ -72,6 +72,9 @@ BIOS:
 - **A8**: Given a RomM pairing, the Home server page has a **BIOS** row, and none for Romhost or unpaired.
   - Its page lists the files by system. Missing files are ticked, A toggles one, and Start downloads the ticked files.
   - The top panel shows the selected file's state and the result.
+  - While a download runs (*Deviations*, 2026-11-17, step 9), the bottom panel shows which file of how many is coming,
+    its name and a bar of the bytes so far, where the buttons were. Each ticked row's tag says Done, Getting or
+    Waiting, and the top panel's line says "Downloading <i> of <n>...".
   - It works at 640x480 and 1024x768, with the touchscreen too.
 
 Lookups:
@@ -545,7 +548,38 @@ kept to what the step touches; `make test` runs once per step that changes banan
 - **Tests**: `romm-installs-ui.sh`, `romm-bios-ui.sh`, `sync-times-ui.sh`, `make test`, `ui-objects.sh`.
 - **Commit**: `RomM home server: Installs from RomM, a row on Home server`
 
-### 9. Final check
+### 9. The BIOS page's download progress
+
+Added after M2 (*Deviations*, 2026-11-17, step 9): the page showed a download only as "Downloading..." on the top
+panel, and the bottom list, where the owner looks, didn't change.
+
+- **Files**:
+  - `ui/src/kiwami/romm/bios.h` (changed): `get()` writes its progress to its own status file,
+    `<run>/kiwami-bios.status` (`bsync::STATUS` set to it, over the `--status` Settings passes, so Sync now's
+    `sync.status` is never touched). Before each file it writes `getting <i> <n> <bytes done> <bytes in all> <name>`,
+    where `<i>` counts the files in the order of the ids asked for and the bytes come from RomM's sizes. The file is
+    removed when `get()` ends, whatever the outcome. stdout's lines and the last one are unchanged.
+  - `ui/src/kiwami/kiwami.h` (changed): the page's progress (the line last read, the ids in the order asked for).
+  - `ui/src/kiwami/romm-bios.cpp` (changed):
+    - `biosUpdate()`: while a download runs, it reads the status file at each wake (the 100 ms the running job
+      already asks for) and redraws when the line changes. The log line is `kiwami: romm bios: getting <i> of <n>
+      <name>`.
+    - The bottom panel: in place of the Download and Tick buttons, "Downloading <i> of <n>: <name>" and a bar of the
+      bytes so far. The ticked rows' tags: Done (asked before the current one), Getting (the current one), Waiting
+      (after it). The list asked again at the end gives their real states, as now.
+    - The top panel's line: "Downloading <i> of <n>...", or "Downloading..." until the first line comes.
+    - `KIWAMI_BIOS_ASYNC` in the environment runs the page's job in the background in the headless test, as
+      upstream's `BANANA_FILES_ASYNC` does for Files.
+  - `kiwami/tests/fake-romm-sync.sh` (changed): `kiwami bios get` writes a `getting` line for each id to
+    `<run>/kiwami-bios.status`, `$FAKE_BIOS_PACE` seconds apart, and removes the file before it answers.
+  - `kiwami/tests/romm-bios.sh` (changed): `bios get` of three files with `-v`: the `getting 1 3 ...` to `getting 3 3
+    ...` status lines in order, with the bytes adding up, `sync.status` unchanged, and no `kiwami-bios.status` left.
+  - `kiwami/tests/romm-bios-ui.sh` (changed): with `KIWAMI_BIOS_ASYNC=1` and a paced fake, Start; shots during the
+    download at both sizes; the log's `getting 1 of 2` and `getting 2 of 2` lines; the result after it as now.
+- **Tests**: `romm-bios.sh`, `romm-bios-ui.sh`, `make test`, `kiwami/tests/ui-objects.sh`.
+- **Commit**: `RomM home server: the BIOS page shows each file's download as it comes`
+
+### 10. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `system/tests/launchers-test.sh`, `sudo
   system/bananad/tests/sleep-test.sh`, `kiwami/tests/ci.sh .buildroot`.
@@ -560,7 +594,8 @@ kept to what the step touches; `make test` runs once per step that changes banan
   `sync.cpp` paths).
 - `with_rom_id_index` (M7): if the measurement shows `with_rom_id_index=false` slower on the user's server, `Pages`
   drops it in this step, with `romm-list.sh`'s request assertion updated; the outcome goes in the manual test table.
-- The manual tests below all passed.
+  (M7 wasn't measured: the parameter stays, *Deviations*, 2026-11-17, step 9 added.)
+- The manual tests below all passed (M7 skipped), M10 on an image with step 9.
 - Every acceptance criterion is met: each is listed by at least one automated or manual test, and those passed.
 
 ## Automated tests
@@ -572,7 +607,7 @@ kept to what the step touches; `make test` runs once per step that changes banan
 | sync-times | `kiwami/tests/sync-times.sh`, `synctimes-units.cpp` | The phases of the rework's runs, `sync.times`, the report; nothing off; nothing for one game | A3 |
 | sync-times-ui | `kiwami/tests/sync-times-ui.sh` | The line and the row after Sync now, RomM and Romhost | A3, A19 |
 | romm-bios | `kiwami/tests/romm-bios.sh`, `romm-kiwami.py` | Scopes; list; get; DraStic's copies; kept and skipped files; faults; no scope | A4-A7 |
-| romm-bios-ui | `kiwami/tests/romm-bios-ui.sh`, `fake-romm-sync.sh` | The BIOS row and page at both sizes, keys and touch | A7, A8 |
+| romm-bios-ui | `kiwami/tests/romm-bios-ui.sh`, `fake-romm-sync.sh` | The BIOS row and page at both sizes, keys and touch, a download's progress | A7, A8 |
 | romm-lookup | `kiwami/tests/romm-lookup.sh` | Recorded id, search, fallback, outcome same as the rework's | A9-A11 |
 | romm-hash | `kiwami/tests/romm-hash.sh` | By hash, alias, cache, ambiguous cases, archives, the sync before a renamed game | A12 |
 | romm-incremental | `kiwami/tests/romm-incremental.sh` | `updated_after` pages, identifiers, changes, deletes, additions, RomM's name order, full listings | A13, A14 |
@@ -595,17 +630,54 @@ is `/data/banana/logs/` on the device):
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | Update to the build. Home server: Forget, then Server > Pair by QR, approved in RomM. Open Home server. | Paired. The rows are the rework's plus Show sync times (last), Installs from RomM (Off) and BIOS. RomM's token page lists `firmware.read`. | `sync.log`, `banana-ui.log`, a photo of the page | A4, A8, A15 | not run |
-| M2 | rgds-plus | BIOS: open the page. Start with the missing files ticked. Then play a DS game under DraStic and under BananaDS, and a PS1 game. | The DS, GBA and PS1 files in `/data/bios`, and DraStic's three in `/data/drastic/system/`. Reopened, all "On the card". The games start. | `banana-ui.log`, `ls -l /data/bios /data/drastic/system` | A5, A6, A8 | not run |
-| M3 | rgds-plus | Installs from RomM On. On a phone, in RomM's web UI, install a GBA game and a PS1 game on this device. Switch Wi-Fi off and on, wait a minute. | Turning the row On shows the pop-up "Installs from RomM". Both games on the card (in their shelves). RomM shows them done. | `sync.log`, a photo of RomM's install status | A15, A16, A18 | not run |
-| M4 | rgds-plus | As M3, with Games go to: Second SD card and the card out. Sync now. Then put the card in and Sync now again. | The first time: waiting (RomM: taken). The second: on the second card, done. | `sync.log` both times | A17 | not run |
-| M5 | rgds-plus | Sync before playing On. Start a game of a system with 1000+ games, twice. Then a game renamed on the card, after a Sync now. | The first start does a search, the second a single lookup, each with the wait under 5 s. The renamed game's save syncs (`by hash:` line). | `sync.log`, `/run/banana/launch.status`, `banana-ui.log` (the wait's times) | A9, A10, A12, A20 | not run |
-| M6 | rgds-plus | Sync now twice, with Show sync times On. Then rename a game in RomM and Sync now. | The second sync's Listing games is much shorter, and its peak under 100 MB. The rename shows in Get games. | `sync.log` and `sync.log.1` (`memory:`, `times:`) | A13, A14, A20 | not run |
-| M7 | rgds-plus | Over SSH: `time banana-sync games > /dev/null`, then the same with `KIWAMI_ROMM_ROM_ID_INDEX=1` (the fork's switch that leaves `with_rom_id_index=false` out), three times each. | The two medians recorded. The final check keeps or drops the parameter by them. | the shell output | (final check) | not run |
-| M8 | rgds-plus | A save made in Grout or Argosy (or RomM's player) for a GBA game on the card, with Quick resume On. Start the game on Banana. | The newer save is loaded, not the old resume state. | `sync.log`, `/run/banana/launch.status` | A20 | not run |
-| M9 | rgds-plus | Close the lid during M3's download, then open it after a minute. | The download goes on, or the next sync finishes it. Nothing half-written in `roms/`. | `sync.log`, `ls` of the folder | A16 | not run |
+| M1 | rgds-plus | Update to the build. Home server: Forget, then Server > Pair by QR, approved in RomM. Open Home server. | Paired. The rows are the rework's plus Show sync times (last), Installs from RomM (Off) and BIOS. RomM's token page lists `firmware.read`. | `sync.log`, `banana-ui.log`, a photo of the page | A4, A8, A15 | passed (2026-11-17, 0.5.3.4 built from `6112a92d` (the code of `b7d2a241`)): the user's report; no logs analysed |
+| M2 | rgds-plus | BIOS: open the page. Start with the missing files ticked. Then play a DS game under DraStic and under BananaDS, and a PS1 game. | The DS, GBA and PS1 files in `/data/bios`, and DraStic's three in `/data/drastic/system/`. Reopened, all "On the card". The games start. | `banana-ui.log`, `ls -l /data/bios /data/drastic/system` | A5, A6, A8 | passed (2026-11-17, 0.5.3.4 built from `6112a92d` (the code of `b7d2a241`)), with a gap: the files came, but the page showed no feedback while they downloaded (only the top panel's "Downloading..."). Step 9 adds it; M10 checks it. No logs analysed |
+| M3 | rgds-plus | Installs from RomM On. On a phone, in RomM's web UI, install a GBA game and a PS1 game on this device. Switch Wi-Fi off and on, wait a minute. | Turning the row On shows the pop-up "Installs from RomM". Both games on the card (in their shelves). RomM shows them done. | `sync.log`, a photo of RomM's install status | A15, A16, A18 | passed (2026-11-17, 0.5.3.4 built from `6112a92d` (the code of `b7d2a241`)): the user's report; no logs analysed |
+| M4 | rgds-plus | As M3, with Games go to: Second SD card and the card out. Sync now. Then put the card in and Sync now again. | The first time: waiting (RomM: taken). The second: on the second card, done. | `sync.log` both times | A17 | passed (2026-11-17, 0.5.3.4 built from `6112a92d` (the code of `b7d2a241`)): the user's report; no logs analysed |
+| M5 | rgds-plus | Sync before playing On. Start a game of a system with 1000+ games, twice. Then a game renamed on the card, after a Sync now. | The first start does a search, the second a single lookup, each with the wait under 5 s. The renamed game's save syncs (`by hash:` line). | `sync.log`, `/run/banana/launch.status`, `banana-ui.log` (the wait's times) | A9, A10, A12, A20 | passed, quick check (2026-11-17, 0.5.3.4 built from `6112a92d` (the code of `b7d2a241`)): the user looked them over and saw nothing wrong; not each expected point checked, no logs analysed (the 5 s wait and the `by hash:` line not measured) |
+| M6 | rgds-plus | Sync now twice, with Show sync times On. Then rename a game in RomM and Sync now. | The second sync's Listing games is much shorter, and its peak under 100 MB. The rename shows in Get games. | `sync.log` and `sync.log.1` (`memory:`, `times:`) | A13, A14, A20 | passed, quick check (2026-11-17, 0.5.3.4 built from `6112a92d` (the code of `b7d2a241`)): as M5; the `memory:` peak and the bytes not read from the logs |
+| M7 | rgds-plus | Over SSH: `time banana-sync games > /dev/null`, then the same with `KIWAMI_ROMM_ROM_ID_INDEX=1` (the fork's switch that leaves `with_rom_id_index=false` out), three times each. | The two medians recorded. The final check keeps or drops the parameter by them. | the shell output | (final check) | skipped (2026-11-17, 0.5.3.4 built from `6112a92d` (the code of `b7d2a241`)): not measured; `with_rom_id_index=false` stays as the code and the rework have it (the user's choice) |
+| M8 | rgds-plus | A save made in Grout or Argosy (or RomM's player) for a GBA game on the card, with Quick resume On. Start the game on Banana. | The newer save is loaded, not the old resume state. | `sync.log`, `/run/banana/launch.status` | A20 | passed, quick check (2026-11-17, 0.5.3.4 built from `6112a92d` (the code of `b7d2a241`)): as M5 |
+| M9 | rgds-plus | Close the lid during M3's download, then open it after a minute. | The download goes on, or the next sync finishes it. Nothing half-written in `roms/`. | `sync.log`, `ls` of the folder | A16 | passed, quick check (2026-11-17, 0.5.3.4 built from `6112a92d` (the code of `b7d2a241`)): as M5 |
+| M10 | rgds-plus | On the image with step 9: BIOS, tick two or more files (a missing one, or delete one from `/data/bios` first), Start. | While they download, the bottom panel shows "Downloading <i> of <n>: <name>" and a bar where the buttons were, and the ticked rows' tags go Waiting, Getting, Done; the top says "Downloading <i> of <n>...". At the end, the result and the files' states as before. | `banana-ui.log` (its `kiwami: romm bios: getting` lines), a photo or video during the download | A8 | not run (2026-11-17): the user's choice, to open the pull request; the image with step 9 (0.5.3.4 from `3ee5de09`) was built but not tried. The progress is covered by `romm-bios-ui.sh`'s shots and `romm-bios.sh` |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- **2026-11-17, M1-M9 on 0.5.3.4 built from `6112a92d`.** Installed from the update package. The user reported M1, M3
+  and M4 working, and M2 working but with no feedback while the BIOS files downloaded. M5, M6, M8 and M9 were looked
+  over quickly and nothing seemed wrong: they are recorded as passed, but not each expected point was checked, and no
+  logs were sent or analysed. M7 wasn't measured. The image came from an output built before step 1: its build tree
+  still held the fork's old `src/kiwami/qrcodegen.cpp`, which Buildroot's rsync of a local package never deletes, so
+  `banana-ui-rebuild` failed to link (`qrcodegen::*` twice) until `banana-ui-dirclean`. A fresh output doesn't have it.
+
+- **2026-11-17, the final check.** Run at `b7d2a241` (step 8), with step 9's changes checked again at `3ee5de09`:
+  - `make test` passed (at both commits). `make -C ui` built, with upstream's four warnings only
+    (`settings.cpp:5670`, `soft.cpp:33`, `settings_files.cpp:1163`, `nds/rom.cpp:100`); none in the fork's code or
+    `banana-sync`. bananad built with `-O2 -Werror` (`make -B`), no warnings.
+  - `kiwami/tests/ci.sh .buildroot` passed at `b7d2a241`: every RomM suite, the UI suites and every board's
+    configuration. Step 9's own suites (`romm-bios.sh`, `romm-bios-ui.sh`) and the UI suites its header reaches
+    (`sync-times-ui.sh`, `romm-installs-ui.sh`, `ui-objects.sh`) passed again at `3ee5de09`.
+  - `system/tests/launchers-test.sh`: 119 passed, 2 failed, the zipped DSi cases: this computer has no `zip`, so the
+    test can't make its zips. The rework's own tree at `cab127ba` fails the same two; 0039 doesn't touch `run-nds`.
+  - `sleep-test.sh`: **not run** (the user's choice). It needs root, and a run leaves `/data` and `/etc/banana` on the
+    computer. 0039 doesn't change bananad; sleep was used on the device with this build.
+  - A2: `romm-list.sh --compare cab127ba`: the rework's own `banana-sync` peaked at 404 MB listing the games; the
+    fork's 70 MB (`games` and a games-only sync), 14 MB before a game and 36 MB through the kept list (22 KB read
+    against 60 MB), with the same games, card and saves.
+  - The hooks: every upstream file that differs from `cab127ba` has a `kiwami:` line, none has a mark without a
+    change, and `docs/FORK.md` describes them; step 9 changed no upstream file.
+  - A19: 875 renders compared with `cab127ba`'s (from `git archive`). 99 differ: 85 in the clock, the rest the card's
+    free space, Bshare's random PIN, the marquee's scroll, the DS overlay's frame and one pixel of `badtheme`, plus
+    Network's Tailscale row (0034's, 3 renders). None is this feature's. Files' server pages (`sv-*`, 180) weren't
+    compared: the baseline didn't build `banana-fetch` (`banana-bshare` didn't build against this computer's OpenSSL).
+  - Docs: `kiwami/DEPENDENCIES.md` and `CLAUDE.md` brought up to date in their own commit, `docs/FORK.md` with each
+    step.
+  - The manual tests: M1, M3, M4 passed; M2 passed with the feedback gap step 9 fixed; M5, M6, M8, M9 passed on a
+    quick check with no logs analysed; M7 and M10 not run. So A20's measured points (the 5 s wait, the tenth of the
+    bytes) rest on the automated tests, not the device. Every other criterion is met by a test that passed: A1-A3
+    (`make test`, `ci.sh`, `romm-list`, `sync-times`), A4-A8 (`romm-bios`, `romm-bios-ui`, M1, M2), A9-A12
+    (`romm-lookup`, `romm-hash`), A13-A14 (`romm-incremental`, `romm-list`), A15-A18 (`romm-installs`,
+    `romm-installs-ui`, M3, M4), A19 (above).
 
 ## Deviations
 
@@ -753,6 +825,30 @@ Where the implementation turned out different from this plan, why, and what chan
     Server for RomM. `romm-installs-ui.sh` also checks unpaired, and not touch (the row is upstream's kind, whose
     touch is upstream's).
 
+- **2026-11-17, the final check (then step 9, now 10): the docs brought up to date in a commit of their own, and A19's baseline.** The final check's
+  automated part, run before the manual tests (agreed with the user), found two docs behind the feature:
+  `kiwami/DEPENDENCIES.md`'s row for the rework named only what 0022 and 0024 rely on, and `CLAUDE.md`'s layout had
+  neither `banana-sync` nor `ui/src/kiwami/romm/`. Both are updated in their own commit
+  (`RomM home server: DEPENDENCIES.md and CLAUDE.md brought up to date`), before the manual tests; the final check
+  stays open until they have passed (agreed with the user). A19's renders against `cab127ba` differ, besides the clock and run-to-run noise
+  (the card's free space, Bshare's PIN, the marquee's scroll, the DS overlay's frame), by the fork's earlier screens
+  (Network's Tailscale row, 0034's, shown whatever the settings), not by this feature's: the baseline is `cab127ba`
+  with those set aside.
+
+- **2026-11-17, step 9 added: the BIOS page's download progress; the final check is step 10.** M2 found that the page
+  showed a download only as "Downloading..." on the top panel, with nothing changing on the bottom list. A new step
+  makes `banana-sync kiwami bios get` write its progress (the file of how many, the bytes) to a status file of its own,
+  `kiwami-bios.status`, never `sync.status`. The page reads it while the download runs and shows it in place of the
+  buttons, with each ticked row's tag. A8 gains the progress, and M10 checks it on the device. M7 wasn't measured, so
+  `with_rom_id_index=false` stays. Agreed with the user.
+
+- **2026-11-17, step 9: the tests' details, and two docs.** `romm-bios.sh` checks the progress on its first `bios get`,
+  of all five files, rather than a run of three. `romm-bios-ui.sh`'s progress case runs with `BANANA_RUN` (the page
+  reads the status file in the run folder, `/run/banana` otherwise), waits for the opening list before Start (with
+  the job in the background it comes later), and lets real time pass a second at a time (`sleep`), since the page
+  reads the file at each update. `docs/FORK.md` (the fork's verbs) and `kiwami/DEPENDENCIES.md` (the rework's row) name
+  upstream's `status()`, `STATUS` and `RUN`, which the progress goes through; the step's files hadn't listed them.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -767,4 +863,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 6. The game list kept on the card and brought up to date | done | RomM home server: the game list kept on the card, brought up to date with what changed |
 | 7. Installs from RomM's web page, in banana-sync | done | RomM home server: games sent from RomM's web page downloaded at the next sync |
 | 8. The installs row in Settings | done | RomM home server: Installs from RomM, a row on Home server |
-| 9. Final check | todo | |
+| 9. The BIOS page's download progress | done | RomM home server: the BIOS page shows each file's download as it comes |
+| 10. Final check | done | RomM home server: the final check done |

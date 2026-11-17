@@ -104,6 +104,12 @@ namespace banana
 		wifi::Job biosJob;
 		std::string biosNote;						// why there's no list, else ""
 		std::string biosDone;						// the last download's result, as said on the top panel
+		// a download's progress, from banana-sync's <run>/kiwami-bios.status (romm/bios.h): file at of of (at 0: none
+		// yet), the bytes before it of all; and the ids asked for, in their order (the rows' Done, Getting, Waiting)
+		struct BiosProgress { int at = 0, of = 0; long long done = 0, all = 0; std::string name; };
+		BiosProgress biosProg;
+		std::vector<std::string> biosAsked;
+		bool biosProgress();						// the status file read again while a download runs: true when it moved
 		Result biosOpen();
 		Result biosPress(Key k);
 		Result biosTouch(float cx, float cy);

@@ -464,6 +464,12 @@ Where the implementation turned out different from this plan, why, and what chan
   The first rebuild warned in `kiwami_clocks.c` (`-Wformat-truncation`: at Buildroot's `-O2 -D_FORTIFY_SOURCE=1` the
   game's `.clocks` path could take 903 bytes of a 900-byte buffer), so step 2's commit also enlarges that buffer and
   its temporary's in 0101, and `ci.sh` builds the governor with those flags so it catches this on the host.
+- **2026-11-17, step 4: the crowded strip's `Performance` from a copy of `systems.conf`, not an SNES ROM.** The headless
+  `gamepanel` verb always opens the panel as the Game Boy Advance (`main.cpp`, upstream's), so `panel-status-ui.sh`
+  writes a copy of `systems.conf` in `$OUT` with the Game Boy Advance's `perf` set to `performance` and passes it with
+  `--systems` for the crowded run alone, with `1992000` as the CPU's kHz. Agreed with the user. Also, the profile's
+  name (`PanelStatus::profileName`) and the label's text (`PanelClocks::text`) are in `panelstatus.cpp`, so
+  `panelstatus-units` checks them; `panel-status.cpp` keeps the reading of the files and `systems.conf`'s entry.
 
 ## Progress
 
@@ -474,5 +480,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 1. The governor and its unit tests | done | Power scaling: a frame-driven clock governor for RetroArch, and its unit tests |
 | 2. RetroArch calls the governor | done | Power scaling: RetroArch runs the governor when KIWAMI_CLOCKS=1 |
 | 3. The setting: the launch script, run-retroarch's hook and the row | done | Power scaling: the setting, which turns on RetroArch's and BananaFront's governors |
-| 4. The strip: the mode and the CPU clock | todo | |
+| 4. The strip: the mode and the CPU clock | done | Power scaling: the game panel's status shows the clocks' mode and the CPU clock |
 | 5. Final check | todo | |

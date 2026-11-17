@@ -4,7 +4,9 @@
 //
 // The strip, in a 640x480 panel's px (X() to the device's), in the panel's palette:
 //   left   the Wi-Fi sprite at (24, 440), dimmed to 35% while wlan0 is down, then Tailscale's mark 8 px after it while
-//          the tailnet is up (tsmark.h), in its tint; the engine's art, @1x or @1.6x as the engine picks it
+//          the tailnet is up (tsmark.h), in its tint; the engine's art, @1x or @1.6x as the engine picks it. Then 12 px
+//          after them the clocks, muted: "Auto 1104 MHz" while Power scaling's governor runs the game (the launch
+//          script's mode file, /usr/libexec/kiwami/clocks), else the system's profile ("Balanced 816 MHz")
 //   centre "Played h:mm", centred on 320
 //   right  from 616 leftwards: the time, the date 8 px before it, the battery sprite 12 px before that, the percentage
 //          6 px before the battery, right-aligned in room for "100%" so nothing moves as it changes. The level as the
@@ -12,7 +14,8 @@
 //          and under off it, the percentage too; neither drawn with no battery reading
 // The environment's stand-ins, for kiwami/tests/panel-status-ui.sh: KIWAMI_PANEL_CLOCK (a fixed clock at the game's
 // start, seconds since the epoch), KIWAMI_WIFI_OPERSTATE (the file read for Wi-Fi's state), KIWAMI_TS_IFACE (the
-// interface standing for the tailnet, as the status bar's), KIWAMI_PANEL_TRACE=1 (a line saying where the parts went).
+// interface standing for the tailnet, as the status bar's), KIWAMI_PANEL_TRACE=1 (a line saying where the parts went),
+// KIWAMI_CLOCKS_MODE (the mode file, as the launch script's) and KIWAMI_CPUFREQ_CUR (the file read for the CPU's kHz).
 #include "kiwami.h"
 #include "library.h"
 #include "statusbar.h"
@@ -24,6 +27,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <sys/stat.h>
 #include <time.h>
 
 namespace banana
@@ -58,12 +62,46 @@ namespace banana
 		return r;
 	}
 
+	// the mode written by the launch script within 5 s of the panel opening (before or after it) is this game's; an
+	// older one is a past game's
+	static const time_t MODE_FRESH_S = 5;
+
+	static kiwami::PanelClocks clocks(const std::string& system, time_t opened)
+	{
+		kiwami::PanelClocks c;
+		const char* mf = getenv("KIWAMI_CLOCKS_MODE");
+		const std::string mode = mf && *mf ? mf : "/run/banana/kiwami-clocks";
+		struct stat sb;
+		if (stat(mode.c_str(), &sb) == 0 && sb.st_mtime >= opened - MODE_FRESH_S)
+		{
+			std::ifstream f(mode);
+			std::string m;
+			std::getline(f, m);
+			if (m == "auto") c.mode = "Auto";
+		}
+		if (c.mode.empty())
+		{
+			std::string perf;
+			if (kiwami::library)
+				for (const SystemDef& d : kiwami::library->systemDefs())
+					if (d.name == system) { perf = d.perf; break; }
+			c.mode = kiwami::PanelStatus::profileName(perf);
+		}
+		const char* cf = getenv("KIWAMI_CPUFREQ_CUR");
+		std::ifstream f(cf && *cf ? cf : "/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq");
+		long khz = -1;
+		if (f >> khz && khz > 0) c.mhz = (int)(khz / 1000);
+		return c;
+	}
+
 	void Settings::Kiwami::panelOpened()
 	{
 		panelOn = getConfValue(st.data + "/settings.conf", "kiwami_panel_status", "off") == "on";
 		if (!panelOn) return;
+		panelOpenedAt = time(nullptr);
 		if (!panel)
-			panel = std::make_unique<kiwami::PanelStatus>(kiwami::PanelStatus::Sources{ readings, [] { return time(nullptr); }, asleepMs });
+			panel = std::make_unique<kiwami::PanelStatus>(kiwami::PanelStatus::Sources{ readings, [] { return time(nullptr); }, asleepMs,
+				[this] { return clocks(st.gSystem, panelOpenedAt); } });
 		const char* fixed = getenv("KIWAMI_PANEL_CLOCK");
 		panel->open(kiwami::library && kiwami::library->twelveHour, fixed ? (time_t)atoll(fixed) : 0);
 		panelTrace.clear();
@@ -74,6 +112,8 @@ namespace banana
 		if (!panelOn || !panel) return false;
 		bool changed = panel->update(t);
 		std::string l = panel->logLine();
+		if (!l.empty()) fprintf(stderr, "banana-ui: kiwami: %s\n", l.c_str());
+		l = panel->clocksLine();
 		if (!l.empty()) fprintf(stderr, "banana-ui: kiwami: %s\n", l.c_str());
 		return changed;
 	}
@@ -136,6 +176,14 @@ namespace banana
 				st.be->draw(m, mx, ly, (float)m->w, (float)m->h, tint);
 				end = mx + m->w;
 			}
+		// then the clocks
+		const std::string cl = ps.c.text();
+		if (!cl.empty())
+		{
+			const float cx = end / st.s + 12;
+			end = st.X(cx + st.text(cl, false, 15, 0, 0, p.muted, false, 0, true));
+			st.text(cl, false, 15, cx, 438, p.muted);
+		}
 		const float leftEnd = end / st.s;
 
 		// centre: the time played

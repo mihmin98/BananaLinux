@@ -1,6 +1,7 @@
 // banana-ui (kiwami): the game panel's status strip's state (panelstatus.h).
 #include "panelstatus.h"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <utility>
@@ -8,6 +9,7 @@
 namespace banana::kiwami
 {
 	static const double READ_MS = 10000;	// the battery and network read at most this often
+	static const double CLOCKS_MS = 2000;	// the clocks read this often
 	static const double WOKE_MS = 1000;		// asleep() grown by more than this since the last pass: a resume
 
 	PanelStatus::PanelStatus(Sources s) : src(std::move(s)) {}
@@ -20,7 +22,9 @@ namespace banana::kiwami
 		minute = playedMin = -1;
 		st = PanelState();
 		logged = PanelReadings();
+		loggedMode.clear();
 		pending.clear();
+		pendingClocks.clear();
 	}
 
 	bool PanelStatus::update(double t)
@@ -40,6 +44,12 @@ namespace banana::kiwami
 		{
 			st.r = src.read ? src.read() : PanelReadings();
 			lastRead = t;
+		}
+		const bool clocks = (bool)src.clocks;
+		if (clocks && (first || woke || t - lastClocks >= CLOCKS_MS))
+		{
+			st.c = src.clocks();
+			lastClocks = t;
 		}
 		double ran = std::max(0.0, t - start);
 		time_t w = fixed ? fixed + (time_t)std::floor(ran / 1000) : src.wall ? src.wall() : time(nullptr);
@@ -61,6 +71,11 @@ namespace banana::kiwami
 			pending = (woke ? "after a sleep: " : "") + line();
 			logged = st.r;
 		}
+		if (clocks && (first || woke || st.c.mode != loggedMode))
+		{
+			pendingClocks = (woke ? "after a sleep: " : "") + std::string("panel clocks: ") + st.c.text();
+			loggedMode = st.c.mode;
+		}
 		return first || st != before;
 	}
 
@@ -69,6 +84,29 @@ namespace banana::kiwami
 		std::string l;
 		l.swap(pending);
 		return l;
+	}
+
+	std::string PanelStatus::clocksLine()
+	{
+		std::string l;
+		l.swap(pendingClocks);
+		return l;
+	}
+
+	std::string PanelClocks::text() const
+	{
+		if (mode.empty()) return "";
+		return mhz < 0 ? mode : mode + " " + std::to_string(mhz) + " MHz";
+	}
+
+	// banana-perf's profiles by their names; banana-ui runs balanced for an empty perf (main.cpp's launch), and any
+	// other is shown capitalised
+	std::string PanelStatus::profileName(const std::string& perf)
+	{
+		if (perf.empty()) return "Balanced";
+		std::string n = perf;
+		n[0] = (char)toupper((unsigned char)n[0]);
+		return n;
 	}
 
 	std::string PanelStatus::line() const

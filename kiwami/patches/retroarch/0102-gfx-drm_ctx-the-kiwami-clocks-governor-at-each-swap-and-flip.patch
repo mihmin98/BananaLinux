@@ -1,0 +1,152 @@
+From: mihmin98 <51593459+mihmin98@users.noreply.github.com>
+Subject: [PATCH] gfx/drm_ctx: the kiwami clocks governor at each swap and flip
+
+Builds the governor 0101 adds into the KMS context and runs it when
+KIWAMI_CLOCKS=1 is in the environment. Once a game is loaded, the first swap
+starts it with the CPU's cpufreq policy0 and the first /sys/class/devfreq/
+*.gpu (or KIWAMI_CLOCKS_CPUFREQ, KIWAMI_CLOCKS_DEVFREQ), the folder and log
+from KIWAMI_CLOCKS_DATA and KIWAMI_CLOCKS_LOG, the core's library name and
+the game's basename, and it is stopped at exit. Each swap gives it the time,
+the main thread's CPU time, the core's fps, the mode's refresh, RetroArch's
+smoothed iteration period, fast-forward and its frame limit, and whether
+the menu, pause or slow motion holds it; each page flip, the flip's time.
+
+The CPU time is the main thread's by its clock id, so with threaded video,
+whose thread swaps, it is still the core's work and not the drawing.
+Without KIWAMI_CLOCKS=1 it costs one getenv at the first swap with a game,
+then a test per swap and flip.
+
+Upstream-Status: Inappropriate [kiwami fork-specific]
+---
+--- a/Makefile.common
++++ b/Makefile.common
+@@ -1509,6 +1509,7 @@
+ ifeq ($(HAVE_KMS), 1)
+    HAVE_AND_WILL_USE_DRM = 1
+    OBJ += gfx/drivers_context/drm_ctx.o \
++		  gfx/drivers_context/kiwami_clocks.o \
+ 		  gfx/display_servers/dispserv_kms.o \
+ 		  gfx/common/drm_hdr.o \
+ 		  gfx/common/egl_gbm_frames.o
+--- a/gfx/drivers_context/drm_ctx.c
++++ b/gfx/drivers_context/drm_ctx.c
+@@ -52,6 +52,17 @@
+ #include "../../frontend/frontend_driver.h"
+ #include "../common/drm_common.h"
+ #include "../common/drm_hdr.h"
++
++#include <glob.h>
++#include <time.h>
++#include <file/file_path.h>
++#include "../../paths.h"
++#include "../../runloop.h"
++#include "../video_driver.h"
++#ifdef HAVE_MENU
++#include "../../menu/menu_driver.h"
++#endif
++#include "kiwami_clocks.h"
+ #ifdef HAVE_WAYLAND
+ #include "../common/wayland_drm_lease.h"
+ #endif
+@@ -506,10 +517,92 @@
+ #endif
+ }
+ 
++/* The kiwami fork's clock governor, with KIWAMI_CLOCKS=1: started once a
++ * game is loaded, fed at each swap and flip, stopped at exit. */
++static int kiwami_clocks_state; /* 0 not yet, 1 on, -1 off */
++static clockid_t kiwami_clocks_main_cpu;
++
++static int64_t kiwami_clocks_us(clockid_t id)
++{
++   struct timespec ts;
++   if (clock_gettime(id, &ts))
++      return 0;
++   return (int64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
++}
++
++static void kiwami_clocks_try_start(void)
++{
++   char gpu_dir[256];
++   glob_t g;
++   const char *env;
++   const char *cpu;
++   const char *base             = path_get(RARCH_PATH_BASENAME);
++   runloop_state_t *runloop_st  = runloop_state_get_ptr();
++
++   if (!base || !*base)
++      return;
++   kiwami_clocks_state = -1;
++   if (!(env = getenv("KIWAMI_CLOCKS")) || !string_is_equal(env, "1"))
++      return;
++   if (!(cpu = getenv("KIWAMI_CLOCKS_CPUFREQ")) || !*cpu)
++      cpu = "/sys/devices/system/cpu/cpufreq/policy0";
++   gpu_dir[0] = '\0';
++   if ((env = getenv("KIWAMI_CLOCKS_DEVFREQ")) && *env)
++      strlcpy(gpu_dir, env, sizeof(gpu_dir));
++   else
++   {
++      if (glob("/sys/class/devfreq/*.gpu", 0, NULL, &g) == 0 && g.gl_pathc)
++         strlcpy(gpu_dir, g.gl_pathv[0], sizeof(gpu_dir));
++      globfree(&g);
++   }
++   /* The main thread's CPU clock (Linux's id for thread pid), read from
++    * the video thread too when it swaps: the core's work, not drawing. */
++   kiwami_clocks_main_cpu = (clockid_t)((~(unsigned)getpid() << 3) | 6u);
++   if (kiwami_clocks_start(cpu, gpu_dir,
++            getenv("KIWAMI_CLOCKS_DATA"), getenv("KIWAMI_CLOCKS_LOG"),
++            runloop_st->system.info.library_name,
++            path_basename_nocompression(base)))
++   {
++      kiwami_clocks_state = 1;
++      atexit(kiwami_clocks_stop);
++   }
++}
++
++static void kiwami_clocks_frame_now(void)
++{
++   struct kiwami_clocks_frame f;
++   runloop_state_t *runloop_st;
++
++   if (!kiwami_clocks_state)
++      kiwami_clocks_try_start();
++   if (kiwami_clocks_state != 1)
++      return;
++   runloop_st    = runloop_state_get_ptr();
++   f.now_us      = kiwami_clocks_us(CLOCK_MONOTONIC);
++   f.cpu_us      = kiwami_clocks_us(kiwami_clocks_main_cpu);
++   f.fps         = video_state_get_ptr()->av_info.timing.fps;
++   f.refresh_hz  = (g_drm_mode && g_drm_mode->htotal && g_drm_mode->vtotal)
++      ? g_drm_mode->clock * 1000.0
++         / ((double)g_drm_mode->htotal * g_drm_mode->vtotal)
++      : 0.0;
++   f.pace_us     = runloop_st->pace_period_usec;
++   f.ff          = (runloop_st->flags & RUNLOOP_FLAG_FASTMOTION) ? 1 : 0;
++   f.ff_limit_us = f.ff ? runloop_st->frame_limit_minimum_time : 0;
++   f.hold        = (runloop_st->flags
++         & (RUNLOOP_FLAG_PAUSED | RUNLOOP_FLAG_SLOWMOTION)) ? 1 : 0;
++#ifdef HAVE_MENU
++   if (menu_state_get_ptr()->flags & MENU_ST_FLAG_ALIVE)
++      f.hold     = 1;
++#endif
++   kiwami_clocks_swap(&f);
++}
++
+ static void drm_flip_handler(int fd, unsigned frame,
+       unsigned sec, unsigned usec, void *data)
+ {
+    *(bool*)data = false;
++   if (kiwami_clocks_state == 1)
++      kiwami_clocks_flip((int64_t)sec * 1000000 + usec);
+ }
+ 
+ static bool gfx_ctx_drm_wait_flip(gfx_ctx_drm_data_t *drm, bool block)
+@@ -654,6 +747,8 @@
+    gfx_ctx_drm_data_t        *drm = (gfx_ctx_drm_data_t*)data;
+    unsigned max_swapchain_images  = drm->max_swapchain_images;
+ 
++   kiwami_clocks_frame_now();
++
+    /* Recreate the surface */
+    if (switch_mode)
+    {

@@ -15,8 +15,8 @@ keeps its own governors.
 
   The governor runs the CPU the way BananaFront's `--cpugov` does: the `performance` governor with a stepped
   `scaling_max_freq`, remembered per game. It works on the core's own frame period, not the panel's 60 Hz:
-  - **CPU work** is the main thread's CPU time between swaps (`CLOCK_THREAD_CPUTIME_ID`), so a wait (vsync, an ALSA
-    write blocking for audio sync, the frame limiter) never counts as work;
+  - **CPU work** is the main thread's CPU time between swaps (its clock read by id, so threaded video's swaps too), so
+    a wait (vsync, an ALSA write blocking for audio sync, the frame limiter) never counts as work;
   - **whether the game keeps its speed** is RetroArch's own smoothed iteration period (`pace_period_usec`) against the
     core's period.
 
@@ -259,7 +259,8 @@ Each step is one commit, and leaves the tree building and `make test` passing.
       - the core `runloop_st->system.info.library_name`, the game the basename;
       - then `atexit(kiwami_clocks_stop)`. A context re-created mid-game doesn't start it again.
     - **in `gfx_ctx_drm_swap_buffers`** (`:652`), first: the frame's facts filled and `kiwami_clocks_swap()`:
-      - `clock_gettime` `CLOCK_MONOTONIC` and `CLOCK_THREAD_CPUTIME_ID`;
+      - `clock_gettime` `CLOCK_MONOTONIC` and the main thread's CPU clock (its id for thread `getpid()`, so a swap on
+        threaded video's thread still reads the core's work; *Deviations*);
       - `video_state_get_ptr()->av_info.timing.fps`;
       - the refresh from `g_drm_mode` (`clock × 1000 / (htotal × vtotal)`);
       - `pace_period_usec`, `frame_limit_minimum_time`;
@@ -269,7 +270,8 @@ Each step is one commit, and leaves the tree building and `make test` passing.
   - Without `KIWAMI_CLOCKS=1`, the cost is one `getenv` at the first swap and an `if` per swap and flip.
 - **Tests**:
   - `kiwami/tests/clocks-units.c` and `ci.sh` as in step 1.
-  - `make retroarch-rebuild-rgds-plus` (long: RetroArch alone, a few minutes with ccache; warned before it's run): the
+  - `make retroarch-dirclean-rgds-plus`, then `make retroarch-rgds-plus` (long: RetroArch alone, a few minutes with
+    ccache; warned before it's run; a `-rebuild` wouldn't apply the patches again, *Deviations*): the
     log shows `Applying 0101-…` and `Applying 0102-…` from `kiwami/patches/retroarch/` with no fuzz or offset warning,
     and RetroArch builds with `-Werror` off as today, with no new warning in `drm_ctx.c` or `kiwami_clocks.c`.
   - `kiwami/tests/retroarch-pin.sh` (in `ci.sh`): the patch step's folder is unchanged.
@@ -407,7 +409,7 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 | Test | Where | What it checks | Criteria |
 |---|---|---|---|
 | clocks-units | `kiwami/tests/clocks-units.c` (from `ci.sh`) | `0101` applies to an empty folder; the governor in C89 against made-up cpufreq/devfreq: start and memory, CPU up/down/ban, 50 Hz pacing, GPU attribution, fast-forward with and without a limit, holds and stalls, stop and its files, no cpufreq | A4, A5, A6, A7, A8, A9, A10 |
-| retroarch build | `make retroarch-rebuild-rgds-plus` (steps 2, 5) | both patches apply without fuzz; RetroArch builds | A4 |
+| retroarch build | `make retroarch-dirclean-rgds-plus`, `make retroarch-rgds-plus` (steps 2, 5) | both patches apply without fuzz; RetroArch builds | A4 |
 | retroarch-pin | `kiwami/tests/retroarch-pin.sh` (from `ci.sh`) | the patch step's folder is still the fork's | A4 |
 | clocks | `kiwami/tests/clocks.sh` (from `ci.sh`) | the launch script off, on, N64, no devfreq; the hook's place in `run-retroarch` | A2, A3 |
 | power-scaling-ui | `kiwami/tests/power-scaling-ui.sh` (from `ci.sh`) | the row after Frontend, Off, A writes on, at both sizes | A1 |
@@ -452,6 +454,16 @@ Where the implementation turned out different from this plan, why, and what chan
     up: successive steps down are 5 s apart (1992 to 816 MHz takes some 20 s on a game with no memory). A5 reworded.
   - *The GPU's line in the game's memory* is the floor held longest (at normal speed), as the CPU's is the clock held
     longest, not the floor in force at the exit. A9 reworded.
+- **2026-11-17, step 2: the CPU work is read from the main thread's clock by its id, not `CLOCK_THREAD_CPUTIME_ID`.**
+  With `video_threaded` on (the fork's `core-overrides` turns it on for Mesen and SameBoy) RetroArch's video thread
+  calls the swap, where the calling thread's clock would measure the drawing and blame every slow frame on the GPU.
+  The glue reads Linux's CPU clock of thread `getpid()` (the main thread), `(~pid << 3) | 6`, glibc's own encoding,
+  from whichever thread swaps; without threaded video it's the same clock as before. Agreed with the user. Also, the
+  build check is `retroarch-dirclean` then `retroarch`, since `retroarch-rebuild` doesn't apply new patches. The
+  patch's third `drm_ctx.c` hunk is its includes, not an init: the governor starts at the first swap with a game.
+  The first rebuild warned in `kiwami_clocks.c` (`-Wformat-truncation`: at Buildroot's `-O2 -D_FORTIFY_SOURCE=1` the
+  game's `.clocks` path could take 903 bytes of a 900-byte buffer), so step 2's commit also enlarges that buffer and
+  its temporary's in 0101, and `ci.sh` builds the governor with those flags so it catches this on the host.
 
 ## Progress
 
@@ -460,7 +472,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. The governor and its unit tests | done | Power scaling: a frame-driven clock governor for RetroArch, and its unit tests |
-| 2. RetroArch calls the governor | todo | |
+| 2. RetroArch calls the governor | done | Power scaling: RetroArch runs the governor when KIWAMI_CLOCKS=1 |
 | 3. The setting: the launch script, run-retroarch's hook and the row | todo | |
 | 4. The strip: the mode and the CPU clock | todo | |
 | 5. Final check | todo | |

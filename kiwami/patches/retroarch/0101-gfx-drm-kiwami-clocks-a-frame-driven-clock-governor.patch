@@ -121,7 +121,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +   int64_t time_at[KC_MAXF], gtime_at[KC_MAXF];
 +   char old_gov[32];
 +   char cpu_dir[256], gpu_dir[256], log_path[512];
-+   char core[128], game[256], data_dir[512], core_dir[640], store[900];
++   char core[128], game[256], data_dir[512], core_dir[640], store[1024];
 +   struct kc_step steps[KC_STEPS];
 +} kc;
 +
@@ -601,7 +601,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +
 +static void kc_store(int ci, int gi)
 +{
-+   char tmp[920];
++   char tmp[1040];
 +   FILE *fp;
 +
 +   if (!kc.store[0] || (ci < 0 && gi < 0))

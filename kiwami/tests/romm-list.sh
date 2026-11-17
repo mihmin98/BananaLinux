@@ -6,7 +6,9 @@
 # (and 3ds, which Banana has no system for), about 25 KB of JSON a game with RomM's provider blocks: the peak of each
 # run (the child's ru_maxrss), the requests made, the games listed with RomM's edge cases, the games downloaded, the
 # progress while the list is read (Listing games), the save brought before a game (the game alone, by the RomM id the
-# listings before it remembered: ui/src/kiwami/romm/lookup.h), and the peak memory each sync's report ends with. Also slim()'s unit tests (syncmem-units.cpp), and the guard: every key Romm reads of a listed game
+# listings before it remembered: ui/src/kiwami/romm/lookup.h), the peak memory each sync's report ends with, and a
+# Sync now through the game list kept on the card (ui/src/kiwami/romm/listcache.h): RomM's game ids and what changed
+# since, under a tenth of a full listing's bytes, the same games listed, the list on the card left as it was. Also slim()'s unit tests (syncmem-units.cpp), and the guard: every key Romm reads of a listed game
 # (sync_romm.cpp's manifest(), romFiles(), romTitle(), romRegions()) is kept by syncmem.h, so a field upstream starts
 # reading isn't dropped. banana-sync is built from ui/Makefile's own rule, its sources as upstream lists them. Needs
 # g++ and python3. Run by kiwami/tests/ci.sh, or by hand:
@@ -110,7 +112,7 @@ requests() {
 
 # Get games' list: every game of the six systems but the edge cases manifest() skips (1 missing, 6 out of the
 # folder, 7 several files on a cartridge system, 9 another platform's), psx's game 7 as a disc set
-: > "$T/requests.log"
+: > "$T/requests.log"; : > "$T/requests.log.bytes"
 bs "$T/games.out" games || fail "games failed: $(head -n 3 "$T/games.out")"
 GAMES=$KB
 [ "$(wc -l < "$T/games.out")" = 2377 ] || err "games listed $(wc -l < "$T/games.out") games, not 2377"
@@ -132,7 +134,10 @@ grep -q '"gba/Game 0010 (USA).gba": 200010' "$C/banana/kiwami-romm.json" 2>/dev/
   awk -F '\t' 'NR % 130 == 0 { print $2 }' "$T/games.out"; } > "$T/keys"
 [ "$(sort -u "$T/keys" | wc -l)" = 20 ] || fail "not 20 games to ask for: $(wc -l < "$T/keys")"
 cp "$T/keys" "$C/banana/homesync-get.txt"
-: > "$T/requests.log"
+# (listed in full, as with no list kept on the card: games kept one)
+[ -s "$C/banana/kiwami-romm-list.jsonl" ] || err "games: no game list kept on the card"
+rm -f "$C/banana/kiwami-romm-list.jsonl"
+: > "$T/requests.log"; : > "$T/requests.log.bytes"
 bs "$T/get.out" -v sync --games-only 2> "$T/get.err" || fail "the games-only sync failed: $(tail -n 3 "$T/get.out")"
 GET=$KB
 while read -r k; do [ -s "$C/roms/$k" ] || err "the games-only sync: no roms/$k"; done < "$T/keys"
@@ -140,6 +145,9 @@ while read -r k; do [ -s "$C/roms/$k" ] || err "the games-only sync: no roms/$k"
 ! grep -qv '^#' "$C/banana/homesync-get.txt" || err "the games-only sync: games left on Get games' list: $(grep -v '^#' "$C/banana/homesync-get.txt" | head -n 3)"
 [ "$GET" -lt $BOUND ] || err "the games-only sync peaked at $((GET / 1024)) MB, over the $MB MB bound"
 requests "the games-only sync" 12
+# bytes: the answers to the game list's requests (/api/roms...) since the log was emptied
+bytes() { awk -F '\t' '$2 ~ /^GET \/api\/roms/ { n += $1 } END { print n + 0 }' "$T/requests.log.bytes"; }
+FULLBYTES=$(bytes)
 # its progress while the list is read (-v: each status on stderr), a status a page: games read of the six systems'
 # rom_count, the system and how far into it
 grep '^status: running [0-9]* [0-9]* Listing games|' "$T/get.err" > "$T/listing" || true
@@ -155,7 +163,7 @@ LOGKB=$(tail -n 1 "$LOG" 2>/dev/null | sed -n 's/^memory: peak \([0-9]*\) kB$/\1
 [ -z "$failed" ] || exit 1
 
 # one game's sync before it starts: the game alone, by its remembered id, no listing, and its save brought from the slot
-: > "$T/requests.log"
+: > "$T/requests.log"; : > "$T/requests.log.bytes"
 bs "$T/one.out" sync --rom "gba/Game 0010 (USA).gba" --auto launch || fail "the sync before a game failed: $(tail -n 3 "$T/one.out")"
 ONE=$KB
 S=$C/saves/gba/Game\ 0010\ \(USA\).srm
@@ -165,6 +173,22 @@ case "$(cat "$C/run/launch.status" 2>/dev/null)" in "done 0 0 0 1 0 0|"*) ;; *) 
 requests "the sync before a game" 0
 [ "$(grep -c '^GET /api/roms/200010?$' "$T/requests.log")" = 1 ] || err "the sync before a game: not one GET /api/roms/200010: $(grep '^GET /api/roms' "$T/requests.log" | head -n 3)"
 [ ! -e "$C/run/sync.times" ] || err "the sync before a game wrote sync.times"
+[ -z "$failed" ] || exit 1
+
+# Sync now through the list the games-only sync kept: RomM's ids and each system's changes since (none), a tenth of the
+# full listing's bytes or less, the same games on Get games' list, and the list on the card not written again
+tail -n +2 "$C/banana/homesync-server-games.tsv" > "$T/games-before.tsv"
+cp "$C/banana/kiwami-romm-list.jsonl" "$T/list-before.jsonl" 2>/dev/null || err "the games-only sync kept no game list on the card"
+: > "$T/requests.log"; : > "$T/requests.log.bytes"
+bs "$T/cached.out" sync || fail "Sync now through the list kept failed: $(tail -n 3 "$T/cached.out")"
+CACHED=$KB CACHEDBYTES=$(bytes)
+requests "Sync now through the list kept" 6
+[ "$(grep -c 'updated_after=' "$T/roms.log")" = 6 ] || err "Sync now through the list kept: not each system's changes alone: $(head -n 3 "$T/roms.log")"
+[ "$(grep -c '^GET /api/roms/identifiers?$' "$T/requests.log")" = 1 ] || err "Sync now through the list kept: not one identifiers request"
+[ "$CACHEDBYTES" -gt 0 ] && [ $((CACHEDBYTES * 10)) -lt "$FULLBYTES" ] || err "Sync now through the list kept read $CACHEDBYTES bytes, not under a tenth of the full listing's $FULLBYTES"
+[ "$CACHED" -lt $BOUND ] || err "Sync now through the list kept peaked at $((CACHED / 1024)) MB, over the $MB MB bound"
+tail -n +2 "$C/banana/homesync-server-games.tsv" | cmp -s - "$T/games-before.tsv" || { tail -n +2 "$C/banana/homesync-server-games.tsv" | diff "$T/games-before.tsv" - | head -n 6 >&2; err "Sync now through the list kept: Get games' list differs"; }
+cmp -s "$C/banana/kiwami-romm-list.jsonl" "$T/list-before.jsonl" || err "Sync now through the list kept: the list on the card written again, with nothing changed"
 [ -z "$failed" ] || exit 1
 
 if [ -n "$OTHER" ]; then
@@ -199,4 +223,4 @@ if [ -n "$OTHER" ]; then
     echo "romm-list: the other banana-sync peaked at $((OGAMES / 1024)) MB listing the games; its games, cards and saves the same ($(find "$T/card-this/roms" -type f | wc -l) files, games-only $(cat "$T/this-get.rc"), before a game $(cat "$T/this-one.rc"))"
 fi
 
-echo "romm-list: games $((GAMES / 1024)) MB, games-only sync $((GET / 1024)) MB, before a game $((ONE / 1024)) MB peak (by its id); 12 requests of 200, 12 listing statuses; $KEYS keys Romm reads kept; sync.log's peak $LOGKB kB"
+echo "romm-list: games $((GAMES / 1024)) MB, games-only sync $((GET / 1024)) MB, before a game $((ONE / 1024)) MB, Sync now through the list kept $((CACHED / 1024)) MB peak ($CACHEDBYTES bytes against $FULLBYTES); 12 requests of 200, 12 listing statuses; $KEYS keys Romm reads kept; sync.log's peak $LOGKB kB"

@@ -243,6 +243,10 @@ kiwami/tests/romm-lookup.sh
 # the alias, its save in the game's slot, the ambiguous cases left alone, the sync before it by its remembered id
 kiwami/tests/romm-hash.sh
 
+# RomM's game list kept on the card by banana-sync and brought up to date: RomM's ids and the changes since the last
+# listing, renamed, deleted and added games in RomM's name order, a new system, the full listings, Forget
+kiwami/tests/romm-incremental.sh
+
 # Show sync times in banana-ui's Settings, headless, when banana-ui is built: the line under Sync now's bar and the row
 if [ -x ui/banana-ui ]; then kiwami/tests/sync-times-ui.sh; else echo "sync-times-ui: skipped, no ui/banana-ui (make ui)"; fi
 

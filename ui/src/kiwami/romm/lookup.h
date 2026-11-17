@@ -15,29 +15,19 @@
 // record() (list()'s hook before listed = true, after byHash()'s) keeps the ids: after a listing of every system, those
 // of the games on either card (by name, or by contents under another name); after one game's, that game's, or none
 // when the server no longer has it.
-// KIWAMI_ROMM_ROM_ID_INDEX=1 in the environment leaves with_rom_id_index=false out of the queries (to measure RomM's
-// paging with its id index on a large library).
+// For a run of every system, Pages takes its pages from the game list kept on the card instead, brought up to date
+// with what RomM changed since (listcache.h), and lists in full a platform the list doesn't have.
 #include "romm.h"
 #include "../syncmem.h"
 #include "../../save_paths.h"
 #include <cstdlib>
+#include <memory>
 
 namespace banana::kiwami::romm
 {
 	// the games a search asks for: fewer than a page, so list()'s loop takes its answer as a platform's last page
 	constexpr int SEARCH = 50;
 	static_assert(SEARCH < banana::kiwami::syncmem::PAGE, "a search's answer has to end list()'s page loop");
-
-	// RomM's games of a platform, as 0022 asks for them: n from off, by name, with their files (and their hashes) and
-	// nothing list() doesn't read; more, the query's own parameters
-	inline std::string romsQuery(long long pid, long long off, long long n, const std::string& more = "")
-	{
-		const char* idIndex = getenv("KIWAMI_ROMM_ROM_ID_INDEX");
-		std::string p = std::to_string(pid);
-		return "/api/roms?platform_ids=" + p + "&platform_id=" + p + more + "&limit=" + std::to_string(n) + "&offset=" + std::to_string(off) +
-			"&order_by=name&with_files=true&with_char_index=false&with_filter_values=false" +
-			(idIndex && std::string(idIndex) == "1" ? "" : "&with_rom_id_index=false") + "&with_provider_metadata=false";
-	}
 
 	// the file list() makes of a listed game in its folder: its one file, a disc set's .m3u on the PlayStation, none
 	// for another game of several files (the menu can't start it). As list() has it
@@ -50,26 +40,42 @@ namespace banana::kiwami::romm
 	}
 
 	// a platform's pages for list(): for one game's run whose game is in this platform's folder, the game alone when
-	// RomM has it under the card file's name, else (and for every other run) 0022's pages
+	// RomM has it under the card file's name; for a run of every system, the game list kept on the card brought up to
+	// date (listcache.h), when it has this platform; else 0022's pages
 	struct Pages
 	{
 		const bsync::Backend& b;
 		const std::string onlyRom, folder;
 		const long long pid;
 		bool one = false;
+		std::unique_ptr<Cached> cached;
 		Pages(const bsync::Backend& backend, const std::string& onlyRom_, bool sendOk, long long pid_, const std::string& folder_)
 			: b(backend), onlyRom(onlyRom_), folder(folder_), pid(pid_)
 		{
 			// (the run's platforms are this game's folder's already then: list() leaves the others out)
 			std::string rf = onlyRom.empty() || onlyRom[0] == '/' || !sendOk ? "" : bsync::romFolder(folder);
 			one = !rf.empty() && onlyRom.compare(0, rf.size() + 1, rf + "/") == 0;
+			if (!onlyRom.empty()) return;
+			ListCache& lc = listCache();
+			if (!lc.begun) lc.begin(b);
+			if (!lc.use) return;
+			if (lc.platforms.count(pid)) { cached.reset(new Cached(b, pid, folder)); return; }
+			tell("  %s: not in the games list kept on the card, listed in full", folder.c_str());
+			lc.changed = true;
 		}
-		// the page from off: the game alone first (one answer, which ends the loop), else 0022's
+		// the page from off: the game alone first (one answer, which ends the loop), the kept list's, else 0022's
 		bsync::Resp fetch(long long off)
 		{
 			bsync::Resp r;
 			if (off == 0 && one && (byId(r) || bySearch(r))) return r;
-			return b.call("GET", romsQuery(pid, off, banana::kiwami::syncmem::PAGE));
+			if (cached)
+			{
+				if (off == 0 && (r = cached->changes()).code != 200) return r;
+				return cached->page();
+			}
+			r = b.call("GET", romsQuery(pid, off, banana::kiwami::syncmem::PAGE));
+			if (onlyRom.empty()) listCache().saw(r);	// (a listing of every system: its time, for the next one's changes)
+			return r;
 		}
 
 	private:
@@ -119,10 +125,11 @@ namespace banana::kiwami::romm
 		}
 	};
 
-	// after list() read the server's games (R: sync_romm.cpp's Romm, its roms, onlyRom and onCard()): the RomM ids of
-	// the games on either card, kept for the sync before a game. A run of one game records that game's id, or drops
-	// it when the server no longer has that game under the card file's name; any other run lists every system and
-	// records every game found on a card, those no longer found dropped. Written only when they changed
+	// after list() read the server's games (R: sync_romm.cpp's Romm, its roms, romJson, onlyRom, onCard() and c): the
+	// RomM ids of the games on either card, kept for the sync before a game. A run of one game records that game's id,
+	// or drops it when the server no longer has that game under the card file's name; any other run lists every system
+	// and records every game found on a card, those no longer found dropped, and keeps the game list on the card
+	// (keepList(), listcache.h). Written only when they changed
 	template <class R> void record(R& r)
 	{
 		if (bsync::dryRun) return;
@@ -137,6 +144,7 @@ namespace banana::kiwami::romm
 			s.save();
 			return;
 		}
+		keepList(r);
 		std::map<std::string, long long> ids;
 		for (auto& g : r.roms)
 		{

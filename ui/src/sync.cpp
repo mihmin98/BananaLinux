@@ -1704,6 +1704,7 @@ int main(int argc, char** argv)
 		b->c.etag.clear();
 		Manifest m;
 		std::string err;
+		banana::kiwami::romm::fullListing();	// kiwami: Get games' X lists everything (the list kept on the card written again)
 		if (!b->manifest(m, {}, err)) { printf("error %s\n", err.c_str()); return 1; }
 		std::set<std::string> chosen = readChoice();
 		if (c.backend == "romm") { auto v = readListLines(getFile()); chosen = std::set<std::string>(v.begin(), v.end()); }

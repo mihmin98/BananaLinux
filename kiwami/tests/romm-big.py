@@ -2,7 +2,7 @@
 # A stand-in RomM 5.4.1 with a large made-up library, for the fork's test of banana-sync's memory (romm-list.sh):
 #   kiwami/tests/romm-big.py <port file> <log file> <games per system> <achievements per game>
 # It listens on 127.0.0.1, on a free port it writes to <port file> once it is ready, and appends each request to
-# <log file> as "<method> <path>?<query>". Its games are made a page at a time, the same each run, in the shape of
+# <log file> as "<method> <path>?<query>", and each answer's size to <log file>.bytes as "<bytes> TAB <the same>". Its games are made a page at a time, the same each run, in the shape of
 # upstream's stand-in (ui/tests/fake-romm.py) plus what RomM 5.4.1's list sends beside them and banana-sync doesn't
 # read: every provider's metadata, the RetroAchievements block with each achievement's 13 fields, screenshots (about
 # 24 KB of JSON a game at 40 achievements). It answers:
@@ -10,10 +10,14 @@
 #   GET /api/platforms                         nds, gba, gbc, snes, genesis (folder megadrive), psx, 3ds: ids 1 to 7
 #   GET /api/roms                              platform_ids (or platform_id), limit, offset; items and total. Other
 #                                              parameters are ignored, as RomM 5.4.1 does (with_provider_metadata too);
+#                                              updated_after: none after the games' one updated_at (2026-10-31
+#                                              15:44:32 UTC), every game before it (roms_handler.py filter_roms());
 #                                              search_term: only the games it finds (RomM 5.4.1's
 #                                              roms_handler.py _filter_by_search_term(): terms split at "|", any of
 #                                              them; a term's words each in the game's name or file name, case aside)
 #   GET /api/roms/<id>                         the game alone, as listed; 404 for none
+#   GET /api/roms/identifiers                  every game's id, the seven platforms'
+# Each answer has a Date header, the server's time (Python's http.server, as uvicorn sends it).
 #   GET /api/roms/<id>/content/<name>          a game's one file: "rom <id>\n"
 #                                              (after 3 s for the game ROMM_BIG_SLOW=<id> names in the environment, so
 #                                              a test can look at a sync while it downloads)
@@ -33,6 +37,7 @@
 #     a release date in seconds, a .jpg   9 another platform's game in the page
 #   4 a numeric name (1942)               11 a file whose file_size_bytes is null
 #   5 a tab in the name
+import datetime
 import hashlib
 import http.server
 import json
@@ -49,6 +54,7 @@ PNG = bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010806000000"
                     "1f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a4c00000000049454e44ae426082")
 JPEG = bytes.fromhex("ffd8ffe000104a46494600010100000100010000ffd9")
 TS = "?ts=2026-10-31 15:44:32.123456+00:00"
+UPDATED = "2026-10-31T15:44:32+00:00"     # (every game's updated_at)
 SLOW = int(os.environ.get("ROMM_BIG_SLOW") or 0)
 # (each its system's size, as the rework takes only those: GBA's 128 KiB, a DS 512 KiB EEPROM)
 SAVES = {1: (200010, "Game 0010 (USA).srm", (b"gba save 10\n" * 11000)[:128 << 10]),
@@ -116,7 +122,7 @@ def game(p, i):
         "is_identified": True, "revision": "", "regions": ["USA"], "languages": ["En"], "tags": [], "crc_hash": None,
         "md5_hash": None, "sha1_hash": None, "has_simple_single_file": not multi and i != 8, "has_nested_single_file": False,
         "has_multiple_files": multi, "files": files, "full_path": f"{fs}/roms/{fs_name}", "created_at": "2026-10-01T10:00:00+00:00",
-        "updated_at": "2026-10-31T15:44:32+00:00", "missing_from_fs": i == 1, "siblings": [], "rom_user": {"id": 1, "rom_id": rid,
+        "updated_at": UPDATED, "missing_from_fs": i == 1, "siblings": [], "rom_user": {"id": 1, "rom_id": rid,
         "is_main_sibling": False, "backlogged": False, "now_playing": False, "hidden": False, "rating": 0, "difficulty": 0,
         "completion": 0, "status": None, "last_played": None},
         "igdb_metadata": {"total_rating": "82.5", "aggregated_rating": "80.1", "first_release_date": 1262304000, "youtube_video_id": "x",
@@ -160,6 +166,9 @@ class H(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+        u = urllib.parse.urlsplit(self.path)
+        with open(LOG + ".bytes", "a") as f:
+            f.write(f"{len(body)}\t{self.command} {u.path}?{u.query}\n")
 
     def do_GET(self):
         u = urllib.parse.urlsplit(self.path)
@@ -178,9 +187,14 @@ class H(http.server.BaseHTTPRequestHandler):
         if p == "/api/platforms":
             return self.send(200, [{"id": i, "slug": s, "fs_slug": fs, "name": s.upper(), "rom_count": N, "fs_size_bytes": 0,
                                     "custom_name": None, "category": None, "firmware": []} for i, s, fs, _ in PLATFORMS])
+        if p == "/api/roms/identifiers":
+            return self.send(200, [pid * 100000 + i for pid in BY_ID for i in range(1, N + 1)])
         if p == "/api/roms":
             pid = int(q.get("platform_ids", q.get("platform_id", 0)))
             lim, off = int(q.get("limit", 50)), int(q.get("offset", 0))
+            after = q.get("updated_after")
+            if after and datetime.datetime.fromisoformat(after.replace("Z", "+00:00")) >= datetime.datetime.fromisoformat(UPDATED):
+                return self.send(200, {"items": [], "total": 0, "limit": lim, "offset": off})
             if pid not in BY_ID:
                 return self.send(200, {"items": [], "total": 0, "limit": lim, "offset": off})
             terms = [t.strip() for t in q.get("search_term", "").split("|") if t.strip()]

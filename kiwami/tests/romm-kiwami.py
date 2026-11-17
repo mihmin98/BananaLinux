@@ -21,16 +21,28 @@ What it answers, from RomM 5.4.1's code (rommapp/romm, tag 5.4.1):
   GET /api/roms/<id>                          endpoints/roms/__init__.py get_rom(): the game as upstream's stand-in
                                               lists it, found in its platforms' listings (the fields banana-sync reads
                                               of RomM's DetailedRomSchema are a listed game's); 404 when none has it
-  GET /api/roms?...&search_term=<s>           upstream's stand-in's listing of the platform, only the games the search
-                                              finds, then limit and offset: handler/database/roms_handler.py
+  GET /api/roms?platform_ids=<p>&...          upstream's stand-in's listing of the platform, each game with RomM's
+                                              updated_at (its file's time, or the time a test touched it) and
+                                              name_sort_key (models/rom.py compute_name_sort_key()), in RomM's name
+                                              order (name_sort_key, then id: roms_handler.py
+                                              _resolve_gallery_sort_key(), _gallery_order_clauses()), only the games
+                                              updated_after and search_term keep, then limit and offset:
+                                              updated_after, a game updated after it (roms_handler.py filter_roms());
+                                              search_term, handler/database/roms_handler.py
                                               _filter_by_search_term(), <s> split at "|" into terms, any of which, a
                                               term's words (split at blanks) each in the game's name or file name, case
                                               aside (PostgreSQL's way; MariaDB's FULLTEXT takes a word of three letters
                                               or more as the start of one of theirs, which a game's own name holds too)
+  GET /api/roms/identifiers                   endpoints/roms/__init__.py get_rom_identifiers(): every game's id, of
+                                              upstream's stand-in's platforms' listings
+Each answer has a Date header, the server's time (Python's http.server, as uvicorn sends it).
 The tests' own hooks, under /kiwami/ (no token):
-  POST /kiwami/fault {"path": <regex on "METHOD /path">, "kind": "truncate", "count"?: 1}: the next matching answers
-       cut to half their body, the whole length announced, the connection closed
+  POST /kiwami/fault {"path": <regex on "METHOD /path">, "kind": "truncate"|"500", "count"?: 1}: the next matching
+       answers cut to half their body, the whole length announced, the connection closed; or refused with a 500
+  POST /kiwami/touch {"id", "name"?}: the game updated now (its updated_at), renamed when a name is given (a title
+       edited in RomM's web UI)
 """
+import datetime
 import hashlib
 import http.client
 import http.server
@@ -39,6 +51,7 @@ import os
 import re
 import sys
 import threading
+import time
 import urllib.parse
 import zlib
 
@@ -47,6 +60,18 @@ UPSTREAM_SCOPES = ["me.read", "roms.read", "platforms.read", "assets.read", "ass
 lock = threading.Lock()
 TOKENS = {}     # token -> its scopes
 FAULTS = []
+TOUCHED = {}    # a game's id -> {"at": its updated_at (unix time), "name"?: its new name}
+# models/rom.py's ARTICLES and compute_name_sort_key()
+ARTICLES = ("the", "a", "an", "le", "la", "les", "el", "los", "las", "il", "lo", "gli", "der", "die", "das", "het")
+
+
+def name_sort_key(name):
+    v = re.sub(rf"^({'|'.join(ARTICLES)})\s+", "", (name or "").lower()).strip()
+    return re.sub(r"\d+", lambda m: m.group(0).zfill(12), v)[:500]
+
+
+def utc(ts):
+    return datetime.datetime.fromtimestamp(ts, datetime.timezone.utc).isoformat()
 
 
 def log(line):
@@ -101,8 +126,11 @@ class H(http.server.BaseHTTPRequestHandler):
             return self.firmware(method, p, urllib.parse.parse_qs(u.query))
         if method == "GET" and re.fullmatch(r"/api/roms/\d+", p):
             return self.rom(int(p.split("/")[3]))
-        if method == "GET" and p == "/api/roms" and "search_term" in urllib.parse.parse_qs(u.query, keep_blank_values=True):
-            return self.search(urllib.parse.parse_qsl(u.query, keep_blank_values=True))
+        if method == "GET" and p == "/api/roms/identifiers":
+            return self.identifiers()
+        qa = urllib.parse.parse_qs(u.query, keep_blank_values=True)
+        if method == "GET" and p == "/api/roms" and ("platform_ids" in qa or "platform_id" in qa):
+            return self.roms(urllib.parse.parse_qsl(u.query, keep_blank_values=True))
         if p == "/api/auth/device/init" and method == "POST":
             try:
                 log("init scopes: " + ",".join(json.loads(raw).get("requested_scopes") or []))
@@ -162,24 +190,54 @@ class H(http.server.BaseHTTPRequestHandler):
         status, j = self.ask("/api/platforms")
         return {p["fs_slug"]: p["id"] for p in j} if status == 200 else {}
 
-    # ---- a game alone, and RomM's search: from upstream's stand-in's listings
+    # ---- a game alone, a platform's games and RomM's search: from upstream's stand-in's listings, each game with
+    # what RomM 5.4.1 gives beside what upstream's does (updated_at, name_sort_key), in RomM's name order
     def listing(self, pid, params=()):
-        q = urllib.parse.urlencode([(k, v) for k, v in params if k not in ("platform_ids", "platform_id", "limit", "offset", "search_term")] +
+        q = urllib.parse.urlencode([(k, v) for k, v in params if k not in ("platform_ids", "platform_id", "limit", "offset", "search_term", "updated_after")] +
                                    [("platform_ids", pid), ("limit", 100000), ("offset", 0), ("with_files", "true")])
-        return self.ask("/api/roms?" + q)
+        status, page = self.ask("/api/roms?" + q)
+        if status == 200 and isinstance(page, dict):
+            for it in page.get("items", []):
+                t = TOUCHED.get(it["id"], {})
+                if "name" in t:
+                    it["name"] = t["name"]
+                at = t.get("at")
+                if at is None:
+                    try:
+                        at = os.path.getmtime(it.get("full_path") or "")
+                    except OSError:
+                        at = 0
+                it["updated_at"] = utc(at)
+                it["name_sort_key"] = name_sort_key(it.get("name"))
+            page["items"].sort(key=lambda it: (it["name_sort_key"], it["id"]))
+        return status, page
 
-    def rom(self, rid):
+    def everything(self):
         status, ps = self.ask("/api/platforms")
         if status != 200:
-            return self.send(status, ps)
+            return status, ps
+        out = []
         for p in ps:
             status, page = self.listing(p["id"])
-            for it in (page or {}).get("items", []) if status == 200 else []:
-                if it["id"] == rid:
-                    return self.send(200, it)
-        return self.send(404, {"detail": f"Rom with ID {rid} not found"})
+            if status != 200:
+                return status, page
+            out += page.get("items", [])
+        return 200, out
 
-    def search(self, qsl):
+    def rom(self, rid):
+        status, items = self.everything()
+        if status != 200:
+            return self.send(status, items)
+        it = next((it for it in items if it["id"] == rid), None)
+        return self.send(200, it) if it else self.send(404, {"detail": f"Rom with ID {rid} not found"})
+
+    def identifiers(self):
+        if self.fault("GET", "/api/roms/identifiers") == "500":
+            return self.send(500, {"detail": "Internal Server Error"})
+        status, items = self.everything()
+        return self.send(status, sorted(it["id"] for it in items) if status == 200 else items)
+
+    def roms(self, qsl):
         q = dict(qsl)
         terms = [t.strip() for t in q.get("search_term", "").split("|") if t.strip()]
         status, page = self.listing(q.get("platform_ids") or q.get("platform_id") or "0", qsl)
@@ -187,6 +245,14 @@ class H(http.server.BaseHTTPRequestHandler):
             return self.send(status, page)
         found = lambda it: any(all(any(w.lower() in (it.get(k) or "").lower() for k in ("name", "fs_name")) for w in t.split()) for t in terms)
         items = [it for it in page["items"] if not terms or found(it)]
+        if q.get("updated_after"):
+            try:
+                after = datetime.datetime.fromisoformat(q["updated_after"].replace("Z", "+00:00"))
+            except ValueError:
+                return self.send(422, {"detail": [{"type": "datetime_from_date_parsing", "loc": ["query", "updated_after"], "msg": "Input should be a valid datetime"}]})
+            if after.tzinfo is None:
+                after = after.replace(tzinfo=datetime.timezone.utc)
+            items = [it for it in items if datetime.datetime.fromisoformat(it["updated_at"]) > after]
         lim, off = int(q.get("limit", 50)), int(q.get("offset", 0))
         return self.send(200, {"items": items[off:off + lim], "total": len(items), "limit": lim, "offset": off})
 
@@ -251,6 +317,10 @@ class H(http.server.BaseHTTPRequestHandler):
         if p == "/kiwami/fault":
             with lock:
                 FAULTS.append({"path": b["path"], "kind": b["kind"], "count": int(b.get("count", 1))})
+            return self.send(200, {})
+        if p == "/kiwami/touch":
+            with lock:
+                TOUCHED[int(b["id"])] = dict({"at": time.time()}, **({"name": b["name"]} if "name" in b else {}))
             return self.send(200, {})
         return self.send(404, {"detail": "Not Found"})
 

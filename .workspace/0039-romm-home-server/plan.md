@@ -94,8 +94,10 @@ Lookups:
 The incremental list:
 
 - **A13**: Given a full listing kept in `banana/kiwami-romm-list.jsonl`, the next Sync now asks each platform only
-  `updated_after=<newest updated_at less 60 s>` pages, plus one `GET /api/roms/identifiers`:
-  - a game added or changed on the server is in the list (Get games' cache, `homesync-server-games.tsv`);
+  `updated_after=<the server's time of the last listing less 60 s>` pages (*Deviations*, 2026-11-17; with no `Date`
+  from the server, the newest updated_at less 60 s), plus one `GET /api/roms/identifiers`:
+  - a game added or changed on the server is in the list (Get games' cache, `homesync-server-games.tsv`), where RomM's
+    name order puts it;
   - a game deleted from it is gone;
   - a platform not in the cache is listed in full.
 - **A14**: A full listing happens instead whenever:
@@ -417,42 +419,56 @@ kept to what the step touches; `make test` runs once per step that changes banan
 
 ### 6. The game list kept on the card and brought up to date
 
-- **Files**:
+- **Files** (*Deviations*, 2026-11-17):
   - `ui/src/kiwami/romm/listcache.h` (new): `banana/kiwami-romm-list.jsonl`, one slimmed game a line, after a header
-    line `{"server": <url>, "version": 1}`.
-    - `Pages`, for a full run (no `onlyRom`), when the cache is this server's: the cached games of that platform
-      first, read one line at a time and passed through `slim()`.
-    - Then `updated_after=<the platform's newest updated_at less 60 s>&order_by=id` pages, a cached game replaced by
-      its newer copy (by id).
+    line `{"server": <url>, "version": 1, "listed_at": <the server's time the listing began>}`.
+    - `Pages`, for a full run (no `onlyRom`), when the cache is this server's (`Cached`): the cached games of that
+      platform, read one line at a time.
+    - Merged with `updated_after=<listed_at less 60 s>` pages (the platform's newest updated_at less 60 s when the
+      server gave no `Date`), in RomM's name order (`name_sort_key`, then id); a cached game replaced by its newer
+      copy (by id). They go to list()'s loop as pages of `syncmem::PAGE` with the platform's `total`.
     - Before the platforms, one `GET /api/roms/identifiers`. A cached id missing from it is dropped; a failure means a
       full listing.
     - A platform with no cached game is listed in full.
-    - At the end of a complete listing, the file is written again (to `.new`, then renamed).
+    - At the end of a complete listing (`keepList()`, from `record()`), the file is written again (to `.new.<pid>`,
+      then renamed), unless nothing changed.
     - A listing broken off keeps the old file.
     - `banana-sync games` (Get games' X) sets `full`.
-    - `dropState()` removes the file too.
-  - `ui/src/kiwami/romm/lookup.h` (changed): `Pages` takes the cached path for full runs.
+    - Its log lines go to `sync.log` in a sync, to stderr otherwise (`games` prints its games on stdout).
+  - `ui/src/kiwami/romm/romm.h` (changed): `listFile()`; `dropState()` removes the file too; `romsQuery()` moved here
+    from `lookup.h` (both use it); includes `listcache.h`.
+  - `ui/src/kiwami/romm/lookup.h` (changed): `Pages` takes the cached path for full runs, and notes the listing's
+    time from a full listing's first answer; `record()` calls `keepList()`.
+  - `ui/src/kiwami/syncmem.h` (changed): `slim()` keeps `name_sort_key`.
   - `ui/src/sync.cpp` (hook): `banana::kiwami::romm::fullListing();	// kiwami: Get games' X lists everything` in the
     `games` command, before `b->manifest(...)` (`cab127ba:ui/src/sync.cpp:1693`).
   - `kiwami/tests/romm-kiwami.py` (changed):
-    - `updated_after` on `/api/roms` (each game's `updated_at` as the stand-in gives it, else its file's mtime);
-    - `GET /api/roms/identifiers`;
-    - `/kiwami/touch` and `/kiwami/delete` hooks to change a game.
-  - `kiwami/tests/romm-big.py` (changed): `updated_after` and `identifiers`, for the memory run.
+    - every platform listing on `/api/roms` with `updated_at` (each game's file's mtime, or the time a test touched
+      it) and `name_sort_key` (RomM's `compute_name_sort_key()`), in RomM's name order, and `updated_after`;
+    - `GET /api/roms/identifiers`, and a `500` fault for it;
+    - a `/kiwami/touch` hook to change a game; a game is deleted with upstream's `/test/delete-rom`.
+  - `kiwami/tests/romm-big.py` (changed): `updated_after` and `identifiers`, for the memory run, and each answer's
+    size in `<log>.bytes`.
   - `kiwami/tests/romm-incremental.sh` (new): A13-A14.
     - The first Sync now lists in full and writes the cache.
-    - The second asks only `updated_after` pages and `identifiers`.
-    - A game touched on the server: its new name in `homesync-server-games.tsv`.
+    - The second asks only `updated_after` pages (since the header's `listed_at` less 60 s) and `identifiers`, and
+      doesn't write the file again.
+    - A game touched on the server: its new name in `homesync-server-games.tsv`, where RomM's name order puts it.
     - A deleted game: gone.
+    - A game added: after the game RomM's name order puts it after.
     - A new platform: listed in full.
     - The identifiers request failing (fault): a full listing.
-    - `games`: a full listing.
-    - Forget: the file gone.
+    - `games`: a full listing, in the order the incremental list had.
     - Another server paired: no cache used.
-  - `kiwami/tests/romm-list.sh` (changed): the second run on the big library through the cache. Its peak is under
-    100 MB, and its requests are a tenth of the first's or fewer.
+    - Forget: the file gone.
+  - `kiwami/tests/romm-list.sh` (changed): the games-only run without a cache (still a full listing); then a Sync now
+    on the big library through the cache. Its peak is under 100 MB, its answers' bytes a tenth of the full listing's
+    or fewer (its requests: 6 `updated_after` and `identifiers`), Get games' list the same, and the file not written
+    again.
   - `kiwami/tests/ci.sh`, `docs/FORK.md` (changed).
-- **Tests**: `romm-incremental.sh`, `romm-list.sh`, `romm-lookup.sh`, `romm-hash.sh`.
+- **Tests**: `romm-incremental.sh`, `romm-list.sh`, `romm-lookup.sh`, `romm-hash.sh` (plus `romm-bios.sh`,
+  `sync-times.sh`, and upstream's `ui/tests/sync.sh`, `sync-slots.sh` and `romm-interop.sh`, whose syncs now try the
+  cache: their stand-in answers no `identifiers`, so they list in full).
 - **Commit**: `RomM home server: the game list kept on the card, brought up to date with what changed`
 
 ### 7. Installs from RomM's web page, in banana-sync
@@ -552,14 +568,14 @@ kept to what the step touches; `make test` runs once per step that changes banan
 | Test | Where | What it checks | Criteria |
 |---|---|---|---|
 | The rework's own suites | `ui/tests/run.sh` (`make test`), `ui/tests/sync.sh`, `sync-slots.sh`, `romm-interop.sh`, `system/tests/launchers-test.sh`, `sleep-test.sh` | The rework works as merged, with the fork's hooks in it | A1 |
-| romm-list | `kiwami/tests/romm-list.sh`, `syncmem-units.cpp`, `romm-big.py` | Peak memory of `games`, games-only Sync now and a one-game sync on a 2400-game library; the slim guard; `--compare` with the rework's build; the cached second run | A2, A14 |
+| romm-list | `kiwami/tests/romm-list.sh`, `syncmem-units.cpp`, `romm-big.py` | Peak memory of `games`, games-only Sync now and a one-game sync on a 2400-game library; the slim guard; `--compare` with the rework's build; the cached Sync now (bytes, peak, same list) | A2, A13, A14 |
 | sync-times | `kiwami/tests/sync-times.sh`, `synctimes-units.cpp` | The phases of the rework's runs, `sync.times`, the report; nothing off; nothing for one game | A3 |
 | sync-times-ui | `kiwami/tests/sync-times-ui.sh` | The line and the row after Sync now, RomM and Romhost | A3, A19 |
 | romm-bios | `kiwami/tests/romm-bios.sh`, `romm-kiwami.py` | Scopes; list; get; DraStic's copies; kept and skipped files; faults; no scope | A4-A7 |
 | romm-bios-ui | `kiwami/tests/romm-bios-ui.sh`, `fake-romm-sync.sh` | The BIOS row and page at both sizes, keys and touch | A7, A8 |
 | romm-lookup | `kiwami/tests/romm-lookup.sh` | Recorded id, search, fallback, outcome same as the rework's | A9-A11 |
 | romm-hash | `kiwami/tests/romm-hash.sh` | By hash, alias, cache, ambiguous cases, archives, the sync before a renamed game | A12 |
-| romm-incremental | `kiwami/tests/romm-incremental.sh` | `updated_after` pages, identifiers, changes, deletes, full listings | A13, A14 |
+| romm-incremental | `kiwami/tests/romm-incremental.sh` | `updated_after` pages, identifiers, changes, deletes, additions, RomM's name order, full listings | A13, A14 |
 | romm-installs | `kiwami/tests/romm-installs.sh` | Capability, claim, report, already there, failed, second card, expiry, Wi-Fi runs, off | A15-A18 |
 | romm-installs-ui | `kiwami/tests/romm-installs-ui.sh` | The row, its setting and call, hidden for old RomM and Romhost | A15 |
 | Renders | the final check | Defaults render as the rework's build | A19 |
@@ -669,6 +685,24 @@ Where the implementation turned out different from this plan, why, and what chan
     system. `romm-hash.sh` checks it. Agreed with the user.
   - `byHash()` runs only under a sync's "running" status, as the listing's progress does, so Get games' refresh (`banana-sync
     games`) reads no file; its runs use the aliases the last Sync now found.
+- **2026-11-17, step 6: changes since the server's own time, RomM's name order, and bytes measured.**
+  - `updated_after` is the server's time of the last listing (the `Date` header of its first answer, kept as the
+    file's `listed_at`) less 60 s, not each platform's newest `updated_at` less 60 s, which fetched again at every Sync
+    now every game updated in the minute before the newest one: after a quick RomM scan, a whole system. The newest
+    `updated_at` less 60 s is the fallback when the server sends no `Date`. Agreed with the user.
+  - The changed and new games are merged into the kept ones in RomM's name order (`name_sort_key`, which `slim()` now
+    keeps, then id; the name lowercased with no key), because Get games shows a system's games in the file's order:
+    added at the end, a new game would show last until Get games' X. Agreed with the user.
+  - `romm-list.sh`'s cached run can't make a tenth of the first's requests (6 `updated_after` and `identifiers`
+    against 12): it checks its answers' bytes under a tenth of the full listing's (A20's measure), from `romm-big.py`'s
+    `.bytes` log. Its games-only run removes the cache first, so it is still the full listing A2 measures. Agreed with
+    the user.
+  - `romsQuery()` moves from `lookup.h` to `romm.h`, as `listcache.h` uses it too; the file is written by
+    `keepList()`, called from `record()` (no hook of its own); `updated_after` pages are asked for by name, with
+    `romsQuery()`'s `order_by=name`, not by id. A game deleted in the tests goes through upstream's `/test/delete-rom`,
+    so the fork's stand-in has no `/kiwami/delete`.
+  - The cache's log lines go to `sync.log` only in a sync: `say()` also prints on stdout, where `banana-sync games`
+    prints its games for the page.
 
 ## Progress
 
@@ -681,7 +715,7 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 3. The BIOS page in Settings | done | RomM home server: a BIOS page on Home server |
 | 4. A game's sync before it starts, without listing its system | done | RomM home server: a game's save synced before it without listing its system |
 | 5. ROMs found by their hash in Sync now | done | RomM home server: ROMs under another name found by their hash |
-| 6. The game list kept on the card and brought up to date | todo | |
+| 6. The game list kept on the card and brought up to date | done | RomM home server: the game list kept on the card, brought up to date with what changed |
 | 7. Installs from RomM's web page, in banana-sync | todo | |
 | 8. The installs row in Settings | todo | |
 | 9. Final check | todo | |

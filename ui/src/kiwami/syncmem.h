@@ -20,10 +20,11 @@
 namespace banana::kiwami::syncmem
 {
 	constexpr int PAGE = 200;	// RomM's games asked for this many at a time (upstream: 500)
-	// the members of a game Romm reads as scalars (updated_at: for the fork's list kept on the card), of each of its
-	// files[], of each of a file's archive_members[], and of its metadatum
+	// the members of a game Romm reads as scalars (updated_at and name_sort_key: for the fork's list kept on the card,
+	// ui/src/kiwami/romm/listcache.h), of each of its files[], of each of a file's archive_members[], and of its
+	// metadatum
 	inline const char* const GAME_KEYS[] = { "id", "platform_id", "fs_name", "fs_name_no_ext", "name", "fs_size_bytes",
-		"has_multiple_files", "missing_from_fs", "summary", "path_cover_large", "revision", "updated_at" };
+		"has_multiple_files", "missing_from_fs", "summary", "path_cover_large", "revision", "updated_at", "name_sort_key" };
 	inline const char* const GAME_STRINGS[] = { "tags", "regions" };	// arrays read for their strings only
 	inline const char* const FILE_KEYS[] = { "id", "file_name", "file_size_bytes", "sha1_hash", "md5_hash" };
 	inline const char* const MEMBER_KEYS[] = { "size", "crc_hash" };

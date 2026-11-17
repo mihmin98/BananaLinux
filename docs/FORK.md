@@ -308,7 +308,7 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    `requested_scopes` line ends with the fork's `SCOPES` (`firmware.read`, `collections.read`), `main()` hands
    `kiwami` to `romm::command()` right after libcurl is loaded (the settings, the certificates and the paths are read
    by then), and `dropServerLists()` (Forget, and a pairing with another server) drops the fork's
-   `banana/kiwami-romm.json` too. `sync_romm.cpp` exports its platforms' mapping as `bsync::kiwamiFolder()`, one line
+   `banana/kiwami-romm.json` and `banana/kiwami-romm-list.jsonl` too. `sync_romm.cpp` exports its platforms' mapping as `bsync::kiwamiFolder()`, one line
    after its anonymous namespace that copies `list()`'s own (`ROMM_SLUGS`, then `BANANA_FOLDERS` by `fs_slug`): if
    upstream changes that mapping, the line follows it. A scope upstream adds to its own list goes before the fork's;
    if upstream starts asking for `firmware.read` itself, the fork's `SCOPES` drops it. The fork's verbs reach RomM
@@ -316,7 +316,7 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    `kiwami/tests/romm-bios.sh`. One game's sync (before or after it) doesn't list the game's system
    (`ui/src/kiwami/romm/lookup.h`): `sync_romm.cpp` includes `kiwami/romm/romm.h`. In `Romm::list()`, each platform's
    page loop takes its pages from a `romm::Pages` made before it, whose `fetch(off)` replaces the loop's query and
-   `call()` (0022's query moved into it, `romsQuery()`). For one game's run it first asks for the game alone: its
+   `call()` (0022's query moved into it, `romsQuery()` in `romm.h`). For one game's run it first asks for the game alone: its
    remembered id (`GET /api/roms/<id>`), else RomM's name search. Both answers go to the loop as one short page, which
    ends it. `romm::record(*this)`, the line before `listed = true`, keeps the ids of the games on either card in
    `kiwami-romm.json` and clears `cardIndex` after a full listing. It reads `Romm`'s `roms`, `onlyRom`, `onCard()` and
@@ -332,7 +332,17 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    its own lookup by name, so the save of a game renamed on the card syncs in that game's slot, and `Pages` takes a
    game remembered under its alias. It reads `Romm`'s `romJson` (`files[]`' `file_size_bytes` and MD5s) besides the
    above; `onCard()`'s callers all see the alias. A change to how `onCard()` matches, or to `packedName()`, shows in
-   `kiwami/tests/romm-hash.sh`. And banana-ui's rule in
+   `kiwami/tests/romm-hash.sh`. A sync of every system reads RomM's game list from the card
+   (`ui/src/kiwami/romm/listcache.h`, `banana/kiwami-romm-list.jsonl`, the slimmed games one a line) and asks RomM only
+   for its game ids (`GET /api/roms/identifiers`) and each system's changes since the last listing (`updated_after`:
+   the server's time of that listing, its `Date` header, less 60 s): `Pages` hands `list()`'s loop the kept games still
+   there merged with the changed ones in RomM's name order (`name_sort_key`, which `slim()` keeps, then id), as pages
+   of `syncmem::PAGE`, so the loop reads them as RomM's own. `record()` writes the list again after a listing that went
+   through, when it changed. No list, another server's, the ids failing, and Get games' refresh (`sync.cpp`'s
+   `games` command, its `kiwami:` line `romm::fullListing()` before `manifest()`) list everything. It relies on the
+   loop ending at a short page or at `total`, and on RomM keeping a game's `updated_at` when it changes it. A change to
+   `list()`'s loop, or a field `manifest()` starts reading that RomM's changes don't bump `updated_at` for, shows in
+   `kiwami/tests/romm-incremental.sh` and `romm-list.sh`. And banana-ui's rule in
    `ui/Makefile`: `kiwami.mk` compiles its `SRC` one file per call with the rule's command, so a change to that command
    (a flag, a variable, how it reads `SRC`) is followed in `kiwami.mk`'s object rules. `kiwami/tests/ui-objects.sh`
    (in `ci.sh`) fails when the two no longer make the same binary. A source upstream adds to `SRC` is compiled as an

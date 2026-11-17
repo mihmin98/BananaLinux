@@ -3,12 +3,14 @@
 // banana-sync's build recipe stays upstream's (ui/Makefile's kiwami: line names these headers as dependencies). Its
 // hooks are in upstream's sync.cpp (the pairing's scopes, the kiwami verb, dropServerLists()) and sync_romm.cpp
 // (kiwamiFolder(), the platforms' mapping exported; Romm::list()'s pages and the ids it records, lookup.h; the card's
-// ROMs under another name found by their contents, and onCard()'s first line for them, hashes.h):
+// ROMs under another name found by their contents, and onCard()'s first line for them, hashes.h; the game list kept on
+// the card and brought up to date, listcache.h, whose pages Pages hands list() in a sync of every system):
 //   banana-sync kiwami bios list           BIOS files of RomM's for the systems Banana has (bios.h)
 //   banana-sync kiwami bios get <id>...    those downloaded into /data/bios (and the DS's into DraStic's folder)
 // Each prints its lines on stdout, the last one the result ("ok ..." or "error <why>"), for Settings' pages to read.
 // They don't write sync.log, so the last sync's report stays. The fork's own state on the card is
-// banana/kiwami-romm.json (stateFile(), State), which Forget and a pairing with another server drop (dropState()).
+// banana/kiwami-romm.json (stateFile(), State) and banana/kiwami-romm-list.jsonl (listFile()), which Forget and a
+// pairing with another server drop (dropState()).
 #include "../../sync_core.h"
 #include "../../sync_romm.h"
 #include "../../sync_util.h"
@@ -33,8 +35,22 @@ namespace banana::kiwami::romm
 	constexpr const char* SCOPES = ", \"firmware.read\", \"collections.read\"";
 
 	inline std::string stateFile() { return bsync::ROOT + "/banana/kiwami-romm.json"; }
+	// RomM's game list kept on the card between syncs (listcache.h)
+	inline std::string listFile() { return bsync::ROOT + "/banana/kiwami-romm-list.jsonl"; }
 	// the server's pairing gone or replaced (dropServerLists()): what the fork kept of it goes too
-	inline void dropState() { unlink(stateFile().c_str()); }
+	inline void dropState() { unlink(stateFile().c_str()); unlink(listFile().c_str()); }
+
+	// RomM's games of a platform, as 0022 asks for them: n from off, by name, with their files (and their hashes) and
+	// nothing list() doesn't read; more, the query's own parameters. KIWAMI_ROMM_ROM_ID_INDEX=1 in the environment
+	// leaves with_rom_id_index=false out (to measure RomM's paging with its id index on a large library)
+	inline std::string romsQuery(long long pid, long long off, long long n, const std::string& more = "")
+	{
+		const char* idIndex = getenv("KIWAMI_ROMM_ROM_ID_INDEX");
+		std::string p = std::to_string(pid);
+		return "/api/roms?platform_ids=" + p + "&platform_id=" + p + more + "&limit=" + std::to_string(n) + "&offset=" + std::to_string(off) +
+			"&order_by=name&with_files=true&with_char_index=false&with_filter_values=false" +
+			(idIndex && std::string(idIndex) == "1" ? "" : "&with_rom_id_index=false") + "&with_provider_metadata=false";
+	}
 	// what the fork remembers of the paired server between runs (stateFile()). It holds no secret: File sharing shows
 	// it, unlike the pairing. A run reads it again just before it writes, so another run's change in between is kept
 	struct State
@@ -164,4 +180,5 @@ namespace banana::kiwami::romm
 
 #include "bios.h"
 #include "hashes.h"
+#include "listcache.h"
 #include "lookup.h"

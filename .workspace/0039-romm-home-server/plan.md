@@ -753,6 +753,16 @@ Where the implementation turned out different from this plan, why, and what chan
     Server for RomM. `romm-installs-ui.sh` also checks unpaired, and not touch (the row is upstream's kind, whose
     touch is upstream's).
 
+- **2026-11-17, step 9: the docs brought up to date in a commit of their own, and A19's baseline.** The final check's
+  automated part, run before the manual tests (agreed with the user), found two docs behind the feature:
+  `kiwami/DEPENDENCIES.md`'s row for the rework named only what 0022 and 0024 rely on, and `CLAUDE.md`'s layout had
+  neither `banana-sync` nor `ui/src/kiwami/romm/`. Both are updated in their own commit
+  (`RomM home server: DEPENDENCIES.md and CLAUDE.md brought up to date`), before the manual tests; the final check
+  stays open until they have passed (agreed with the user). A19's renders against `cab127ba` differ, besides the clock and run-to-run noise
+  (the card's free space, Bshare's PIN, the marquee's scroll, the DS overlay's frame), by the fork's earlier screens
+  (Network's Tailscale row, 0034's, shown whatever the settings), not by this feature's: the baseline is `cab127ba`
+  with those set aside.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).

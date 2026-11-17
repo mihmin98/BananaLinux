@@ -87,10 +87,16 @@ Decided while planning:
     fits 65% of the period.
 
   The period is `1/fps`, so a 50 Hz game paced by its audio isn't judged late.
-- **A6**: Given a running game, when a flip comes later than the content's own spacing allows (more than
-  `ceil(period/refresh) + 0.5` refreshes after the last) with that frame's CPU work under 80% of the period, or the
-  game runs slow with its CPU work under 80%, then the GPU's floor goes up a step (never above its `max_freq`). It is
-  held 30 s, and goes down a step after 30 s without one.
+- **A6**: Given a running game, when a flip comes later than the content's own spacing allows with that frame's CPU
+  work under 80% of the period, or the game runs slow with its CPU work under 80%, then the GPU's floor goes up a step
+  (never above its `max_freq`). The spacing:
+  - a core RetroArch runs at the panel's rate (within `audio_max_timing_skew` of it, or of a whole fraction of it,
+    with vsync on, RetroArch's own test) is that many refreshes apart: one missed refresh is late (past 1.5 refreshes
+    for a 60 fps core), and its period is the refreshes';
+  - any other (a PAL game on a 60 Hz panel) is late past `ceil(period/refresh) + 0.5` refreshes.
+
+  The floor is held 30 s, and goes down a step after the hold without a miss. A floor needed again within 10 s of a
+  drop doubles the hold for the rest of the game (30 s, 60 s, 120 s ...).
 - **A7**: Given fast-forward on in RetroArch:
   - **with no limit** (`frame_limit_minimum_time` 0), the CPU is set to the top clock at once;
   - **with a limit**, the CPU steps up one a second while RetroArch's period is over the limit by 3%, and never steps
@@ -400,7 +406,32 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 - **Tests**: none (documentation).
 - **Commit**: `Power scaling: what a merge of upstream re-reads for it`
 
-### 6. Final check
+### 6. Fix: one missed refresh is late, and the GPU floor's hold grows
+
+- **Files**:
+  - `kiwami/patches/retroarch/0101-gfx-drm-kiwami-clocks-a-frame-driven-clock-governor.patch` (changed);
+  - `kiwami/patches/retroarch/0102-gfx-drm_ctx-the-kiwami-clocks-governor-at-each-swap-and-flip.patch` (changed);
+  - `kiwami/tests/clocks-units.c` (changed);
+  - `kiwami/DEPENDENCIES.md` (changed, RetroArch's row: the two settings the glue now reads).
+- **Change** (A6 reworded, *Deviations*):
+  - the frame gains `skew`: the glue passes `audio_max_timing_skew` with `video_vsync` on, else 0;
+  - the governor applies RetroArch's test (`retroarch.c`'s audio rate control): a core within the skew of the
+    refresh, or of a whole fraction of it, runs at it, so its period is that many refreshes and a flip past half a
+    refresh more is late; any other keeps the core's own period and `ceil` spacing;
+  - a GPU floor raised within 10 s of a drop doubles the hold (`KC_GPU_SOON_US`);
+  - the log's start line says `(the panel's rate)` when the core runs at it.
+- **Tests**: `clocks-units` first fails on the new cases, then passes:
+  - Snes9x's 60.0988 fps on 60.17 Hz: one 33.2 ms flip with the work at 30% raises the GPU floor, at 85% the CPU;
+    with vsync off (skew 0) the same gap isn't late;
+  - 62 fps on 60.17 Hz with RetroArch's period at the refresh's: no "running slow";
+  - the hold: 30 s, then 60 s and 120 s when needed again within 10 s of each drop, unchanged when needed after 15 s;
+  - the existing GPU case waits 11 s after its drop, so its 30 s holds stay what it checks.
+
+  `make retroarch-dirclean-rgds-plus`, `make retroarch-rgds-plus`: both patches apply without fuzz, no new warning;
+  `kiwami/tests/ci.sh .buildroot`.
+- **Commit**: `Power scaling: one missed refresh is a late frame, and the GPU floor's hold grows when it's still needed`
+
+### 7. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
 - The fork's tests in `kiwami/tests/`, among them `clocks-units`, `clocks.sh`, `power-scaling-ui.sh` and
@@ -419,7 +450,7 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 | Test | Where | What it checks | Criteria |
 |---|---|---|---|
 | clocks-units | `kiwami/tests/clocks-units.c` (from `ci.sh`) | `0101` applies to an empty folder; the governor in C89 against made-up cpufreq/devfreq: start and memory, CPU up/down/ban, 50 Hz pacing, GPU attribution, fast-forward with and without a limit, holds and stalls, stop and its files, no cpufreq | A4, A5, A6, A7, A8, A9, A10 |
-| retroarch build | `make retroarch-dirclean-rgds-plus`, `make retroarch-rgds-plus` (steps 2, 6) | both patches apply without fuzz; RetroArch builds | A4 |
+| retroarch build | `make retroarch-dirclean-rgds-plus`, `make retroarch-rgds-plus` (steps 2, 6, 7) | both patches apply without fuzz; RetroArch builds | A4 |
 | retroarch-pin | `kiwami/tests/retroarch-pin.sh` (from `ci.sh`) | the patch step's folder is still the fork's | A4 |
 | clocks | `kiwami/tests/clocks.sh` (from `ci.sh`) | the launch script off, on, N64, no devfreq; the hook's place in `run-retroarch` | A2, A3 |
 | power-scaling-ui | `kiwami/tests/power-scaling-ui.sh` (from `ci.sh`) | the row after Frontend, Off, A writes on, at both sizes | A1 |
@@ -439,7 +470,7 @@ over SSH before quitting the next game or turning off. Each RetroArch game's `ki
 |---|---|---|---|---|---|---|
 | M1 | rgds-plus | Power scaling **off**. Play a SNES game and a GBA game (Frontend Auto: BananaFront) 2 min each. | Play as today; the strip shows `Performance 1992 MHz` (SNES) and `Balanced <MHz>` (GBA, moving); no `kiwami-clocks.log` written; `bananafront.log` has the floor's `cpugov: clock floor`. | `banana-ui.log` (`panel clocks:` lines), `bananafront.log`, `ls /data/banana/logs` | A2, A12 | not run |
 | M2 | rgds-plus | Frontend set to RetroArch. A heavy `powersave` game (a Mega Drive or NES stress scene, or a known heavy game) for 5 min. | No visible slowdown; the log shows steps above 1416 MHz where needed, few late frames after the first seconds. | `kiwami-clocks.log`, `retroarch.log` | A4, A5, A13 | not run |
-| M3 | rgds-plus | A SNES game (Snes9x in RetroArch) for 10 min of play. | Smooth; the summary shows most time under 1992 MHz; the strip shows `Auto <MHz>` changing. | `kiwami-clocks.log`, `banana-ui.log` | A5, A12, A13 | not run |
+| M3 | rgds-plus | A SNES game (Snes9x in RetroArch) for 10 min of play. | Smooth; the summary shows most time under 1992 MHz; the strip shows `Auto <MHz>` changing. | `kiwami-clocks.log`, `banana-ui.log` | A5, A12, A13 | failed (2026-11-17, 0.5.3.4 from `07a68068`): stutters at the three "running slow" steps; fixed in step 6, to run again |
 | M4 | rgds-plus | A PlayStation game for 10 min (a 3D scene and a menu). | Smooth, sound without drop-outs; summary as M3. | `kiwami-clocks.log`, `retroarch.log` | A5, A13 | not run |
 | M5 | rgds-plus | A PAL (50 Hz) game in RetroArch for 5 min. | Plays at its speed; the log's fps 50; the clock doesn't climb to the top for pacing. | `kiwami-clocks.log` | A5, A13 | not run |
 | M6 | rgds-plus | In a RetroArch game: RetroArch's menu > Settings > Frame Throttle > Fast-Forward Rate 3.0x; fast-forward (R2 or the panel's Fast) 30 s; off; then Rate 0 (unlimited), 30 s; off. | At 3.0x the clock climbs only until ~300% (the log's fast-forward steps stop); unlimited: the top clock at once; each time, after it, the clock from before. | `kiwami-clocks.log` | A7 | not run |
@@ -454,6 +485,15 @@ over SSH before quitting the next game or turning off. Each RetroArch game's `ki
 | M15 | QEMU | Optional: `tools/qemu-boot.sh` on the image with Power scaling on (set on the card), a NES game. | RetroArch runs; the log says `off, no cpufreq`. | the card's `banana/logs/kiwami-clocks.log` | A10 | not run |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- **M3, 2026-11-17** (0.5.3.4 built from `07a68068`; Super Castlevania IV in Snes9x, 2 min, not 10). The CPU as
+  planned: from 1992 MHz with no memory, down a step every ~5 s to 816 MHz by 29.4 s, held there for 89 s, nothing
+  near the limit, `cpu 816000` remembered. The GPU's floor went 200 -> 300 MHz "running slow" at 50.6, 84.1 and
+  115.5 s, each time 3.4 s or less after a 30 s hold ended (80.7, 114.1 s), and the summary had `GPU 0 (late flip)
+  3 (running slow)`. The user saw stutters at those moments. Two causes: Snes9x's 60.10 fps against the panel's
+  60.17 Hz made `ceil(period/refresh)` 2, so no flip short of 41.5 ms was late and a single missed refresh never
+  counted, leaving only "running slow", which needs a whole second's stutter; and the 30 s hold dropped a floor the
+  game still needed. Fixed in step 6.
 
 ## Deviations
 
@@ -484,6 +524,13 @@ Where the implementation turned out different from this plan, why, and what chan
   `--systems` for the crowded run alone, with `1992000` as the CPU's kHz. Agreed with the user. Also, the profile's
   name (`PanelStatus::profileName`) and the label's text (`PanelClocks::text`) are in `panelstatus.cpp`, so
   `panelstatus-units` checks them; `panel-status.cpp` keeps the reading of the files and `systems.conf`'s entry.
+- **2026-11-17, M3: a fix step before the final check.** M3's log showed single missed refreshes never counted as late
+  for a core a hair under the panel's rate (most NTSC cores against the RG DS Plus's 60.17 Hz: `ceil` gave 2 refreshes),
+  and the GPU floor's fixed 30 s hold dropping a floor still needed, so the game stuttered every ~33 s. Agreed with
+  the user: RetroArch's own test (`audio_max_timing_skew`, which the glue now passes) decides whether the core runs at
+  the panel's rate, and a floor needed within 10 s of its drop doubles the hold. Step 6 fixes it (A6 reworded); the
+  final check becomes step 7. Writing the tests also showed that a core a little over the panel's rate was judged
+  "running slow" against its own period every second; the same change fixes it.
 
 ## Progress
 
@@ -496,4 +543,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 3. The setting: the launch script, run-retroarch's hook and the row | done | Power scaling: the setting, which turns on RetroArch's and BananaFront's governors |
 | 4. The strip: the mode and the CPU clock | done | Power scaling: the game panel's status shows the clocks' mode and the CPU clock |
 | 5. The docs | done | Power scaling: what a merge of upstream re-reads for it |
-| 6. Final check | todo | |
+| 6. Fix: one missed refresh is late, and the GPU floor's hold grows | done | Power scaling: one missed refresh is a late frame, and the GPU floor's hold grows when it's still needed |
+| 7. Final check | todo | |

@@ -7,7 +7,8 @@ starts it with the CPU's cpufreq policy0 and the first /sys/class/devfreq/
 *.gpu (or KIWAMI_CLOCKS_CPUFREQ, KIWAMI_CLOCKS_DEVFREQ), the folder and log
 from KIWAMI_CLOCKS_DATA and KIWAMI_CLOCKS_LOG, the core's library name and
 the game's basename, and it is stopped at exit. Each swap gives it the time,
-the main thread's CPU time, the core's fps, the mode's refresh, RetroArch's
+the main thread's CPU time, the core's fps, the mode's refresh, audio_max_timing_skew with vsync on
+(within it RetroArch runs the core at the display's rate), RetroArch's
 smoothed iteration period, fast-forward and its frame limit, and whether
 the menu, pause or slow motion holds it; each page flip, the flip's time.
 
@@ -48,7 +49,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
  #ifdef HAVE_WAYLAND
  #include "../common/wayland_drm_lease.h"
  #endif
-@@ -506,10 +517,92 @@
+@@ -506,10 +517,95 @@
  #endif
  }
  
@@ -120,6 +121,9 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +      ? g_drm_mode->clock * 1000.0
 +         / ((double)g_drm_mode->htotal * g_drm_mode->vtotal)
 +      : 0.0;
++   /* RetroArch runs a core near the display's rate at it with vsync */
++   f.skew        = config_get_ptr()->bools.video_vsync
++      ? config_get_ptr()->floats.audio_max_timing_skew : 0.0;
 +   f.pace_us     = runloop_st->pace_period_usec;
 +   f.ff          = (runloop_st->flags & RUNLOOP_FLAG_FASTMOTION) ? 1 : 0;
 +   f.ff_limit_us = f.ff ? runloop_st->frame_limit_minimum_time : 0;
@@ -141,7 +145,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
  }
  
  static bool gfx_ctx_drm_wait_flip(gfx_ctx_drm_data_t *drm, bool block)
-@@ -654,6 +747,8 @@
+@@ -654,6 +750,8 @@
     gfx_ctx_drm_data_t        *drm = (gfx_ctx_drm_data_t*)data;
     unsigned max_swapchain_images  = drm->max_swapchain_images;
  

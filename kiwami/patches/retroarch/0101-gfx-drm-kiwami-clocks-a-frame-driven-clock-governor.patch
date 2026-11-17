@@ -4,9 +4,11 @@ Subject: [PATCH] gfx/drm: kiwami clocks, a frame-driven clock governor
 The kiwami fork's CPU and GPU clock governor for the KMS context (its
 setting Power scaling): the lowest CPU clock at which the core's frames fit,
 under the "performance" governor with a stepped scaling_max_freq, and the
-GPU's devfreq floor raised when a frame on time still missed its flip. It
-works on the core's own period and the main thread's CPU time, follows
-fast-forward's limit, and remembers each game's clocks.
+GPU's devfreq floor raised when a frame on time still missed its flip, held
+longer each time it turns out still needed. It works on the core's period
+(the display's when RetroArch runs the core at the display's rate) and the
+main thread's CPU time, follows fast-forward's limit, and remembers each
+game's clocks.
 
 Its files only, plain C89 with no RetroArch headers: the caller gives it
 every time, fact and path, so it is built and tested on its own. Nothing
@@ -16,7 +18,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 ---
 --- /dev/null
 +++ b/gfx/drivers_context/kiwami_clocks.h
-@@ -0,0 +1,33 @@
+@@ -0,0 +1,34 @@
 +/* A frame-driven CPU and GPU clock governor for the KMS context, the kiwami
 + * fork's. Plain C with no RetroArch headers: the caller gives it every
 + * fact, time and path. */
@@ -32,6 +34,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +   int64_t cpu_us;      /* the main thread's CPU time, at the swap */
 +   double  fps;         /* the core's */
 +   double  refresh_hz;  /* the display mode's */
++   double  skew;        /* audio_max_timing_skew with vsync on, else 0 */
 +   int64_t pace_us;     /* RetroArch's smoothed iteration period, 0 unknown */
 +   int64_t ff_limit_us; /* fast-forward's frame limit, 0 none */
 +   int     ff;          /* fast-forward on */
@@ -52,14 +55,16 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +#endif
 --- /dev/null
 +++ b/gfx/drivers_context/kiwami_clocks.c
-@@ -0,0 +1,658 @@
+@@ -0,0 +1,689 @@
 +/* The kiwami fork's clock governor, BananaFront's --cpugov and gpufloor for
 + * RetroArch's KMS context.
 + *
 + * CPU: the "performance" governor with a stepped scaling_max_freq, the
 + * lowest clock at which the core's frames fit. Work is the main thread's CPU
 + * time between swaps, so a wait (vsync, audio, the frame limiter) never
-+ * counts, judged against the core's period, not the display's.
++ * counts, judged against the core's period: the display's (or a whole
++ * multiple of it) when RetroArch runs the core at the display's rate, as it
++ * does within audio_max_timing_skew, else the core's own.
 + * - Up a step when a second's slowest work (p99) passes 90% of the period.
 + * - Up at once on a late frame (a late flip, or the game running slow for a
 + *   second, with the work over 80%), two steps for two in a second; that
@@ -67,7 +72,8 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 + * - Down a step after 5 s with no change and no late frame, when the p99
 + *   scaled to the lower clock fits 65% of the period.
 + * GPU: devfreq's min_freq up a step on a late flip, or the game running
-+ * slow, with the work under 80%; down a step after 30 s without one.
++ * slow, with the work under 80%; down a step after 30 s without one, a hold
++ * doubled each time a floor is needed again within 10 s of its drop.
 + * Fast-forward: the top clock with no limit, else a step a second until the
 + * limit is reached; the clock from before comes back after it, and nothing
 + * of it is learnt.
@@ -92,6 +98,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +#define KC_BAN_US      30000000
 +#define KC_GPU_GAP_US  250000
 +#define KC_GPU_HOLD_US 30000000
++#define KC_GPU_SOON_US 10000000
 +
 +struct kc_step
 +{
@@ -103,7 +110,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +
 +static struct
 +{
-+   int on, stopped, have_last, have_flip, held, in_ff;
++   int on, stopped, have_last, have_flip, held, in_ff, synced;
 +   int nf, cur, gnf, gcur, start_cur, start_gcur, mem_cpu, mem_gpu;
 +   int nwin, nslow, nframes, late_1s, ff_from;
 +   unsigned long f[KC_MAXF];  /* kHz */
@@ -116,6 +123,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +   double fps, refresh_hz;
 +   int64_t t0, last_now, last_cpu, last_flip, win_start, late_since;
 +   int64_t last_change, last_late, g_last_change, g_last_miss;
++   int64_t g_hold, g_drop;
 +   int64_t ff_next, ff_us;
 +   int64_t ban_until[KC_MAXF], ban_len[KC_MAXF];
 +   int64_t time_at[KC_MAXF], gtime_at[KC_MAXF];
@@ -299,15 +307,24 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +   kc.g_last_miss = now;
 +   if (     kc.gcur + 1 < kc.gnf
 +         && now - kc.g_last_change >= KC_GPU_GAP_US)
++   {
++      /* the floor dropped was still needed: hold the next one longer */
++      if (kc.g_drop && now - kc.g_drop < KC_GPU_SOON_US)
++         kc.g_hold *= 2;
++      kc.g_drop = 0;
 +      kc_gpu(kc.gcur + 1, now, why);
++   }
 +}
 +
 +static void kc_gpu_tick(int64_t now)
 +{
 +   if (     kc.gcur > 0
-+         && now - kc.g_last_miss   >= KC_GPU_HOLD_US
-+         && now - kc.g_last_change >= KC_GPU_HOLD_US)
++         && now - kc.g_last_miss   >= kc.g_hold
++         && now - kc.g_last_change >= kc.g_hold)
++   {
 +      kc_gpu(kc.gcur - 1, now, "quiet");
++      kc.g_drop = now;
++   }
 +}
 +
 +static int kc_cmp(const void *a, const void *b)
@@ -474,6 +491,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +      kc_write_ul(kc.gpu_dir, "min_freq", kc.g[kc.gcur]);
 +   for (i = 0; i < KC_MAXF; i++)
 +      kc.ban_len[i] = KC_BAN_US;
++   kc.g_hold     = KC_GPU_HOLD_US;
 +   kc.start_cur  = kc.cur;
 +   kc.start_gcur = kc.gcur;
 +   kc.on         = 1;
@@ -482,7 +500,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +
 +void kiwami_clocks_swap(const struct kiwami_clocks_frame *f)
 +{
-+   double refresh_us, n;
++   double refresh_us, fps, n, skew;
 +   long whole;
 +   int64_t now, gap;
 +   long work;
@@ -491,14 +509,29 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +      return;
 +   now        = f->now_us;
 +   refresh_us = 1000000.0 / (f->refresh_hz > 1.0 ? f->refresh_hz : 60.0);
-+   kc.period_us = (long)(f->fps > 1.0 ? 1000000.0 / f->fps : refresh_us);
-+   /* a flip is late past the refreshes the content's own spacing takes */
-+   n     = kc.period_us / refresh_us - 0.001;
-+   whole = (long)n;
-+   if (whole < n)
-+      whole++;
++   fps        = f->fps > 1.0 ? f->fps : 1000000.0 / refresh_us;
++   /* RetroArch's own test (audio rate control): a core within the skew
++    * of the display's rate, or of a whole fraction of it, runs at it */
++   whole = (long)(1000000.0 / refresh_us / fps + 0.5);
 +   if (whole < 1)
 +      whole = 1;
++   skew  = 1.0 - fps * whole * refresh_us / 1000000.0;
++   if (skew < 0)
++      skew = -skew;
++   kc.synced = skew <= f->skew;
++   if (kc.synced)
++      kc.period_us = (long)(whole * refresh_us);
++   else
++   {
++      /* its own rate: a flip is late past the refreshes its spacing takes */
++      kc.period_us = (long)(1000000.0 / fps);
++      n     = kc.period_us / refresh_us - 0.001;
++      whole = (long)n;
++      if (whole < n)
++         whole++;
++      if (whole < 1)
++         whole = 1;
++   }
 +   kc.late_after_us = (long)((whole + 0.5) * refresh_us);
 +
 +   if (!kc.have_last)
@@ -629,9 +662,10 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +
 +   if (!kc.log_path[0] || !(fp = fopen(kc.log_path, "a")))
 +      return;
-+   fprintf(fp, "kiwami-clocks: start: %s (%s), %.2f fps, %.2f Hz, "
++   fprintf(fp, "kiwami-clocks: start: %s (%s), %.2f fps, %.2f Hz%s, "
 +         "CPU %lu MHz (%s) of %lu-%lu",
 +         kc.game, kc.core, kc.fps, kc.refresh_hz,
++         kc.synced ? " (the panel's rate)" : "",
 +         kc.f[kc.start_cur] / 1000,
 +         kc.mem_cpu ? "a step above this game's" : "the top",
 +         kc.f[0] / 1000, kc.f[kc.nf - 1] / 1000);

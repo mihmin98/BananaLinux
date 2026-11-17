@@ -1,7 +1,8 @@
 /* Power scaling's governor for RetroArch (kiwami/patches/retroarch/0101-*: gfx/drivers_context/kiwami_clocks.c), checked
  * on its own against made-up cpufreq and devfreq folders, fed made-up frames: the start and the game's memory, the CPU's
- * steps up, down and bans, a 50 Hz game on a 60 Hz panel, the GPU's floor, fast-forward with and without a limit, the
- * menu and stalls, the stop and its files, no cpufreq. Built and run by kiwami/tests/ci.sh, the patch applied to an empty
+ * steps up, down and bans, a 50 Hz game on a 60 Hz panel, a core RetroArch runs at the panel's rate (Snes9x's 60.10 fps
+ * on the RG DS Plus's 60.17 Hz: one missed refresh is late), the GPU's floor and its hold doubled when it's needed again soon
+ * after a drop, fast-forward with and without a limit, the menu and stalls, the stop and its files, no cpufreq. Built and run by kiwami/tests/ci.sh, the patch applied to an empty
  * folder and the governor built with RetroArch's C89 flags:
  *   cc -std=c99 -Wall -D_GNU_SOURCE -I <folder>/gfx/drivers_context kiwami/tests/clocks-units.c kiwami_clocks.o
  *   ./clocks-units */
@@ -104,17 +105,19 @@ static void remember(const char *core, const char *game, const char *text)
 // the frames: a swap dt after the last with work as a share of the core's period, then its flip 0.5 ms later
 static struct kiwami_clocks_frame F;
 
-// the first swap, of a core at fps on a 60 Hz panel
-static void begin_at(double fps)
+// the first swap, of a core at fps on a panel at hz, vsync on with RetroArch's default audio_max_timing_skew (5%)
+static void begin_on(double fps, double hz)
 {
 	memset(&F, 0, sizeof F);
 	F.now_us = 1000000000;
 	F.fps = fps;
-	F.refresh_hz = 60.0;
+	F.refresh_hz = hz;
+	F.skew = 0.05;
 	F.pace_us = (int64_t)(1000000.0 / fps + 0.5);
 	kiwami_clocks_swap(&F);
 }
 
+static void begin_at(double fps) { begin_on(fps, 60.0); }
 static void begin(void) { begin_at(60.0); }
 
 static void frame(long dt, double work)
@@ -260,7 +263,7 @@ int main(void)
 	EQ(get(gpu, "min_freq"), "200000000");
 	kiwami_clocks_stop();
 	CHECK(lines_with(slurp(logf), " -> ") == 0);
-	CHECK(lines_with(slurp(logf), "50.00 fps, 60.00 Hz") == 1);
+	CHECK(lines_with(slurp(logf), "50.00 fps, 60.00 Hz, ") == 1);	// (its own rate)
 
 	// a late flip with the work at 30%: the GPU's floor up a step, held 30 s, then down; two in 300 ms: up two, down one
 	// each 30 s
@@ -275,6 +278,7 @@ int main(void)
 	EQ(get(gpu, "min_freq"), "300000000");
 	run(2.0, 0.30);
 	EQ(get(gpu, "min_freq"), "200000000");
+	run(11.0, 0.30);		// (over 10 s after the drop: the hold stays 30 s)
 	frame(33333, 0.30);
 	run(0.3, 0.30);
 	frame(33333, 0.30);
@@ -305,6 +309,85 @@ int main(void)
 	for (int i = 0; i < 8; i++) { run(0.3, 0.30); frame(33333, 0.30); }
 	EQ(get(gpu, "min_freq"), "400000000");
 	kiwami_clocks_stop();
+
+	// a floor needed again within 10 s of its drop is held twice as long: 30 s, then 60 s, then 120 s; needed again later
+	// than that, the hold stays as it is
+	setup();
+	start("c", "g");
+	begin();
+	run(1.0, 0.30);
+	frame(33333, 0.30);
+	EQ(get(gpu, "min_freq"), "300000000");
+	miss = F.now_us;
+	run(29.0 - (F.now_us - miss) / 1e6, 0.30);
+	EQ(get(gpu, "min_freq"), "300000000");
+	run(2.0, 0.30);
+	EQ(get(gpu, "min_freq"), "200000000");
+	run(5.0, 0.30);
+	frame(33333, 0.30);
+	EQ(get(gpu, "min_freq"), "300000000");
+	miss = F.now_us;
+	run(59.0 - (F.now_us - miss) / 1e6, 0.30);
+	EQ(get(gpu, "min_freq"), "300000000");
+	run(2.0, 0.30);
+	EQ(get(gpu, "min_freq"), "200000000");
+	run(3.0, 0.30);
+	frame(33333, 0.30);
+	miss = F.now_us;
+	run(119.0 - (F.now_us - miss) / 1e6, 0.30);
+	EQ(get(gpu, "min_freq"), "300000000");
+	run(2.0, 0.30);
+	EQ(get(gpu, "min_freq"), "200000000");
+	run(15.0, 0.30);
+	frame(33333, 0.30);
+	miss = F.now_us;
+	run(119.0 - (F.now_us - miss) / 1e6, 0.30);
+	EQ(get(gpu, "min_freq"), "300000000");
+	run(2.0, 0.30);
+	EQ(get(gpu, "min_freq"), "200000000");
+	kiwami_clocks_stop();
+
+	// a core a hair under the panel's rate, which RetroArch runs at the panel's (within audio_max_timing_skew): Snes9x's
+	// 60.10 fps on the RG DS Plus's 60.17 Hz. One missed refresh (a flip 33.2 ms after the last) is late: the GPU's with the
+	// work at 30%, the CPU's at 85%. The start line says it's run at the panel's rate
+	setup();
+	start("c", "snes");
+	begin_on(60.0988, 60.17);
+	run(1.0, 0.30);
+	frame(33239, 0.30);
+	EQ(get(gpu, "min_freq"), "300000000");
+	CHECK(maxf() == 1992000);
+	kiwami_clocks_stop();
+	CHECK(strstr(slurp(logf), "60.10 fps, 60.17 Hz (the panel's rate), ") != NULL);
+	setup();
+	remember("c", "snes", "cpu 816000\n");
+	start("c", "snes");
+	begin_on(60.0988, 60.17);
+	run(1.0, 0.30);
+	frame(33239, 0.85);
+	CHECK(maxf() == 1416000);
+	EQ(get(gpu, "min_freq"), "200000000");
+	kiwami_clocks_stop();
+	// ... with vsync off (no skew given) the core keeps its own rate: the same gap isn't late
+	setup();
+	start("c", "snes");
+	begin_on(60.0988, 60.17);
+	F.skew = 0;
+	run(1.0, 0.30);
+	frame(33239, 0.30);
+	EQ(get(gpu, "min_freq"), "200000000");
+	kiwami_clocks_stop();
+	CHECK(strstr(slurp(logf), "(the panel's rate)") == NULL);
+	// a core a little over the panel's rate (62 fps on 60.17 Hz), run at the panel's: RetroArch's period is the
+	// refresh's, which isn't running slow
+	setup();
+	start("c", "fast");
+	begin_on(62.0, 60.17);
+	F.pace_us = 16620;
+	run(3.0, 0.30);
+	EQ(get(gpu, "min_freq"), "200000000");
+	kiwami_clocks_stop();
+	CHECK(lines_with(slurp(logf), "(running slow)\n") == 0);	// (no step for it; the summary names it with a comma)
 
 	// fast-forward with no limit: the top at once, the clock from before after it
 	setup();
@@ -386,7 +469,7 @@ int main(void)
 	CHECK(kiwami_clocks_mhz() == 0);
 	EQ(slurp(path(data, "Snes9x/a_b_c.sfc.clocks")), "cpu 1992000\ngpu 300000000\n");
 	const char *log = slurp(logf);
-	CHECK(strstr(log, "kiwami-clocks: start: a_b_c.sfc (Snes9x), 60.00 fps, 60.00 Hz, CPU 1992 MHz (the top) of 408-1992, GPU floor 200 MHz (the lowest) of 200-800\n") != NULL);
+	CHECK(strstr(log, "kiwami-clocks: start: a_b_c.sfc (Snes9x), 60.00 fps, 60.00 Hz (the panel's rate), CPU 1992 MHz (the top) of 408-1992, GPU floor 200 MHz (the lowest) of 200-800\n") != NULL);
 	CHECK(strstr(log, "s: GPU floor 200 -> 300 MHz (late flip)\n") != NULL);
 	CHECK(strstr(log, "s: CPU 1992 -> 1800 MHz (headroom)\n") != NULL);
 	CHECK(strstr(log, "kiwami-clocks: end after ") != NULL);

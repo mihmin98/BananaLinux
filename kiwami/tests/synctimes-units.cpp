@@ -46,7 +46,7 @@ static Fields fields(const std::string& text)
 	return f;
 }
 
-// the status function tick() is given: its lines recorded, and handed on to seen() as sync.cpp's status() does
+// the status function tick() is given: its lines recorded, and handed on to seen() as sync_core.cpp's status() does
 static std::vector<std::string> lines;
 static void record(const std::string& s) { lines.push_back(s); synctimes::seen(s); }
 
@@ -54,6 +54,14 @@ static void testPhaseOf()
 {
 	EQ(synctimes::phaseOf("running 0 0 |My RomM"), "Starting");
 	EQ(synctimes::phaseOf("running 5 20 Games 3/10|Game 0003 (USA).gba"), "Games");
+	// the games downloaded: several, and one, are one phase
+	EQ(synctimes::phaseOf("running 5 20 Downloading game 3 of 10|Game 0003"), "Downloading");
+	EQ(synctimes::phaseOf("running 0 1 Downloading|Game 0003 (cover)"), "Downloading");
+	EQ(synctimes::phaseOf("running 1 2 Reading saves|10 / 250"), "Reading saves");
+	// " of " with no count around it is the title's
+	EQ(synctimes::phaseOf("running 1 2 Best of both|x"), "Best of both");
+	EQ(synctimes::phaseOf("running 1 2 Part 3 of x|x"), "Part 3 of x");
+	EQ(synctimes::phaseOf("running 1 2 3 of 4|x"), "3 of 4");
 	EQ(synctimes::phaseOf("running 10 180 Listing games|gba 10 / 30"), "Listing games");
 	EQ(synctimes::phaseOf("running 1 6 Reading saves|gba"), "Reading saves");
 	EQ(synctimes::phaseOf("running 0 0 |starting"), "Starting");	// (Settings' own, before banana-sync's first)
@@ -97,11 +105,13 @@ static void testTracker()
 		MATCH(r[2], "times: sync [0-9]+\\.[0-9] s");
 	}
 
-	// a Games phase reports its MB and its files from its last status
+	// the games downloaded: one phase, its MB and its games from its last status
 	synctimes::start(true, dir);
 	synctimes::seen("running 0 0 |x");
-	synctimes::seen("running 0 812 Games 1/120|a");
-	synctimes::seen("running 812 812 Games 120/120|z");
+	synctimes::seen("running 0 812 Downloading game 1 of 20|a");
+	EQ(fields(slurp(timesPath())).name, "Downloading");
+	synctimes::seen("running 400 812 Downloading game 2 of 20|b");
+	synctimes::seen("running 812 812 Downloading game 20 of 20|z");
 	synctimes::seen("running 1 6 Gamelists|gba");
 	synctimes::seen("error stopped");
 	CHECK(!exists(timesPath()));
@@ -110,14 +120,27 @@ static void testTracker()
 	if (r.size() == 4)
 	{
 		MATCH(r[0], "times: Starting [0-9]+\\.[0-9] s");
-		MATCH(r[1], "times: Games [0-9]+\\.[0-9] s, 812 of 812 MB, 120 of 120 files");
+		MATCH(r[1], "times: Downloading [0-9]+\\.[0-9] s, 812 of 812 MB, 20 of 20 games");
 		MATCH(r[2], "times: Gamelists [0-9]+\\.[0-9] s, 1 of 6");
 		MATCH(r[3], "times: sync [0-9]+\\.[0-9] s");
 	}
+	// one game: its MB only
+	synctimes::start(true, dir);
+	synctimes::seen("running 3 9 Downloading|a");
+	synctimes::seen("done 0 0 0 0 0 0|");
+	r = synctimes::report();
+	CHECK(r.size() == 2);
+	if (r.size() == 2) MATCH(r[0], "times: Downloading [0-9]+\\.[0-9] s, 3 of 9 MB");
 }
 
 static void testOff()
 {
+	// the last line written, kept whatever the setting (RomM's listing writes its progress only over a "running" one)
+	synctimes::start(false, dir);
+	synctimes::seen("running 0 0 |x");
+	EQ(synctimes::lastStatus(), "running 0 0 |x");
+	synctimes::seen("done 0 0 0 0 0 0|");
+	EQ(synctimes::lastStatus(), "done 0 0 0 0 0 0|");
 	synctimes::start(false, dir);
 	lines.clear();
 	synctimes::seen("running 0 0 |x");
@@ -188,10 +211,11 @@ static void testMenu()
 	CHECK(differ == 0);
 	EQ(synctimes::left(1e9), filesDuration(359999));
 
-	EQ(d1(synctimes::secondsLeft("running 5 20 Games 3/10|g", 10400)), "41.6");	// (files 41.6 > MB 31.2)
-	EQ(d1(synctimes::secondsLeft("running 0 1 Games 4/10|g", 6000)), "14.0");		// (files only)
-	EQ(d1(synctimes::secondsLeft("running 4 10 Games 1/10|g", 4000)), "6.0");		// (MB only: no file done)
-	EQ(d1(synctimes::secondsLeft("running 5 20 Games 3/10|g", 2999)), "-1.0");
+	EQ(d1(synctimes::secondsLeft("running 5 20 Downloading game 3 of 10|g", 10400)), "41.6");	// (games 41.6 > MB 31.2)
+	EQ(d1(synctimes::secondsLeft("running 0 1 Downloading game 4 of 10|g", 6000)), "14.0");		// (games only)
+	EQ(d1(synctimes::secondsLeft("running 4 10 Downloading game 1 of 10|g", 4000)), "6.0");		// (MB only: no game done)
+	EQ(d1(synctimes::secondsLeft("running 4 10 Downloading|g", 4000)), "6.0");					// (one game: the MB)
+	EQ(d1(synctimes::secondsLeft("running 5 20 Downloading game 3 of 10|g", 2999)), "-1.0");
 	EQ(d1(synctimes::secondsLeft("running 60 180 Listing games|gba 60 / 30", 6000)), "12.0");
 	EQ(d1(synctimes::secondsLeft("running 60 0 Listing games|gba 60", 6000)), "-1.0");
 	EQ(d1(synctimes::secondsLeft("running 1 12 Saves|a.srm", 5000)), "-1.0");		// (none done)
@@ -200,11 +224,11 @@ static void testMenu()
 	EQ(d1(synctimes::secondsLeft("running 12 12 Saves|a.srm", 6000)), "0.5");		// (the last in hand: 11 of 12 done)
 	EQ(d1(synctimes::secondsLeft("done 1 0 0 0 0 0|", 9000)), "-1.0");
 
-	synctimes::Times t{ 1, 2001, 92001, "Games" };
-	EQ(synctimes::line("running 5 20 Games 3/10|g", t, 102401), "Games \xc2\xb7 0:10 \xc2\xb7 42 s left \xc2\xb7 sync 1:40");
-	EQ(synctimes::line("running 5 20 Games 3/10|g", t, 94001), "Games \xc2\xb7 0:02 \xc2\xb7 sync 1:32");
+	synctimes::Times t{ 1, 2001, 92001, "Downloading" };
+	EQ(synctimes::line("running 5 20 Downloading game 3 of 10|g", t, 102401), "Downloading \xc2\xb7 0:10 \xc2\xb7 42 s left \xc2\xb7 sync 1:40");
+	EQ(synctimes::line("running 5 20 Downloading game 3 of 10|g", t, 94001), "Downloading \xc2\xb7 0:02 \xc2\xb7 sync 1:32");
 	synctimes::Times saves{ 1, 2001, 92001, "Saves" };
-	EQ(synctimes::line("running 5 20 Games 3/10|g", saves, 102401), "");
+	EQ(synctimes::line("running 5 20 Downloading game 3 of 10|g", saves, 102401), "");
 	EQ(synctimes::line("done 1 0 0 0 0 0|", t, 102401), "");
 
 	synctimes::Times p;

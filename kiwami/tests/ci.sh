@@ -29,7 +29,7 @@ echo "third_party: $(ls -d ui/src/kiwami/third_party/*/ | wc -l) vendored librar
 make -s -C ui kiwami-c
 T=$(mktemp -d)
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp \
-    ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp ui/src/kiwami/rahash.cpp \
+    ui/src/qr/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp ui/src/kiwami/rahash.cpp \
     ui/src/kiwami/ra7z.cpp ui/src/kiwami/rachd.cpp ui/src/zip.cpp ui/src/zipdir.cpp \
     $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -lz
 "$T/units" kiwami/tests/tailscale kiwami/tests/ra
@@ -232,8 +232,36 @@ kiwami/tests/romm-list.sh
 # Home server > Show sync times: banana-sync's phases, its times file and the report's times
 kiwami/tests/sync-times.sh
 
+# RomM's BIOS files in banana-sync: the pairing's scopes, the list, the downloads into bios/ and DraStic's folder
+kiwami/tests/romm-bios.sh
+
+# One game's sync in banana-sync without listing its system: its remembered RomM id, else RomM's name search, else the
+# listing (with the Home server rework's own outcome)
+kiwami/tests/romm-lookup.sh
+
+# Sync now in banana-sync finding the card's ROMs under another name by their contents (sizes, then MD5s, read once):
+# the alias, its save in the game's slot, the ambiguous cases left alone, the sync before it by its remembered id
+kiwami/tests/romm-hash.sh
+
+# RomM's game list kept on the card by banana-sync and brought up to date: RomM's ids and the changes since the last
+# listing, renamed, deleted and added games in RomM's name order, a new system, the full listings, Forget
+kiwami/tests/romm-incremental.sh
+
+# Games sent from RomM's web page, in banana-sync: the device's capability (refused for a pairing not the device's
+# own), the requests claimed at Sync now and on Wi-Fi, brought through Get games' list and reported done,
+# already_installed or failed, those left waiting (the second SD card out, a failed download), off asking nothing
+kiwami/tests/romm-installs.sh
+
 # Show sync times in banana-ui's Settings, headless, when banana-ui is built: the line under Sync now's bar and the row
 if [ -x ui/banana-ui ]; then kiwami/tests/sync-times-ui.sh; else echo "sync-times-ui: skipped, no ui/banana-ui (make ui)"; fi
+
+# Home server > BIOS in banana-ui's Settings, headless, when banana-ui is built: the row (a paired RomM's), the list,
+# ticks, the download asked for, RomM's errors, Wi-Fi off, touch
+if [ -x ui/banana-ui ]; then kiwami/tests/romm-bios-ui.sh; else echo "romm-bios-ui: skipped, no ui/banana-ui (make ui)"; fi
+
+# Home server > Installs from RomM in banana-ui's Settings, headless, when banana-ui is built: the row (a paired RomM
+# 5.4's), its setting and banana-sync's kiwami installs on|off, a refused On put back, a failed Off kept, Wi-Fi off
+if [ -x ui/banana-ui ]; then kiwami/tests/romm-installs-ui.sh; else echo "romm-installs-ui: skipped, no ui/banana-ui (make ui)"; fi
 
 # Tailscale in banana-ui's Settings, headless, when banana-ui is built (CI builds it before)
 if [ -x ui/banana-ui ]; then kiwami/tests/tailscale-ui.sh; else echo "tailscale-ui: skipped, no ui/banana-ui (make ui)"; fi

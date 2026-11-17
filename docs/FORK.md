@@ -193,6 +193,30 @@ git switch kiwami && git merge main
 Conflicts are then in hooks, and resolving one is putting its line back where upstream's code now is (rerere repeats
 it next time).
 
+**Upstream's Home server rework, carried ahead of `main`.** `kiwami` carries upstream's pending rework of the Home
+server ("RomM saves that follow the game, kept safe, shared with Grout; RomM set up, games and saves from the menu"),
+merged from its author's branch at `cab127ba` by 0039 before upstream merged it: 88 commits in upstream's files
+(`banana-sync` split into `sync.cpp`, `sync_core.cpp` and `sync_romm.cpp`, the save vault, Get games, the sync before a
+game, the RomM form's QR pairing). The fork's hooks in `banana-sync` sit in its files. Until `main` has it,
+`git merge-base --is-ancestor cab127ba main` fails, and what to do at each merge from `main` depends on what upstream
+did with it:
+
+- **merged unchanged** (upstream merges pull requests' heads as they are): `cab127ba` is an ancestor of `main` and the
+  merge brings nothing new of it. `main` is the reference again from then on.
+- **merged with more commits**: they merge on top of `cab127ba` as any upstream change does; the hooks in the files
+  they touch are checked as usual.
+- **squashed or rewritten**: `main` has the same files written by other commits, and the merge conflicts across them.
+  Resolve each to upstream's version (`git checkout --theirs`), then put the fork's hooks back (*Hooks in upstream's
+  files*, and the paragraphs on RomM's game list and the phase times below), and run `romm-list.sh`, `sync-times.sh`
+  and `sync-times-ui.sh`.
+- **dropped**: decide then, with the user, between keeping it as the fork's own (its files listed here as the fork's)
+  and reverting the merge (`git revert -m 1` of 0039's merge commit, the fork's later hooks re-ported onto `main`'s
+  `banana-sync`).
+
+While `kiwami` carries it, the comparisons below that name `main` (the hooks' `git diff --stat`, the renders) are made
+against `cab127ba` instead: `main...kiwami` would list the whole rework as the fork's. The `banana-merge-upstream`
+skill's report says which of the four cases a merge is.
+
 The skill `banana-merge-upstream` (`.claude/skills/`) carries this out once `main` is up to date: before the merge it
 predicts the textual conflicts (`git merge-tree`) and the logic ones (upstream changes that merge cleanly but break or
 duplicate what the fork relies on, unmerged `k/*` branches included) and settles each with the user; the merge then
@@ -256,19 +280,83 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    to upstream's own placing (a tile after the tileless sections, out of reach), which `ra-ui.sh` and
    `tailscale-ui.sh` catch. Upstream's own tests reach Network's rows from both ends (two Downs to Bluetooth, Up to
    File sharing, two Ups to Home server), which is why Tailscale sits between Bluetooth and Home server. Home server's
-   Show sync times is placed by its hook's position, the line after the Sync now row's `add`, because Home server
-   isn't in `ORDER`. If upstream adds the page to `ORDER`, `Kiwami::place`'s `FOLLOWS` needs
-   `{ "Home server", "Show sync times", "Sync now" }`, and `sync-times-ui.sh`'s row check catches it. And RomM's
-   game list in banana-sync: `ui/src/sync.cpp`'s `Romm::list()` asks for 200 games a page, keeps each as
+   Show sync times is placed by its hook's position, the line after the Forget this server row's `add`, because Home
+   server isn't in `ORDER`: after Forget, for RomM and Romhost alike, and the fork's other rows after it (a paired
+   RomM 5.4's Installs from RomM, `kiwami.cpp`'s `installsUpdate()`, then a paired RomM's BIOS,
+   `ui/src/kiwami/romm-bios.cpp`, the page's last). Installs from RomM is a row of upstream's kind, which upstream's
+   `change()` and `save()` write to `settings.conf`; the fork's `update()` sees its value change and runs `banana-sync
+   kiwami installs on|off`, with no hook of its own. Not after Sync now, where it was before
+   the Home server rework: the rework's `ui/tests/sync.sh` reaches Get games, Manage saves, Save slot and Device name
+   by counting Downs from Server, and no upstream test reaches the page's end (none goes Up in it). A row upstream adds
+   after Forget, or a test of its that goes Up from Server, needs the hook moved; `sync-times-ui.sh`'s and
+   `romm-bios-ui.sh`'s and `romm-installs-ui.sh`'s row checks (Up from Server) and `make test` catch it. If upstream adds the page to `ORDER`, the row needs a place in
+   `Kiwami::place`'s `FOLLOWS`. And RomM's
+   game list in banana-sync: `ui/src/sync_romm.cpp`'s `Romm::list()` asks for 200 games a page, keeps each as
    `syncmem::slim()`'s copy (`ui/src/kiwami/syncmem.h`) and, in a sync, says after each page how far it got in the
-   status Settings draws as Sync now's bar ("Listing games"), and `doSync` ends its report with the peak memory. A field
-   upstream starts reading in `Romm::manifest()` has to be kept by `slim()`, and `kiwami/tests/romm-list.sh` stops on
-   one it drops. If upstream fixes the listing's memory its own way, the merge takes upstream's and drops the fork's
+   status Settings draws as Sync now's bar ("Listing games"), and `doSync` (`ui/src/sync.cpp`) ends its report with the
+   peak memory. The progress goes only over a sync's own "running" status, which `synctimes::lastStatus()` keeps
+   (`status()`'s own copy is in `sync_core.cpp`'s anonymous namespace), so Get games' refresh writes none. A field
+   upstream starts reading of a listed game in `manifest()`, `romFiles()`, `romTitle()` or `romRegions()` has to be
+   kept by `slim()`, and `kiwami/tests/romm-list.sh` stops on one it drops (and when those readers move, as it can't
+   see them then). If upstream fixes the listing's memory its own way, the merge takes upstream's and drops the fork's
    lines and header. And the sync's phase times (Home server > Show sync times, `ui/src/kiwami/synctimes.h`):
-   `status()` in `ui/src/sync.cpp` hands each line it writes to `synctimes::seen()`, which starts a phase on each new
-   title, and the steps that write no status of their own get a `tick()` line at the top of their loops (`want`,
-   `gone`, the gamelists, RomM's and Romhost's saves listing). A title upstream rewords, or a new step that writes no
-   status, shows in `kiwami/tests/sync-times.sh`'s phase lists, which then need the new name. And banana-ui's rule in
+   `status()` in `ui/src/sync_core.cpp` hands each line it writes to `synctimes::seen()`, which starts a phase on each
+   new title, and the steps that write no status of their own get a `tick()` line at the top of their loops (in
+   `sync.cpp`: `want`, `gone`, the gamelists and Romhost's saves; in `sync_romm.cpp`: RomM's slot heads, `listHeads`,
+   and its old saves' and states' listing, `sync()`). `doSync`'s `start()` line times no sync of one game (`onlyRom`).
+   `phaseOf()` takes the downloads' "Downloading game <i> of <N>" and "Downloading" as one phase, Downloading. A title
+   upstream rewords, or a new step that writes no status, shows in `kiwami/tests/sync-times.sh`'s phase lists, which
+   then need the new name. And the fork's RomM additions in banana-sync (`ui/src/kiwami/romm/`, header-only, the
+   `kiwami` verb: BIOS from RomM's firmware, and installs from its web page): `sync.cpp` includes
+   `kiwami/romm/romm.h`, the device pairing's `requested_scopes` line ends with the fork's `SCOPES` (`firmware.read`, `collections.read`), `main()` hands
+   `kiwami` to `romm::command()` right after libcurl is loaded (the settings, the certificates and the paths are read
+   by then), and `dropServerLists()` (Forget, and a pairing with another server) drops the fork's
+   `banana/kiwami-romm.json` and `banana/kiwami-romm-list.jsonl` too. `sync_romm.cpp` exports its platforms' mapping as `bsync::kiwamiFolder()`, one line
+   after its anonymous namespace that copies `list()`'s own (`ROMM_SLUGS`, then `BANANA_FOLDERS` by `fs_slug`): if
+   upstream changes that mapping, the line follows it. A scope upstream adds to its own list goes before the fork's;
+   if upstream starts asking for `firmware.read` itself, the fork's `SCOPES` drops it. The fork's verbs reach RomM
+   through upstream's `newRomm()`, `Backend::call()` and `fetchTo()`, so a change to those shows in
+   `kiwami/tests/romm-bios.sh`. One game's sync (before or after it) doesn't list the game's system
+   (`ui/src/kiwami/romm/lookup.h`): `sync_romm.cpp` includes `kiwami/romm/romm.h`. In `Romm::list()`, each platform's
+   page loop takes its pages from a `romm::Pages` made before it, whose `fetch(off)` replaces the loop's query and
+   `call()` (0022's query moved into it, `romsQuery()` in `romm.h`). For one game's run it first asks for the game alone: its
+   remembered id (`GET /api/roms/<id>`), else RomM's name search. Both answers go to the loop as one short page, which
+   ends it. `romm::record(*this)`, the line before `listed = true`, keeps the ids of the games on either card in
+   `kiwami-romm.json` and clears `cardIndex` after a full listing. It reads `Romm`'s `roms`, `onlyRom`, `onCard()` and
+   `cardIndex`, and `Pages` copies `list()`'s rule for a game's file on the card (`entryOf()`: a disc set's `.m3u`, none
+   for another game of several files). A change to those, or to how `list()` pages, shows in
+   `kiwami/tests/romm-lookup.sh` (the requests a sync before a game makes, and the outcome of a renamed game against
+   the rework's own build) and in `romm-list.sh`. A card's ROM under another name than the server's is found by its
+   contents (`ui/src/kiwami/romm/hashes.h`): `romm::byHash(*this)`, the line before `record`'s, in a sync's listing of
+   every system pairs the card files no server game is named after with the server games of one file that have no
+   card file of their name, by size and then by the listing's MD5 (no request of its own; archives, whose MD5 RomM
+   takes of what's inside, copied from `packedName()`, left out), and keeps each pair as an alias in
+   `kiwami-romm.json`, with the MD5s it read. `onCard()`'s first line returns a game's alias (`romm::aliasOf()`) before
+   its own lookup by name, so the save of a game renamed on the card syncs in that game's slot, and `Pages` takes a
+   game remembered under its alias. It reads `Romm`'s `romJson` (`files[]`' `file_size_bytes` and MD5s) besides the
+   above; `onCard()`'s callers all see the alias. A change to how `onCard()` matches, or to `packedName()`, shows in
+   `kiwami/tests/romm-hash.sh`. A sync of every system reads RomM's game list from the card
+   (`ui/src/kiwami/romm/listcache.h`, `banana/kiwami-romm-list.jsonl`, the slimmed games one a line) and asks RomM only
+   for its game ids (`GET /api/roms/identifiers`) and each system's changes since the last listing (`updated_after`:
+   the server's time of that listing, its `Date` header, less 60 s): `Pages` hands `list()`'s loop the kept games still
+   there merged with the changed ones in RomM's name order (`name_sort_key`, which `slim()` keeps, then id), as pages
+   of `syncmem::PAGE`, so the loop reads them as RomM's own. `record()` writes the list again after a listing that went
+   through, when it changed. No list, another server's, the ids failing, and Get games' refresh (`sync.cpp`'s
+   `games` command, its `kiwami:` line `romm::fullListing()` before `manifest()`) list everything. It relies on the
+   loop ending at a short page or at `total`, and on RomM keeping a game's `updated_at` when it changes it. A change to
+   `list()`'s loop, or a field `manifest()` starts reading that RomM's changes don't bump `updated_at` for, shows in
+   `kiwami/tests/romm-incremental.sh` and `romm-list.sh`. Games sent from RomM's web page (`ui/src/kiwami/romm/installs.h`,
+   the setting `kiwami_romm_installs`, off by default; `kiwami installs on|off` sets the device's `remote_install`
+   capability): three `kiwami:` lines in `doSync`. `romm::claim(*b, c, set)`, right after the heartbeat in a run of
+   the games of every system, claims RomM's requests and puts each game on Get games' list (`editGetList()`), which
+   the run's `more()` passes bring. It finds a game in `manifest()` by the URL of its first file
+   (`/api/roms/<id>/content/`, `/api/roms/<file id>/files/content/`) and takes that file's path as the key, as
+   `gameKey()` does. `romm::report(c)`, before the `done` status, reports each request as its files on the card,
+   Get games' list and `homesync-get-failed.txt` say. A reason that begins `not enough space` is reported `failed`,
+   and any other is left for the next sync. The first line of the `if (!autoWhy.empty())` block runs a games-only
+   `doSync` on Wi-Fi when Auto sync isn't "And on Wi-Fi" and RomM has a request this handheld hasn't claimed
+   (`romm::wanted()`). A change to those URLs, to `gameKey()`, to how Get games' list and its failed file are kept,
+   to the space error's wording or to `more()` shows in `kiwami/tests/romm-installs.sh`. And banana-ui's rule in
    `ui/Makefile`: `kiwami.mk` compiles its `SRC` one file per call with the rule's command, so a change to that command
    (a flag, a variable, how it reads `SRC`) is followed in `kiwami.mk`'s object rules. `kiwami/tests/ui-objects.sh`
    (in `ci.sh`) fails when the two no longer make the same binary. A source upstream adds to `SRC` is compiled as an
@@ -350,7 +438,8 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    is followed there. `kiwami/tests/panel-status-ui.sh` (in `ci.sh`) catches each of these: the row's place, the
    strip's lines and its shots against the panel with the setting off.
 4. **Upstream's look unchanged**: with the fork's options off, `make test`'s renders in `ui/tests/out/` match `main`'s
-   (rendered from a second checkout, `git worktree add ../banana-main main`).
+   (rendered from a second checkout, `git worktree add ../banana-main main`; `cab127ba`'s while `kiwami` carries the
+   Home server rework ahead of `main`).
 
 ## Upstreaming
 

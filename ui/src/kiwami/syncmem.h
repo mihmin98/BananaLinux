@@ -1,12 +1,13 @@
 #pragma once
-// banana-sync (kiwami): RomM's game list held to the fields Romm::manifest() reads (ui/src/sync.cpp). Romm::list()
-// asks for PAGE games at a time and keeps each as slim()'s copy: a small object with only the members manifest()
-// reads, their values the same, so upstream's manifest() builds the same Manifest from it. The rest of each page (every
-// provider's metadata, the RetroAchievements block with all its achievements: about 160 KB a game once parsed) is
-// freed before the next request, where upstream kept every page's whole tree to the end and a large library outgrew
-// the handheld's RAM. Header-only: banana-sync is built from sync.cpp and json.cpp alone.
-// A key manifest() starts reading has to be added to the lists below, or slim() drops it and the card's games and
-// gamelists change; kiwami/tests/romm-list.sh stops on one that isn't there.
+// banana-sync (kiwami): RomM's game list held to the fields Romm reads of a listed game (ui/src/sync_romm.cpp:
+// manifest(), romTitle(), romRegions(), romFiles()). Romm::list() asks for PAGE games at a time and keeps each as
+// slim()'s copy: a small object with only the members Romm reads, their values the same, so upstream's manifest()
+// builds the same Manifest from it. The rest of each page (every provider's metadata, the RetroAchievements block with
+// all its achievements: about 160 KB a game once parsed) is freed before the next request, where upstream kept every
+// page's whole tree to the end and a large library outgrew the handheld's RAM. Header-only: banana-sync's build
+// recipe stays upstream's.
+// A key Romm starts reading of a listed game has to be added to the lists below, or slim() drops it and the card's
+// games and gamelists change; kiwami/tests/romm-list.sh stops on one that isn't there.
 // Also Sync now's progress while the list is read (Listing), and the peak memory a sync's report ends with (peak()).
 #include "../json.h"
 #include <cctype>
@@ -19,10 +20,14 @@
 namespace banana::kiwami::syncmem
 {
 	constexpr int PAGE = 200;	// RomM's games asked for this many at a time (upstream: 500)
-	// the members of a game Romm::manifest() reads as scalars, of each of its files[], and of its metadatum
-	inline const char* const GAME_KEYS[] = { "id", "platform_id", "fs_name", "name", "fs_size_bytes",
-		"has_multiple_files", "missing_from_fs", "summary", "path_cover_large" };
+	// the members of a game Romm reads as scalars (updated_at and name_sort_key: for the fork's list kept on the card,
+	// ui/src/kiwami/romm/listcache.h), of each of its files[], of each of a file's archive_members[], and of its
+	// metadatum
+	inline const char* const GAME_KEYS[] = { "id", "platform_id", "fs_name", "fs_name_no_ext", "name", "fs_size_bytes",
+		"has_multiple_files", "missing_from_fs", "summary", "path_cover_large", "revision", "updated_at", "name_sort_key" };
+	inline const char* const GAME_STRINGS[] = { "tags", "regions" };	// arrays read for their strings only
 	inline const char* const FILE_KEYS[] = { "id", "file_name", "file_size_bytes", "sha1_hash", "md5_hash" };
+	inline const char* const MEMBER_KEYS[] = { "size", "crc_hash" };
 	inline const char* const META_KEYS[] = { "first_release_date" };
 	inline const char* const META_FIRST[] = { "genres", "publishers" };	// only their first element is read
 
@@ -51,6 +56,16 @@ namespace banana::kiwami::syncmem
 			if (!v) return;
 			to.obj.emplace_back(key, v->isArr() || v->isObj() ? make(JVal::NUL) : v);
 		}
+		// an array member read for its strings (romTitle()'s tags, romRegions()'s regions): its string elements, in
+		// their order; anything else in it is skipped by those readers too. One that isn't an array is left out
+		inline void strings(JVal& to, const JVal& from, const char* key)
+		{
+			JPtr a = member(from, key);
+			if (!a || !a->isArr()) return;
+			auto out = make(JVal::ARR);
+			for (auto& e : a->arr) if (e && e->isStr()) out->arr.push_back(e);
+			to.obj.emplace_back(key, out);
+		}
 	}
 
 	// the game's copy holding only what manifest() reads; a game that isn't an object gives an empty object
@@ -59,8 +74,10 @@ namespace banana::kiwami::syncmem
 		auto out = detail::make(JVal::OBJ);
 		if (!game.isObj()) return out;
 		for (const char* k : GAME_KEYS) detail::scalar(*out, game, k);
-		// files[]: as many as there were (manifest() counts them), each with its five fields; one that isn't an
-		// object an empty object. files that isn't an array is left out (manifest() checks isArr())
+		for (const char* k : GAME_STRINGS) detail::strings(*out, game, k);
+		// files[]: as many as there were (manifest() counts them), each with its five fields and its archive_members[]
+		// (romFiles(): each member's size and CRC); one that isn't an object an empty object. files that isn't an array
+		// is left out (manifest() checks isArr()), and so is an archive_members that isn't one (romFiles() checks)
 		JPtr files = detail::member(game, "files");
 		if (files && files->isArr())
 		{
@@ -69,6 +86,18 @@ namespace banana::kiwami::syncmem
 			{
 				auto o = detail::make(JVal::OBJ);
 				if (f) for (const char* k : FILE_KEYS) detail::scalar(*o, *f, k);
+				JPtr ms = f ? detail::member(*f, "archive_members") : nullptr;
+				if (ms && ms->isArr())
+				{
+					auto mo = detail::make(JVal::ARR);
+					for (auto& m : ms->arr)
+					{
+						auto e = detail::make(JVal::OBJ);
+						if (m) for (const char* k : MEMBER_KEYS) detail::scalar(*e, *m, k);
+						mo->arr.push_back(e);
+					}
+					o->obj.emplace_back("archive_members", mo);
+				}
 				fs->arr.push_back(o);
 			}
 			out->obj.emplace_back("files", fs);

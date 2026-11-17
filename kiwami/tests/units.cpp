@@ -3,7 +3,7 @@
 // account on the card and its games' hashes. Built and run by kiwami/tests/ci.sh with the host's g++ (the vendored C
 // first, make -C ui kiwami-c):
 //   g++ -std=c++17 -Wall -I ui/src kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp
-//       ui/src/kiwami/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp
+//       ui/src/qr/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp
 //       ui/src/kiwami/rahash.cpp $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -o units
 //   ./units kiwami/tests/tailscale kiwami/tests/ra
 #include "kiwami/grid.h"

@@ -1,6 +1,6 @@
 // banana-ui (kiwami): Network > Home server > Show sync times (kiwami.h). While a sync runs and Sync now is selected,
 // a line under upstream's bar: the phase, how long it has run, its time left once there is a rate to go on, and the
-// whole sync's time ("Games · 2:10 · 3 min left · sync 6:40"). banana-sync writes each phase's start to
+// whole sync's time ("Downloading · 2:10 · 3 min left · sync 6:40"). banana-sync writes each phase's start to
 // <run>/sync.times (synctimes.h); the line is worked out here from that and the status Settings already reads, and
 // Settings wakes at the next status read and the next whole second, so the clocks tick with no key pressed. A times
 // file whose pid isn't sync.pid's (a sync killed, or one not started yet), or whose phase isn't the status's, shows

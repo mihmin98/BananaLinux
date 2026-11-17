@@ -64,7 +64,7 @@ change() { sleep 1; touch "$T/mark"; }
 change; touch "$U/src/colors.cpp"; m banana-ui
 [ "$(newer)" = src/kiwami/obj/src/colors.cpp.o ] || fail "src/colors.cpp changed, these were compiled: $(newer)"
 
-H=src/kiwami/qrcodegen.hpp
+H=src/qr/qrcodegen.hpp
 (cd "$U" && grep -l "$H" $(find src/kiwami/obj -name '*.d') | sed 's/\.d$/.o/' | sort) > "$T/includers"
 [ -s "$T/includers" ] && [ "$(wc -l < "$T/includers")" -lt "$N" ] || fail "$H: $(wc -l < "$T/includers") of $N objects include it"
 change; touch "$U/$H"; m banana-ui

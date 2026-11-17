@@ -20,9 +20,16 @@
 //   and progress per system (ra-stats.cpp), fetched when the page opens or on Y, kept on the card for offline. Games on
 //   this card (kiwami.ra.games): the library's games the emulators recorded achievements for (ra-games.cpp), A on one
 //   its achievements, locked and unlocked (ra-game.cpp), the game identified by hashing it as RetroArch does.
-//   Network > Home server > Show sync times (kiwami_sync_times in settings.conf, after Sync now): while a sync runs and
+//   Network > Home server > Show sync times (kiwami_sync_times in settings.conf, after Forget this server): while a sync runs and
 //   Sync now is selected, a line under its bar with the phase, its time, its time left and the sync's time
 //   (sync-times.cpp, from banana-sync's sync.times: synctimes.h), Settings waking each second for it.
+//   Network > Home server > Installs from RomM (kiwami_romm_installs in settings.conf, a paired RomM 5.4 or newer's,
+//   after Show sync times, Off by default): games sent to this handheld from RomM's web page come at the next sync
+//   (banana-sync's romm/installs.h). A change to it is told to RomM (kiwami installs on|off) in the background; a
+//   failed On is put back, a failed Off kept (banana-sync stops claiming whatever RomM says).
+//   Network > Home server > BIOS (kiwami.romm.bios, a paired RomM's, after Installs from RomM): RomM's BIOS files for
+//   Banana's systems, ticked to download into the card's bios folder (romm-bios.cpp, through banana-sync's kiwami bios
+//   verbs: romm/bios.h).
 //   Other systems > Second screen > Status on the game panel (kiwami_panel_status in settings.conf, after Game panel
 //   idle time, Off by default): read at each game's start. On, the game panel's tiles view draws a strip where its
 //   hint line was (panel-status.cpp, its state in panelstatus.h): Wi-Fi and Tailscale's mark on the left, the time
@@ -70,7 +77,7 @@ namespace banana
 	private:
 		Settings& st;
 		// the page that shows while Settings' page is KIWAMI: open() sets it, and the page hooks go to its own functions
-		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS, RA_GAMES, RA_GAME } pageOpen = Page::NONE;
+		enum class Page { NONE, TAILSCALE, RA_ACCOUNT, RA_STATS, RA_GAMES, RA_GAME, ROMM_BIOS } pageOpen = Page::NONE;
 		int row0 = 0;								// the groups' first row shown, kept as the selection moves
 		int modeAt = -1;							// Mode's value as both its rows last had it
 		bool syncMode();							// a change to one of Mode's two rows shown in the other
@@ -86,6 +93,34 @@ namespace banana
 		kiwami::synctimes::Times times;
 		bool timesValid = false;					// the file's pid is sync.pid's
 		std::string timesText, timesShape;			// the line, and its shape last logged
+
+		// Home server > BIOS (romm-bios.cpp): banana-sync's kiwami bios list on the bottom panel, the files under their
+		// systems, the missing ones ticked; Start downloads the ticked ones (kiwami bios get), then the list is asked
+		// again. The top panel: the selected file's state, and the last download's result
+		struct BiosFile { std::string id, system, name, state; long long bytes = -1; bool on = false; };
+		std::vector<BiosFile> bios;
+		int bsel = 0, btop = 0;						// the selected file, the first row shown
+		enum class BiosAsk { NONE, LIST, GET } biosAsk = BiosAsk::NONE;	// what biosJob runs
+		wifi::Job biosJob;
+		std::string biosNote;						// why there's no list, else ""
+		std::string biosDone;						// the last download's result, as said on the top panel
+		Result biosOpen();
+		Result biosPress(Key k);
+		Result biosTouch(float cx, float cy);
+		void biosRender();
+		bool biosUpdate();
+		void biosRun(BiosAsk what, const std::string& args);
+		void biosListed(const std::string& out);	// a list's answer taken in, the selection kept on its file
+		std::vector<int> biosRows() const;			// the bottom panel's rows: a file's index, or -1 - the index of its system's first file
+		void biosScroll();							// btop kept so that the selected file (and its system's head) shows
+
+		// Home server > Installs from RomM (kiwami_romm_installs, kiwami.cpp): a change to the row, which upstream's
+		// Settings writes to settings.conf, told to RomM by banana-sync's kiwami installs on|off; a failed On put back
+		wifi::Job installsJob;
+		int installsAt = -1;						// the row's value as last seen (-1: not yet)
+		bool installsOn = false;					// what installsJob asks for
+		bool installsUpdate();
+		void installsFailed(const std::string& why);	// said, and an On put back
 
 		// Status on the game panel's strip (panel-status.cpp): its state, made at the first game with the setting on
 		bool panelOn = false;						// kiwami_panel_status = on at this game's start

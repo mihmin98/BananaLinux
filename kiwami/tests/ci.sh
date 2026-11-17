@@ -247,6 +247,11 @@ kiwami/tests/romm-hash.sh
 # listing, renamed, deleted and added games in RomM's name order, a new system, the full listings, Forget
 kiwami/tests/romm-incremental.sh
 
+# Games sent from RomM's web page, in banana-sync: the device's capability (refused for a pairing not the device's
+# own), the requests claimed at Sync now and on Wi-Fi, brought through Get games' list and reported done,
+# already_installed or failed, those left waiting (the second SD card out, a failed download), off asking nothing
+kiwami/tests/romm-installs.sh
+
 # Show sync times in banana-ui's Settings, headless, when banana-ui is built: the line under Sync now's bar and the row
 if [ -x ui/banana-ui ]; then kiwami/tests/sync-times-ui.sh; else echo "sync-times-ui: skipped, no ui/banana-ui (make ui)"; fi
 

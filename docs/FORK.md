@@ -304,8 +304,8 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    `phaseOf()` takes the downloads' "Downloading game <i> of <N>" and "Downloading" as one phase, Downloading. A title
    upstream rewords, or a new step that writes no status, shows in `kiwami/tests/sync-times.sh`'s phase lists, which
    then need the new name. And the fork's RomM additions in banana-sync (`ui/src/kiwami/romm/`, header-only, the
-   `kiwami` verb: BIOS from RomM's firmware so far): `sync.cpp` includes `kiwami/romm/romm.h`, the device pairing's
-   `requested_scopes` line ends with the fork's `SCOPES` (`firmware.read`, `collections.read`), `main()` hands
+   `kiwami` verb: BIOS from RomM's firmware, and installs from its web page): `sync.cpp` includes
+   `kiwami/romm/romm.h`, the device pairing's `requested_scopes` line ends with the fork's `SCOPES` (`firmware.read`, `collections.read`), `main()` hands
    `kiwami` to `romm::command()` right after libcurl is loaded (the settings, the certificates and the paths are read
    by then), and `dropServerLists()` (Forget, and a pairing with another server) drops the fork's
    `banana/kiwami-romm.json` and `banana/kiwami-romm-list.jsonl` too. `sync_romm.cpp` exports its platforms' mapping as `bsync::kiwamiFolder()`, one line
@@ -342,7 +342,18 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    `games` command, its `kiwami:` line `romm::fullListing()` before `manifest()`) list everything. It relies on the
    loop ending at a short page or at `total`, and on RomM keeping a game's `updated_at` when it changes it. A change to
    `list()`'s loop, or a field `manifest()` starts reading that RomM's changes don't bump `updated_at` for, shows in
-   `kiwami/tests/romm-incremental.sh` and `romm-list.sh`. And banana-ui's rule in
+   `kiwami/tests/romm-incremental.sh` and `romm-list.sh`. Games sent from RomM's web page (`ui/src/kiwami/romm/installs.h`,
+   the setting `kiwami_romm_installs`, off by default; `kiwami installs on|off` sets the device's `remote_install`
+   capability): three `kiwami:` lines in `doSync`. `romm::claim(*b, c, set)`, right after the heartbeat in a run of
+   the games of every system, claims RomM's requests and puts each game on Get games' list (`editGetList()`), which
+   the run's `more()` passes bring. It finds a game in `manifest()` by the URL of its first file
+   (`/api/roms/<id>/content/`, `/api/roms/<file id>/files/content/`) and takes that file's path as the key, as
+   `gameKey()` does. `romm::report(c)`, before the `done` status, reports each request as its files on the card,
+   Get games' list and `homesync-get-failed.txt` say. A reason that begins `not enough space` is reported `failed`,
+   and any other is left for the next sync. The first line of the `if (!autoWhy.empty())` block runs a games-only
+   `doSync` on Wi-Fi when Auto sync isn't "And on Wi-Fi" and RomM has a request this handheld hasn't claimed
+   (`romm::wanted()`). A change to those URLs, to `gameKey()`, to how Get games' list and its failed file are kept,
+   to the space error's wording or to `more()` shows in `kiwami/tests/romm-installs.sh`. And banana-ui's rule in
    `ui/Makefile`: `kiwami.mk` compiles its `SRC` one file per call with the rule's command, so a change to that command
    (a flag, a variable, how it reads `SRC`) is followed in `kiwami.mk`'s object rules. `kiwami/tests/ui-objects.sh`
    (in `ci.sh`) fails when the two no longer make the same binary. A source upstream adds to `SRC` is compiled as an

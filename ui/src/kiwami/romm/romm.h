@@ -4,9 +4,11 @@
 // hooks are in upstream's sync.cpp (the pairing's scopes, the kiwami verb, dropServerLists()) and sync_romm.cpp
 // (kiwamiFolder(), the platforms' mapping exported; Romm::list()'s pages and the ids it records, lookup.h; the card's
 // ROMs under another name found by their contents, and onCard()'s first line for them, hashes.h; the game list kept on
-// the card and brought up to date, listcache.h, whose pages Pages hands list() in a sync of every system):
+// the card and brought up to date, listcache.h, whose pages Pages hands list() in a sync of every system) and in
+// doSync (games sent from RomM's web page claimed onto Get games' list and reported, installs.h):
 //   banana-sync kiwami bios list           BIOS files of RomM's for the systems Banana has (bios.h)
 //   banana-sync kiwami bios get <id>...    those downloaded into /data/bios (and the DS's into DraStic's folder)
+//   banana-sync kiwami installs on|off     RomM told this handheld takes games sent from its web page, or not (installs.h)
 // Each prints its lines on stdout, the last one the result ("ok ..." or "error <why>"), for Settings' pages to read.
 // They don't write sync.log, so the last sync's report stays. The fork's own state on the card is
 // banana/kiwami-romm.json (stateFile(), State) and banana/kiwami-romm-list.jsonl (listFile()), which Forget and a
@@ -65,6 +67,11 @@ namespace banana::kiwami::romm
 		std::map<std::string, long long> ids;	// a game on either card (roms-relative, as sync --rom names it) -> its RomM id
 		std::map<std::string, Hash> hashes;		// a card file (roms-relative) -> its MD5 (hashes.h)
 		std::map<long long, std::string> aliases;	// a RomM id -> the card file of its contents under another name (hashes.h)
+		// an install request claimed and not reported yet (installs.h): its game's key on Get games' list, its RomM id
+		// and its files (roms-relative, as the manifest has them)
+		struct Install { std::string key; long long rom = 0; std::vector<std::string> files; };
+		std::map<std::string, Install> installs;	// RomM's request id -> its game
+		std::string installsDevice;	// the RomM device told it takes installs (its capability sent), "" for none
 		static State load()
 		{
 			State s;
@@ -81,6 +88,19 @@ namespace banana::kiwami::romm
 			if (al && al->isObj())
 				for (auto& kv : al->obj)
 					if (kv.second && kv.second->isStr() && !kv.second->s.empty() && atoll(kv.first.c_str()) > 0) s.aliases[atoll(kv.first.c_str())] = kv.second->s;
+			const JVal* in = j && j->isObj() ? j->get("installs") : nullptr;
+			if (in && in->isObj())
+				for (auto& kv : in->obj)
+				{
+					if (!kv.second || !kv.second->isObj() || kv.second->str("key").empty()) continue;
+					Install x;
+					x.key = kv.second->str("key");
+					x.rom = (long long)kv.second->num("rom", 0);
+					if (const JVal* fs = kv.second->get("files"))
+						if (fs->isArr()) for (auto& f : fs->arr) if (f && f->isStr() && !f->s.empty()) x.files.push_back(f->s);
+					s.installs[kv.first] = x;
+				}
+			if (j && j->isObj()) s.installsDevice = j->str("installs_device");
 			return s;
 		}
 		bool save() const
@@ -99,6 +119,16 @@ namespace banana::kiwami::romm
 			o += "},\n \"aliases\": {";
 			first = true;
 			for (auto& kv : aliases) { o += std::string(first ? "\n  " : ",\n  ") + "\"" + std::to_string(kv.first) + "\": " + bsync::jsonStr(kv.second); first = false; }
+			o += "},\n \"installs_device\": " + bsync::jsonStr(installsDevice) + ",\n \"installs\": {";
+			first = true;
+			for (auto& kv : installs)
+			{
+				std::string fs;
+				for (auto& f : kv.second.files) fs += (fs.empty() ? "" : ", ") + bsync::jsonStr(f);
+				o += std::string(first ? "\n  " : ",\n  ") + bsync::jsonStr(kv.first) + ": {\"key\": " + bsync::jsonStr(kv.second.key) +
+					", \"rom\": " + std::to_string(kv.second.rom) + ", \"files\": [" + fs + "]}";
+				first = false;
+			}
 			return bsync::writeAtomic(stateFile(), o + "}\n}\n");
 		}
 	};
@@ -166,6 +196,7 @@ namespace banana::kiwami::romm
 		inline int list();
 		inline int get(const std::vector<std::string>& ids);
 	}
+	namespace installs { inline int command(bool on); }
 
 	// banana-sync kiwami <what> ...: args as main() has them, "kiwami" first
 	inline int command(const std::vector<std::string>& args)
@@ -173,12 +204,14 @@ namespace banana::kiwami::romm
 		std::string what = args.size() > 1 ? args[1] : "", sub = args.size() > 2 ? args[2] : "";
 		if (what == "bios" && sub == "list") return bios::list();
 		if (what == "bios" && sub == "get" && args.size() > 3) return bios::get(std::vector<std::string>(args.begin() + 3, args.end()));
-		fprintf(stderr, "usage: banana-sync kiwami bios list | bios get <id>...\n");
+		if (what == "installs" && (sub == "on" || sub == "off")) return installs::command(sub == "on");
+		fprintf(stderr, "usage: banana-sync kiwami bios list | bios get <id>... | installs on|off\n");
 		return 2;
 	}
 }
 
 #include "bios.h"
 #include "hashes.h"
+#include "installs.h"
 #include "listcache.h"
 #include "lookup.h"

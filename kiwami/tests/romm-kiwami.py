@@ -35,12 +35,26 @@ What it answers, from RomM 5.4.1's code (rommapp/romm, tag 5.4.1):
                                               or more as the start of one of theirs, which a game's own name holds too)
   GET /api/roms/identifiers                   endpoints/roms/__init__.py get_rom_identifiers(): every game's id, of
                                               upstream's stand-in's platforms' listings
-Each answer has a Date header, the server's time (Python's http.server, as uvicorn sends it).
+  GET  /api/devices/<id>/installs             endpoints/device/install.py and handler/device_install/: a device's
+  POST /api/devices/<id>/installs {rom_id}    install requests, pending or taken, oldest first; one queued (as the
+  POST /api/devices/<id>/installs/claim       web page does: 400 unless the device's capabilities, upstream's
+  PUT  /api/devices/<id>/installs/<request>   stand-in's, hold remote_install: true, file_ids its files as
+                                              policy.py select_install_files() picks them, 200 with the live one for
+                                              the same game); the pending taken and every taken one returned; one
+                                              reported done, already_installed or failed (reason of 500 characters at
+                                              most, else 422) and so ended, 404 when gone, 409 when not taken. Claim and
+                                              report are the device's own (device_only): a token RomM's device pairing
+                                              made for that device (its /api/auth/device/token answer), else 403. A
+                                              device upstream's stand-in doesn't have is a 404
+Each answer has a Date header, the server's time (Python's http.server, as uvicorn sends it). A device's PUT is
+handed on, its capabilities also logged as "capabilities <device>: <JSON>".
 The tests' own hooks, under /kiwami/ (no token):
   POST /kiwami/fault {"path": <regex on "METHOD /path">, "kind": "truncate"|"500", "count"?: 1}: the next matching
        answers cut to half their body, the whole length announced, the connection closed; or refused with a 500
   POST /kiwami/touch {"id", "name"?}: the game updated now (its updated_at), renamed when a name is given (a title
        edited in RomM's web UI)
+  POST /kiwami/expire {"id"?}: that install request (or every one) gone, as RomM's two days running out do
+  GET  /kiwami/installs: {"live": [...], "ended": [...]}, the install requests live and those ended, in order
 """
 import datetime
 import hashlib
@@ -61,6 +75,10 @@ lock = threading.Lock()
 TOKENS = {}     # token -> its scopes
 FAULTS = []
 TOUCHED = {}    # a game's id -> {"at": its updated_at (unix time), "name"?: its new name}
+BOUND = {}      # token -> the device RomM's device pairing made it for
+INSTALLS = []   # the live install requests, oldest first
+ENDED = []      # those reported (or expired), in order
+DEVICE_REPORTS = ("done", "already_installed", "failed")
 # models/rom.py's ARTICLES and compute_name_sort_key()
 ARTICLES = ("the", "a", "an", "le", "la", "les", "el", "los", "las", "il", "lo", "gli", "der", "die", "das", "het")
 
@@ -136,6 +154,16 @@ class H(http.server.BaseHTTPRequestHandler):
                 log("init scopes: " + ",".join(json.loads(raw).get("requested_scopes") or []))
             except ValueError:
                 pass
+        m = re.fullmatch(r"/api/devices/([^/]+)/installs(?:/([^/]+))?", p)
+        if m:
+            return self.installs(method, m.group(1), m.group(2), raw)
+        if method == "PUT" and re.fullmatch(r"/api/devices/[^/]+", p):
+            try:
+                b = json.loads(raw)
+                if isinstance(b, dict) and "capabilities" in b:
+                    log(f"capabilities {p.split('/')[3]}: {json.dumps(b['capabilities'], sort_keys=True)}")
+            except ValueError:
+                pass
         self.forward(method, p, raw)
 
     # ---- everything else: upstream's stand-in's, the tokens it hands out noted
@@ -158,6 +186,7 @@ class H(http.server.BaseHTTPRequestHandler):
                         scopes = (json.loads(raw) if raw else {}).get("scopes") or UPSTREAM_SCOPES
                     with lock:
                         TOKENS[tok] = set(scopes or [])
+                        BOUND[tok] = j.get("device_id") if "access_token" in j else None
         self.send_response(r.status)
         for k, v in r.getheaders():
             if k.lower() not in ("connection", "transfer-encoding", "content-length", "date", "server"):
@@ -304,6 +333,73 @@ class H(http.server.BaseHTTPRequestHandler):
             return self.send(200, data, "application/octet-stream", cut=self.fault(method, p) == "truncate")
         return self.send(405, {"detail": "Method Not Allowed"})
 
+    # ---- install requests: RomM 5.4.1's endpoints/device/install.py, its handler's statuses kept in memory
+    def installs(self, method, dev, sub, raw):
+        s = self.scopes()
+        if s is None:
+            return self.send(401, {"detail": "Not authenticated"})
+        need = {"GET": {"devices.read"}, "PUT": {"devices.write"}}.get(method, {"devices.write", "roms.read"})
+        if not need <= s:
+            return self.send(403, {"detail": "Forbidden"})
+        a = self.headers.get("Authorization", "")
+        with lock:
+            bound = BOUND.get(a[7:])
+        status, d = self.ask(f"/api/devices/{urllib.parse.quote(dev)}")
+        if status != 200 or bound not in (None, dev):
+            return self.send(404, {"detail": f"Device with ID {dev} not found"})
+        now = utc(time.time())
+        if method == "GET" and sub is None:
+            with lock:
+                return self.send(200, [r for r in INSTALLS if r["device_id"] == dev])
+        if method == "POST" and sub is None:
+            b = json.loads(raw) if raw else {}
+            rid = b.get("rom_id")
+            if not isinstance(rid, int) or rid < 1:
+                return self.send(422, {"detail": [{"type": "int_parsing", "loc": ["body", "rom_id"], "msg": "Input should be a valid integer"}]})
+            if (d.get("capabilities") or {}).get("remote_install") is not True:
+                return self.send(400, {"detail": f"Device {dev} does not accept remote installs"})
+            st, items = self.everything()
+            rom = next((it for it in items if it["id"] == rid), None) if st == 200 else None
+            if not rom:
+                return self.send(404, {"detail": f"Rom with ID {rid} not found"})
+            ids = sorted(f["id"] for f in ([] if rom.get("missing_from_fs") else rom.get("files", []))
+                         if f.get("category") in (None, "game", "update", "dlc") and not f.get("missing_from_fs"))
+            if not ids:
+                return self.send(400, {"detail": "This rom has no installable files"})
+            with lock:
+                live = next((r for r in INSTALLS if r["device_id"] == dev and r["rom_id"] == rid), None)
+                if live:
+                    return self.send(200, live)
+                r = {"id": f"req-{len(INSTALLS) + len(ENDED) + 1}", "user_id": 1, "device_id": dev, "rom_id": rid, "file_ids": ids,
+                     "status": "pending", "reason": None, "created_at": now, "updated_at": now}
+                INSTALLS.append(r)
+            return self.send(201, r)
+        if bound != dev:
+            return self.send(403, {"detail": "Only the device itself can do this"})
+        if method == "POST" and sub == "claim":
+            with lock:
+                for r in INSTALLS:
+                    if r["device_id"] == dev and r["status"] == "pending":
+                        r.update(status="taken", updated_at=now)
+                return self.send(200, [r for r in INSTALLS if r["device_id"] == dev and r["status"] == "taken"])
+        if method == "PUT" and sub not in (None, "claim"):
+            b = json.loads(raw) if raw else {}
+            if b.get("status") not in DEVICE_REPORTS:
+                return self.send(422, {"detail": [{"type": "value_error", "loc": ["body", "status"], "msg": "A device reports one of already_installed, done, failed"}]})
+            if b.get("reason") is not None and (not isinstance(b["reason"], str) or len(b["reason"]) > 500):
+                return self.send(422, {"detail": [{"type": "string_too_long", "loc": ["body", "reason"], "msg": "String should have at most 500 characters"}]})
+            with lock:
+                r = next((r for r in INSTALLS if r["id"] == sub and r["device_id"] == dev), None)
+                if not r:
+                    return self.send(404, {"detail": f"Install request {sub} not found"})
+                if r["status"] != "taken":
+                    return self.send(409, {"detail": f"Cannot move a {r['status']} request to {b['status']}"})
+                INSTALLS.remove(r)
+                ended = dict(r, status=b["status"], reason=b.get("reason"), updated_at=now)
+                ENDED.append(ended)
+            return self.send(200, ended)
+        return self.send(405, {"detail": "Method Not Allowed"})
+
     def fault(self, method, p):
         with lock:
             for f in FAULTS:
@@ -322,6 +418,15 @@ class H(http.server.BaseHTTPRequestHandler):
             with lock:
                 TOUCHED[int(b["id"])] = dict({"at": time.time()}, **({"name": b["name"]} if "name" in b else {}))
             return self.send(200, {})
+        if p == "/kiwami/expire":
+            with lock:
+                for r in [r for r in INSTALLS if b.get("id") in (None, r["id"])]:
+                    INSTALLS.remove(r)
+                    ENDED.append(dict(r, status="expired"))
+            return self.send(200, {})
+        if p == "/kiwami/installs":
+            with lock:
+                return self.send(200, {"live": INSTALLS, "ended": ENDED})
         return self.send(404, {"detail": "Not Found"})
 
 

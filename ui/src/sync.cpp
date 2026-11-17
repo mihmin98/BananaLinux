@@ -73,7 +73,7 @@
 #include "sync_util.h"
 #include "kiwami/syncmem.h"	// kiwami: RomM's game list kept small (banana-sync's memory)
 #include "kiwami/synctimes.h"	// kiwami: each phase's time (Home server > Show sync times)
-#include "kiwami/romm/romm.h"	// kiwami: the fork's RomM additions (the kiwami verb)
+#include "kiwami/romm/romm.h"	// kiwami: the fork's RomM additions (the kiwami verb, installs from RomM's page)
 #include <arpa/inet.h>
 #include <cerrno>
 #include <dirent.h>
@@ -1317,6 +1317,7 @@ namespace
 		if (!c.paired()) { if (autoWhy.empty()) status("error not paired"); return 2; }
 		if (!autoWhy.empty())
 		{
+			if (autoWhy == "wifi" && get("homesync_auto", "off") != "both" && c.backend == "romm" && banana::kiwami::romm::wanted(c, set)) { gamesOnly = true; doSync(false, "", ""); gamesOnly = false; c = loadConf(); banana::kiwami::synctimes::start(get("kiwami_sync_times", "off") == "on", RUN); }	// kiwami: games sent from RomM's page, on Wi-Fi with Auto sync not syncing then (a run of the games alone)
 			std::string a = get("homesync_auto", "off");
 			if (a == "off") return 0;
 			// (Wi-Fi back with only "Leaving a game": the saves that couldn't be sent then, sent now)
@@ -1397,6 +1398,7 @@ namespace
 				return 1;
 			}
 		}
+		if (romm && onlyRom.empty() && !savesOnly && !dryRun) banana::kiwami::romm::claim(*b, c, set);	// kiwami: games sent from RomM's page, onto Get games' list for this run to bring (more())
 		std::vector<std::string> errors, conflicts;
 		int downloaded = 0, removed = 0, up = 0, down = 0, sconf = 0;
 		std::string note;
@@ -1533,6 +1535,7 @@ namespace
 		if (b->keptUnsent) said += "; kept to send with the next sync";
 		// (Get games' own run says so first, for Sync now's report: its saves weren't looked at)
 		if (gamesOnly) said = said.empty() ? "games only" : "games only: " + said;
+		if (romm && onlyRom.empty() && !dryRun) banana::kiwami::romm::report(c);	// kiwami: the requests from RomM's page reported as they stand
 		status("done " + std::string(sum) + " " + std::to_string(errors.size()) + "|" + said);
 		say("done: %d files of games down, %d removed, %d saves up, %d down, %d conflicts, %zu errors", downloaded, removed, up, down, sconf + (int)conflicts.size(), errors.size());
 		say("memory: peak %s", banana::kiwami::syncmem::peak().c_str());	// kiwami: for reports of a sync that strains the handheld
@@ -1617,7 +1620,7 @@ int main(int argc, char** argv)
 		return 0;
 	}
 	if (!cu.load()) { status("error libcurl is missing"); fprintf(stderr, "banana-sync: libcurl is missing\n"); return 1; }
-	if (cmd == "kiwami") return banana::kiwami::romm::command(args);	// kiwami: the fork's verbs (BIOS)
+	if (cmd == "kiwami") return banana::kiwami::romm::command(args);	// kiwami: the fork's verbs (BIOS, installs)
 	if (cmd == "discover")
 	{
 		for (auto& s : discover(2.0)) printf("ROMHOST\t%s\t%s\n", s.first.c_str(), s.second.c_str());

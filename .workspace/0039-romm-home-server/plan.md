@@ -704,6 +704,39 @@ Where the implementation turned out different from this plan, why, and what chan
   - The cache's log lines go to `sync.log` only in a sync: `say()` also prints on stdout, where `banana-sync games`
     prints its games for the page.
 
+- **2026-11-17, step 7: what RomM 5.4.1's install code asks for, and the requests that wait.**
+  - Claiming and reporting are the device's own (`install.py`, `device_only`): only a token RomM's device pairing made
+    for the device may do them, and one paired by a client token's code (no device) gets a 403, while setting the
+    capability still works. `kiwami installs on` therefore makes one claim after setting the capability, as the check
+    (the requests it takes come back with the next claim). A 403 sets the capability back to false and answers `error
+    this pairing isn't the handheld's own: pair again from it (Server > Pair)`, for step 8's row to put back. A sync's
+    claim that fails says why in `sync.log`. `wanted()` also counts a request taken but not claimed by a sync (the
+    check takes them). Agreed with the user.
+  - `report()` says `failed` only for lasting reasons: a game the manifest doesn't have (said at the claim) and a
+    failed-file reason that begins `not enough space` (the game then taken off Get games' list). Any other reason (a
+    download that failed, the second SD card out) leaves the request `taken` and the game on the list for the rework's
+    next try, not `failed` with the list's reason as planned. Agreed with the user.
+  - A request whose game its owner took off Get games' list on the handheld, and that isn't on a card, is reported
+    `failed` ("taken off Get games on the handheld"), not left `taken`. A request claimed before is never put on the
+    list again. Agreed with the user.
+  - The claim hook is right after the rework's heartbeat check, not after `b->onlyRom = onlyRom;`. An unreachable
+    server then ends the run with its own `noconnect` error before any claim, and the listing the claim may need shows
+    Sync now's progress (written only over a `running` status). Agreed with the user.
+  - `romm.h` changes too (not in the step's files): `State` keeps `installs` (request id to its game's key, RomM id and
+    files) and `installs_device`, and `command()` hands `installs on|off` to `installs.h`. A game is found in the
+    manifest by its first file's URL, whose path is its key on Get games' list, as `gameKey()` gives it (a disc set's
+    first file, `psx/.discs/<set>/<disc 1>.bin`). A game whose RomM id has an alias (step 5) is `already_installed`.
+  - The Wi-Fi hook also calls `synctimes::start()` again after the games-only run, so the rework's run that may follow
+    is timed on its own.
+  - The fork's stand-in answers RomM's own `POST /api/devices/<id>/installs` (the test's token, as the web page's),
+    not a `/kiwami/install` hook, and `/kiwami/installs` lists the live and ended requests for the checks. A device's
+    `PUT` is logged with its capabilities.
+  - `romm-installs.sh`: installs off is checked as no install request and no capability in the requests log, not
+    compared with the rework's requests, which the fork's lookups and list cache already change. The full card is
+    checked through the failed file's reason, since a full card can't be made without root. Added: the pairing not
+    the device's own, a failed download that comes at the next sync, a game taken back, and Wi-Fi with Auto sync off and
+    nothing sent (one look at the requests, nothing else).
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -716,6 +749,6 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 4. A game's sync before it starts, without listing its system | done | RomM home server: a game's save synced before it without listing its system |
 | 5. ROMs found by their hash in Sync now | done | RomM home server: ROMs under another name found by their hash |
 | 6. The game list kept on the card and brought up to date | done | RomM home server: the game list kept on the card, brought up to date with what changed |
-| 7. Installs from RomM's web page, in banana-sync | todo | |
+| 7. Installs from RomM's web page, in banana-sync | done | RomM home server: games sent from RomM's web page downloaded at the next sync |
 | 8. The installs row in Settings | todo | |
 | 9. Final check | todo | |

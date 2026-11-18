@@ -5,10 +5,11 @@ The kiwami fork's CPU and GPU clock governor for the KMS context (its
 setting Power scaling): the lowest CPU clock at which the core's frames fit,
 under the "performance" governor with a stepped scaling_max_freq, and the
 GPU's devfreq floor raised when a frame on time still missed its flip, held
-longer each time it turns out still needed. It works on the core's period
-(the display's when RetroArch runs the core at the display's rate) and the
-main thread's CPU time, follows fast-forward's limit, and remembers each
-game's clocks.
+longer each time it turns out still needed; a CPU step down that leaves the
+GPU's pass no room is undone instead. It works on the core's period (the
+display's when RetroArch runs the core at the display's rate) and the main
+thread's CPU time, follows fast-forward's limit, and remembers each game's
+clocks: the highest CPU clock it needed, the GPU floor held longest.
 
 Its files only, plain C89 with no RetroArch headers: the caller gives it
 every time, fact and path, so it is built and tested on its own. Nothing
@@ -55,7 +56,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +#endif
 --- /dev/null
 +++ b/gfx/drivers_context/kiwami_clocks.c
-@@ -0,0 +1,689 @@
+@@ -0,0 +1,741 @@
 +/* The kiwami fork's clock governor, BananaFront's --cpugov and gpufloor for
 + * RetroArch's KMS context.
 + *
@@ -70,10 +71,16 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 + *   second, with the work over 80%), two steps for two in a second; that
 + *   clock is banned for 30 s, doubled each time it fails again.
 + * - Down a step after 5 s with no change and no late frame, when the p99
-+ *   scaled to the lower clock fits 65% of the period.
++ *   scaled to the lower clock fits 65% of the period. A late frame within
++ *   5 s of it with the work under 80% is that step's (the GPU's pass shares
++ *   the period with the work): back up at once, that clock banned as above.
 + * GPU: devfreq's min_freq up a step on a late flip, or the game running
-+ * slow, with the work under 80%; down a step after 30 s without one, a hold
-+ * doubled each time a floor is needed again within 10 s of its drop.
++ * slow, with the work under 80% and no step down just before; down a step
++ * after 30 s without one, a hold doubled each time a floor is needed again
++ * within 10 s of its drop.
++ * The game's clocks: the CPU's highest it was stepped up to (or, with none,
++ * the one it ended on, never over the one it started a step above), the
++ * GPU's floor held longest.
 + * Fast-forward: the top clock with no limit, else a step a second until the
 + * limit is reached; the clock from before comes back after it, and nothing
 + * of it is learnt.
@@ -113,17 +120,19 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +   int on, stopped, have_last, have_flip, held, in_ff, synced;
 +   int nf, cur, gnf, gcur, start_cur, start_gcur, mem_cpu, mem_gpu;
 +   int nwin, nslow, nframes, late_1s, ff_from;
++   int need, mem_cur, down_to;
 +   unsigned long f[KC_MAXF];  /* kHz */
 +   unsigned long g[KC_MAXF];  /* Hz */
 +   unsigned long old_min, old_max;
 +   long win[KC_WIN];
 +   long last_work, period_us, late_after_us;
 +   long n_late_cpu, n_slow_cpu, n_late_gpu, n_slow_gpu, n_near, n_down;
++   long n_undone;
 +   long nsteps;
 +   double fps, refresh_hz;
 +   int64_t t0, last_now, last_cpu, last_flip, win_start, late_since;
 +   int64_t last_change, last_late, g_last_change, g_last_miss;
-+   int64_t g_hold, g_drop;
++   int64_t g_hold, g_drop, down_at, undo_at;
 +   int64_t ff_next, ff_us;
 +   int64_t ban_until[KC_MAXF], ban_len[KC_MAXF];
 +   int64_t time_at[KC_MAXF], gtime_at[KC_MAXF];
@@ -267,6 +276,9 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +      i = kc.nf - 1;
 +   if (i == kc.cur)
 +      return;
++   /* a clock the game needed, which its memory keeps (not fast-forward's) */
++   if (i > kc.cur && !kc.in_ff && i > kc.need)
++      kc.need = i;
 +   kc_write_ul(kc.cpu_dir, "scaling_max_freq", kc.f[i]);
 +   kc_step(now, 0, (unsigned)(kc.f[kc.cur] / 1000),
 +         (unsigned)(kc.f[i] / 1000), why);
@@ -316,6 +328,33 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +   }
 +}
 +
++/* a late frame with its work on time. Within 5 s of a step down, that
++ * step's: the GPU's pass shares the period with the work, which the lower
++ * clock lengthened. Back up at once, that clock banned as a late frame's is,
++ * and the frames already under way at it count for nothing. Else the GPU's. */
++static void kc_late_short(int64_t now, const char *why, long *n_gpu)
++{
++   if (     kc.down_at
++         && kc.last_change == kc.down_at
++         && kc.cur == kc.down_to
++         && now - kc.down_at < KC_DOWN_US)
++   {
++      kc.n_undone++;
++      kc.ban_until[kc.cur] = now + kc.ban_len[kc.cur];
++      kc.ban_len[kc.cur]  *= 2;
++      kc.last_late         = now;
++      kc_cpu(kc.cur + 1, now, "late after a step down");
++      kc.undo_at           = now;
++      return;
++   }
++   if (     kc.undo_at
++         && kc.last_change == kc.undo_at
++         && now - kc.undo_at < KC_LATE_GAP_US)
++      return;
++   (*n_gpu)++;
++   kc_gpu_late(now, why);
++}
++
 +static void kc_gpu_tick(int64_t now)
 +{
 +   if (     kc.gcur > 0
@@ -358,10 +397,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +         kc_cpu_late(now, "running slow");
 +      }
 +      else
-+      {
-+         kc.n_slow_gpu++;
-+         kc_gpu_late(now, "running slow");
-+      }
++         kc_late_short(now, "running slow", &kc.n_slow_gpu);
 +      return;
 +   }
 +   if (p99 * 10 > kc.period_us * 9)
@@ -384,6 +420,8 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +   {
 +      kc.n_down++;
 +      kc_cpu(dn, now, "headroom");
++      kc.down_at = now;
++      kc.down_to = dn;
 +   }
 +}
 +
@@ -453,7 +491,9 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +      kc.gnf = 0;
 +
 +   /* the game's clocks from last time: the CPU a step above, the GPU's floor */
-+   kc.cur = kc.nf - 1;
++   kc.cur     = kc.nf - 1;
++   kc.mem_cur = -1;
++   kc.need    = -1;
 +   if (data_dir && *data_dir)
 +   {
 +      snprintf(kc.data_dir, sizeof(kc.data_dir), "%s", data_dir);
@@ -467,6 +507,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +                  && (i = kc_find(kc.f, kc.nf, v)) >= 0)
 +            {
 +               kc.cur     = i + 1 < kc.nf ? i + 1 : i;
++               kc.mem_cur = i;
 +               kc.mem_cpu = 1;
 +            }
 +            else if (!strncmp(b, "gpu ", 4) && kc_num(b + 4, &v)
@@ -617,10 +658,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +      kc_cpu_late(t_us, "late frame");
 +   }
 +   else
-+   {
-+      kc.n_late_gpu++;
-+      kc_gpu_late(t_us, "late flip");
-+   }
++      kc_late_short(t_us, "late flip", &kc.n_late_gpu);
 +}
 +
 +static int kc_longest(const int64_t *t, int n)
@@ -630,6 +668,21 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +      if (t[i] > 0 && (best < 0 || t[i] > t[best]))
 +         best = i;
 +   return best;
++}
++
++/* the CPU clock the game's memory keeps: the highest it was stepped up to
++ * at normal speed, which it needed; with none, the one it ended on, but not
++ * over the one it started a step above. -1: no time at normal speed */
++static int kc_cpu_memory(void)
++{
++   int i;
++
++   if (kc_longest(kc.time_at, kc.nf) < 0)
++      return -1;
++   if (kc.need >= 0)
++      return kc.need;
++   i = kc.in_ff ? kc.ff_from : kc.cur;
++   return kc.mem_cur >= 0 && kc.mem_cur < i ? kc.mem_cur : i;
 +}
 +
 +static void kc_store(int ci, int gi)
@@ -658,7 +711,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +{
 +   FILE *fp;
 +   long i;
-+   int j;
++   int j, k;
 +
 +   if (!kc.log_path[0] || !(fp = fopen(kc.log_path, "a")))
 +      return;
@@ -698,17 +751,17 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +   if (kc.gnf)
 +   {
 +      fprintf(fp, "kiwami-clocks: time at each GPU floor:");
-+      for (j = 0; j < kc.gnf; j++)
++      for (j = 0, k = 0; j < kc.gnf; j++)
 +         if (kc.gtime_at[j] > 0)
-+            fprintf(fp, " %lu MHz %.1f s", kc.g[j] / 1000000,
-+                  kc.gtime_at[j] / 1e6);
++            fprintf(fp, "%s %lu MHz %.1f s", k++ ? "," : "",
++                  kc.g[j] / 1000000, kc.gtime_at[j] / 1e6);
 +      fprintf(fp, "\n");
 +   }
 +   fprintf(fp, "kiwami-clocks: late frames: CPU %ld (late flip) %ld "
 +         "(running slow), GPU %ld (late flip) %ld (running slow); "
-+         "near the limit %ld, headroom %ld\n",
++         "near the limit %ld, headroom %ld (%ld undone)\n",
 +         kc.n_late_cpu, kc.n_slow_cpu, kc.n_late_gpu, kc.n_slow_gpu,
-+         kc.n_near, kc.n_down);
++         kc.n_near, kc.n_down, kc.n_undone);
 +   if (ci >= 0 || gi >= 0)
 +   {
 +      fprintf(fp, "kiwami-clocks: remembered in %s:", kc.store);
@@ -728,7 +781,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +   if (!kc.on || kc.stopped)
 +      return;
 +   kc.stopped = 1;
-+   ci = kc_longest(kc.time_at, kc.nf);
++   ci = kc_cpu_memory();
 +   gi = kc.gnf ? kc_longest(kc.gtime_at, kc.gnf) : -1;
 +   if (!kc.store[0])
 +      ci = gi = -1;

@@ -1,9 +1,10 @@
 /* Power scaling's governor for RetroArch (kiwami/patches/retroarch/0101-*: gfx/drivers_context/kiwami_clocks.c), checked
  * on its own against made-up cpufreq and devfreq folders, fed made-up frames: the start and the game's memory, the CPU's
- * steps up, down and bans, a 50 Hz game on a 60 Hz panel, a core RetroArch runs at the panel's rate (Snes9x's 60.10 fps
- * on the RG DS Plus's 60.17 Hz: one missed refresh is late), the GPU's floor and its hold doubled when it's needed again soon
- * after a drop, fast-forward with and without a limit, the menu and stalls, the stop and its files, no cpufreq. Built and run by kiwami/tests/ci.sh, the patch applied to an empty
- * folder and the governor built with RetroArch's C89 flags:
+ * steps up, down and bans, a late frame right after a step down undoing it, a 50 Hz game on a 60 Hz panel, a core
+ * RetroArch runs at the panel's rate (Snes9x's 60.10 fps on the RG DS Plus's 60.17 Hz: one missed refresh is late), the
+ * GPU's floor and its hold doubled when it's needed again soon after a drop, fast-forward with and without a limit, the
+ * game's memory, the menu and stalls, the stop and its files, no cpufreq. Built and run by kiwami/tests/ci.sh, the patch
+ * applied to an empty folder and the governor built with RetroArch's C89 flags:
  *   cc -std=c99 -Wall -D_GNU_SOURCE -I <folder>/gfx/drivers_context kiwami/tests/clocks-units.c kiwami_clocks.o
  *   ./clocks-units */
 #include "kiwami_clocks.h"
@@ -252,6 +253,52 @@ int main(void)
 	EQ(get(gpu, "min_freq"), "200000000");
 	kiwami_clocks_stop();
 
+	// a late flip within 5 s of a step down, with the work under 80% (the GPU's pass shares the period with it): the step
+	// down's, not the GPU's. Back up at once, the GPU's floor left alone, and the lower clock banned 30 s, then 60 s; a late
+	// flip within 300 ms of that (a frame already under way at the lower clock) counts for nothing; one over 5 s after the
+	// step down is the GPU's, as before
+	setup();
+	start("c", "g");
+	begin();
+	run(5.5, 0.40);
+	CHECK(maxf() == 1800000);
+	frame(33333, 0.40);
+	CHECK(maxf() == 1992000);
+	EQ(get(gpu, "min_freq"), "200000000");
+	late = F.now_us;
+	frame(33333, 0.40);
+	EQ(get(gpu, "min_freq"), "200000000");
+	run(29.0 - (F.now_us - late) / 1e6, 0.40);
+	CHECK(maxf() == 1992000);
+	run(2.0, 0.40);
+	CHECK(maxf() == 1800000);
+	frame(33333, 0.40);
+	CHECK(maxf() == 1992000);
+	late = F.now_us;
+	run(59.0 - (F.now_us - late) / 1e6, 0.40);
+	CHECK(maxf() == 1992000);
+	run(2.0, 0.40);
+	CHECK(maxf() == 1800000);
+	run(5.5, 0.60);			// (60% x 1800/1608 is over 65%: no step)
+	CHECK(maxf() == 1800000);
+	frame(33333, 0.60);
+	CHECK(maxf() == 1800000);
+	EQ(get(gpu, "min_freq"), "300000000");
+	kiwami_clocks_stop();
+	CHECK(lines_with(slurp(logf), "CPU 1800 -> 1992 MHz (late after a step down)\n") == 2);
+	CHECK(strstr(slurp(logf), "headroom 3 (2 undone)\n") != NULL);
+	// ... and the game running slow for a second within 5 s of a step down, the work under 80%: the step down's too
+	setup();
+	start("c", "g");
+	begin();
+	run(5.5, 0.40);
+	CHECK(maxf() == 1800000);
+	F.pace_us = 17500;
+	run(2.1, 0.40);
+	CHECK(maxf() == 1992000);
+	EQ(get(gpu, "min_freq"), "200000000");
+	kiwami_clocks_stop();
+
 	// a 50 Hz game on a 60 Hz panel, paced by its sound: flips 16.7 and 33.3 ms apart, the work at 30% of 20 ms. No
 	// step up and no GPU floor (and down only after 5 s)
 	setup();
@@ -311,8 +358,10 @@ int main(void)
 	kiwami_clocks_stop();
 
 	// a floor needed again within 10 s of its drop is held twice as long: 30 s, then 60 s, then 120 s; needed again later
-	// than that, the hold stays as it is
+	// than that, the hold stays as it is (the CPU at its lowest clock from 5 s, so no late flip comes right after a step
+	// down)
 	setup();
+	remember("c", "g", "cpu 408000\n");
 	start("c", "g");
 	begin();
 	run(1.0, 0.30);
@@ -406,7 +455,8 @@ int main(void)
 	kiwami_clocks_stop();
 
 	// fast-forward with a limit (3x: 5556 us): up a step a second while RetroArch's period is over it, never down, the
-	// clock from before after it; the memory is the normal speed's clock, though fast-forward ran longer
+	// clock from before after it; the memory stays the game's (816 MHz: it started a step above and needed no more),
+	// though fast-forward ran longer and higher
 	setup();
 	remember("c", "g", "cpu 816000\n");
 	start("c", "g");
@@ -431,8 +481,39 @@ int main(void)
 	CHECK(maxf() == 1104000);
 	run(1.0, 0.30);
 	kiwami_clocks_stop();
-	EQ(get(data, "c/g.clocks"), "cpu 1104000");
+	EQ(get(data, "c/g.clocks"), "cpu 816000");
 	CHECK(strstr(slurp(logf), "fast-forward 10.") != NULL);
+
+	// the game's memory is the highest clock it was stepped up to at normal speed, though it spent longer lower down:
+	// 1104 MHz, needed once, then 15 s at 408 MHz
+	setup();
+	remember("c", "g", "cpu 600000\n");
+	start("c", "g");
+	begin();
+	run(1.0, 0.95);
+	frame(16667, 0.95);		// (the second's last frame: the next window is all at 30%)
+	CHECK(maxf() == 1104000);
+	run(30.0, 0.30);
+	CHECK(maxf() == 408000);
+	kiwami_clocks_stop();
+	EQ(get(data, "c/g.clocks"), "cpu 1104000");
+	// ... never stepped up: the clock it ended on, here still on the way down from the top after 23 s (four clocks of
+	// 5 s each, the one it ended on 3 s)
+	setup();
+	start("c", "g");
+	begin();
+	run(23.0, 0.30);
+	CHECK(maxf() == 1104000);
+	kiwami_clocks_stop();
+	EQ(get(data, "c/g.clocks"), "cpu 1104000");
+	// ... but not over the memory it started from: 3 s at a step above it, no step, keeps 816 MHz
+	setup();
+	remember("c", "g", "cpu 816000\n");
+	start("c", "g");
+	begin();
+	run(3.0, 0.30);
+	kiwami_clocks_stop();
+	EQ(get(data, "c/g.clocks"), "cpu 816000");
 
 	// the menu (hold) counts nothing; a 2 s gap starts the window afresh
 	setup();
@@ -454,7 +535,8 @@ int main(void)
 	CHECK(maxf() == 1416000);
 	kiwami_clocks_stop();
 
-	// stop: the limits as found, the floor at its lowest, the game's clocks (those held longest), the log; once
+	// stop: the limits as found, the floor at its lowest, the game's clocks (the CPU's it ended on, never stepped up; the
+	// GPU's floor held longest), the log; once
 	setup();
 	CHECK(start("Snes9x", "a/b\x01" "c.sfc") == 1);
 	begin();
@@ -467,7 +549,7 @@ int main(void)
 	EQ(get(cpu, "scaling_max_freq"), "1416000");
 	EQ(get(gpu, "min_freq"), "200000000");
 	CHECK(kiwami_clocks_mhz() == 0);
-	EQ(slurp(path(data, "Snes9x/a_b_c.sfc.clocks")), "cpu 1992000\ngpu 300000000\n");
+	EQ(slurp(path(data, "Snes9x/a_b_c.sfc.clocks")), "cpu 1800000\ngpu 300000000\n");
 	const char *log = slurp(logf);
 	CHECK(strstr(log, "kiwami-clocks: start: a_b_c.sfc (Snes9x), 60.00 fps, 60.00 Hz (the panel's rate), CPU 1992 MHz (the top) of 408-1992, GPU floor 200 MHz (the lowest) of 200-800\n") != NULL);
 	CHECK(strstr(log, "s: GPU floor 200 -> 300 MHz (late flip)\n") != NULL);
@@ -475,6 +557,7 @@ int main(void)
 	CHECK(strstr(log, "kiwami-clocks: end after ") != NULL);
 	CHECK(strstr(log, "kiwami-clocks: time at each CPU clock: 1800 MHz 4.") != NULL);
 	CHECK(strstr(log, ", 1992 MHz 5.") != NULL);
+	CHECK(strstr(log, "kiwami-clocks: time at each GPU floor: 200 MHz 1.0 s, 300 MHz 8.0 s\n") != NULL);
 	CHECK(strstr(log, "kiwami-clocks: late frames: CPU 0 (late flip) 0 (running slow), GPU 1 (late flip) 0 (running slow)") != NULL);
 	CHECK(strstr(log, "kiwami-clocks: remembered in ") != NULL);
 	kiwami_clocks_stop();

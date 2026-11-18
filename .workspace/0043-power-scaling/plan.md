@@ -84,12 +84,16 @@ Decided while planning:
     over 80%, two steps for two in a second; the clock that failed is banned for 30 s, doubled each time it fails
     again;
   - **down one step** after 5 s with no step (up or down) and no late frame, when the p99 scaled to the lower clock
-    fits 65% of the period.
+    fits 65% of the period;
+  - **back up at once** when a late flip, or the game running slow, comes within 5 s of a step down with its CPU work
+    under 80%: the GPU's pass shares the period with the work, so that step down left it no room. The lower clock is
+    banned as a failed one is (30 s, doubled each time), the GPU's floor isn't raised for it, and a late flip within
+    300 ms of going back up (a frame already under way at the lower clock) counts for nothing.
 
   The period is `1/fps`, so a 50 Hz game paced by its audio isn't judged late.
 - **A6**: Given a running game, when a flip comes later than the content's own spacing allows with that frame's CPU
-  work under 80% of the period, or the game runs slow with its CPU work under 80%, then the GPU's floor goes up a step
-  (never above its `max_freq`). The spacing:
+  work under 80% of the period, or the game runs slow with its CPU work under 80%, and no step down of the CPU came in
+  the 5 s before (A5), then the GPU's floor goes up a step (never above its `max_freq`). The spacing:
   - a core RetroArch runs at the panel's rate (within `audio_max_timing_skew` of it, or of a whole fraction of it,
     with vsync on, RetroArch's own test) is that many refreshes apart: one missed refresh is late (past 1.5 refreshes
     for a 60 fps core), and its period is the refreshes';
@@ -109,10 +113,12 @@ Decided while planning:
 - **A9**: Given RetroArch quitting normally (F + Start, the panel's Quit, `SIGTERM`), then:
   - the CPU's governor, `scaling_min_freq` and `scaling_max_freq` are put back as they were found, and the GPU's
     `min_freq` goes to its lowest;
-  - the game's clocks (CPU, the clock it held longest; GPU, the floor it held longest) are written to
-    `/data/banana/kiwami-clocks/<core>/<game>.clocks`;
+  - the game's clocks are written to `/data/banana/kiwami-clocks/<core>/<game>.clocks`:
+    - the CPU's is the highest clock it was stepped up to at normal speed, the one the game needed; with no step up,
+      the clock it ended on, but not over the remembered clock it started a step above;
+    - the GPU's is the floor it held longest;
   - the log gets the steps (kept in memory, up to the last 256) and a summary: time at each CPU clock and GPU floor,
-    late frames by cause, fast-forward time.
+    late frames by cause, step downs and how many were undone, fast-forward time.
 - **A10**: Given no cpufreq (QEMU, a PC) or an unwritable one, the governor logs `kiwami-clocks: off, no cpufreq`
   once, writes nothing and RetroArch runs on. No GPU devfreq: the CPU is governed alone.
 - **A11**: Given the setting on and a BananaFront game, `bananafront.log` says `cpugov: on`.
@@ -431,7 +437,36 @@ Each step is one commit, and leaves the tree building and `make test` passing.
   `kiwami/tests/ci.sh .buildroot`.
 - **Commit**: `Power scaling: one missed refresh is a late frame, and the GPU floor's hold grows when it's still needed`
 
-### 7. Final check
+### 7. Fix: a late frame right after a step down is the CPU's, and the memory keeps the clock the game needed
+
+- **Files**:
+  - `kiwami/patches/retroarch/0101-gfx-drm-kiwami-clocks-a-frame-driven-clock-governor.patch` (changed);
+  - `kiwami/tests/clocks-units.c` (changed).
+- **Change** (A5, A6 and A9 reworded, *Deviations*):
+  - a late flip, or a second running slow, within 5 s of a step down (`KC_DOWN_US`) with the work under 80% goes back
+    up a step at once (`late after a step down`), bans the lower clock as a late frame does, and doesn't raise the
+    GPU's floor; one within 300 ms after that (`KC_LATE_GAP_US`) counts for nothing; any other is the GPU's, as before;
+  - the CPU's memory is the highest clock stepped up to at normal speed; with none, the clock it ended on (from before
+    fast-forward if it ended in it), never over the remembered one it started a step above;
+  - the summary's last line adds `(<n> undone)` after the headroom count, and the GPU floors' times are separated by
+    commas like the CPU's.
+- **Tests**: `clocks-units` first fails on the new cases, then passes:
+  - a step down to 1800, then a late flip at 40% within 5 s: back to 1992, the GPU's floor at 200, a late flip within
+    300 ms after it ignored; 1800 banned 30 s, then 60 s after failing again; a late flip 5.5 s after a step down
+    raises the GPU as before; the log has two `late after a step down` steps and `headroom 3 (2 undone)`;
+  - a step down, then a second running slow at 40%: back up, the GPU's floor at 200;
+  - the memory: 1104 stepped up to once, then 15 s at 408: `cpu 1104000`; 23 s on the way down from the top: the
+    clock it ended on, `cpu 1104000`; a memory of 816 and 3 s with no step: `cpu 816000`;
+  - the fast-forward and stop cases' memories change with the rule (816000 and 1800000), and the GPU floors' times
+    line has its commas;
+  - the GPU hold-doubling case starts from a memory of 408 MHz, so the CPU, at its lowest from 5 s on, takes no step
+    down near its late flips.
+
+  `make retroarch-dirclean-rgds-plus`, `make retroarch-rgds-plus`: both patches apply without fuzz, no new warning;
+  `kiwami/tests/ci.sh .buildroot`.
+- **Commit**: `Power scaling: a late frame right after a step down undoes it, and a game remembers the clock it needed`
+
+### 8. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
 - The fork's tests in `kiwami/tests/`, among them `clocks-units`, `clocks.sh`, `power-scaling-ui.sh` and
@@ -450,7 +485,7 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 | Test | Where | What it checks | Criteria |
 |---|---|---|---|
 | clocks-units | `kiwami/tests/clocks-units.c` (from `ci.sh`) | `0101` applies to an empty folder; the governor in C89 against made-up cpufreq/devfreq: start and memory, CPU up/down/ban, 50 Hz pacing, GPU attribution, fast-forward with and without a limit, holds and stalls, stop and its files, no cpufreq | A4, A5, A6, A7, A8, A9, A10 |
-| retroarch build | `make retroarch-dirclean-rgds-plus`, `make retroarch-rgds-plus` (steps 2, 6, 7) | both patches apply without fuzz; RetroArch builds | A4 |
+| retroarch build | `make retroarch-dirclean-rgds-plus`, `make retroarch-rgds-plus` (steps 2, 6, 7, 8) | both patches apply without fuzz; RetroArch builds | A4 |
 | retroarch-pin | `kiwami/tests/retroarch-pin.sh` (from `ci.sh`) | the patch step's folder is still the fork's | A4 |
 | clocks | `kiwami/tests/clocks.sh` (from `ci.sh`) | the launch script off, on, N64, no devfreq; the hook's place in `run-retroarch` | A2, A3 |
 | power-scaling-ui | `kiwami/tests/power-scaling-ui.sh` (from `ci.sh`) | the row after Frontend, Off, A writes on, at both sizes | A1 |
@@ -470,7 +505,7 @@ over SSH before quitting the next game or turning off. Each RetroArch game's `ki
 |---|---|---|---|---|---|---|
 | M1 | rgds-plus | Power scaling **off**. Play a SNES game and a GBA game (Frontend Auto: BananaFront) 2 min each. | Play as today; the strip shows `Performance 1992 MHz` (SNES) and `Balanced <MHz>` (GBA, moving); no `kiwami-clocks.log` written; `bananafront.log` has the floor's `cpugov: clock floor`. | `banana-ui.log` (`panel clocks:` lines), `bananafront.log`, `ls /data/banana/logs` | A2, A12 | not run |
 | M2 | rgds-plus | Frontend set to RetroArch. A heavy `powersave` game (a Mega Drive or NES stress scene, or a known heavy game) for 5 min. | No visible slowdown; the log shows steps above 1416 MHz where needed, few late frames after the first seconds. | `kiwami-clocks.log`, `retroarch.log` | A4, A5, A13 | not run |
-| M3 | rgds-plus | A SNES game (Snes9x in RetroArch) for 10 min of play. | Smooth; the summary shows most time under 1992 MHz; the strip shows `Auto <MHz>` changing. | `kiwami-clocks.log`, `banana-ui.log` | A5, A12, A13 | failed (2026-11-17, 0.5.3.4 from `07a68068`): stutters at the three "running slow" steps; fixed in step 6, to run again |
+| M3 | rgds-plus | A SNES game (Snes9x in RetroArch) for 10 min of play. | Smooth; the summary shows most time under 1992 MHz; the strip shows `Auto <MHz>` changing. | `kiwami-clocks.log`, `banana-ui.log` | A5, A12, A13 | failed (2026-11-17, 0.5.3.4 from `07a68068`): stutters at the three "running slow" steps; fixed in step 6. Failed again (2026-11-18, 0.5.3.4 from `bcb1581f`): hitches after each step down to 816 MHz, blamed on the GPU; fixed in step 7, to run again |
 | M4 | rgds-plus | A PlayStation game for 10 min (a 3D scene and a menu). | Smooth, sound without drop-outs; summary as M3. | `kiwami-clocks.log`, `retroarch.log` | A5, A13 | not run |
 | M5 | rgds-plus | A PAL (50 Hz) game in RetroArch for 5 min. | Plays at its speed; the log's fps 50; the clock doesn't climb to the top for pacing. | `kiwami-clocks.log` | A5, A13 | not run |
 | M6 | rgds-plus | In a RetroArch game: RetroArch's menu > Settings > Frame Throttle > Fast-Forward Rate 3.0x; fast-forward (R2 or the panel's Fast) 30 s; off; then Rate 0 (unlimited), 30 s; off. | At 3.0x the clock climbs only until ~300% (the log's fast-forward steps stop); unlimited: the top clock at once; each time, after it, the clock from before. | `kiwami-clocks.log` | A7 | not run |
@@ -494,6 +529,16 @@ Notes from the runs (what the logs showed, what was fixed):
   60.17 Hz made `ceil(period/refresh)` 2, so no flip short of 41.5 ms was late and a single missed refresh never
   counted, leaving only "running slow", which needs a whole second's stutter; and the 30 s hold dropped a floor the
   game still needed. Fixed in step 6.
+- **M3, 2026-11-18** (0.5.3.4 built from `bcb1581f`; Super Star Wars (USA) (Rev 1) in Snes9x, 6 min, not 10). Step 6
+  worked: the start line says `(the panel's rate)`, the 6 GPU raises are all `late flip`, none `running slow`; the
+  hold doubled at 347.8 s (2.3 s after a drop) and stayed 30 s at 71.6 s (14 s after one); 121 s at 1104 MHz with the
+  floor at 200 MHz had no late frame. The user saw hitches at the late flips. Both CPU steps down to 816 MHz were
+  followed by late flips blamed on the GPU: 25.3 s down, 27.6 s floor 200 -> 300, 30.4 s CPU back up (late frame);
+  223.0 s down, 223.1 s floor 200 -> 300, 237.5 s -> 400, 255.5 s -> 600, 257.0 s CPU back up. The work fitted 65% at
+  816 MHz, but with the GPU's pass in the same period the frames ran over, while the work alone stayed under 80%; the
+  floor then spent 78 s at 400-600 MHz coming down. `cpu 1104000` remembered. The GPU floors' summary line had no
+  commas. In the same session, Comix Zone (USA) in Genesis Plus GX ran 23 s only (not M2): down 1992 -> 1104 MHz,
+  nothing late, but `cpu 1608000` remembered, one of four clocks held 5.1 s each. Fixed in step 7.
 
 ## Deviations
 
@@ -532,6 +577,15 @@ Where the implementation turned out different from this plan, why, and what chan
   final check becomes step 7. Writing the tests also showed that a core a little over the panel's rate was judged
   "running slow" against its own period every second; the same change fixes it.
 
+- **2026-11-18, M3 again: a second fix step before the final check.** M3's second log showed a CPU step down to a
+  clock where the work still fitted 65% but the GPU's pass no longer did, each late flip blamed on the GPU (its floor up
+  to 600 MHz) until a late frame put the CPU back. Agreed with the user: a late frame within 5 s of a step down with
+  the work under 80% undoes that step and bans the clock (A5, A6 reworded). The same log's short Comix Zone session
+  remembered an arbitrary clock of its descent; agreed with the user, the CPU's memory becomes the highest clock the
+  game was stepped up to, or the one it ended on (A9 reworded). Step 7 fixes both; the final check becomes step 8. The
+  GPU hold-doubling unit test now starts with the CPU at its lowest clock, since under the new rule its late flips
+  fell within 5 s of the CPU's background steps down.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
@@ -544,4 +598,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 4. The strip: the mode and the CPU clock | done | Power scaling: the game panel's status shows the clocks' mode and the CPU clock |
 | 5. The docs | done | Power scaling: what a merge of upstream re-reads for it |
 | 6. Fix: one missed refresh is late, and the GPU floor's hold grows | done | Power scaling: one missed refresh is a late frame, and the GPU floor's hold grows when it's still needed |
-| 7. Final check | todo | |
+| 7. Fix: a late frame right after a step down is the CPU's, and the memory keeps the clock the game needed | done | Power scaling: a late frame right after a step down undoes it, and a game remembers the clock it needed |
+| 8. Final check | todo | |

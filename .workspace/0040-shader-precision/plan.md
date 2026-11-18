@@ -56,7 +56,9 @@ The approach chosen in the investigation and confirmed here:
   fragment stage defines `COMPAT_PRECISION highp`. There, the vertex stage's `#define COMPAT_PRECISION mediump`
   lines say `highp` and nothing else differs. At `ce9a4124` that is exactly the four shaders above.
 - **A2**: given the option on, every `.glsl` passes the checker. Both stages preprocess, and no uniform declared in
-  both has two precisions. The count is 0 preprocessor errors and 0 mismatches over 684 shaders.
+  both has two precisions. The count is 0 preprocessor errors and 0 mismatches over 684 shaders, beyond the faults
+  already in libretro's own sources that `kiwami/tests/glsl-known.txt` lists: at `ce9a4124`, `gpu/shaders/powervr2.glsl`'s
+  `FrameCount` and `FrameDirection` (*Deviations*). A listed fault no longer found fails the check too.
 - **A3**: given the option off, the shaders are what upstream's install makes (the hook doesn't run), and the checker
   fails on them (the bug reproduced). If it passes, CI fails, saying upstream's shaders pass now.
 - **A4**: the checker reports a redefined `COMPAT_PRECISION` as a preprocessor error, and a uniform at `highp` in one
@@ -117,11 +119,14 @@ unaffected: no banana-ui change).
 - **Change**:
   - `kiwami/tests/glsl-precision.py`, header comment in `image-compare.py`'s style:
     ```
-    glsl-precision.py <shaders dir>   each .glsl's two stages as RetroArch compiles them on GLES 3, preprocessed by
-                                      glslangValidator: exit 1 on a preprocessor error or a uniform both stages
-                                      declare at two precisions
+    glsl-precision.py [--known <file>] <shaders dir>   each .glsl's two stages as RetroArch compiles them on GLES 3,
+                                      preprocessed by glslangValidator: exit 1 on a preprocessor error or a uniform
+                                      both stages declare at two precisions
     glsl-precision.py --self-test     the same on made-up shaders
     ```
+    - **`--known <file>`** (added, *Deviations*): faults already in libretro's own sources, one `<path>: <uniform or
+      stage>` per line, `#` comments. A fault starting with a listed line is printed as `known: ...` and not counted;
+      a listed line matching no fault is printed as `<line>: known, but no longer found` and fails the check.
     - **For each `*.glsl`** under the folder (sorted) and each stage, the assembled source, as in *Decided while
       planning*:
       - `#pragma parameter` lines blanked.
@@ -142,8 +147,9 @@ unaffected: no banana-ui change).
         is reported as `none`.
     - **A mismatch** is a uniform declared in both stages with two precisions. It is reported as
       `<path>: <name>: vertex <q>, fragment <q> (GLSL ES <1.00|3.00>)`.
-    - **Output**: one line per fault, then `glsl-precision: <n> shaders, <e> preprocessor errors, <m> precision
-      mismatches`. Exit 0 when both are 0, 1 otherwise, 2 with no `glslangValidator` (saying to install
+    - **Output**: one line per fault, then `glsl-precision: <n> shaders, <e> with a preprocessor error, <m> with a
+      precision mismatch` (shaders counted, not faults), with `, <k> known faults excused, <g> no longer found` under
+      `--known`. Exit 0 when all are 0, 1 otherwise, 2 with no `glslangValidator` (saying to install
       `glslang-tools`) or no shader in the folder.
     - **Speed**: the files run in parallel (a thread pool of `os.cpu_count()` workers, since the work is in the
       subprocesses).
@@ -158,6 +164,12 @@ unaffected: no banana-ui change).
       - a vertex uniform with no qualifier (`highp` by default) against a fragment one under
         `precision mediump float;` → a mismatch;
       - `uniform vec2 a, b;` in both stages, one side at another precision → both names reported;
+      - `uniform int FrameCount;` in both stages, no qualifier → a mismatch, `highp` against `mediump` (powervr2's
+        case);
+      - the version mapping (110, 120 → `100`; 329 → `300 es`; 330 → `310 es`; 400 → `320 es`);
+      - `--known`: both faults of a shader listed → excused; one of two listed → the other still counted; a listed
+        fault not there → no longer found; a listed preprocessor error → excused; the list's comments and blank
+        lines skipped;
       - a `#pragma parameter` with `"` in it, and a comment before `#version` → pass (both stripped as RetroArch
         strips them);
       - an empty folder → exit 2.
@@ -177,15 +189,17 @@ unaffected: no banana-ui change).
 - **Tests**: `python3 -I kiwami/tests/glsl-precision.py --self-test`; `kiwami/tests/ci.sh .buildroot`. By hand, as a
   sanity check: on `output/rgds-plus/target/usr/share/libretro/shaders/glsl` (upstream's rewrite) it exits 1 with
   about 120 preprocessor errors and about 500 mismatches (the issue's 122 and 504). On the extracted sources it
-  reports only the four shaders' mismatches. The numbers go in the step's overview, not in a test.
+  reports only the four shaders' mismatches (found: five, *Deviations*). The numbers go in the step's overview, not
+  in a test.
 - **Commit**: `Shader precision: a checker for the GLSL shaders' two stages, as RetroArch compiles them`
 
 ### 2. The shaders as libretro wrote them, the vertex stage at highp only where the fragment's is
 
 - **Files**: `kiwami/glsl-shaders.mk` (new), `kiwami/glsl-shaders.sh` (new), `kiwami/external.mk` (changed),
   `kiwami/Config.in` (changed), `kiwami/configs/kiwami.fragment` (changed), `kiwami/tests/glsl-shaders-shim.mk`
-  (new), `kiwami/tests/glsl-shaders.sh` (new), `kiwami/tests/ci.sh` (changed), `kiwami/DEPENDENCIES.md` (changed),
-  `docs/FORK.md` (changed), `.workspace/0040-shader-precision/plan.md` (changed: Progress).
+  (new), `kiwami/tests/glsl-shaders.sh` (new), `kiwami/tests/glsl-known.txt` (new), `kiwami/tests/ci.sh` (changed),
+  `kiwami/DEPENDENCIES.md` (changed), `docs/FORK.md` (changed), `.workspace/0040-shader-precision/plan.md` (changed:
+  Progress).
 - **Change**:
   - `kiwami/Config.in`, after `BR2_PACKAGE_KIWAMI_RETROARCH_MASTER`:
     ```
@@ -248,7 +262,8 @@ unaffected: no banana-ui change).
       1. **Off**: the shim without the option into `$T/off`. Then `glsl-precision.py` on it must exit 1. If it exits
          0: `glsl-shaders: upstream's shaders pass the check: see whether the fork's hook is still needed
          (docs/FORK.md)`, exit 1.
-      2. **On**: the shim with the option into `$T/on`. `glsl-precision.py` on it must exit 0.
+      2. **On**: the shim with the option into `$T/on`. `glsl-precision.py --known kiwami/tests/glsl-known.txt` on it
+         must exit 0.
       3. **On against the source**: every `.glsl` in `$T/on` equals the source's (`cmp`), except those
          `glsl-shaders.sh` named. Each of those has a fragment stage defining `COMPAT_PRECISION highp`, and differs
          from the source only in lines that read `#define COMPAT_PRECISION mediump` in the source and `highp` in
@@ -257,7 +272,12 @@ unaffected: no banana-ui change).
          excluding `*.glsl`).
       5. **A file missing**: with one installed `.glsl` removed from a copy of `$T/on`, `kiwami/glsl-shaders.sh` exits
          1 and names it.
-    - **With `--output`**, it runs `glsl-precision.py` on `<output>/target/usr/share/libretro/shaders/glsl` only.
+    - **With `--output`**, it runs `glsl-precision.py --known kiwami/tests/glsl-known.txt` on
+      `<output>/target/usr/share/libretro/shaders/glsl` only.
+  - `kiwami/tests/glsl-known.txt` (added, *Deviations*): the known faults of libretro's sources at the pin, each with
+    why. Today `gpu/shaders/powervr2.glsl: FrameCount` and `: FrameDirection`, declared `uniform int` without a
+    precision in both stages, so `highp` by default in the vertex stage and `mediump` in the fragment stage. Neither
+    upstream's rewrite nor the fork's rule touches them. M2 shows what Panfrost does with them.
     - It ends with `glsl-shaders: upstream's <e> errors and <m> mismatches, the fork's none (<k> vertex stages
       raised)`, or with the output's summary.
   - `kiwami/tests/ci.sh`: replaces step 1's self-test block with the self-test followed by `kiwami/tests/glsl-shaders.sh
@@ -311,9 +331,9 @@ unaffected: no banana-ui change).
 
 | Test | Where | What it checks | Criteria |
 |---|---|---|---|
-| The checker's self-test | `kiwami/tests/glsl-precision.py --self-test` (run by `ci.sh`) | Made-up shaders: the version mapping and stripping, the defines, a redefined macro, mismatches at ES 1.00 and 3.00, default precisions, several declarators, clean shaders passing, an empty folder | A4 |
+| The checker's self-test | `kiwami/tests/glsl-precision.py --self-test` (run by `ci.sh`) | Made-up shaders: the version mapping and stripping, the defines, a redefined macro, mismatches at ES 1.00 and 3.00, default precisions (`float` and `int`), several declarators, clean shaders passing, `--known`'s excused and gone faults, an empty folder | A4 |
 | Upstream's install | `kiwami/tests/glsl-shaders.sh` (run by `ci.sh`), the off half | The pinned shaders through upstream's real install fail the check. If they pass, CI says upstream may have fixed it | A3 |
-| The fork's hook | `kiwami/tests/glsl-shaders.sh`, the on half | The same shaders, with the hook, pass the check. Every `.glsl` is libretro's but the raised vertex lines, only in shaders whose fragment stage is `highp`. Other files are as upstream installs them. A missing file stops the hook | A1, A2, A5 |
+| The fork's hook | `kiwami/tests/glsl-shaders.sh`, the on half | The same shaders, with the hook, pass the check (`glsl-known.txt`'s faults excused, each still found). Every `.glsl` is libretro's but the raised vertex lines, only in shaders whose fragment stage is `highp`. Other files are as upstream installs them. A missing file stops the hook | A1, A2, A5 |
 | The boards' configuration | `kiwami/tests/ci.sh` (its existing configure of every board) | The new option survives on `rgds`, `rgds-plus`, `universal`, and `rgds_plus` with `KIWAMI_SERIAL=1` | A6 |
 | The image | `kiwami/tests/glsl-shaders.sh --output output/rgds-plus` (final check) | The built image's shaders pass the check (the include line read, the package reinstalled) | A1, A2 |
 | The hooks | `git diff --stat main...HEAD`, `git grep -n 'kiwami:'` (final check) | Only the fork's CI step changed among upstream's files | A10 |
@@ -332,7 +352,7 @@ on Settings > On-Screen Display > Notifications > Show FPS (Display Framerate) f
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
 | M1 | rgds-plus | **Before installing the new image**, on the current one: Settings > Other systems > Picture & sound > Shader *LCD*, start a GBA game, look, quit. **After installing it** (update package, same card): start the same game without touching Settings. Then set *Sharp*, start it, quit; then *CRT*, start it, quit. | Before: no LCD grid, "Failed to compile shader" (the bug, and the card's setting as an older image left it). After: the LCD grid, then sharp scaling, then scanlines, each with no failure message | `retroarch.log` after each of the four runs (`retroarch-M1-before.log`, `-lcd.log`, `-sharp.log`, `-crt.log`) | A7 | not run |
-| M2 | rgds-plus | With Shader *Off* in Settings, start a GBA game. In Quick Menu > Shaders > Load Preset (from `/usr/share/libretro/shaders/glsl`), load in turn `handheld/pixel_transparency.glslp`, `crt/fakelottes.glslp`, `nearest.glslp`, `handheld/gba-color.glslp`, `xbr/xbr-lv2.glslp`, `crt/zfast_crt_nogeo_svideo.glslp`, `interpolation/pixellate.glslp`, going back to the game after each. | Each loads with no "Failed to compile shader", and the picture changes as the shader should (`nearest` is plain, `gba-color` changes the colours). | `retroarch.log` after quitting (one run, all seven loads in it: `retroarch-M2.log`) | A8, A9 | not run |
+| M2 | rgds-plus | With Shader *Off* in Settings, start a GBA game. In Quick Menu > Shaders > Load Preset (from `/usr/share/libretro/shaders/glsl`), load in turn `handheld/pixel_transparency.glslp`, `crt/fakelottes.glslp`, `nearest.glslp`, `handheld/gba-color.glslp`, `xbr/xbr-lv2.glslp`, `crt/zfast_crt_nogeo_svideo.glslp`, `interpolation/pixellate.glslp`, going back to the game after each. Last, `gpu/powervr2.glslp` (libretro's own int mismatch, `glsl-known.txt`). | Each of the seven loads with no "Failed to compile shader", and the picture changes as the shader should (`nearest` is plain, `gba-color` changes the colours). `powervr2`: noted either way. If it fails, its `[GLSL]` lines say why, and fixing it is a follow-up outside this feature. | `retroarch.log` after quitting (one run, all eight loads in it: `retroarch-M2.log`) | A8, A9 | not run |
 | M3 | rgds-plus | With Show FPS on, in a GBA game: `crt/zfast_crt_nogeo_svideo.glslp` loaded, play a minute; then Settings' *LCD* (M1's), play a minute. | 60 fps (or the game's rate) with each, as `d1c7383b` measured for zfast_crt_nogeo_svideo | The fps seen; `retroarch.log` (`retroarch-M3.log`) | A9 | not run |
 
 Notes from the runs (what the logs showed, what was fixed):
@@ -341,12 +361,25 @@ Notes from the runs (what the logs showed, what was fixed):
 
 Where the implementation turned out different from this plan, why, and what changed (dated).
 
+- **2026-11-18, step 1: a fifth mismatched shader in libretro's own sources, excused by a known list.** The checker
+  finds upstream's image as the issue did (122 shaders with a preprocessor error, 504 with a mismatch). On the
+  original sources it finds the four shaders `d1c7383b` was for, and also `gpu/shaders/powervr2.glsl`. That shader
+  declares `uniform int FrameDirection; uniform int FrameCount;` without a precision in both stages. An `int`'s
+  default is `highp` in a vertex stage and `mediump` in a fragment stage, so the two disagree. The issue's check
+  didn't model `int`'s defaults. The fault is libretro's, not upstream's rewrite's, and the rule (which changes only
+  `COMPAT_PRECISION`) doesn't touch it. Decided with the user:
+  - the checker gets `--known <file>`; the fault is listed in `kiwami/tests/glsl-known.txt` (step 2), and a listed
+    fault that disappears fails the check, so a pin bump that fixes it is noticed;
+  - `gpu/powervr2.glslp` is loaded in M2 to see what Panfrost does with it, and a fix, if one is needed, is a
+    follow-up.
+  A2 and steps 1 and 2 are updated to match.
+
 ## Progress
 
 A step is marked done in its own commit, so the commit column holds the subject (a commit can't carry its own hash).
 
 | Step | Status | Commit |
 |---|---|---|
-| 1. A checker for the shaders' two stages | todo | |
+| 1. A checker for the shaders' two stages | done | `Shader precision: a checker for the GLSL shaders' two stages, as RetroArch compiles them` |
 | 2. The shaders as libretro wrote them, the vertex stage at highp only where the fragment's is | todo | |
 | 3. Final check | todo | |

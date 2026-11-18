@@ -99,6 +99,15 @@ else
     echo "deps-audit: skipped, no cc or readelf"
 fi
 
+# the check of RetroArch's GLSL shaders (kiwami/tests/glsl-precision.py), each .glsl's two stages as RetroArch compiles
+# them on GLES 3, on made-up shaders: a macro defined twice, uniforms at two precisions (GLSL ES 1.00 and 3.00, declared
+# or by default), the version mapping, known faults excused and gone
+if command -v glslangValidator >/dev/null; then
+    python3 -I kiwami/tests/glsl-precision.py --self-test
+else
+    echo "glsl-precision: skipped, no glslangValidator (glslang-tools)"
+fi
+
 # the Game Boy Pokémon companion's data (kiwami/GB-POKEMON.md): the extraction scripts' committed outputs as SOURCES
 # records them (neither PokeDaisy nor pret nor the ROMs needed), every value gbpk-symbols.txt asks for answered, the
 # port's methods on made-up ROMs, and each data file a gb-pokemon-ram file whose addresses are all WRAM or HRAM,

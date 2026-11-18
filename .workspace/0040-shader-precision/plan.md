@@ -77,7 +77,7 @@ The approach chosen in the investigation and confirmed here:
   - `crt/fakelottes.glslp` (declared only in the vertex stage)
   - `nearest.glslp` (`stock.glsl`)
   - `handheld/gba-color.glslp` (the preprocessor group)
-  - `xbr/xbr-lv2.glslp` (GLSL ES 3.00)
+  - `xbr/xbr-lv3.glslp` (GLSL ES 3.00; xbr-lv2 at first, *Deviations*)
 - **A9**: `crt/zfast_crt_nogeo_svideo.glslp` and `interpolation/pixellate.glslp`, which `d1c7383b` fixed, still load,
   and a GBA game keeps 60 fps with `zfast_crt_nogeo_svideo` and with *LCD*.
 - **A10**: no upstream file changes but the fork's CI step (its `kiwami:` line), and nothing in the vendored or synced
@@ -350,16 +350,42 @@ hand: every test runs on it, and the RG DS isn't tested.
 
 RetroArch's log is `/run/banana/retroarch.log`. It is in RAM, written with `--verbose`, and replaced when the next
 game starts (`run-retroarch:375-380`). Copy it over SSH right after quitting each game, before starting another, named
-after the test (`retroarch-M1-lcd.log`, ...). The lines to look at are `[GLSL]` and any `Failed`. In RetroArch, turn
+after the test (`retroarch-M1-lcd.log`, ...), with `scp -O root@<handheld>:/run/banana/retroarch.log <name>` or `ssh
+root@<handheld> cat /run/banana/retroarch.log > <name>` (the image's dropbear has no SFTP server, which a plain `scp`
+needs). The lines to look at are `[GLSL]` and any `Failed`. In RetroArch, turn
 on Settings > On-Screen Display > Notifications > Show FPS (Display Framerate) for M3.
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | **Before installing the new image**, on the current one: Settings > Other systems > Picture & sound > Shader *LCD*, start a GBA game, look, quit. **After installing it** (update package, same card): start the same game without touching Settings. Then set *Sharp*, start it, quit; then *CRT*, start it, quit. | Before: no LCD grid, "Failed to compile shader" (the bug, and the card's setting as an older image left it). After: the LCD grid, then sharp scaling, then scanlines, each with no failure message | `retroarch.log` after each of the four runs (`retroarch-M1-before.log`, `-lcd.log`, `-sharp.log`, `-crt.log`) | A7 | not run |
-| M2 | rgds-plus | With Shader *Off* in Settings, start a GBA game. In Quick Menu > Shaders > Load Preset (from `/usr/share/libretro/shaders/glsl`), load in turn `handheld/pixel_transparency.glslp`, `crt/fakelottes.glslp`, `nearest.glslp`, `handheld/gba-color.glslp`, `xbr/xbr-lv2.glslp`, `crt/zfast_crt_nogeo_svideo.glslp`, `interpolation/pixellate.glslp`, going back to the game after each. Last, `gpu/powervr2.glslp` (libretro's own int mismatch, `glsl-known.txt`). | Each of the seven loads with no "Failed to compile shader", and the picture changes as the shader should (`nearest` is plain, `gba-color` changes the colours). `powervr2`: noted either way. If it fails, its `[GLSL]` lines say why, and fixing it is a follow-up outside this feature. | `retroarch.log` after quitting (one run, all eight loads in it: `retroarch-M2.log`) | A8, A9 | not run |
-| M3 | rgds-plus | With Show FPS on, in a GBA game: `crt/zfast_crt_nogeo_svideo.glslp` loaded, play a minute; then Settings' *LCD* (M1's), play a minute. | 60 fps (or the game's rate) with each, as `d1c7383b` measured for zfast_crt_nogeo_svideo | The fps seen; `retroarch.log` (`retroarch-M3.log`) | A9 | not run |
+| M1 | rgds-plus | **Before installing the new image**, on the current one: Settings > Other systems > Picture & sound > Shader *LCD*, start a GBA game, look, quit. **After installing it** (update package, same card): start the same game without touching Settings. Then set *Sharp*, start it, quit; then *CRT*, start it, quit. | Before: no LCD grid, "Failed to compile shader" (the bug, and the card's setting as an older image left it). After: the LCD grid, then sharp scaling, then scanlines, each with no failure message | `retroarch.log` after each of the four runs (`retroarch-M1-before.log`, `-lcd.log`, `-sharp.log`, `-crt.log`) | A7 | skipped (the user's choice; A7 rests on the host checks) |
+| M2 | rgds-plus | With Shader *Off* in Settings, start a GBA game. In Quick Menu > Shaders > Load Preset (from `/usr/share/libretro/shaders/glsl`), load in turn `handheld/pixel_transparency.glslp`, `crt/fakelottes.glslp`, `nearest.glslp`, `handheld/gba-color.glslp`, `xbr/xbr-lv2.glslp`, `crt/zfast_crt_nogeo_svideo.glslp`, `interpolation/pixellate.glslp`, going back to the game after each. Last, `gpu/powervr2.glslp` (libretro's own int mismatch, `glsl-known.txt`). | Each of the seven loads with no "Failed to compile shader", and the picture changes as the shader should (`nearest` is plain, `gba-color` changes the colours). `powervr2`: noted either way. If it fails, its `[GLSL]` lines say why, and fixing it is a follow-up outside this feature. | `retroarch.log` after quitting (one run, all eight loads in it: `retroarch-M2.log`) | A8, A9 | passed (xbr-lv3 for the GLSL ES 3.00 group; xbr-lv2 and powervr2 fail on libretro's own faults, *Deviations*) |
+| M3 | rgds-plus | With Show FPS on, in a GBA game: `crt/zfast_crt_nogeo_svideo.glslp` loaded, play a minute; then Settings' *LCD* (M1's), play a minute. | 60 fps (or the game's rate) with each, as `d1c7383b` measured for zfast_crt_nogeo_svideo | The fps seen; `retroarch.log` (`retroarch-M3.log`) | A9 | skipped (the user's choice; fps noted from M2) |
 
 Notes from the runs (what the logs showed, what was fixed):
+
+- 2026-11-18, image `banana-rgds-plus-0.5.3.4` built from `398ef8a6` (step 2), incrementally on the existing output
+  after `retroarch-glsl-shaders` was reinstalled. Its shaders pass `glsl-shaders.sh --output` (0 errors, 0
+  mismatches, powervr2's 2 known), and exactly the four raised shaders differ from libretro's. M2, run by the user in
+  mGBA with Castlevania: Aria of Sorrow, outcomes reported by the user, no logs passed back:
+  - `pixel_transparency`: loads, under 60 fps. It failed to compile before this feature; its drop shadow's blur is
+    marked "(impacts performance)" in its own parameters, so the cost is the shader's own.
+  - `fakelottes`, `nearest`, `gba-color`, `zfast_crt_nogeo_svideo`: load.
+  - `pixellate`: loads, the frame rate halves. Its file is byte for byte the one upstream's rewrite installed (the
+    vertex stage raised the same way), so this is how it ran before this feature too.
+  - `xbr-lv2`: fails to compile. `powervr2`: fails to compile.
+  Both failures are libretro's own GLES faults, the same in its sources, in upstream's rewrite and in ROCKNIX's copy:
+  glslang's full compile of the assembled stages rejects xbr-lv2's fragment stage at its `out vec4 FragColor;`,
+  which comes before `precision ... float;` ("type requires declaration of default precision qualifier", GLSL ES
+  3.00), and powervr2's at its `{ }` initializers (not in GLSL ES 1.00), not at the int precisions
+  `glsl-known.txt` lists. That compile agrees with all eight of the device's results. Across the image it rejects 220
+  of the 684 shaders (most for a non-constant global initializer, which Mesa may accept: an upper bound), for
+  reasons of libretro's own that neither upstream's rewrite nor this feature touches.
+  M1 and M3 were skipped by the user's choice.
+- 2026-11-18, the same image: `xbr/xbr-lv3.glslp` (GLSL ES 3.00) loads, its frame rate much lower (xBR level 3 is one
+  of the heaviest one-pass scalers: the shader's own cost). No log was needed. Fetching `retroarch.log` with `scp`
+  failed ("sh: /usr/libexec/sftp-server: not found"): the image's SSH server is dropbear, without an SFTP server, and
+  OpenSSH's `scp` uses SFTP by default. `scp -O` (the old SCP protocol, which dropbear's `scp` serves) or `ssh root@<handheld>
+  cat /run/banana/retroarch.log > <file>` fetch it; the instructions above are corrected.
 
 ## Deviations
 
@@ -390,6 +416,17 @@ Where the implementation turned out different from this plan, why, and what chan
   `output/rgds-plus/target/` is put together from those only by the image's build. So `glsl-shaders.sh --output`
   run after the package alone still saw upstream's shaders. Step 2 checks the per-package target instead (passed),
   and `--output` stays in the final check, after `make rgds-plus`.
+- **2026-11-18, final check: xbr-lv2 replaced by xbr-lv3 in A8; M1 and M3 skipped.** xbr-lv2 and powervr2 fail
+  to compile on the device for faults of libretro's own (M2's notes), which this feature was never going to fix:
+  the plan wrongly took xbr-lv2 for a shader only the precision mismatch stopped. Decided with the user: the GLSL
+  ES 3.00 group is tested with `xbr/xbr-lv3.glslp` (`#version 130`, one pass, accepted by glslang's full compile),
+  and the shaders that can't compile on GLES (220 by glslang's strict compile) are a follow-up issue, outside this
+  feature. The user skipped M1 (Settings' *LCD*, *Sharp*, *CRT*) and M3 (fps): A7 rests on the host checks
+  (`zfast_lcd`, `sharp-bilinear-simple` and `zfast_crt` pass the precision check and the strict compile) and A9's
+  frame rate on M2's notes, unmeasured. `make test`, `make -C ui` and bananad's `-Werror` build weren't run again:
+  nothing under `ui/` or `system/` changes on this branch (`git diff --stat kiwami...HEAD -- ui system` is empty),
+  and the full `kiwami/tests/ci.sh .buildroot` passed (exit 0), its headless banana-ui tests and `ui-objects.sh`
+  included.
 
 ## Progress
 
@@ -399,4 +436,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 |---|---|---|
 | 1. A checker for the shaders' two stages | done | `Shader precision: a checker for the GLSL shaders' two stages, as RetroArch compiles them` |
 | 2. The shaders as libretro wrote them, the vertex stage at highp only where the fragment's is | done | `Shader precision: RetroArch's GLSL shaders as libretro wrote them, the vertex stage at highp only where the fragment's is` |
-| 3. Final check | todo | |
+| 3. Final check | done | `Shader precision: the final check done` |

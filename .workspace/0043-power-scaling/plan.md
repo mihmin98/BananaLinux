@@ -599,21 +599,21 @@ over SSH before quitting the next game or turning off. Each RetroArch game's `ki
 
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
-| M1 | rgds-plus | Power scaling **off**. Play a SNES game and a GBA game (Frontend Auto: BananaFront) 2 min each. | Play as today; the strip shows `Performance 1992 MHz` (SNES) and `Balanced <MHz>` (GBA, moving); no `kiwami-clocks.log` written; `bananafront.log` has the floor's `cpugov: clock floor`. | `banana-ui.log` (`panel clocks:` lines), `bananafront.log`, `ls /data/banana/logs` | A2, A12 | not run |
+| M1 | rgds-plus | Power scaling **off**. Play a SNES game and a GBA game (Frontend Auto: BananaFront) 2 min each. | Play as today; the strip shows `Performance 1992 MHz` (SNES) and `Balanced <MHz>` (GBA, moving); no `kiwami-clocks.log` written; `bananafront.log` has the floor's `cpugov: clock floor`. | `banana-ui.log` (`panel clocks:` lines), `bananafront.log`, `ls /data/banana/logs` | A2, A12 | skipped (2026-11-18, the user's decision: the feature works well enough on M2, M3, M7, M10-M12) |
 | M2 | rgds-plus | Frontend set to RetroArch. A heavy `powersave` game (a Mega Drive or NES stress scene, or a known heavy game) for 5 min. | No visible slowdown; the log shows steps above 1416 MHz where needed, few late frames after the first seconds. | `kiwami-clocks.log`, `retroarch.log` | A4, A5, A13 | failed (2026-11-18, 0.5.3.4 from `c31b6991`): Mesen never stepped down from 1992 MHz in 184 s, nothing late; step 8 measures the work per core frame and logs the numbers. Failed again (2026-11-18, 0.5.3.4 from `b0c279cd`): one frame per update, but the main thread busy 90-100% of each period at 1992 MHz; step 10 steps down by trial with threaded video. Passed (2026-11-18, 0.5.3.4 from `56c2fe0e`): smooth, 209 of 233 s at 1608 MHz, 4 single late flips in the first 2 min |
 | M3 | rgds-plus | A SNES game (Snes9x in RetroArch) for 10 min of play. | Smooth; the summary shows most time under 1992 MHz; the strip shows `Auto <MHz>` changing. | `kiwami-clocks.log`, `banana-ui.log` | A5, A12, A13 | failed (2026-11-17, 0.5.3.4 from `07a68068`): stutters at the three "running slow" steps; fixed in step 6. Failed again (2026-11-18, 0.5.3.4 from `bcb1581f`): hitches after each step down to 816 MHz, blamed on the GPU; fixed in step 7. Passed (2026-11-18, 0.5.3.4 from `13b76988`): smooth, 300 of 308 s at 1104 MHz; the GPU's floor raised for nothing, fixed in step 9; the strip not checked in `banana-ui.log` |
-| M4 | rgds-plus | A PlayStation game for 10 min (a 3D scene and a menu). | Smooth, sound without drop-outs; summary as M3. | `kiwami-clocks.log`, `retroarch.log` | A5, A13 | not run |
-| M5 | rgds-plus | A PAL (50 Hz) game in RetroArch for 5 min. | Plays at its speed; the log's fps 50; the clock doesn't climb to the top for pacing. | `kiwami-clocks.log` | A5, A13 | not run |
-| M6 | rgds-plus | In a RetroArch game: RetroArch's menu > Settings > Frame Throttle > Fast-Forward Rate 3.0x; fast-forward (R2 or the panel's Fast) 30 s; off; then Rate 0 (unlimited), 30 s; off. | At 3.0x the clock climbs only until ~300% (the log's fast-forward steps stop); unlimited: the top clock at once; each time, after it, the clock from before. | `kiwami-clocks.log` | A7 | not run |
+| M4 | rgds-plus | A PlayStation game for 10 min (a 3D scene and a menu). | Smooth, sound without drop-outs; summary as M3. | `kiwami-clocks.log`, `retroarch.log` | A5, A13 | skipped (2026-11-18, the user's decision: the feature works well enough on M2, M3, M7, M10-M12) |
+| M5 | rgds-plus | A PAL (50 Hz) game in RetroArch for 5 min. | Plays at its speed; the log's fps 50; the clock doesn't climb to the top for pacing. | `kiwami-clocks.log` | A5, A13 | skipped (2026-11-18, the user's decision: the feature works well enough on M2, M3, M7, M10-M12) |
+| M6 | rgds-plus | In a RetroArch game: RetroArch's menu > Settings > Frame Throttle > Fast-Forward Rate 3.0x; fast-forward (R2 or the panel's Fast) 30 s; off; then Rate 0 (unlimited), 30 s; off. | At 3.0x the clock climbs only until ~300% (the log's fast-forward steps stop); unlimited: the top clock at once; each time, after it, the clock from before. | `kiwami-clocks.log` | A7 | skipped (2026-11-18, the user's decision: the feature works well enough on M2, M3, M7, M10-M12) |
 | M7 | rgds-plus | Settings > Other systems > Picture & sound > Shader `lcd`; a GBA game with Frontend RetroArch, 5 min. | Smooth; the log shows GPU floor steps (cause GPU) if the shader needs them, and no lasting stutter. | `kiwami-clocks.log` | A6, A13 | passed on the log (2026-11-18, 0.5.3.4 from `c31b6991`): the GPU's floor up to 400 MHz for the shader, its hold doubled; no lasting stutter |
-| M8 | rgds-plus | Frontend Auto; a GBA game (BananaFront) 5 min. | `bananafront.log`: `cpugov: on`; the strip `Auto <MHz>`. | `bananafront.log`, `banana-ui.log` | A3, A11, A12 | not run |
-| M9 | rgds-plus | An N64 game 2 min. | As before; the strip `Performance 1992 MHz`; no `kiwami: clocks: on` line in `banana-ui.log`. | `banana-ui.log` | A3 | not run |
+| M8 | rgds-plus | Frontend Auto; a GBA game (BananaFront) 5 min. | `bananafront.log`: `cpugov: on`; the strip `Auto <MHz>`. | `bananafront.log`, `banana-ui.log` | A3, A11, A12 | skipped (2026-11-18, the user's decision: the feature works well enough on M2, M3, M7, M10-M12) |
+| M9 | rgds-plus | An N64 game 2 min. | As before; the strip `Performance 1992 MHz`; no `kiwami: clocks: on` line in `banana-ui.log`. | `banana-ui.log` | A3 | skipped (2026-11-18, the user's decision: the feature works well enough on M2, M3, M7, M10-M12) |
 | M10 | rgds-plus | In M3's game: close the lid 2 min, open, play 1 min. | Play goes on; the log has no step at the resume (the gap dropped); the strip's clock read again at once. | `kiwami-clocks.log`, `banana-ui.log` (`after a sleep: panel clocks:`) | A8, A12, A13 | passed in part (2026-11-18, 0.5.3.4 from `13b76988`, in M3's game): play went on, no step around the lid; `banana-ui.log` not checked |
 | M11 | rgds-plus | In M3's game: RetroArch's menu (F) open for 30 s, then back. | No steps logged while it's open. | `kiwami-clocks.log` | A8, A13 | passed (2026-11-18, 0.5.3.4 from `c31b6991`, in M7's game): ~80 s of menu at the start, no step in it |
 | M12 | rgds-plus | Start M3's game again. | The start line says the remembered clock (one step above); `/data/banana/kiwami-clocks/<core>/<game>.clocks` exists. | `kiwami-clocks.log`, the `.clocks` file | A4, A9 | passed (2026-11-18, 0.5.3.4 from `13b76988`): `CPU 1416 MHz (a step above this game's)`, `GPU floor 200 MHz (this game's)`, from the first run's `cpu 1104000 gpu 200000000` |
-| M13 | rgds-plus | Photos of the strip in M3 and M8. | The label readable, apart from Wi-Fi and "Played". | photos | A12 | not run |
-| M14 | rgds-plus | Optional: the same SNES game 20 min with Power scaling off, then 20 min on, from a similar battery level, not charging. | Less battery used with it on. | the battery % at start and end of each; `kiwami-clocks.log` | A13 | not run |
-| M15 | QEMU | Optional: `tools/qemu-boot.sh` on the image with Power scaling on (set on the card), a NES game. | RetroArch runs; the log says `off, no cpufreq`. | the card's `banana/logs/kiwami-clocks.log` | A10 | not run |
+| M13 | rgds-plus | Photos of the strip in M3 and M8. | The label readable, apart from Wi-Fi and "Played". | photos | A12 | skipped (2026-11-18, the user's decision: the feature works well enough on M2, M3, M7, M10-M12) |
+| M14 | rgds-plus | Optional: the same SNES game 20 min with Power scaling off, then 20 min on, from a similar battery level, not charging. | Less battery used with it on. | the battery % at start and end of each; `kiwami-clocks.log` | A13 | skipped (2026-11-18, the user's decision: the feature works well enough on M2, M3, M7, M10-M12) |
+| M15 | QEMU | Optional: `tools/qemu-boot.sh` on the image with Power scaling on (set on the card), a NES game. | RetroArch runs; the log says `off, no cpufreq`. | the card's `banana/logs/kiwami-clocks.log` | A10 | skipped (2026-11-18, the user's decision: the feature works well enough on M2, M3, M7, M10-M12) |
 
 Notes from the runs (what the logs showed, what was fixed):
 
@@ -745,6 +745,23 @@ Where the implementation turned out different from this plan, why, and what chan
   judge the CPU by its work, and Power scaling held Mesen at the top clock (more power than with it off). Agreed with
   the user: with threaded video the CPU steps down by trial, undone by a late frame (A5 reworded). The glue passes
   whether threaded video is on. Step 10 does it; the final check becomes step 11.
+- **2026-11-18, step 11: the remaining manual tests skipped.** After M2 passed on `56c2fe0e`, the user chose to skip
+  M1, M4, M5, M6, M8, M9, M13, M14 and M15, and the `banana-ui.log` checks left in M3 (the strip's `Auto <MHz>`) and
+  M10 (`after a sleep: panel clocks:`), and to go to the merge. What that leaves unchecked on the device: the setting
+  off (A2, covered by `clocks.sh`), a PlayStation and a PAL game (A13), fast-forward (A7, covered by `clocks-units`),
+  BananaFront's `cpugov: on` (A11: only `clocks.sh`'s `BANANAFRONT_CPUGOV=1` and BananaFront's `main.c` at
+  `e6b8e47` reading it), N64 left alone (A3, covered by `clocks.sh`), the strip on the device (A12, covered by
+  `panelstatus-units` and `panel-status-ui`) and the battery saved. The final check's "manual tests all passed" is
+  read as: those run passed, the rest skipped.
+- **2026-11-18, step 11: the final check's renders.** `kiwami` (`2c650844`, the branch's base) was unpacked with
+  `git archive` into `/tmp` and its `ui/tests/run.sh` run there; its `make test` stopped at `banana-bshare`, which no
+  longer builds against the host's OpenSSL (`X509_get_subject_name` returns a `const X509_NAME*`), in a file this
+  feature doesn't touch (the branch's copy was built before the host's update). Of the 875 shots, 738 are the same
+  and 137 differ: the clock (status bars, `st-tz`, `states-sel`), `files-cards`' free space (`/tmp` against the
+  repository's disk), Bshare's random PIN, animations caught at another frame (`settings-page-bot`, `bt-audio-bot`,
+  `ndsoverlay`), PNGs with the same pixels; and Other systems' counter, `02 / 09` for `02 / 08` in `ux-ra-row` and
+  `ux-ra-back` at both sizes: the `Power scaling` row A1 adds, shown with the setting off. A14 is read as: with the
+  setting off nothing else on screen changes.
 
 ## Progress
 
@@ -762,4 +779,4 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 8. The log's numbers, and the work per core frame | done | Power scaling: the log gives the numbers behind each step, and the work is per core frame |
 | 9. The GPU's floor only for a busy GPU, and the swap's spacing in the log | done | Power scaling: the GPU's floor goes up only when the GPU is busy, and a late flip's line has its swap's spacing |
 | 10. With threaded video, the CPU steps down by trial | done | Power scaling: with threaded video the CPU steps down by trial, since its time isn't the core's work |
-| 11. Final check | todo | |
+| 11. Final check | done | Power scaling: the final check done |

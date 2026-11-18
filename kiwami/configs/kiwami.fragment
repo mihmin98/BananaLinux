@@ -18,6 +18,11 @@ BR2_PACKAGE_KIWAMI_LIBRETRO_GENESIS_PLUS_GX=y
 BR2_PACKAGE_KIWAMI_RETROARCH_MASTER=y
 BR2_PACKAGE_OVERRIDE_FILE="$(BR2_EXTERNAL_KIWAMI_PATH)/local.mk"
 
+# RetroArch's GLSL shaders as libretro wrote them: upstream's install puts every vertex stage at highp, which breaks
+# most of them (Settings' LCD and Sharp among them, "Failed to compile shader"); kiwami/glsl-shaders.mk puts the
+# sources back and raises only the vertex stages that need it. Off puts upstream's rewrite back.
+BR2_PACKAGE_KIWAMI_GLSL_SHADERS_PRECISION=y
+
 # Over-the-air updates off: upstream's releases would replace the fork (kiwami/rootfs/usr/libexec/kiwami/ota-off says
 # so on Settings > System > Update); the fork's update packages go on the card
 BR2_PACKAGE_KIWAMI_OTA_OFF=y

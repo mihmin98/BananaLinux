@@ -1,0 +1,9 @@
+# Faults already in libretro's own GLSL shaders at the commit upstream pins (RETROARCH_GLSL_SHADERS_VERSION), which
+# neither upstream's install nor the fork's hook (kiwami/glsl-shaders.sh) causes or fixes. glsl-precision.py --known
+# excuses each, and fails when one is no longer found: a newer pin fixed it, and its line goes.
+# One "<path>: <uniform>" (or "<path>: <stage> stage") per line.
+
+# powervr2 declares "uniform int FrameDirection;" and "uniform int FrameCount;" without a precision in both stages:
+# an int is highp by default in a vertex stage and mediump in a fragment stage
+gpu/shaders/powervr2.glsl: FrameCount
+gpu/shaders/powervr2.glsl: FrameDirection

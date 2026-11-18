@@ -130,6 +130,9 @@ are linked with the longer per-package staging path in their RPATH (Buildroot bl
 sections move by a few bytes. The comparison checks each such file as the same file linked again: every address in it
 moved with its section, and nothing else differs.
 
+`kiwami/external.mk` also includes `kiwami/glsl-shaders.mk`, the fork's hook on upstream's RetroArch shaders, in a file of
+its own so its test can run it outside Buildroot (*What the fork shadows*, below).
+
 `kiwami/tests/ci.sh <buildroot dir>` checks the fork's shell scripts and configures every board that way (and
 `rgds_plus` with `KIWAMI_SERIAL=1`); CI runs it after upstream's checks (one `kiwami:` step in
 `.github/workflows/ci.yml`), and `kiwami/tests/ci.sh .buildroot` runs it locally. `make savedefconfig-<board>` would
@@ -243,7 +246,7 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
        system/rootfs/usr/libexec/banana/ra-secrets buildroot/package/retroarch/retroarch.mk \
        buildroot/patches/retroarch/ system/rootfs/usr/libexec/banana/update ui/Makefile \
        ui/src/nds/ ui/src/gba/ ui/src/pokemon.h ui/src/pokemon.cpp ui/src/settings_gamepanel.cpp \
-       ui/rnds/RndsUI.cpp buildroot/package/bananafront/bananafront.mk
+       ui/rnds/RndsUI.cpp buildroot/package/bananafront/bananafront.mk buildroot/package/retroarch-glsl-shaders/
    ```
    (the systems list, whose N64 `ext` line `kiwami/post-build.sh` adds `7z` to (upstream lists it on the other six
    cartridge systems; the build stops if N64's line is gone; a new cartridge system without it may want it too), the defconfigs the fork adds to, the share script
@@ -270,7 +273,19 @@ runs as `git merge --no-ff --no-commit main`, so the resolutions, the fork's ada
    reaches the image. `kiwami/tests/ci.sh` stops when upstream's `RETROARCH_VERSION`, `RETROARCH_JOYPADS_VERSION` or
    patches differ from what the fork last checked, and what to do is in the comment above the stamps in
    `kiwami/tests/retroarch-pin.sh`; a download upstream adds to `RETROARCH_EXTRA_DOWNLOADS` needs its hash in the
-   fork's `kiwami/patches/retroarch/retroarch.hash`, or the download stops. And Power scaling (0043): its hook is the
+   fork's `kiwami/patches/retroarch/retroarch.hash`, or the download stops. And RetroArch's GLSL shaders (0040): with
+   `BR2_PACKAGE_KIWAMI_GLSL_SHADERS_PRECISION` on, `kiwami/glsl-shaders.mk` (included by `kiwami/external.mk`) adds a
+   post-install hook to upstream's `retroarch-glsl-shaders`, and `kiwami/glsl-shaders.sh` copies libretro's `.glsl`
+   files back over upstream's rewrite of every vertex stage to highp, raising only the vertex stages whose fragment
+   stage is highp and which have none of their own. No line of upstream's changes, so a change to its `.mk` (its
+   install, its `RETROARCH_GLSL_SHADERS_VERTEX_HIGHP`, its pin) is read here. `kiwami/tests/glsl-shaders.sh` runs
+   upstream's real install on the pinned shaders in CI, with and without the hook: it stops when upstream's install
+   copies a shader somewhere else, when the fork's shaders fail `kiwami/tests/glsl-precision.py`, and when upstream's
+   alone pass it ("upstream's shaders pass the check"). That last one means upstream fixed its rewrite: check that its
+   shaders pass on the device too (the plan's manual tests in `.workspace/0040-shader-precision/`), then drop the fork's
+   option, `glsl-shaders.mk`, `glsl-shaders.sh`, their tests and the include. A new pin can bring faults of libretro's
+   own, which the check names; those it can't fix are listed in `kiwami/tests/glsl-known.txt`, and a fixed one leaves
+   it. And Power scaling (0043): its hook is the
    line in `run-retroarch` right after `setting()`'s block and before the Frontend's dispatch, so BananaFront's games
    get it too, and the script it sources (`/usr/libexec/kiwami/clocks`) uses that `setting()`;
    `kiwami/tests/clocks.sh` stops if the line moves or `setting()` goes. Its row follows Frontend on Other systems

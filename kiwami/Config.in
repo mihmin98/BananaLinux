@@ -11,6 +11,14 @@ config BR2_PACKAGE_KIWAMI_RETROARCH_MASTER
 	  RetroArch built from its master branch at the commit kiwami/local.mk pins, with the fork's patches
 	  (kiwami/patches/retroarch/) instead of upstream's. Off, RetroArch is upstream's release.
 
+config BR2_PACKAGE_KIWAMI_GLSL_SHADERS_PRECISION
+	bool "RetroArch's GLSL shaders as libretro wrote them"
+	depends on BR2_PACKAGE_RETROARCH_GLSL_SHADERS
+	help
+	  The shaders in /usr/share/libretro/shaders/glsl as libretro wrote them, the vertex stage at highp only in a
+	  shader whose fragment stage is highp (kiwami/glsl-shaders.sh), instead of upstream's rewrite of every vertex
+	  stage, which most of them then fail to compile or link with. Off, upstream's.
+
 config BR2_PACKAGE_KIWAMI_OTA_OFF
 	bool "Over-the-air updates off"
 	help

@@ -5,7 +5,7 @@ Issue: #40 · Branch: `k/0040-shader-precision` · Investigation: [investigation
 ## Summary
 
 The image's libretro GLSL shaders go back to how libretro wrote them. The vertex stage is raised to `highp` only in a
-shader whose fragment stage defines `COMPAT_PRECISION highp`: today the four `d1c7383b` was for (zfast_crt_geo,
+shader whose fragment stage defines `COMPAT_PRECISION highp` and whose vertex stage defines no `highp` of its own: today the four `d1c7383b` was for (zfast_crt_geo,
 zfast_crt_geo_svideo, zfast_crt_nogeo_svideo, pixellate). The other 680 compile and link as they do under ROCKNIX,
 Settings' *LCD* and *Sharp* among them.
 
@@ -53,7 +53,7 @@ The approach chosen in the investigation and confirmed here:
 
 - **A1**: given a build with the option on, when the shaders are installed, then every `.glsl` in
   `/usr/share/libretro/shaders/glsl` is byte for byte libretro's at the pinned commit, except in a shader whose
-  fragment stage defines `COMPAT_PRECISION highp`. There, the vertex stage's `#define COMPAT_PRECISION mediump`
+  fragment stage defines `COMPAT_PRECISION highp` and whose vertex stage defines no `highp`. There, the vertex stage's `#define COMPAT_PRECISION mediump`
   lines say `highp` and nothing else differs. At `ce9a4124` that is exactly the four shaders above.
 - **A2**: given the option on, every `.glsl` passes the checker. Both stages preprocess, and no uniform declared in
   both has two precisions. The count is 0 preprocessor errors and 0 mismatches over 684 shaders, beyond the faults
@@ -236,8 +236,8 @@ unaffected: no banana-ui change).
       ```sh
       awk 'FNR == 1 { pass++; s = "" }
            /defined\(VERTEX\)/ { s = "v" }  /defined\(FRAGMENT\)/ { s = "f" }
-           pass == 1 && s == "f" && /^[ \t]*#[ \t]*define[ \t]+COMPAT_PRECISION[ \t]+highp/ { hi = 1 }
-           pass == 2 && hi && s == "v" && /^[ \t]*#[ \t]*define[ \t]+COMPAT_PRECISION[ \t]+mediump/ { print FNR }' "$f" "$f"
+           pass == 1 && /^[ \t]*#[ \t]*define[ \t]+COMPAT_PRECISION[ \t]+highp/ { if (s == "f") hi = 1; if (s == "v") vhi = 1 }
+           pass == 2 && hi && !vhi && s == "v" && /^[ \t]*#[ \t]*define[ \t]+COMPAT_PRECISION[ \t]+mediump/ { print FNR }' "$f" "$f"
       ```
     - Each line it prints gets `sed -i "<n>s/mediump/highp/"` in the installed copy (GNU sed keeps a missing final
       newline, so every other byte stays the source's).
@@ -265,7 +265,8 @@ unaffected: no banana-ui change).
       2. **On**: the shim with the option into `$T/on`. `glsl-precision.py --known kiwami/tests/glsl-known.txt` on it
          must exit 0.
       3. **On against the source**: every `.glsl` in `$T/on` equals the source's (`cmp`), except those
-         `glsl-shaders.sh` named. Each of those has a fragment stage defining `COMPAT_PRECISION highp`, and differs
+         `glsl-shaders.sh` named. Each of those has a fragment stage defining `COMPAT_PRECISION highp` and a vertex
+         stage defining none, and differs
          from the source only in lines that read `#define COMPAT_PRECISION mediump` in the source and `highp` in
          `$T/on` (`diff` of the two, every changed pair of that shape). At least one was named.
       4. **On against off**: every file but the `.glsl` ones (presets, textures) is the same in both (`diff -r`
@@ -302,9 +303,12 @@ unaffected: no banana-ui change).
     script it passes.
   - `kiwami/tests/ci.sh .buildroot` passes: `sh -n` on the new scripts, every board configured with the new option
     (A6), the checker's self-test and `glsl-shaders.sh`.
-  - By hand: `make retroarch-glsl-shaders-dirclean-rgds-plus retroarch-glsl-shaders-rgds-plus`, then
-    `kiwami/tests/glsl-shaders.sh --output output/rgds-plus` passes, and the build's log shows `glsl-shaders.sh`'s
-    line naming the four shaders. This checks `external.mk`'s include, which the shim doesn't read.
+  - By hand: `make retroarch-glsl-shaders-dirclean-rgds-plus`, then `make retroarch-glsl-shaders-rgds-plus`; the
+    build's log shows `glsl-shaders.sh`'s line naming the four shaders, and the package's own target
+    (`output/rgds-plus/per-package/retroarch-glsl-shaders/target/usr/share/libretro/shaders/glsl`) passes
+    `glsl-precision.py --known kiwami/tests/glsl-known.txt`. This checks `external.mk`'s include, which the shim
+    doesn't read. (`--output` reads `target/`, which per-package directories fill only when the image is built: it
+    belongs to the final check, *Deviations*.)
 - **Commit**: `Shader precision: RetroArch's GLSL shaders as libretro wrote them, the vertex stage at highp only where the fragment's is`
 
 ### 3. Final check
@@ -373,6 +377,19 @@ Where the implementation turned out different from this plan, why, and what chan
   - `gpu/powervr2.glslp` is loaded in M2 to see what Panfrost does with it, and a fix, if one is needed, is a
     follow-up.
   A2 and steps 1 and 2 are updated to match.
+- **2026-11-18, step 2: the rule raises a vertex stage only when it defines no `highp` of its own.** The planned rule
+  (the fragment stage defines `COMPAT_PRECISION highp` → raise the vertex stage's `mediump` lines) raised 17
+  shaders. 13 of them (`zfast_crt`, `zfast_crt_nogeo`, the nine `simpletex_lcd*`, `mix_frames` and
+  `mix_frames_smart`) already define `highp` in their vertex stage under `#ifdef GL_FRAGMENT_PRECISION_HIGH`, so they
+  match on the Mali-G52, and the rule changed only their dead `#else` line. Decided with the user: a vertex stage is
+  raised only when its fragment stage defines `highp` and it defines none itself. That is exactly the four shaders
+  (A1), and every other shader, Settings' *CRT* (`zfast_crt`) included, stays byte for byte libretro's. The test
+  checks both conditions for each raised shader. The summary, A1 and step 2's sketch are updated.
+- **2026-11-18, step 2: the by-hand check reads the package's per-package target.** With per-package directories,
+  `make retroarch-glsl-shaders-rgds-plus` installs into `per-package/retroarch-glsl-shaders/target/`, and
+  `output/rgds-plus/target/` is put together from those only by the image's build. So `glsl-shaders.sh --output`
+  run after the package alone still saw upstream's shaders. Step 2 checks the per-package target instead (passed),
+  and `--output` stays in the final check, after `make rgds-plus`.
 
 ## Progress
 
@@ -381,5 +398,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | Step | Status | Commit |
 |---|---|---|
 | 1. A checker for the shaders' two stages | done | `Shader precision: a checker for the GLSL shaders' two stages, as RetroArch compiles them` |
-| 2. The shaders as libretro wrote them, the vertex stage at highp only where the fragment's is | todo | |
+| 2. The shaders as libretro wrote them, the vertex stage at highp only where the fragment's is | done | `Shader precision: RetroArch's GLSL shaders as libretro wrote them, the vertex stage at highp only where the fragment's is` |
 | 3. Final check | todo | |

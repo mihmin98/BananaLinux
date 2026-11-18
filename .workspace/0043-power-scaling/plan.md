@@ -94,7 +94,9 @@ Decided while planning:
   The period is `1/fps`, so a 50 Hz game paced by its audio isn't judged late.
 - **A6**: Given a running game, when a flip comes later than the content's own spacing allows with that frame's CPU
   work under 80% of the period, or the game runs slow with its CPU work under 80%, and no step down of the CPU came in
-  the 5 s before (A5), then the GPU's floor goes up a step (never above its `max_freq`). The spacing:
+  the 5 s before (A5), then the GPU's floor goes up a step (never above its `max_freq`) when the GPU runs above its
+  floor (its `cur_freq`: its own governor found it busy), or its clock can't be read. With the GPU at its floor the late
+  frame is neither's: logged and counted, no clock changed. The spacing:
   - a core RetroArch runs at the panel's rate (within `audio_max_timing_skew` of it, or of a whole fraction of it,
     with vsync on, RetroArch's own test) is that many refreshes apart: one missed refresh is late (past 1.5 refreshes
     for a 60 fps core), and its period is the refreshes';
@@ -503,7 +505,31 @@ Each step is one commit, and leaves the tree building and `make test` passing.
   `kiwami/tests/ci.sh .buildroot`.
 - **Commit**: `Power scaling: the log gives the numbers behind each step, and the work is per core frame`
 
-### 9. Final check
+### 9. The GPU's floor only for a busy GPU, and the swap's spacing in the log
+
+- **Files**:
+  - `kiwami/patches/retroarch/0101-gfx-drm-kiwami-clocks-a-frame-driven-clock-governor.patch` (changed);
+  - `kiwami/tests/clocks-units.c` (changed).
+- **Change** (A6 reworded, *Deviations*):
+  - a late flip, or a second running slow, that would go to the GPU (the work under 80%, no step down just before)
+    reads the GPU's `cur_freq`: above the floor, or unreadable, the floor goes up as before; at the floor, it's
+    counted as neither's, and the GPU's hold isn't renewed by it;
+  - the summary's late frames add `neither <n> (late flip) <n> (running slow)`;
+  - a late flip's line gets the spacing of its frame's swap from the one before: `late flip 33.3 ms, swap gap 16.7 ms,
+    work 30%, ...`.
+- **Tests**: `clocks-units` first fails on the new cases, then passes:
+  - a late flip at 30% with the GPU's `cur_freq` at its floor: no floor raised, no CPU step, `neither 1 (late flip)`;
+    with `cur_freq` above the floor, the floor goes up;
+  - a second running slow at 30% with the GPU at its floor: no floor raised, `neither 0 (late flip) 1 (running
+    slow)`;
+  - the late flip lines' `swap gap`;
+  - the GPU case that reads `cur_freq` takes it away after its first late flip, so the rest runs as before (unknown).
+
+  `make retroarch-dirclean-rgds-plus`, `make retroarch-rgds-plus`: both patches apply without fuzz, no new warning;
+  `clocks-units` and `retroarch-pin` as `ci.sh` runs them.
+- **Commit**: `Power scaling: the GPU's floor goes up only when the GPU is busy, and a late flip's line has its swap's spacing`
+
+### 10. Final check
 
 - `make test`, `make -C ui`, `make -C system/bananad CFLAGS="-O2 -Werror"`, `kiwami/tests/ci.sh .buildroot`.
 - The fork's tests in `kiwami/tests/`, among them `clocks-units`, `clocks.sh`, `power-scaling-ui.sh` and
@@ -522,7 +548,7 @@ Each step is one commit, and leaves the tree building and `make test` passing.
 | Test | Where | What it checks | Criteria |
 |---|---|---|---|
 | clocks-units | `kiwami/tests/clocks-units.c` (from `ci.sh`) | `0101` applies to an empty folder; the governor in C89 against made-up cpufreq/devfreq: start and memory, CPU up/down/ban, 50 Hz pacing, GPU attribution, fast-forward with and without a limit, holds and stalls, stop and its files, no cpufreq | A4, A5, A6, A7, A8, A9, A10 |
-| retroarch build | `make retroarch-dirclean-rgds-plus`, `make retroarch-rgds-plus` (steps 2, 6, 7, 8, 9) | both patches apply without fuzz; RetroArch builds | A4 |
+| retroarch build | `make retroarch-dirclean-rgds-plus`, `make retroarch-rgds-plus` (steps 2, 6, 7, 8, 9, 10) | both patches apply without fuzz; RetroArch builds | A4 |
 | retroarch-pin | `kiwami/tests/retroarch-pin.sh` (from `ci.sh`) | the patch step's folder is still the fork's | A4 |
 | clocks | `kiwami/tests/clocks.sh` (from `ci.sh`) | the launch script off, on, N64, no devfreq; the hook's place in `run-retroarch` | A2, A3 |
 | power-scaling-ui | `kiwami/tests/power-scaling-ui.sh` (from `ci.sh`) | the row after Frontend, Off, A writes on, at both sizes | A1 |
@@ -542,16 +568,16 @@ over SSH before quitting the next game or turning off. Each RetroArch game's `ki
 |---|---|---|---|---|---|---|
 | M1 | rgds-plus | Power scaling **off**. Play a SNES game and a GBA game (Frontend Auto: BananaFront) 2 min each. | Play as today; the strip shows `Performance 1992 MHz` (SNES) and `Balanced <MHz>` (GBA, moving); no `kiwami-clocks.log` written; `bananafront.log` has the floor's `cpugov: clock floor`. | `banana-ui.log` (`panel clocks:` lines), `bananafront.log`, `ls /data/banana/logs` | A2, A12 | not run |
 | M2 | rgds-plus | Frontend set to RetroArch. A heavy `powersave` game (a Mega Drive or NES stress scene, or a known heavy game) for 5 min. | No visible slowdown; the log shows steps above 1416 MHz where needed, few late frames after the first seconds. | `kiwami-clocks.log`, `retroarch.log` | A4, A5, A13 | failed (2026-11-18, 0.5.3.4 from `c31b6991`): Mesen never stepped down from 1992 MHz in 184 s, nothing late; step 8 measures the work per core frame and logs the numbers, to run again |
-| M3 | rgds-plus | A SNES game (Snes9x in RetroArch) for 10 min of play. | Smooth; the summary shows most time under 1992 MHz; the strip shows `Auto <MHz>` changing. | `kiwami-clocks.log`, `banana-ui.log` | A5, A12, A13 | failed (2026-11-17, 0.5.3.4 from `07a68068`): stutters at the three "running slow" steps; fixed in step 6. Failed again (2026-11-18, 0.5.3.4 from `bcb1581f`): hitches after each step down to 816 MHz, blamed on the GPU; fixed in step 7, to run again |
+| M3 | rgds-plus | A SNES game (Snes9x in RetroArch) for 10 min of play. | Smooth; the summary shows most time under 1992 MHz; the strip shows `Auto <MHz>` changing. | `kiwami-clocks.log`, `banana-ui.log` | A5, A12, A13 | failed (2026-11-17, 0.5.3.4 from `07a68068`): stutters at the three "running slow" steps; fixed in step 6. Failed again (2026-11-18, 0.5.3.4 from `bcb1581f`): hitches after each step down to 816 MHz, blamed on the GPU; fixed in step 7. Passed (2026-11-18, 0.5.3.4 from `13b76988`): smooth, 300 of 308 s at 1104 MHz; the GPU's floor raised for nothing, fixed in step 9; the strip not checked in `banana-ui.log` |
 | M4 | rgds-plus | A PlayStation game for 10 min (a 3D scene and a menu). | Smooth, sound without drop-outs; summary as M3. | `kiwami-clocks.log`, `retroarch.log` | A5, A13 | not run |
 | M5 | rgds-plus | A PAL (50 Hz) game in RetroArch for 5 min. | Plays at its speed; the log's fps 50; the clock doesn't climb to the top for pacing. | `kiwami-clocks.log` | A5, A13 | not run |
 | M6 | rgds-plus | In a RetroArch game: RetroArch's menu > Settings > Frame Throttle > Fast-Forward Rate 3.0x; fast-forward (R2 or the panel's Fast) 30 s; off; then Rate 0 (unlimited), 30 s; off. | At 3.0x the clock climbs only until ~300% (the log's fast-forward steps stop); unlimited: the top clock at once; each time, after it, the clock from before. | `kiwami-clocks.log` | A7 | not run |
 | M7 | rgds-plus | Settings > Other systems > Picture & sound > Shader `lcd`; a GBA game with Frontend RetroArch, 5 min. | Smooth; the log shows GPU floor steps (cause GPU) if the shader needs them, and no lasting stutter. | `kiwami-clocks.log` | A6, A13 | passed on the log (2026-11-18, 0.5.3.4 from `c31b6991`): the GPU's floor up to 400 MHz for the shader, its hold doubled; no lasting stutter |
 | M8 | rgds-plus | Frontend Auto; a GBA game (BananaFront) 5 min. | `bananafront.log`: `cpugov: on`; the strip `Auto <MHz>`. | `bananafront.log`, `banana-ui.log` | A3, A11, A12 | not run |
 | M9 | rgds-plus | An N64 game 2 min. | As before; the strip `Performance 1992 MHz`; no `kiwami: clocks: on` line in `banana-ui.log`. | `banana-ui.log` | A3 | not run |
-| M10 | rgds-plus | In M3's game: close the lid 2 min, open, play 1 min. | Play goes on; the log has no step at the resume (the gap dropped); the strip's clock read again at once. | `kiwami-clocks.log`, `banana-ui.log` (`after a sleep: panel clocks:`) | A8, A12, A13 | not run |
+| M10 | rgds-plus | In M3's game: close the lid 2 min, open, play 1 min. | Play goes on; the log has no step at the resume (the gap dropped); the strip's clock read again at once. | `kiwami-clocks.log`, `banana-ui.log` (`after a sleep: panel clocks:`) | A8, A12, A13 | passed in part (2026-11-18, 0.5.3.4 from `13b76988`, in M3's game): play went on, no step around the lid; `banana-ui.log` not checked |
 | M11 | rgds-plus | In M3's game: RetroArch's menu (F) open for 30 s, then back. | No steps logged while it's open. | `kiwami-clocks.log` | A8, A13 | passed (2026-11-18, 0.5.3.4 from `c31b6991`, in M7's game): ~80 s of menu at the start, no step in it |
-| M12 | rgds-plus | Start M3's game again. | The start line says the remembered clock (one step above); `/data/banana/kiwami-clocks/<core>/<game>.clocks` exists. | `kiwami-clocks.log`, the `.clocks` file | A4, A9 | not run |
+| M12 | rgds-plus | Start M3's game again. | The start line says the remembered clock (one step above); `/data/banana/kiwami-clocks/<core>/<game>.clocks` exists. | `kiwami-clocks.log`, the `.clocks` file | A4, A9 | passed (2026-11-18, 0.5.3.4 from `13b76988`): `CPU 1416 MHz (a step above this game's)`, `GPU floor 200 MHz (this game's)`, from the first run's `cpu 1104000 gpu 200000000` |
 | M13 | rgds-plus | Photos of the strip in M3 and M8. | The label readable, apart from Wi-Fi and "Played". | photos | A12 | not run |
 | M14 | rgds-plus | Optional: the same SNES game 20 min with Power scaling off, then 20 min on, from a similar battery level, not charging. | Less battery used with it on. | the battery % at start and end of each; `kiwami-clocks.log` | A13 | not run |
 | M15 | QEMU | Optional: `tools/qemu-boot.sh` on the image with Power scaling on (set on the card), a NES game. | RetroArch runs; the log says `off, no cpufreq`. | the card's `banana/logs/kiwami-clocks.log` | A10 | not run |
@@ -591,6 +617,19 @@ Notes from the runs (what the logs showed, what was fixed):
     Suspected: Mesen draws on its own thread (the fork's `core-overrides`), whose swaps don't line up one to one with
     the core's frames, so a screen update now and then brings two frames' work, and a second's slowest (p99 of ~60) is
     that double. The log has no numbers to tell. Step 8 adds them and measures the work per core frame.
+- **M3, M10, M11 and M12, 2026-11-18** (0.5.3.4 built from `13b76988`; Super Star Wars (USA) (Rev 1) in Snes9x, 408 s,
+  then 31 s again).
+  - *M3*: smooth, the user says. Started from the last run's memory at 1416 MHz, down to 1104 by 5.1 s and there for
+    300 of the 308 s of play. Three steps down to 816 MHz (10.1 s, 41.3 s, 277.3 s, p99 44-48% at 1104) were undone
+    0.8-1.4 s later (work 66-76% at 816), each retried only after its ban. Each second's slowest work at 1104 MHz:
+    40-49% for 92 s, 50-59% for 179 s, 60-69% for 19 s. Every screen update brought one core frame.
+  - *The GPU*: 8 late flips (one refresh missed, 33.2 ms, work 58-76%) went to the GPU, its floor up to 600 MHz for
+    133 s in all. At every one the GPU ran at its floor (`GPU floor 200 MHz at 200 MHz`, ... `600 MHz at 600 MHz`):
+    simple_ondemand never found it busy, and at 600 MHz (334.6 s) a flip was late all the same. The floor bought
+    nothing. Fixed in step 9.
+  - *M10, M11*: ~100 s of the 408 aren't counted (RetroArch's menu and the lid closed, the user says), with no step.
+  - *M12*: the second start began at `1416 MHz (a step above this game's)` and `GPU floor 200 MHz (this game's)`.
+  - Not run: M2 (Mesen) on this image.
 
 ## Deviations
 
@@ -644,6 +683,11 @@ Where the implementation turned out different from this plan, why, and what chan
   screen update), and the governor works on the work per core frame (the glue passes RetroArch's `frame_count`), which
   is the same as before with one frame per update. Step 8 does both (A5 and A9 reworded); the final check becomes
   step 9.
+- **2026-11-18, M3: a fourth fix step before the final check.** Step 8's numbers showed the GPU at its floor at every
+  late flip blamed on it, and the floor's raises to 600 MHz not stopping them. Agreed with the user: the floor goes up
+  only when the GPU runs above it (devfreq's `cur_freq`, read on a late frame), else the late frame is logged and
+  counted as neither's and no clock changes; each late flip's line also gets its swap's spacing, to show where the rest
+  of the frame went. Step 9 does it (A6 reworded); the final check becomes step 10.
 
 ## Progress
 
@@ -659,4 +703,5 @@ A step is marked done in its own commit, so the commit column holds the subject 
 | 6. Fix: one missed refresh is late, and the GPU floor's hold grows | done | Power scaling: one missed refresh is a late frame, and the GPU floor's hold grows when it's still needed |
 | 7. Fix: a late frame right after a step down is the CPU's, and the memory keeps the clock the game needed | done | Power scaling: a late frame right after a step down undoes it, and a game remembers the clock it needed |
 | 8. The log's numbers, and the work per core frame | done | Power scaling: the log gives the numbers behind each step, and the work is per core frame |
-| 9. Final check | todo | |
+| 9. The GPU's floor only for a busy GPU, and the swap's spacing in the log | done | Power scaling: the GPU's floor goes up only when the GPU is busy, and a late flip's line has its swap's spacing |
+| 10. Final check | todo | |

@@ -1,6 +1,6 @@
 /* Power scaling's governor for RetroArch (kiwami/patches/retroarch/0101-*: gfx/drivers_context/kiwami_clocks.c), checked
  * on its own against made-up cpufreq and devfreq folders, fed made-up frames: the start and the game's memory, the CPU's
- * steps up, down and bans, a late frame right after a step down undoing it, a 50 Hz game on a 60 Hz panel, a core
+ * steps up, down and bans, a late frame right after a step down undoing it, the GPU at its floor not blamed, a 50 Hz game on a 60 Hz panel, a core
  * RetroArch runs at the panel's rate (Snes9x's 60.10 fps on the RG DS Plus's 60.17 Hz: one missed refresh is late), the
  * GPU's floor and its hold doubled when it's needed again soon after a drop, fast-forward with and without a limit, the
  * game's memory, the work per core frame when a screen update brings none or two, the menu and stalls, the stop and its
@@ -326,6 +326,7 @@ int main(void)
 	run(1.0, 0.30);
 	frame(33333, 0.30);
 	EQ(get(gpu, "min_freq"), "300000000");
+	unlink(path(gpu, "cur_freq"));	// (the rest with the GPU's clock unknown: blamed as before)
 	int64_t miss = F.now_us;
 	run(29.0 - (F.now_us - miss) / 1e6, 0.30);
 	EQ(get(gpu, "min_freq"), "300000000");
@@ -355,7 +356,7 @@ int main(void)
 	EQ(get(gpu, "min_freq"), "800000000");
 	kiwami_clocks_stop();
 	EQ(get(gpu, "min_freq"), "200000000");
-	CHECK(strstr(slurp(logf), "s: late flip 33.3 ms, work 30%, CPU 1992 MHz, GPU floor 200 MHz at 300 MHz\n"
+	CHECK(strstr(slurp(logf), "s: late flip 33.3 ms, swap gap 33.3 ms, work 30%, CPU 1992 MHz, GPU floor 200 MHz at 300 MHz\n"
 			"kiwami-clocks: 1.0 s: GPU floor 200 -> 300 MHz (late flip)\n") != NULL);
 	setup();
 	put(gpu, "max_freq", "400000000\n");
@@ -364,6 +365,35 @@ int main(void)
 	for (int i = 0; i < 8; i++) { run(0.3, 0.30); frame(33333, 0.30); }
 	EQ(get(gpu, "min_freq"), "400000000");
 	kiwami_clocks_stop();
+
+	// the GPU at its floor (devfreq's cur_freq: its own governor didn't find it busy): a late flip at 30% is neither's, no
+	// clock changed; with the GPU above its floor, the floor goes up; a second running slow at 30% with the GPU at its
+	// (new) floor is neither's too. The late flip's line has its swap's spacing (here on time, the flip late)
+	setup();
+	put(gpu, "cur_freq", "200000000\n");
+	start("c", "g");
+	begin();
+	run(1.0, 0.30);
+	F.now_us += 16667;
+	F.cpu_us += 5000;
+	kiwami_clocks_swap(&F);
+	kiwami_clocks_flip(F.now_us + 17000);
+	EQ(get(gpu, "min_freq"), "200000000");
+	CHECK(maxf() == 1992000);
+	put(gpu, "cur_freq", "400000000\n");
+	run(0.5, 0.30);
+	frame(33333, 0.30);
+	EQ(get(gpu, "min_freq"), "300000000");
+	put(gpu, "cur_freq", "300000000\n");
+	F.pace_us = 17500;
+	run(2.1, 0.30);
+	EQ(get(gpu, "min_freq"), "300000000");
+	CHECK(maxf() == 1992000);
+	F.pace_us = 16667;
+	kiwami_clocks_stop();
+	CHECK(strstr(slurp(logf), "s: late flip 33.2 ms, swap gap 16.7 ms, work 30%, CPU 1992 MHz, GPU floor 200 MHz at 200 MHz\n") != NULL);
+	CHECK(lines_with(slurp(logf), "GPU floor 200 -> 300 MHz (late flip)\n") == 1);
+	CHECK(strstr(slurp(logf), "GPU 1 (late flip) 0 (running slow), neither 1 (late flip) 1 (running slow);") != NULL);
 
 	// a floor needed again within 10 s of its drop is held twice as long: 30 s, then 60 s, then 120 s; needed again later
 	// than that, the hold stays as it is (the CPU at its lowest clock from 5 s, so no late flip comes right after a step
@@ -578,7 +608,7 @@ int main(void)
 	EQ(slurp(path(data, "Snes9x/a_b_c.sfc.clocks")), "cpu 1800000\ngpu 300000000\n");
 	const char *log = slurp(logf);
 	CHECK(strstr(log, "kiwami-clocks: start: a_b_c.sfc (Snes9x), 60.00 fps, 60.00 Hz (the panel's rate), CPU 1992 MHz (the top) of 408-1992, GPU floor 200 MHz (the lowest) of 200-800\n") != NULL);
-	CHECK(strstr(log, "kiwami-clocks: 1.0 s: late flip 33.3 ms, work 30%, CPU 1992 MHz, GPU floor 200 MHz\n") != NULL);
+	CHECK(strstr(log, "kiwami-clocks: 1.0 s: late flip 33.3 ms, swap gap 33.3 ms, work 30%, CPU 1992 MHz, GPU floor 200 MHz\n") != NULL);
 	CHECK(strstr(log, "s: GPU floor 200 -> 300 MHz (late flip)\n") != NULL);
 	CHECK(strstr(log, "s: CPU 1992 -> 1800 MHz (headroom, p99 30%)\n") != NULL);
 	CHECK(strstr(log, "kiwami-clocks: end after ") != NULL);
@@ -603,7 +633,7 @@ int main(void)
 	EQ(get(gpu, "min_freq"), "200000000");
 	kiwami_clocks_stop();
 	CHECK(strstr(slurp(logf), "no GPU devfreq") != NULL);
-	CHECK(strstr(slurp(logf), "s: late flip 33.3 ms, work 30%, CPU 1992 MHz\n") != NULL);
+	CHECK(strstr(slurp(logf), "s: late flip 33.3 ms, swap gap 33.3 ms, work 30%, CPU 1992 MHz\n") != NULL);
 
 	// no cpufreq: off, said once, nothing written, and the calls do nothing
 	setup();

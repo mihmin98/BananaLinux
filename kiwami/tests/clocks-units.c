@@ -3,7 +3,7 @@
  * steps up, down and bans, a late frame right after a step down undoing it, the GPU at its floor not blamed, a 50 Hz game on a 60 Hz panel, a core
  * RetroArch runs at the panel's rate (Snes9x's 60.10 fps on the RG DS Plus's 60.17 Hz: one missed refresh is late), the
  * GPU's floor and its hold doubled when it's needed again soon after a drop, fast-forward with and without a limit, the
- * game's memory, the work per core frame when a screen update brings none or two, the menu and stalls, the stop and its
+ * game's memory, the work per core frame when a screen update brings none or two, threaded video's steps by trial, the menu and stalls, the stop and its
  * files and the log's numbers, no cpufreq. Built and run by kiwami/tests/ci.sh, the patch
  * applied to an empty folder and the governor built with RetroArch's C89 flags:
  *   cc -std=c99 -Wall -D_GNU_SOURCE -I <folder>/gfx/drivers_context kiwami/tests/clocks-units.c kiwami_clocks.o
@@ -570,6 +570,47 @@ int main(void)
 	kiwami_clocks_stop();
 	CHECK(strstr(slurp(logf), "s: CPU 1992 -> 1800 MHz (headroom, p99 40%)\n") != NULL);
 	CHECK(strstr(slurp(logf), "kiwami-clocks: core frames per screen update: none 90, one 180, two or more 90\n") != NULL);
+
+	// threaded video: the main thread's time isn't the core's work (Mesen's reads 90-100% at full speed), so the CPU steps
+	// down by trial every 5 s and never up for "near the limit"; a late flip within 5 s of a step down undoes it, the GPU's
+	// floor left alone, whatever the work
+	setup();
+	start("c", "g");
+	begin();
+	F.threaded = 1;
+	run(5.5, 0.95);
+	CHECK(maxf() == 1800000);
+	run(5.0, 0.95);
+	CHECK(maxf() == 1608000);
+	frame(33333, 0.95);
+	CHECK(maxf() == 1800000);
+	EQ(get(gpu, "min_freq"), "200000000");
+	kiwami_clocks_stop();
+	CHECK(lines_with(slurp(logf), " MHz (trial, p99 95%)\n") == 2);
+	CHECK(lines_with(slurp(logf), "s: CPU 1608 -> 1800 MHz (late after a step down)\n") == 1);
+	CHECK(lines_with(slurp(logf), "MHz (near the limit") == 0);
+	CHECK(strstr(slurp(logf), " of 200-800, threaded video: the CPU steps down by trial\n") != NULL);
+	// ... any other late frame, with the GPU at its floor, is the CPU's: a late flip at the lowest clock, then a second
+	// running slow, each up a step
+	setup();
+	put(gpu, "cur_freq", "200000000\n");
+	remember("c", "g", "cpu 408000\n");
+	start("c", "g");
+	begin();
+	F.threaded = 1;
+	run(5.5, 0.30);
+	CHECK(maxf() == 408000);
+	run(5.5, 0.30);
+	frame(33333, 0.30);
+	CHECK(maxf() == 600000);
+	EQ(get(gpu, "min_freq"), "200000000");
+	F.pace_us = 17500;
+	run(1.1, 0.30);
+	CHECK(maxf() == 816000);
+	F.pace_us = 16667;
+	kiwami_clocks_stop();
+	CHECK(lines_with(slurp(logf), "s: CPU 408 -> 600 MHz (late frame)\n") == 1);
+	CHECK(lines_with(slurp(logf), "s: CPU 600 -> 816 MHz (running slow, p99 30%)\n") == 1);
 
 	// the menu (hold) counts nothing; a 2 s gap starts the window afresh
 	setup();

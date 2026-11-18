@@ -12,7 +12,9 @@ video a swap may follow none or two), the core's fps, the mode's refresh,
 audio_max_timing_skew with vsync on (within it RetroArch runs the core at
 the display's rate), RetroArch's
 smoothed iteration period, fast-forward and its frame limit, and whether
-the menu, pause or slow motion holds it; each page flip, the flip's time.
+the menu, pause or slow motion holds it, and whether threaded video is on
+(the main thread's time is then no measure of the core's work); each page
+flip, the flip's time.
 
 The CPU time is the main thread's by its clock id, so with threaded video,
 whose thread swaps, it is still the core's work and not the drawing.
@@ -51,7 +53,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
  #ifdef HAVE_WAYLAND
  #include "../common/wayland_drm_lease.h"
  #endif
-@@ -506,10 +517,98 @@
+@@ -506,10 +517,100 @@
  #endif
  }
  
@@ -122,6 +124,8 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +   /* The core's frames so far; under threaded video this thread's
 +    * updates can bring none or two (an aligned 64-bit read) */
 +   f.frame_no    = (int64_t)video_state_get_ptr()->frame_count;
++   /* Under threaded video the main thread's time isn't the core's work */
++   f.threaded    = video_driver_thread_wrapper_active() ? 1 : 0;
 +   f.refresh_hz  = (g_drm_mode && g_drm_mode->htotal && g_drm_mode->vtotal)
 +      ? g_drm_mode->clock * 1000.0
 +         / ((double)g_drm_mode->htotal * g_drm_mode->vtotal)
@@ -150,7 +154,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
  }
  
  static bool gfx_ctx_drm_wait_flip(gfx_ctx_drm_data_t *drm, bool block)
-@@ -654,6 +753,8 @@
+@@ -654,6 +755,8 @@
     gfx_ctx_drm_data_t        *drm = (gfx_ctx_drm_data_t*)data;
     unsigned max_swapchain_images  = drm->max_swapchain_images;
  

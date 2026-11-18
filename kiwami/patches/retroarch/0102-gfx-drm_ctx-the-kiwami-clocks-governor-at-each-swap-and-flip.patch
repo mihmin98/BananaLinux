@@ -7,8 +7,10 @@ starts it with the CPU's cpufreq policy0 and the first /sys/class/devfreq/
 *.gpu (or KIWAMI_CLOCKS_CPUFREQ, KIWAMI_CLOCKS_DEVFREQ), the folder and log
 from KIWAMI_CLOCKS_DATA and KIWAMI_CLOCKS_LOG, the core's library name and
 the game's basename, and it is stopped at exit. Each swap gives it the time,
-the main thread's CPU time, the core's fps, the mode's refresh, audio_max_timing_skew with vsync on
-(within it RetroArch runs the core at the display's rate), RetroArch's
+the main thread's CPU time, the core's frames so far (with threaded
+video a swap may follow none or two), the core's fps, the mode's refresh,
+audio_max_timing_skew with vsync on (within it RetroArch runs the core at
+the display's rate), RetroArch's
 smoothed iteration period, fast-forward and its frame limit, and whether
 the menu, pause or slow motion holds it; each page flip, the flip's time.
 
@@ -49,7 +51,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
  #ifdef HAVE_WAYLAND
  #include "../common/wayland_drm_lease.h"
  #endif
-@@ -506,10 +517,95 @@
+@@ -506,10 +517,98 @@
  #endif
  }
  
@@ -117,6 +119,9 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
 +   f.now_us      = kiwami_clocks_us(CLOCK_MONOTONIC);
 +   f.cpu_us      = kiwami_clocks_us(kiwami_clocks_main_cpu);
 +   f.fps         = video_state_get_ptr()->av_info.timing.fps;
++   /* The core's frames so far; under threaded video this thread's
++    * updates can bring none or two (an aligned 64-bit read) */
++   f.frame_no    = (int64_t)video_state_get_ptr()->frame_count;
 +   f.refresh_hz  = (g_drm_mode && g_drm_mode->htotal && g_drm_mode->vtotal)
 +      ? g_drm_mode->clock * 1000.0
 +         / ((double)g_drm_mode->htotal * g_drm_mode->vtotal)
@@ -145,7 +150,7 @@ Upstream-Status: Inappropriate [kiwami fork-specific]
  }
  
  static bool gfx_ctx_drm_wait_flip(gfx_ctx_drm_data_t *drm, bool block)
-@@ -654,6 +750,8 @@
+@@ -654,6 +753,8 @@
     gfx_ctx_drm_data_t        *drm = (gfx_ctx_drm_data_t*)data;
     unsigned max_swapchain_images  = drm->max_swapchain_images;
  

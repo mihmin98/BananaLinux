@@ -3,7 +3,8 @@
  * steps up, down and bans, a late frame right after a step down undoing it, a 50 Hz game on a 60 Hz panel, a core
  * RetroArch runs at the panel's rate (Snes9x's 60.10 fps on the RG DS Plus's 60.17 Hz: one missed refresh is late), the
  * GPU's floor and its hold doubled when it's needed again soon after a drop, fast-forward with and without a limit, the
- * game's memory, the menu and stalls, the stop and its files, no cpufreq. Built and run by kiwami/tests/ci.sh, the patch
+ * game's memory, the work per core frame when a screen update brings none or two, the menu and stalls, the stop and its
+ * files and the log's numbers, no cpufreq. Built and run by kiwami/tests/ci.sh, the patch
  * applied to an empty folder and the governor built with RetroArch's C89 flags:
  *   cc -std=c99 -Wall -D_GNU_SOURCE -I <folder>/gfx/drivers_context kiwami/tests/clocks-units.c kiwami_clocks.o
  *   ./clocks-units */
@@ -195,6 +196,7 @@ int main(void)
 	run(0.2, 0.95);
 	CHECK(maxf() == 1416000);
 	kiwami_clocks_stop();
+	CHECK(lines_with(slurp(logf), "s: CPU 1104 -> 1416 MHz (near the limit, p99 95%)\n") == 1);
 
 	// down: 5 s at 40% steps down one (not before), at 60% doesn't (60% x 1992/1800 is over 65%)
 	setup();
@@ -237,7 +239,7 @@ int main(void)
 	run(2.0, 0.40);
 	CHECK(maxf() == 1104000);
 	kiwami_clocks_stop();
-	CHECK(lines_with(slurp(logf), "CPU 1104 -> 1416 MHz (running slow)") == 2);
+	CHECK(lines_with(slurp(logf), "CPU 1104 -> 1416 MHz (running slow, p99 85%)\n") == 2);
 
 	// two late frames (flips a refresh late, the work at 85%) in a second: up one, then two
 	setup();
@@ -286,6 +288,7 @@ int main(void)
 	EQ(get(gpu, "min_freq"), "300000000");
 	kiwami_clocks_stop();
 	CHECK(lines_with(slurp(logf), "CPU 1800 -> 1992 MHz (late after a step down)\n") == 2);
+	CHECK(lines_with(slurp(logf), "CPU 1992 -> 1800 MHz (headroom, p99 40%)\n") == 3);
 	CHECK(strstr(slurp(logf), "headroom 3 (2 undone)\n") != NULL);
 	// ... and the game running slow for a second within 5 s of a step down, the work under 80%: the step down's too
 	setup();
@@ -298,6 +301,7 @@ int main(void)
 	CHECK(maxf() == 1992000);
 	EQ(get(gpu, "min_freq"), "200000000");
 	kiwami_clocks_stop();
+	CHECK(lines_with(slurp(logf), "s: CPU 1800 -> 1992 MHz (late after a step down, p99 40%)\n") == 1);
 
 	// a 50 Hz game on a 60 Hz panel, paced by its sound: flips 16.7 and 33.3 ms apart, the work at 30% of 20 ms. No
 	// step up and no GPU floor (and down only after 5 s)
@@ -310,11 +314,13 @@ int main(void)
 	EQ(get(gpu, "min_freq"), "200000000");
 	kiwami_clocks_stop();
 	CHECK(lines_with(slurp(logf), " -> ") == 0);
+	CHECK(lines_with(slurp(logf), "late flip ") == 0);
 	CHECK(lines_with(slurp(logf), "50.00 fps, 60.00 Hz, ") == 1);	// (its own rate)
 
 	// a late flip with the work at 30%: the GPU's floor up a step, held 30 s, then down; two in 300 ms: up two, down one
-	// each 30 s
+	// each 30 s. The log has each late flip with its spacing, work and clocks, the GPU's as devfreq's cur_freq says
 	setup();
+	put(gpu, "cur_freq", "300000000\n");
 	start("c", "g");
 	begin();
 	run(1.0, 0.30);
@@ -349,6 +355,8 @@ int main(void)
 	EQ(get(gpu, "min_freq"), "800000000");
 	kiwami_clocks_stop();
 	EQ(get(gpu, "min_freq"), "200000000");
+	CHECK(strstr(slurp(logf), "s: late flip 33.3 ms, work 30%, CPU 1992 MHz, GPU floor 200 MHz at 300 MHz\n"
+			"kiwami-clocks: 1.0 s: GPU floor 200 -> 300 MHz (late flip)\n") != NULL);
 	setup();
 	put(gpu, "max_freq", "400000000\n");
 	start("c", "g");
@@ -436,7 +444,7 @@ int main(void)
 	run(3.0, 0.30);
 	EQ(get(gpu, "min_freq"), "200000000");
 	kiwami_clocks_stop();
-	CHECK(lines_with(slurp(logf), "(running slow)\n") == 0);	// (no step for it; the summary names it with a comma)
+	CHECK(lines_with(slurp(logf), "MHz (running slow") == 0);
 
 	// fast-forward with no limit: the top at once, the clock from before after it
 	setup();
@@ -515,6 +523,24 @@ int main(void)
 	kiwami_clocks_stop();
 	EQ(get(data, "c/g.clocks"), "cpu 816000");
 
+	// threaded video: screen updates bring 1, 1, 0 and 2 of the core's frames, the work (the main thread's) as the frames
+	// ran: 40%, 40%, 20% (half the next frame) and 60%. Per frame it's 40% throughout, so a step down after 5 s; per
+	// update (p99 60%, over 65% at 1800 MHz) there'd be none. The summary counts the frames each update brought
+	setup();
+	start("c", "g");
+	begin();
+	F.frame_no = 1;
+	for (int i = 0; i < 360; i++) {
+		static const int n[4] = { 1, 1, 0, 2 };
+		static const double w[4] = { 0.40, 0.40, 0.20, 0.60 };
+		F.frame_no += n[i % 4];
+		frame(16667, w[i % 4]);
+	}
+	CHECK(maxf() == 1800000);
+	kiwami_clocks_stop();
+	CHECK(strstr(slurp(logf), "s: CPU 1992 -> 1800 MHz (headroom, p99 40%)\n") != NULL);
+	CHECK(strstr(slurp(logf), "kiwami-clocks: core frames per screen update: none 90, one 180, two or more 90\n") != NULL);
+
 	// the menu (hold) counts nothing; a 2 s gap starts the window afresh
 	setup();
 	remember("c", "g", "cpu 816000\n");
@@ -552,12 +578,16 @@ int main(void)
 	EQ(slurp(path(data, "Snes9x/a_b_c.sfc.clocks")), "cpu 1800000\ngpu 300000000\n");
 	const char *log = slurp(logf);
 	CHECK(strstr(log, "kiwami-clocks: start: a_b_c.sfc (Snes9x), 60.00 fps, 60.00 Hz (the panel's rate), CPU 1992 MHz (the top) of 408-1992, GPU floor 200 MHz (the lowest) of 200-800\n") != NULL);
+	CHECK(strstr(log, "kiwami-clocks: 1.0 s: late flip 33.3 ms, work 30%, CPU 1992 MHz, GPU floor 200 MHz\n") != NULL);
 	CHECK(strstr(log, "s: GPU floor 200 -> 300 MHz (late flip)\n") != NULL);
-	CHECK(strstr(log, "s: CPU 1992 -> 1800 MHz (headroom)\n") != NULL);
+	CHECK(strstr(log, "s: CPU 1992 -> 1800 MHz (headroom, p99 30%)\n") != NULL);
 	CHECK(strstr(log, "kiwami-clocks: end after ") != NULL);
 	CHECK(strstr(log, "kiwami-clocks: time at each CPU clock: 1800 MHz 4.") != NULL);
 	CHECK(strstr(log, ", 1992 MHz 5.") != NULL);
 	CHECK(strstr(log, "kiwami-clocks: time at each GPU floor: 200 MHz 1.0 s, 300 MHz 8.0 s\n") != NULL);
+	CHECK(strstr(log, "kiwami-clocks: each second's slowest work at 1800 MHz: 30% 3 s\n") != NULL);
+	CHECK(strstr(log, "kiwami-clocks: each second's slowest work at 1992 MHz: 30% 5 s\n") != NULL);
+	CHECK(strstr(log, "kiwami-clocks: core frames per screen update: none 0, one 539, two or more 0\n") != NULL);
 	CHECK(strstr(log, "kiwami-clocks: late frames: CPU 0 (late flip) 0 (running slow), GPU 1 (late flip) 0 (running slow)") != NULL);
 	CHECK(strstr(log, "kiwami-clocks: remembered in ") != NULL);
 	kiwami_clocks_stop();
@@ -573,6 +603,7 @@ int main(void)
 	EQ(get(gpu, "min_freq"), "200000000");
 	kiwami_clocks_stop();
 	CHECK(strstr(slurp(logf), "no GPU devfreq") != NULL);
+	CHECK(strstr(slurp(logf), "s: late flip 33.3 ms, work 30%, CPU 1992 MHz\n") != NULL);
 
 	// no cpufreq: off, said once, nothing written, and the calls do nothing
 	setup();

@@ -62,3 +62,7 @@ RETROARCH_CONF_OPTS += --disable-mcp --disable-retronfs --disable-retrosmb --dis
 	--disable-raac --disable-ropus --disable-rvorbis --disable-rmp3 --disable-rmodtracker \
 	--disable-rrar --disable-gamemode
 endif
+
+# RetroArch's GLSL shaders as libretro wrote them, over upstream's rewrite of their vertex stages
+# (BR2_PACKAGE_KIWAMI_GLSL_SHADERS_PRECISION): in a file of its own, which kiwami/tests/glsl-shaders.sh runs as well
+include $(BR2_EXTERNAL_KIWAMI_PATH)/glsl-shaders.mk

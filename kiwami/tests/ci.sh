@@ -29,13 +29,14 @@ echo "third_party: $(ls -d ui/src/kiwami/third_party/*/ | wc -l) vendored librar
 
 # banana-ui's code of the fork's that needs no screen (the JSON reader, Tailscale's status, the name, the QR code,
 # Settings' grid of groups, RetroAchievements' replies, its account on the card and its games' hashes), with the
-# host's g++ and the vendored C built by banana-ui's own rules
+# host's g++ and the vendored C built by banana-ui's own rules (rcheevos' upstream's, in ui/rc-obj/<CC>/)
 make -s -C ui kiwami-c
 T=$(mktemp -d)
 ${CXX:-g++} -std=c++17 -Wall -Werror -I ui/src -o "$T/units" kiwami/tests/units.cpp ui/src/kiwami/json.cpp ui/src/kiwami/tsstatus.cpp \
     ui/src/qr/qrcodegen.cpp ui/src/kiwami/grid.cpp ui/src/kiwami/raclient.cpp ui/src/kiwami/rastore.cpp ui/src/kiwami/rahash.cpp \
     ui/src/kiwami/ra7z.cpp ui/src/kiwami/rachd.cpp ui/src/zip.cpp ui/src/zipdir.cpp \
-    $(find ui/src/kiwami/third_party -name '*.kiwami.o') -ldl -lz
+    $(find ui/src/kiwami/third_party -name '*.kiwami.o') "ui/rc-obj/$(basename "${CC:-cc}")"/*.o "ui/rc-obj/$(basename "${CC:-cc}")"/rhash/*.o \
+    -ldl -lz
 "$T/units" kiwami/tests/tailscale kiwami/tests/ra
 # the status bar's backend (Tailscale's icon after the Wi-Fi icon) against a recording one, frames drawn as the
 # engine's drawStatus draws them, and its interface check on lo

@@ -8,10 +8,9 @@
 #include <string>
 #include <strings.h>
 #include <vector>
-// as kiwami.mk builds them: rcheevos' change rc_hash_iterator_t's layout, libchdr's which zlib codec_zlib.h names
-#define RC_HASH_NO_ENCRYPTED
-#define RC_HASH_NO_ZIP
-#include "third_party/rcheevos/include/rc_hash.h"
+// rcheevos as upstream's Makefile builds it (no RC_HASH_NO_*: they change rc_hash_iterator_t's layout), libchdr as
+// kiwami.mk does (its define says which zlib codec_zlib.h names)
+#include "../../third_party/rcheevos/include/rc_hash.h"
 #define CHDR_SYSTEM_ZLIB
 #include "third_party/libchdr/include/libchdr/cdrom.h"
 #include "third_party/libchdr/include/libchdr/chd.h"

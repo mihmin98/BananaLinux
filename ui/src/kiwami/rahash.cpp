@@ -10,10 +10,9 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
-// as kiwami.mk builds rcheevos: they change rc_hash_iterator_t's layout, so both sides must agree
-#define RC_HASH_NO_ENCRYPTED
-#define RC_HASH_NO_ZIP
-#include "third_party/rcheevos/include/rc_hash.h"
+// upstream's rcheevos (ui/third_party/rcheevos, the Makefile's RC_OBJ), built with all of its hashing: included with no
+// RC_HASH_NO_* defined, as they change rc_hash_iterator_t's layout and both sides must agree
+#include "../../third_party/rcheevos/include/rc_hash.h"
 
 namespace banana::kiwami::ra
 {

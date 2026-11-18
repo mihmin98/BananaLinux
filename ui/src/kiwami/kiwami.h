@@ -33,8 +33,9 @@
 //   Other systems > Second screen > Status on the game panel (kiwami_panel_status in settings.conf, after Game panel
 //   idle time, Off by default): read at each game's start. On, the game panel's tiles view draws a strip where its
 //   hint line was (panel-status.cpp, its state in panelstatus.h): Wi-Fi and Tailscale's mark on the left, the time
-//   played this game in the centre, the battery, the date and the time on the right. settings_gamepanel.cpp calls it
-//   through four kiwami: lines (gameOpen, gameUpdate, the hint in gameFrame); the keyboard and the companions' pages
+//   played this game in the centre, the battery, the date and the time on the right; with them on the left, Power
+//   scaling's mode (Auto, or the system's clock profile) and the CPU's MHz, read every 2 s. settings_gamepanel.cpp
+//   calls it through four kiwami: lines (gameOpen, gameUpdate, the hint in gameFrame); the keyboard and the companions' pages
 //   are drawn before the hint and return, as without it.
 #include "../settings.h"
 #include <functional>
@@ -130,6 +131,7 @@ namespace banana
 
 		// Status on the game panel's strip (panel-status.cpp): its state, made at the first game with the setting on
 		bool panelOn = false;						// kiwami_panel_status = on at this game's start
+		time_t panelOpenedAt = 0;					// this game's start (time(nullptr)): a mode file older by 5 s is a past game's
 		std::unique_ptr<kiwami::PanelStatus> panel;
 		std::string panelTrace;						// KIWAMI_PANEL_TRACE's last line (the parts' places)
 		rnds::TexPtr panelSprite(const std::string& name, bool big);	// wifi, battery (@1x or @1.6x) or the mark (tsmark)

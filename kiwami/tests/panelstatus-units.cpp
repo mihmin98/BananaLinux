@@ -1,6 +1,6 @@
 // The game panel's status strip's state (ui/src/kiwami/panelstatus.h), checked on its own with stand-in sources that
 // count their calls: the formats, the minute, the reads every 10 s and after a sleep, the changes, the log's lines and
-// a new game. Built and run by kiwami/tests/ci.sh with the host's g++ (in UTC, set here):
+// a new game; Power scaling's clocks read every 2 s and after a sleep, and their own line. Built and run by kiwami/tests/ci.sh with the host's g++ (in UTC, set here):
 //   g++ -std=c++17 -Wall -I ui/src kiwami/tests/panelstatus-units.cpp ui/src/kiwami/panelstatus.cpp -o panelstatus-units
 //   ./panelstatus-units
 #include "kiwami/panelstatus.h"
@@ -142,6 +142,76 @@ int main()
 	EQ(q.state().clock, "14:32");
 	CHECK(!q.update(1100));
 	CHECK(r.walls == 2);
+
+	// no clocks source (as 0036's strip was): no clocks, no clocks line, the status lines as they were
+	EQ(q.clocksLine(), "");
+	CHECK(q.state().c == PanelClocks());
+
+	// the clocks: their text, and the profiles' names
+	PanelClocks pc;
+	EQ(pc.text(), "");
+	pc.mode = "Auto"; pc.mhz = 1104;
+	EQ(pc.text(), "Auto 1104 MHz");
+	pc.mode = "Balanced"; pc.mhz = -1;
+	EQ(pc.text(), "Balanced");
+	EQ(PanelStatus::profileName(""), "Balanced");
+	EQ(PanelStatus::profileName("balanced"), "Balanced");
+	EQ(PanelStatus::profileName("powersave"), "Powersave");
+	EQ(PanelStatus::profileName("steady"), "Steady");
+	EQ(PanelStatus::profileName("performance"), "Performance");
+	EQ(PanelStatus::profileName("superdrastic"), "Superdrastic");
+
+	// a clocks source, counting its reads
+	Stand cs;
+	cs.r.percent = 78; cs.r.wifi = true;
+	PanelClocks now{ "Auto", 1104 };
+	int clockReads = 0;
+	PanelStatus::Sources src = cs.sources();
+	src.clocks = [&] { clockReads++; return now; };
+	PanelStatus k(src);
+	k.open(false, CLOCK);
+	EQ(k.clocksLine(), "");
+	// the first pass: read, both lines
+	CHECK(k.update(1000));
+	CHECK(clockReads == 1);
+	CHECK(k.state().c == now);
+	EQ(k.logLine(), "panel status: 14:32 11/16, battery 78%, wifi up, tailscale down, played 0:00");
+	EQ(k.clocksLine(), "panel clocks: Auto 1104 MHz");
+	EQ(k.clocksLine(), "");		// taken once
+	// 1.9 s on: not read
+	now.mhz = 816;
+	CHECK(!k.update(2900));
+	CHECK(clockReads == 1);
+	CHECK(k.state().c.mhz == 1104);
+	// 2 s on: read, 816, drawn again, no line for the MHz alone
+	CHECK(k.update(3000));
+	CHECK(clockReads == 2);
+	CHECK(k.state().c.mhz == 816);
+	EQ(k.clocksLine(), "");
+	EQ(k.logLine(), "");
+	// the same again at 4 s: read, nothing to draw
+	CHECK(!k.update(5000));
+	CHECK(clockReads == 3);
+	// the mode changes: a line
+	now.mode = "Balanced";
+	CHECK(k.update(7000));
+	EQ(k.clocksLine(), "panel clocks: Balanced 816 MHz");
+	EQ(k.logLine(), "");
+	// a sleep: read at once, the line marked, as the status's
+	cs.slept += 5000;
+	now.mhz = 408;
+	CHECK(k.update(7100));
+	CHECK(clockReads == 5);
+	EQ(k.clocksLine(), "after a sleep: panel clocks: Balanced 408 MHz");
+	EQ(k.logLine(), "after a sleep: panel status: 14:32 11/16, battery 78%, wifi up, tailscale down, played 0:00");
+	// no MHz reading: the mode alone
+	now.mhz = -1;
+	CHECK(k.update(9100));
+	EQ(k.clocksLine(), "");
+	CHECK(k.state().c.text() == "Balanced");
+	k.open(false, CLOCK);
+	CHECK(k.update(20000));
+	EQ(k.clocksLine(), "panel clocks: Balanced");
 
 	if (failed) { fprintf(stderr, "panelstatus-units: %d of %d checks failed\n", failed, checks); return 1; }
 	printf("panelstatus-units: %d checks passed\n", checks);

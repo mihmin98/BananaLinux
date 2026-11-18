@@ -9,6 +9,7 @@ setting() {
     [ -n "$v" ] || v=$(sed -n "/^ *$1 *= */{s///;h};\${x;p}" /etc/banana/settings.conf 2>/dev/null)
     printf '%s' "$v"
 }
+[ -f /usr/libexec/kiwami/clocks ] && . /usr/libexec/kiwami/clocks	# kiwami: Power scaling (RetroArch's and BananaFront's clock governors)
 # Settings > Other systems > Frontend (ra_frontend): BananaOS's own BananaFront instead of RetroArch for the 2D
 # systems (the same cores, saves, states and settings; RetroArch stays as the fallback). Auto: BananaFront only for the
 # systems checked on it (BF_SYSTEMS, both handhelds: stress ROM at least as fast, saves carried over, a game played);

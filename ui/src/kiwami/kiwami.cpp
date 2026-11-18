@@ -173,6 +173,20 @@ namespace banana
 				[&](const Item& i) { return i.section == group && i.key == "bottom_idle_seconds"; });
 			s.items.insert(at == s.items.end() ? at : at + 1, it);
 			keys += (keys.empty() ? "" : " ") + it.key;
+			// Power scaling (kiwami/rootfs/usr/libexec/kiwami/clocks, read by run-retroarch at each game's start), a row
+			// of Other systems: that page has no hook of its own, and this call is inside upstream's block of it. build()
+			// puts it after Frontend (place()'s FOLLOWS). Its own log line, so Second screen's stays as it was
+			fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.c_str());
+			Item ps;
+			ps.section = "Other systems"; ps.icon = "gamepad"; ps.label = "Power scaling"; ps.key = "kiwami_power_scaling";
+			ps.help = "Games in RetroArch and BananaFront run at the lowest CPU clock that keeps them at full speed, raised "
+				"when frames are late and lowered when there's room; the GPU follows. Not the DS or N64.";
+			ps.file = s.data + "/settings.conf";
+			ps.names = { "Off", "On" }; ps.values = { "off", "on" };
+			ps.hints = { "Each system's fixed clocks, as before.", "Clocks follow the game. The game panel's status shows them." };
+			s.items.push_back(ps);
+			group = "Other systems";
+			keys = ps.key;
 		}
 		// (the tests read it)
 		fprintf(stderr, "banana-ui: kiwami: rows in %s: %s\n", group, keys.empty() ? "none" : keys.c_str());
@@ -185,6 +199,7 @@ namespace banana
 		static const struct { const char* section; const char* name; const char* after; } FOLLOWS[] = {
 			{ "", "RetroAchievements", "System" },	// the tiles
 			{ "Network", "Tailscale", "Bluetooth" },
+			{ "Other systems", "Power scaling", "Frontend" },
 		};
 		for (auto& f : FOLLOWS)
 			if (section == f.section && name == f.name)

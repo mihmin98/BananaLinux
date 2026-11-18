@@ -600,7 +600,7 @@ over SSH before quitting the next game or turning off. Each RetroArch game's `ki
 | # | Board | Steps | Expected | Logs to collect | Criteria | Outcome |
 |---|---|---|---|---|---|---|
 | M1 | rgds-plus | Power scaling **off**. Play a SNES game and a GBA game (Frontend Auto: BananaFront) 2 min each. | Play as today; the strip shows `Performance 1992 MHz` (SNES) and `Balanced <MHz>` (GBA, moving); no `kiwami-clocks.log` written; `bananafront.log` has the floor's `cpugov: clock floor`. | `banana-ui.log` (`panel clocks:` lines), `bananafront.log`, `ls /data/banana/logs` | A2, A12 | not run |
-| M2 | rgds-plus | Frontend set to RetroArch. A heavy `powersave` game (a Mega Drive or NES stress scene, or a known heavy game) for 5 min. | No visible slowdown; the log shows steps above 1416 MHz where needed, few late frames after the first seconds. | `kiwami-clocks.log`, `retroarch.log` | A4, A5, A13 | failed (2026-11-18, 0.5.3.4 from `c31b6991`): Mesen never stepped down from 1992 MHz in 184 s, nothing late; step 8 measures the work per core frame and logs the numbers. Failed again (2026-11-18, 0.5.3.4 from `b0c279cd`): one frame per update, but the main thread busy 90-100% of each period at 1992 MHz; step 10 steps down by trial with threaded video, to run again |
+| M2 | rgds-plus | Frontend set to RetroArch. A heavy `powersave` game (a Mega Drive or NES stress scene, or a known heavy game) for 5 min. | No visible slowdown; the log shows steps above 1416 MHz where needed, few late frames after the first seconds. | `kiwami-clocks.log`, `retroarch.log` | A4, A5, A13 | failed (2026-11-18, 0.5.3.4 from `c31b6991`): Mesen never stepped down from 1992 MHz in 184 s, nothing late; step 8 measures the work per core frame and logs the numbers. Failed again (2026-11-18, 0.5.3.4 from `b0c279cd`): one frame per update, but the main thread busy 90-100% of each period at 1992 MHz; step 10 steps down by trial with threaded video. Passed (2026-11-18, 0.5.3.4 from `56c2fe0e`): smooth, 209 of 233 s at 1608 MHz, 4 single late flips in the first 2 min |
 | M3 | rgds-plus | A SNES game (Snes9x in RetroArch) for 10 min of play. | Smooth; the summary shows most time under 1992 MHz; the strip shows `Auto <MHz>` changing. | `kiwami-clocks.log`, `banana-ui.log` | A5, A12, A13 | failed (2026-11-17, 0.5.3.4 from `07a68068`): stutters at the three "running slow" steps; fixed in step 6. Failed again (2026-11-18, 0.5.3.4 from `bcb1581f`): hitches after each step down to 816 MHz, blamed on the GPU; fixed in step 7. Passed (2026-11-18, 0.5.3.4 from `13b76988`): smooth, 300 of 308 s at 1104 MHz; the GPU's floor raised for nothing, fixed in step 9; the strip not checked in `banana-ui.log` |
 | M4 | rgds-plus | A PlayStation game for 10 min (a 3D scene and a menu). | Smooth, sound without drop-outs; summary as M3. | `kiwami-clocks.log`, `retroarch.log` | A5, A13 | not run |
 | M5 | rgds-plus | A PAL (50 Hz) game in RetroArch for 5 min. | Plays at its speed; the log's fps 50; the clock doesn't climb to the top for pacing. | `kiwami-clocks.log` | A5, A13 | not run |
@@ -674,6 +674,14 @@ Notes from the runs (what the logs showed, what was fixed):
     fast-forwarded at 1416 MHz, about 55% of the period at 1992 MHz). RetroArch's threaded video code was read for a
     busy wait and none found (its waits sleep after a 3 us spin); what else the main thread does is unknown. With
     threaded video its time can't stand for the core's work. Fixed in step 10.
+- **M2, 2026-11-18** (0.5.3.4 built from `56c2fe0e`; Castlevania III - Dracula's Curse (All Fixes) in Mesen, 233 s).
+  Smooth, the user says. The start line ends `threaded video: the CPU steps down by trial`; trials every ~5 s took it
+  1992 -> 1800 -> 1608 -> 1416 -> 1104 MHz by 20.3 s (p99 83-197%, not used). 1104 was late 0.2 s later and undone;
+  1416 late again at 26.1 s (5.8 s after, so a plain late frame) and up to 1608. 1416 was tried again at 56.5 s and
+  119.9 s, each time after its ban (30 s, then 60 s), each late within 2.6 s and undone, the next ban 120 s, past the
+  end. 4 late flips in all (33.2-33.3 ms, swap gap 18.4-19.4 ms, work 110-115%, the GPU at its 200 MHz floor), none
+  after 120.1 s; 209.4 of 233.2 s at 1608 MHz, instead of 1992 MHz throughout. `core frames per screen update: none
+  89, one 13850, two or more 89`. Remembered `cpu 1608000 gpu 200000000`. Not run: SameBoy.
 
 ## Deviations
 
